@@ -1,3 +1,4 @@
+// Copyright (c) 2026 DIVIDE-Studio
 const workflows = [
     { file: 'Linux.yml', platform: 'linux' },
     { file: 'Windows.yml', platform: 'windows' },
@@ -13,7 +14,10 @@ module.exports = async function schedule({ github, context, core }) {
     });
     const targets = [
         { name: 'master', sha: master.commit.sha },
-        ...pulls.map(pull => ({ name: `pr-${pull.number}`, sha: pull.head.sha }))
+        ...pulls.map(pull => ({
+            name: `pr-${pull.number}`, sha: pull.head.sha,
+            trusted: pull.head.repo?.full_name === `${repo.owner}/${repo.repo}`
+        }))
     ];
     let dispatchFailed = false;
 
@@ -23,6 +27,18 @@ module.exports = async function schedule({ github, context, core }) {
         });
         for (const workflow of workflows) {
             const statusContext = `daily-ci/${workflow.platform}/${target.name}`;
+            if (target.name !== 'master' && !target.trusted) {
+                const description = 'Fork builds require PR-isolated validation';
+                const previous = statuses.find(status => status.context === statusContext);
+                if (previous?.description !== description) {
+                    await github.rest.repos.createCommitStatus({
+                        ...repo, sha: target.sha, context: statusContext,
+                        state: 'error', description
+                    });
+                }
+                core.info(`Not executing untrusted ${target.name} with default-branch cache credentials.`);
+                continue;
+            }
             // The API returns newest statuses first. Failed dispatches may be retried.
             const previous = statuses.find(status => status.context === statusContext);
             if (previous && previous.description !== 'Daily CI dispatch failed') {

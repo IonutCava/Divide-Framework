@@ -1,4 +1,4 @@
-﻿
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/GLWrapper.h"
 
@@ -1691,16 +1691,19 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics );
 
-        DIVIDE_GPU_ASSERT( s_stateTracker._activeShaderProgram != nullptr );
         thread_local std::array<DescriptorSet, to_base(DescriptorSetUsage::COUNT)> resolvedSets;
         for ( DescriptorSetEntry entry : descriptorSetEntries )
         {
             DescriptorSet resolvedSet{};
-            const bool hasFallback = s_stateTracker._activeShaderProgram->resolveSampledImages( entry, resolvedSet );
+            const bool hasFallback = s_stateTracker._activeShaderProgram != nullptr &&
+                                     s_stateTracker._activeShaderProgram->resolveSampledImages( entry, resolvedSet );
             DescriptorSet& previousSet = resolvedSets[to_base(entry._usage)];
             entry._isDirty = entry._isDirty || (hasFallback && previousSet != resolvedSet);
             previousSet = resolvedSet;
-            entry._set = &resolvedSet;
+            if ( s_stateTracker._activeShaderProgram != nullptr )
+            {
+                entry._set = &resolvedSet;
+            }
             if ( !entry._isDirty )
             {
                 // We don't need to keep track of descriptor set to layout compatibility in OpenGL

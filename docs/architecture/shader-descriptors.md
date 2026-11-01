@@ -56,6 +56,9 @@ Bound sets/offsets are tracked per bind point (graphics/compute) and command buf
 `frameStarted` invalidates cached sets as descriptor pools flip.
 
 Both OpenGL and Vulkan resolve null and omitted active combined image samplers through `ShaderProgram::resolveSampledImages`. Shared-set bindings remain persistent; missing per-draw slots cannot inherit stale textures.
+When an OpenGL shader bind fails, ordinary descriptor updates still run without
+sampler resolution; a null active shader must not turn the existing draw-skip
+path into an assertion or dereference.
 Non-MSAA fallbacks share 1x1 black texel values and nearest/clamp sampling, with compatible dimensionality (including arrays/cubes), numeric format, and depth comparison.
 Missing active MSAA bindings are hard GPU assertions, never fallback textures. Reflection cache v5 stores these sampler traits.
 These sampler notes were added by commit `7b09ed5`.

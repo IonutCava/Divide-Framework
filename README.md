@@ -1,3 +1,4 @@
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
 [![Windows Builds](https://github.com/IonutCava/Divide-Framework/actions/workflows/Windows.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Windows.yml)
 [![Linux Builds](https://github.com/IonutCava/Divide-Framework/actions/workflows/Linux.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Linux.yml)
 [![MacOS Builds](https://github.com/IonutCava/Divide-Framework/actions/workflows/MacOS.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/MacOS.yml)
@@ -34,6 +35,12 @@ If you plan to use any parts of this code in a commercial product, a couple of t
 ### Minimum CPU requirements:
 - x86: SSE4.2
 - ARM: NEON
+
+Presets request AVX2 by default on x86. For older CPUs, configure with
+`-DDIVIDE_VECTOR_EXTENSION_SET=SSE42` (or `AVX` for an AVX-only target).
+Unsupported requested levels fail configuration before dependency installation.
+Jolt uses the selected dependency ISA; ARM uses NEON and macOS x86_64
+dependencies retain an SSE4.2 baseline for Rosetta compatibility.
 
 ### All:
 - Clone with recursive submodules (e.g. git clone --recurse-submodules). Needed for vcpkg.

@@ -1,5 +1,6 @@
 """Record comparable dependency/configure/build timings without deleting caches."""
 
+# Copyright (c) 2026 DIVIDE-Studio
 import argparse
 import json
 import platform
@@ -12,10 +13,17 @@ from pathlib import Path
 
 def command_arguments(value):
     try:
-        command = shlex.split(value)
-    except ValueError as error:
+        if value.lstrip().startswith("["):
+            command = json.loads(value)
+            if not isinstance(command, list) or not all(isinstance(argument, str) for argument in command):
+                raise ValueError("Command must be a JSON array of strings")
+        elif platform.system() == "Windows":
+            raise ValueError("On Windows, pass commands as JSON argument arrays to preserve native paths")
+        else:
+            command = shlex.split(value)
+    except (ValueError, TypeError) as error:
         raise argparse.ArgumentTypeError(str(error)) from error
-    if not command:
+    if not command or not command[0].strip():
         raise argparse.ArgumentTypeError("Command must contain an executable")
     return command
 
@@ -24,9 +32,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scenario", choices=("cold", "warm", "incremental"), required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--install", type=command_arguments, required=True, help="Shell-quoted vcpkg arguments (no shell execution)")
-    parser.add_argument("--configure", type=command_arguments, required=True, help="Shell-quoted CMake configure arguments")
-    parser.add_argument("--build", type=command_arguments, required=True, help="Shell-quoted CMake build arguments")
+    parser.add_argument("--install", type=command_arguments, required=True, help="JSON argument array (required on Windows) or POSIX shell-quoted vcpkg arguments; no shell execution")
+    parser.add_argument("--configure", type=command_arguments, required=True, help="JSON argument array or POSIX shell-quoted CMake configure arguments")
+    parser.add_argument("--build", type=command_arguments, required=True, help="JSON argument array or POSIX shell-quoted CMake build arguments")
     args = parser.parse_args()
     args.output.parent.mkdir(parents=True, exist_ok=True)
 

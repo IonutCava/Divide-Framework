@@ -131,6 +131,9 @@ forwarding shared-pointer factory instead of Boost.Functional.
 
 Jolt's SIMD flags are explicit, selected before vcpkg's manifest installation
 through `ConfigureDependencies.cmake` and the overlay's SIMD features.
+`ValidateSIMDRequest.cmake` configures a dependency-free preflight using the same
+target/compiler detector as the engine. Unsupported requested x86 levels are
+rejected before installation rather than downgraded underneath Jolt's public flags.
 SSE42 (and AUTO's conservative dependency baseline) disable AVX, AVX2, F16C,
 FMA, LZCNT and TZCNT; AVX does not enable AVX2-era instructions.
 ARM targets disable all x86 options. macOS x86_64 dependencies remain
@@ -147,6 +150,9 @@ also select the corresponding `--x-feature=jolt-avx`, `jolt-avx2` or `jolt-avx51
 - Repeat with `warm` and `incremental`, keeping triplet, configuration, build parallelism and tool versions identical. For incremental measurements, edit a representative source file before running.
 - Scenario labels do not reset caches. Use isolated build/install/download directories and explicitly set `VCPKG_BINARY_SOURCES=clear` for a genuine cold run. Reuse the same install directory in the install and configure commands; otherwise configure will perform an additional installation.
 - The tool records each stage's duration, exit status and log, and stops on failure. Do not report a failed download/configure as a successful build-time baseline or claim engine speedups from dependency counts alone.
+- Commands also accept JSON arrays of strings. On Windows these arrays are required;
+  for example `[".\\vcpkg\\vcpkg.exe", "install", "--triplet", "x64-windows"]`.
+  POSIX shell-quoted command strings remain supported on Unix; no shell is executed.
 
 ## Subsystem routing
 
@@ -162,11 +168,18 @@ also select the corresponding `--x-feature=jolt-avx`, `jolt-avx2` or `jolt-avx51
 
 CI checks `master` and all open pull requests daily at 00:00 UTC (GitHub may delay scheduled runs).
 Linux, Windows, and macOS builds run only for head commits not previously queued for that target.
-Commit statuses record queued and completed builds, including on fork PRs; unchanged commits are
+Commit statuses record queued and completed builds; unchanged commits are
 not rebuilt, even after a failed build. Failed dispatches are retried at the next daily check.
 The first check builds every current target. PRs are built at their head commit, not a test merge.
 The platform workflows use `workflow_dispatch` for the scheduler, not push or PR triggers.
 These workflows must be present on the repository's default branch before scheduling takes effect.
+
+The daily scheduler executes only master and same-repository PR heads. Fork or
+unavailable head repositories receive an explicit error status without dispatch:
+default-branch runs expose default-branch cache-write credentials to source code,
+and ABI hashes do not authenticate archive contents. Fork execution is disabled
+until a PR-isolated validation/cache scope is implemented. Do not re-enable it
+by merely changing cache key prefixes or omitting cache-save steps.
 
 Platform workflows keep trusted local actions at `github.sha` in the workspace
 root. Target sources (`ci_sha`, including fork heads) go in `ci-source`; trusted

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 import importlib.util
 import argparse
 import json
@@ -24,7 +25,7 @@ class BuildMeasurementTests(unittest.TestCase):
             return measure_build.main()
 
     def command(self, code):
-        return shlex.join([sys.executable, "-c", code])
+        return json.dumps([sys.executable, "-c", code])
 
     def test_records_each_stage_and_preserves_arguments(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -52,16 +53,27 @@ class BuildMeasurementTests(unittest.TestCase):
     def test_missing_executable_is_reported(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "results.json"
-            missing = shlex.quote(str(Path(directory) / "missing-executable"))
+            missing = json.dumps([str(Path(directory) / "missing-executable")])
             self.assertEqual(self.measure(output, missing, missing, missing), 127)
             entry = json.loads(output.read_text())["stages"][0]
             self.assertEqual(entry["exit_code"], 127)
             self.assertTrue(Path(entry["log"]).read_text())
 
     def test_empty_or_malformed_commands_are_rejected(self):
-        for command in ("", "  ", "'unclosed"):
+        for command in ("", "  ", "'unclosed", "[]", '[""]', "[1]", '["unclosed"'):
             with self.assertRaises(argparse.ArgumentTypeError):
                 measure_build.command_arguments(command)
+
+    def test_windows_paths_survive_json_argument_arrays(self):
+        arguments = [r".\vcpkg\vcpkg.exe", "install", r"--overlay-ports=C:\Divide\Source\CMakeHelpers\OverlayPorts", r"C:\Path With Spaces"]
+        with patch.object(measure_build.platform, "system", return_value="Windows"):
+            self.assertEqual(measure_build.command_arguments(json.dumps(arguments)), arguments)
+            with self.assertRaisesRegex(argparse.ArgumentTypeError, "JSON argument arrays"):
+                measure_build.command_arguments(r".\vcpkg\vcpkg.exe install")
+
+    def test_posix_shell_quoted_commands_remain_supported(self):
+        with patch.object(measure_build.platform, "system", return_value="Linux"):
+            self.assertEqual(measure_build.command_arguments(shlex.join(["tool", "argument with spaces"])), ["tool", "argument with spaces"])
 
 
 if __name__ == "__main__":

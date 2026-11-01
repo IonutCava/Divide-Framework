@@ -36,6 +36,10 @@ function fixture({ pulls = [], statuses = {}, failDispatch } = {}) {
             return method === 'pulls' ? pulls : (statuses[options.ref] || []);
         }
     };
+    pulls = pulls.map(pull => ({
+        ...pull,
+        head: { repo: { full_name: 'owner/repo' }, ...pull.head }
+    }));
     return {
         args: {
             github,
@@ -61,7 +65,7 @@ function prior(target, state = 'success') {
     }));
 }
 
-test('first daily check builds master and every open PR, including fork heads', async () => {
+test('first daily check builds master and same-repository PRs but never executes forks', async () => {
     const f = fixture({
         pulls: [
             { number: 1, head: { sha: 'fork-sha', repo: { fork: true } } },
@@ -69,14 +73,34 @@ test('first daily check builds master and every open PR, including fork heads', 
         ]
     });
     await schedule(f.args);
-    assert.equal(f.dispatched.length, 9);
+    assert.equal(f.dispatched.length, 6);
     assert.equal(f.reported.length, 9);
     for (const dispatch of f.dispatched) {
         assert.equal(dispatch.ref, 'master');
         assert.ok(['Linux.yml', 'Windows.yml', 'MacOS.yml'].includes(dispatch.workflow_id));
     }
-    assert.deepEqual(f.dispatched[3].inputs, { ci_sha: 'fork-sha', ci_target: 'pr-1' });
-    assert.ok(f.reported.every(status => status.state === 'pending'));
+    assert.deepEqual(f.dispatched[3].inputs, { ci_sha: 'other-sha', ci_target: 'pr-2' });
+    const forkStatuses = f.reported.filter(status => status.sha === 'fork-sha');
+    assert.equal(forkStatuses.length, 3);
+    assert.ok(forkStatuses.every(status => status.state === 'error' && status.description === 'Fork builds require PR-isolated validation'));
+    assert.ok(f.dispatched.every(dispatch => dispatch.inputs.ci_sha !== 'fork-sha'));
+});
+
+test('missing or foreign PR head repositories fail closed without duplicate error statuses', async () => {
+    for (const repo of [null, { full_name: 'fork/repo' }]) {
+        const f = fixture({
+            pulls: [{ number: 1, head: { sha: 'fork-sha', repo } }],
+            statuses: {
+                'master-sha': prior('master'),
+                'fork-sha': prior('pr-1', 'error').map(status => ({
+                    ...status, description: 'Fork builds require PR-isolated validation'
+                }))
+            }
+        });
+        await schedule(f.args);
+        assert.equal(f.dispatched.length, 0);
+        assert.equal(f.reported.length, 0);
+    }
 });
 
 test('unchanged heads are skipped regardless of previous build result', async () => {

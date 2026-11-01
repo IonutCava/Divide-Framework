@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -917,11 +917,12 @@ namespace Assert
 
 #define DIVIDE_EXPECTED_GPU_CALL_MSG( X, MSG )                                     \
     do {                                                                           \
-        const bool result = static_cast<bool>(X);                                  \
         if constexpr (Divide::Config::ENABLE_GPU_VALIDATION) {                     \
-            if ( !result ) [[unlikely]] {                                          \
+            if ( !static_cast<bool>(X) ) [[unlikely]] {                             \
                 DIVIDE_UNEXPECTED_CALL_MSG(MSG);                                   \
             }                                                                      \
+        } else {                                                                   \
+            static_cast<void>(static_cast<bool>(X));                               \
         }                                                                          \
     } while(0)
 
