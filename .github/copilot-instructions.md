@@ -22,7 +22,7 @@
   - Configure: `cmake --preset windows-msvc-editor-instrumentation -DBUILD_TESTING_INTERNAL=ON -DRUN_TESTING_INTERNAL=OFF`
   - Build: `cmake --build --preset windows-msvc-debug-editor-instrumentation --parallel 2`
   - Test: `ctest --preset test-windows-msvc-debug-editor-instrumentation`
-- Linux-only agent checks are supplementary, not a replacement for Windows validation. See README for the targeted Actions dispatch.
+- Linux-only agent checks are supplementary, not a replacement for Windows validation. See `AGENTS.md` for the targeted Actions dispatch and environment/cache setup.
 
 ## Important Files / Entry Points to Reference in Patches
 - Architecture & build wiring: `CMakeLists.txt`, `Source/CMakeLists.txt`, `CMakeHelpers/GlobSources.cmake`.
