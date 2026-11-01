@@ -18,7 +18,10 @@ cancels the timer before releasing the connection.
 
 Tests exercising actual client sends must call
 `platformInitRunListener::PlatformInit()` before the send path accesses locale,
-console and application-time services. CTest runs discovered cases in separate
+console and application-time services. Platform initialization only sets up paths
+and system information; the scoped `NetworkingServices` fixture also calls
+`Locale::Init()` and clears localization after all clients are destroyed.
+CTest runs discovered cases in separate
 processes: initialization in another test does not carry over. Keep loopback
 fixtures independent of external servers and exercise cancellation and
 per-client startup when changing heartbeat behavior.
