@@ -2,7 +2,7 @@
 
 Non-sRGB screen fallback paths can blend translucent UI in encoded space.
 Linear-space fallback compositing is deferred; do not claim identical alpha
-blending between sRGB and non-sRGB presentation paths. and backend conventions
+blending between sRGB and non-sRGB presentation paths.
 
 <!-- Copyright (c) 2026 DIVIDE-Studio -->
 
