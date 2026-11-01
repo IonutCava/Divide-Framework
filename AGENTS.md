@@ -148,6 +148,8 @@ through `ConfigureDependencies.cmake` and the overlay's SIMD features.
 `ValidateSIMDRequest.cmake` configures a dependency-free preflight using the same
 target/compiler detector as the engine. Unsupported requested x86 levels are
 rejected before installation rather than downgraded underneath Jolt's public flags.
+Preflight forwards direct custom toolchains or vcpkg's chainload toolchain using
+absolute paths; the vcpkg provisioning toolchain itself is excluded.
 SSE42 (and AUTO's conservative dependency baseline) disable AVX, AVX2, F16C,
 FMA, LZCNT and TZCNT; AVX does not enable AVX2-era instructions.
 ARM targets disable all x86 options. macOS x86_64 dependencies remain
