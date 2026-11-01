@@ -37,6 +37,7 @@ If you plan to use any parts of this code in a commercial product, a couple of t
 
 ### All:
 - Clone with recursive submodules (e.g. git clone --recurse-submodules). Needed for vcpkg.
+- Install CMake >= 3.29.2, Ninja, and a C++23-capable compiler.
 ### Visual Studio Code:
 - Open the root folder in VSCode (with CMake and C++ extensions installed).
 - Under CMake Project Status view, select the desired Configure preset followed by the desired Build preset.
@@ -62,7 +63,7 @@ If you plan to use any parts of this code in a commercial product, a couple of t
 
 * Experimental Vulkan renderer
 
-* C++17/20
+* C++23
 
 * Windows only (but with functional Linux platform code).
 

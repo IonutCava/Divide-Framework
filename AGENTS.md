@@ -51,6 +51,56 @@
 - Distinguish checks actually run from checks not run or blocked. Local success does not establish success on other platforms or in CI.
 - Documentation-only changes require no build unless they affect an executable example or have a dedicated documentation check.
 
+### Canonical validation and dependency provisioning
+
+The project requires CMake >= 3.29.2, Ninja, and a C++23 compiler; CI pins tool
+versions in `.github/actions/common-config/action.yml`.
+For features and fixes, use Windows/MSVC Debug editor with both Optick and internal
+function profiling from an x64 Visual Studio developer shell:
+
+```shell
+cmake --preset windows-msvc-editor-instrumentation -DBUILD_TESTING_INTERNAL=ON -DRUN_TESTING_INTERNAL=OFF
+cmake --build --preset windows-msvc-debug-editor-instrumentation --parallel 2
+ctest --preset test-windows-msvc-debug-editor-instrumentation
+```
+
+For a targeted run on a pushed branch:
+
+```shell
+gh workflow run Windows.yml --ref <branch> -f validation_only=true
+```
+
+This targeted run does not report a full daily-matrix status. CTest failures fail
+CI. Tests depend on the full engine executable/dependency graph and are not GPU
+rendering validation.
+
+Shared setup restores vcpkg binary archives with the supported `files` provider and
+`actions/cache`, replacing the removed `x-gha` provider. Cache identity includes
+OS, host/target architecture, compiler/toolchain, pinned vcpkg revision, manifest,
+and overlays. vcpkg checks package ABIs before reuse. Per-run keys save new archives
+after configuration, before engine compilation, even if compilation/tests later fail.
+Installed trees and engine outputs are not cached. Compare archive counts and
+package-restoration logs across two runs to distinguish cold and warm builds.
+
+Actions-backed Copilot setup installs Ubuntu prerequisites and configures
+`linux-gcc` dependencies before its firewall activates, without destructive
+checkout cleanup. It shares matching Linux CI caches, not Windows binaries. Cold
+setup can exceed the 59-minute limit; prime caches in regular CI if needed. Setup
+must reach the default branch to affect future sessions.
+
+On configured Ubuntu agents, supplementary checks are:
+
+```shell
+cmake --build --preset linux-gcc-debug --parallel 2
+ctest --preset test-linux-gcc-debug
+```
+
+These do not replace Windows instrumented validation. Outside Actions-backed
+sessions, provision equivalent tools/dependencies; configure with
+`cmake --preset linux-gcc -DBUILD_TESTING_INTERNAL=ON -DRUN_TESTING_INTERNAL=OFF`
+if needed. Upstream downloads and redirect mirrors (including SourceForge) may
+require firewall access; prefer preloading dependencies over disabling the firewall.
+
 ## Subsystem routing
 
 | Task | Read |

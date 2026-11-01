@@ -140,7 +140,7 @@ test('build setup pins target code after loading trusted local actions', () => {
         const workflow = readFileSync(path.join(__dirname, '../workflows', file), 'utf8');
         assert.doesNotMatch(workflow, /^\s+(schedule|push|pull_request|check_date):/m);
         const checkouts = [...workflow.matchAll(/uses: actions\/checkout@v5\s+with:\s+ref: ([^\r\n]+)\s+persist-credentials: false/g)];
-        assert.equal(checkouts.length, platform === 'macos' ? 2 : 4);
+        assert.equal(checkouts.length, platform === 'macos' ? 2 : platform === 'windows' ? 5 : 4);
         assert.ok(checkouts.every(match => match[1] === '${{ github.sha }}'));
         const setup = readFileSync(path.join(__dirname, '../actions/build-setup', platform, 'action.yml'), 'utf8');
         assert.match(setup, /ref: \$\{\{ github.event.inputs.ci_sha \|\| github.sha \}\}/);
@@ -148,6 +148,14 @@ test('build setup pins target code after loading trusted local actions', () => {
         assert.match(workflow, /permissions:\s+contents: read/);
         assert.match(workflow, /output_job:[\s\S]+permissions:\s+statuses: write/);
     }
+});
+
+test('targeted Windows validation does not overwrite full daily-matrix status', () => {
+    const workflow = readFileSync(path.join(__dirname, '../workflows/Windows.yml'), 'utf8');
+    assert.match(workflow, /info_job:\s+if: \$\{\{ !inputs.validation_only \}\}/);
+    assert.match(workflow, /Report commit status\s+if: \$\{\{ !inputs.validation_only && inputs.ci_sha != '' && inputs.ci_target != '' \}\}/);
+    assert.doesNotMatch(workflow, /needs\.check_date/);
+    assert.match(workflow, /ctest --preset test-windows-msvc-debug-editor-instrumentation/);
 });
 
 test('trusted reporting jobs attach success and failure to the target SHA', async () => {

@@ -45,6 +45,12 @@ runs:
       with:
         configurePreset: linux-${{ inputs.compiler }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
 
+    - name: Save dependency binaries before compiling the engine
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ env.DIVIDE_VCPKG_BINARY_CACHE }}
+        key: ${{ env.DIVIDE_VCPKG_CACHE_KEY }}
+
     - name: Build (preset override)
       if: ${{ inputs.build-preset != '' }}
       uses: lukka/run-cmake@v10
@@ -59,14 +65,12 @@ runs:
 
     - name: Test (preset override)
       if: ${{ inputs.test-preset != '' && inputs.run-tests != 'false' }}
-      continue-on-error: true
       uses: lukka/run-cmake@v10
       with:
         testPreset: ${{ inputs.test-preset }}
 
     - name: Test ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
       if: ${{ inputs.test-preset == '' && inputs.run-tests != 'false' }}
-      continue-on-error: true
       uses: lukka/run-cmake@v10
       with:
         testPreset: test-linux-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}

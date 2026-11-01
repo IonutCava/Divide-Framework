@@ -49,6 +49,8 @@ jobs:
           persist-credentials: false
 
       - uses: ./.github/actions/build-setup/macos
+        with:
+          architecture: x86_64
 
       - uses: ./.github/actions/cmake-build/macos
         with:
@@ -73,6 +75,8 @@ jobs:
           persist-credentials: false
 
       - uses: ./.github/actions/build-setup/macos
+        with:
+          architecture: arm64
 
       - uses: ./.github/actions/cmake-build/macos
         with:
@@ -122,6 +126,8 @@ jobs:
             echo "status=arm64 build failed, x86_64 build: $x86_64_status" >> $GITHUB_OUTPUT
           elif [[ "$x86_64_status" == "cancelled" || "$arm64_status" == "cancelled" ]]; then
             echo "status=One or more builds cancelled" >> $GITHUB_OUTPUT
+          elif [[ "$info_status" == "skipped" || "$x86_64_status" == "skipped" || "$arm64_status" == "skipped" ]]; then
+            echo "status=Required validation unexpectedly skipped" >> $GITHUB_OUTPUT
           else
             echo "status=Success" >> $GITHUB_OUTPUT
           fi
@@ -133,3 +139,9 @@ jobs:
           echo "Clang Version: ${{ needs.info_job.outputs.clang_version }}" >> $GITHUB_STEP_SUMMARY
           echo "x86_64 Builds: ${{ needs.build_job_x86_64.result }}" >> $GITHUB_STEP_SUMMARY
           echo "arm64 Builds: ${{ needs.build_job_arm64.result }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail workflow on incomplete validation
+        if: ${{ steps.results.outputs.status != 'Success' }}
+        run: |
+          echo "Required validation did not succeed: ${{ steps.results.outputs.status }}"
+          exit 1
