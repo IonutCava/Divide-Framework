@@ -148,7 +148,7 @@ bool SphereInFrustum(in vec3 pos, in float radius, in mat4 worldMat)
 {
     // Keep edge patches alive a little longer to avoid visible popping when a tessellated patch
     // straddles the frustum boundary at steep view angles.
-    const float minCmp = -0.5f;
+    const float minCmp = 0.5f;
 
     const vec4 posW = worldMat * vec4(pos, 1.f);
     for (int i = 0; i < 6; ++i)
@@ -544,7 +544,7 @@ void main(void) {
 #if defined (TOGGLE_LODS)
     switch (VAR._LoDLevel) {
         case 0  : colourOut.r  = 1.f; break;
-        case 1  : colourOut.g  = 1.f break;
+        case 1  : colourOut.g  = 1.f; break;
         case 2  : colourOut.b  = 1.f; break;
         case 3  : colourOut.gb = vec2(1.f, 1.f); break;
         case 4  : colourOut.rb = vec2(1.f, 1.f); break;
