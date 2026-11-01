@@ -69,6 +69,9 @@ namespace Divide
 
         struct ImageEntry : DataEntry
         {
+            TextureType _textureType{ TextureType::COUNT };
+            GFXDataFormat _sampledDataType{ GFXDataFormat::UNSIGNED_BYTE };
+            bool _isDepth{ false };
             bool _combinedImageSampler{ false };
             bool _isWriteTarget{ false };
             bool _isMultiSampled{ false };

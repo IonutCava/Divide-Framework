@@ -293,6 +293,13 @@ namespace Divide
 
         // What is currently bound on the active command buffer for a given bind point (graphics/compute).
         // Indexed by DescriptorSetUsage (which is also the Vulkan set index).
+        //
+        // Both this and SharedDescriptorSetCache compare raw Vulkan handles (image views, samplers, buffers, pipeline layouts).
+        // That is safe because every such object is destroyed via VK_API::RegisterCustomAPIDelete(..., true) which defers the
+        // actual vkDestroy* call by MAX_FRAMES_IN_FLIGHT + 1 frames (s_transientDeleteQueue), while these caches are reset at least
+        // once per frame (InvalidateSharedDescriptorSets() in frameStarted, ResetBoundDescriptorState() on command buffer change and in
+        // setDefaultState). A handle can therefore never be recycled by the driver while a cache entry still references it.
+        // Destroying any of these objects immediately (mid-frame) would break this invariant.
         struct BoundDescriptorState
         {
             std::array<VkDescriptorSet, to_base( DescriptorSetUsage::COUNT )> _sets{};
@@ -330,6 +337,7 @@ namespace Divide
     bool VK_API::s_hasDescriptorBufferSupport = false;
     bool VK_API::s_hasDynamicBlendStateSupport = false;
     U32 VK_API::s_maxDescriptorSetStorageBuffersDynamic{0u};
+    U32 VK_API::s_maxPushDescriptors{0u};
     U32 VK_API::s_maxDescriptorSetUniformBuffersDynamic{0u};
     VkResolveModeFlags VK_API::s_supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
 
@@ -1081,7 +1089,9 @@ namespace Divide
 
         VkFormatProperties2 properties{.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
         VkPhysicalDeviceMaintenance4Properties maintenance4{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES, .pNext = nullptr };
-        VkPhysicalDeviceProperties2 properties2 { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,.pNext = &maintenance4 };
+        // Push descriptor limits (PER_DRAW set). This is a properties (query) struct, so it belongs here and not in the device feature chain
+        VkPhysicalDevicePushDescriptorProperties pushDescriptorProperties{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES, .pNext = &maintenance4 };
+        VkPhysicalDeviceProperties2 properties2 { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,.pNext = &pushDescriptorProperties };
 
         VkPhysicalDeviceMeshShaderPropertiesEXT meshProperties { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT };
 
@@ -1113,6 +1123,9 @@ namespace Divide
         }
 
         vkGetPhysicalDeviceProperties2(physicalDevice, &properties2);
+
+        VK_API::s_maxPushDescriptors = pushDescriptorProperties.maxPushDescriptors;
+        DIVIDE_GPU_ASSERT( VK_API::s_maxPushDescriptors >= MAX_BINDINGS_PER_DESCRIPTOR_SET, "Device does not support enough push descriptors for a full PER_DRAW set!" );
 
         // Store supported depth resolve modes for runtime decisions
         VK_API::s_supportedDepthResolveModes = depthResolve.supportedDepthResolveModes;
@@ -1342,13 +1355,13 @@ namespace Divide
         VK_API::s_stateTracker._device = _device.get();
 
 
-        DIVIDE_GPU_ASSERT( Config::MINIMUM_VULKAN_MINOR_VERSION > 2 );
+        DIVIDE_GPU_ASSERT( Config::MINIMUM_VULKAN_MINOR_VERSION >= 4 );
 
         VmaAllocatorCreateInfo allocatorInfo = {};
         allocatorInfo.physicalDevice = physicalDevice;
         allocatorInfo.device = vkDevice;
         allocatorInfo.instance = _vkbInstance.instance;
-        allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+        allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_4;
         allocatorInfo.preferredLargeHeapBlockSize = 0;
 
         vmaCreateAllocator( &allocatorInfo, &_allocator );
@@ -1759,9 +1772,16 @@ namespace Divide
 
         thread_local fixed_vector<VkWriteDescriptorSet, MAX_BINDINGS_PER_DESCRIPTOR_SET> descriptorWrites;
         thread_local DescriptorSlotStates perDrawSlots;
+        thread_local std::array<DescriptorSet, to_base(DescriptorSetUsage::COUNT)> resolvedSets;
 
-        for ( const DescriptorSetEntry& entry : descriptorSetEntries )
+        for ( DescriptorSetEntry entry : descriptorSetEntries )
         {
+            DescriptorSet resolvedSet{};
+            const bool hasFallback = program->resolveSampledImages( entry, resolvedSet );
+            DescriptorSet& previousSet = resolvedSets[to_base(entry._usage)];
+            entry._isDirty = entry._isDirty || (hasFallback && previousSet != resolvedSet);
+            previousSet = resolvedSet;
+            entry._set = &resolvedSet;
             const BaseType<DescriptorSetUsage> usageIdx = to_base( entry._usage );
 
             // Indirect command buffers are not descriptors (vkCmdDraw*Indirect source), but are specified in the same way as any other
@@ -2219,13 +2239,17 @@ namespace Divide
             const ShaderProgram::BindingsPerSetArray& drawLayout = compiledPipeline._program->perDrawDescriptorSetLayout();
 
             DynamicBindings dynamicBindings{};
-            _descriptorSetLayouts[to_base(DescriptorSetUsage::PER_DRAW)] = createLayoutFromBindings(DescriptorSetUsage::PER_DRAW, drawLayout, dynamicBindings);
+            const VkDescriptorSetLayout perDrawLayout = createLayoutFromBindings(DescriptorSetUsage::PER_DRAW, drawLayout, dynamicBindings);
             compiledPipeline._program->dynamicBindings(dynamicBindings);
-            compiledPipeline._program->descriptorSetLayout( _descriptorSetLayouts[to_base( DescriptorSetUsage::PER_DRAW )] );
+            compiledPipeline._program->descriptorSetLayout( perDrawLayout );
+
+            // Shared sets come from the global layouts. Only PER_DRAW is per-program, so build the array locally instead of mutating shared state.
+            std::array<VkDescriptorSetLayout, to_base( DescriptorSetUsage::COUNT )> setLayouts = _descriptorSetLayouts;
+            setLayouts[to_base( DescriptorSetUsage::PER_DRAW )] = perDrawLayout;
             
             // Sets are ordered by update frequency (PER_FRAME = 0 ... PER_DRAW = last). Shared sets always use their real layouts
             // (even if unused by this program) so that every pipeline layout is compatible for them and bound sets survive pipeline changes.
-            pipeline_layout_info.pSetLayouts = _descriptorSetLayouts.data();
+            pipeline_layout_info.pSetLayouts = setLayouts.data();
             pipeline_layout_info.setLayoutCount = to_base( DescriptorSetUsage::COUNT );
 
             VK_CHECK( vkCreatePipelineLayout( _device->getVKDevice(), &pipeline_layout_info, nullptr, &compiledPipeline._vkPipelineLayout ) );
@@ -2360,9 +2384,6 @@ namespace Divide
         }
 
         bindDynamicState( pipeline.descriptor()._stateBlock, pipeline.descriptor()._blendStates, cmdBuffer );
-
-        const U8 stageIdx = to_base( DescriptorSetUsage::PER_DRAW );
-        _descriptorSetLayouts[stageIdx] = compiledPipeline._program->descriptorSetLayout();
 
         return compiledPipeline._program->validatePreBind(_context.context().config(), false);
     }
@@ -3369,6 +3390,7 @@ namespace Divide
         VkDescriptorSetLayoutCreateInfo layoutCreateInfo = vk::descriptorSetLayoutCreateInfo( layoutBinding.data(), to_U32( layoutBinding.size() ) );
         if ( DescriptorSetUsage::PER_DRAW == usage )
         {
+            DIVIDE_GPU_ASSERT( layoutBinding.size() <= s_maxPushDescriptors, "PER_DRAW layout exceeds the device's maxPushDescriptors limit!" );
             layoutCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT;
         }
         return _descriptorLayoutCache->createDescriptorLayout( &layoutCreateInfo );
@@ -3380,6 +3402,8 @@ namespace Divide
 
         _descriptorLayoutCache = std::make_unique<DescriptorLayoutCache>( _device->getVKDevice() );
 
+        // PER_DRAW layouts are per-program (see vkShaderProgram::descriptorSetLayout()), so the shared array only holds the shared sets
+        _descriptorSetLayouts.fill( VK_NULL_HANDLE );
         for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
         {
             if ( i != to_base( DescriptorSetUsage::PER_DRAW ) )

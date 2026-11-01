@@ -14,6 +14,8 @@ runs:
       
     - uses: actions/checkout@v4
       with:
+        ref: ${{ github.event.inputs.ci_sha || github.sha }}
+        persist-credentials: false
         submodules: true
         fetch-depth: 0
 
