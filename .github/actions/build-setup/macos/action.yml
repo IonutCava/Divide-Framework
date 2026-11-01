@@ -1,6 +1,11 @@
 name: 'macOS Build Setup'
 description: 'Common build setup steps for macOS builds'
 
+inputs:
+  architecture:
+    description: 'Target architecture (x86_64 or arm64)'
+    required: true
+
 runs:
   using: "composite"
   steps:
@@ -33,10 +38,11 @@ runs:
           brew install nasm
         fi
 
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
+    - name: Setup cached vcpkg
+      uses: ./.github/actions/vcpkg-setup
       with:
-        vcpkgJsonGlob: 'vcpkg.json'
+        compiler: clang
+        target-architecture: ${{ inputs.architecture }}
       env:
         # Ensure Objective-C compiler is available for Meson when building dependencies
         # This is critical for cross-compilation scenarios (e.g., ARM64 host → x86_64 target)

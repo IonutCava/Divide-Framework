@@ -17,6 +17,12 @@
   - Build:     `cmake --build --preset <buildPreset>`
   - Many presets combine flags like `ENABLE_OPTICK_PROFILER`, `ENABLE_FUNCTION_PROFILING`, `ENABLE_MIMALLOC`, or `editor-build`.
 - vcpkg is used for dependencies; the project expects vcpkg integration via the presets/toolchain.
+- CMake >= 3.29.2, Ninja, and a C++23 compiler are required. Shared CI setup pins CMake/Ninja and caches vcpkg binaries.
+- For features and fixes, validate with Windows/MSVC Debug editor instrumentation (Optick and function profiling):
+  - Configure: `cmake --preset windows-msvc-editor-instrumentation -DBUILD_TESTING_INTERNAL=ON -DRUN_TESTING_INTERNAL=OFF`
+  - Build: `cmake --build --preset windows-msvc-debug-editor-instrumentation --parallel 2`
+  - Test: `ctest --preset test-windows-msvc-debug-editor-instrumentation`
+- Linux-only agent checks are supplementary, not a replacement for Windows validation. See README for the targeted Actions dispatch.
 
 ## Important Files / Entry Points to Reference in Patches
 - Architecture & build wiring: `CMakeLists.txt`, `Source/CMakeLists.txt`, `CMakeHelpers/GlobSources.cmake`.
@@ -26,7 +32,7 @@
 - Assets & config: `Assets/` and `config.xml` in the repo root are used at runtime.
 
 ## Project-Specific Conventions & Patterns
-- C++20 is used (some code reflects older style). Expect a mixture of DoD-friendly structs and OOP interfaces (NonCopyable, NonMovable, etc.).
+- C++23 is used (some code reflects older style). Expect a mixture of DoD-friendly structs and OOP interfaces (NonCopyable, NonMovable, etc.).
 - Target names are defined as variables in `Source/CMakeLists.txt` (e.g. `APP_LIB_DIVIDE`, `APP_EXE_DIVIDE`, `APP_EXE_PROJECT_MANAGER`) — prefer editing these variables rather than hardcoding target names elsewhere.
 - Compile flags and third-party flag lists are centralized in `Source/CMakeLists.txt` (search for `DIVIDE_COMPILE_OPTIONS` / `THIRD_PARTY_COMPILE_OPTIONS`). Avoid changing them lightly; tests and CI rely on many of these warnings being suppressed in third-party code. Avoid code repetition for compile options in this repository's CMake changes; prefer shared option lists over duplicating warning flags.
 - Tests are guarded by `BUILD_TESTING_INTERNAL` and `RUN_TESTING_INTERNAL` CMake variables and use Catch2.

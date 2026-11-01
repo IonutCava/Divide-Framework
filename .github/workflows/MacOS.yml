@@ -52,6 +52,8 @@ jobs:
       - uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-setup/macos
+        with:
+          architecture: x86_64
 
       - uses: ./.github/actions/cmake-build/macos
         with:
@@ -73,6 +75,8 @@ jobs:
       - uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-setup/macos
+        with:
+          architecture: arm64
 
       - uses: ./.github/actions/cmake-build/macos
         with:
@@ -81,7 +85,7 @@ jobs:
           configuration: ${{ matrix.configuration }}
 
   output_job:
-    needs: [info_job, build_job_x86_64, build_job_arm64]
+    needs: [check_date, info_job, build_job_x86_64, build_job_arm64]
     if: always()
     runs-on: ubuntu-24.04
     steps:
@@ -92,7 +96,9 @@ jobs:
           arm64_status="${{ needs.build_job_arm64.result }}"
           info_status="${{ needs.info_job.result }}"
           
-          if [[ "$info_status" == "failure" ]]; then
+          if [[ "${{ needs.check_date.result }}" != "success" ]]; then
+            echo "status=Commit check did not succeed" >> $GITHUB_OUTPUT
+          elif [[ "$info_status" == "failure" ]]; then
             echo "status=Info job failed" >> $GITHUB_OUTPUT
           elif [[ "$info_status" == "cancelled" ]]; then
             echo "status=Info job cancelled" >> $GITHUB_OUTPUT
@@ -104,6 +110,10 @@ jobs:
             echo "status=arm64 build failed, x86_64 build: $x86_64_status" >> $GITHUB_OUTPUT
           elif [[ "$x86_64_status" == "cancelled" || "$arm64_status" == "cancelled" ]]; then
             echo "status=One or more builds cancelled" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.check_date.outputs.should_run }}" == "false" ]]; then
+            echo "status=Skipped (no recent commits; no build or tests ran)" >> $GITHUB_OUTPUT
+          elif [[ "$info_status" == "skipped" || "$x86_64_status" == "skipped" || "$arm64_status" == "skipped" ]]; then
+            echo "status=Required validation unexpectedly skipped" >> $GITHUB_OUTPUT
           else
             echo "status=Success" >> $GITHUB_OUTPUT
           fi
@@ -115,3 +125,9 @@ jobs:
           echo "Clang Version: ${{ needs.info_job.outputs.clang_version }}" >> $GITHUB_STEP_SUMMARY
           echo "x86_64 Builds: ${{ needs.build_job_x86_64.result }}" >> $GITHUB_STEP_SUMMARY
           echo "arm64 Builds: ${{ needs.build_job_arm64.result }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail workflow on incomplete validation
+        if: ${{ steps.results.outputs.status != 'Success' && needs.check_date.outputs.should_run != 'false' || needs.check_date.result != 'success' }}
+        run: |
+          echo "Required validation did not succeed: ${{ steps.results.outputs.status }}"
+          exit 1

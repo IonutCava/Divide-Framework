@@ -7,6 +7,11 @@ on:
     branches: [ "master" ]
   workflow_dispatch:
     inputs:
+      validation_only:
+        description: 'Run only the canonical MSVC Debug/editor instrumentation build and tests'
+        required: false
+        default: false
+        type: boolean
       runner_type:
         description: 'Runner type to run on (GitHub or Self Hosted)'
         required: false
@@ -33,7 +38,7 @@ jobs:
 
   info_job:
     needs: check_date
-    if: ${{ needs.check_date.outputs.should_run != 'false' }}
+    if: ${{ needs.check_date.outputs.should_run != 'false' && !inputs.validation_only }}
 
     name: Windows latest - Print Info
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Windows"]') || 'windows-latest' }}
@@ -84,6 +89,7 @@ jobs:
 
       - uses: ./.github/actions/build-setup/windows
         with:
+          compiler: msvc
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
 
       - uses: ./.github/actions/cmake-build/windows
@@ -109,6 +115,7 @@ jobs:
 
       - uses: ./.github/actions/build-setup/windows
         with:
+          compiler: clang
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
 
       - uses: ./.github/actions/cmake-build/windows
@@ -127,6 +134,7 @@ jobs:
 
       - uses: ./.github/actions/build-setup/windows
         with:
+          compiler: msvc
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
 
       - name: ASAN+UBSAN build (via cmake-build/windows action)
@@ -149,6 +157,7 @@ jobs:
 
       - uses: ./.github/actions/build-setup/windows
         with:
+          compiler: clang
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
 
       - name: ASAN+UBSAN build (via cmake-build/windows action)
@@ -162,8 +171,41 @@ jobs:
           test-preset: test-windows-clang-profile-editor-asan-ubsan
           run-tests: false # Skip tests for clang ASAN+UBSAN build as it currently fails
 
+  validate_instrumented:
+    needs: check_date
+    if: ${{ needs.check_date.outputs.should_run != 'false' }}
+    name: Windows - MSVC Debug/editor instrumentation validation
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Windows"]') || 'windows-latest' }}
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/build-setup/windows
+        with:
+          compiler: msvc
+          runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
+      - name: Configure instrumented validation
+        shell: pwsh
+        run: |
+          cmake --preset windows-msvc-editor-instrumentation -DBUILD_TESTING_INTERNAL=ON -DRUN_TESTING_INTERNAL=OFF
+          if ($LASTEXITCODE -ne 0) { throw "Validation configure failed: $LASTEXITCODE" }
+      - name: Save dependency binaries before compiling the engine
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.DIVIDE_VCPKG_BINARY_CACHE }}
+          key: ${{ env.DIVIDE_VCPKG_CACHE_KEY }}
+      - name: Build instrumented validation
+        shell: pwsh
+        run: |
+          cmake --build --preset windows-msvc-debug-editor-instrumentation --parallel 2
+          if ($LASTEXITCODE -ne 0) { throw "Validation build failed: $LASTEXITCODE" }
+      - name: Run instrumented unit tests
+        shell: pwsh
+        run: |
+          ctest --preset test-windows-msvc-debug-editor-instrumentation
+          if ($LASTEXITCODE -ne 0) { throw "Validation tests failed: $LASTEXITCODE" }
+
   output_job:
-    needs: [info_job, build_msvc, build_clang, build_msvc_asan_ubsan, build_clang_asan_ubsan]
+    needs: [check_date, info_job, build_msvc, build_clang, build_msvc_asan_ubsan, build_clang_asan_ubsan, validate_instrumented]
     if: always()
     runs-on: windows-latest
     steps:
@@ -177,10 +219,20 @@ jobs:
           $clangAsanResult = "${{ needs.build_clang_asan_ubsan.result }}"
           $infoResult = "${{ needs.info_job.result }}"
 
-          if ($msvcResult -eq "failure" -or $clangResult -eq "failure" -or $msvcAsanResult -eq "failure" -or $clangAsanResult -eq "failure" -or $infoResult -eq "failure") {
+          $checkResult = "${{ needs.check_date.result }}"
+          $validationResult = "${{ needs.validate_instrumented.result }}"
+          $results = @($checkResult, $validationResult)
+          if ("${{ inputs.validation_only }}" -ne "true") {
+            $results += @($msvcResult, $clangResult, $msvcAsanResult, $clangAsanResult, $infoResult)
+          }
+          if ($results -contains "failure") {
             $status = "Build or Info job failed"
-          } elseif ($msvcResult -eq "cancelled" -or $clangResult -eq "cancelled" -or $msvcAsanResult -eq "cancelled" -or $clangAsanResult -eq "cancelled" -or $infoResult -eq "cancelled") {
+          } elseif ($results -contains "cancelled") {
             $status = "Build or Info job cancelled"
+          } elseif ($checkResult -eq "success" -and "${{ needs.check_date.outputs.should_run }}" -eq "false") {
+            $status = "Skipped (no recent commits; no build or tests ran)"
+          } elseif ($results -contains "skipped") {
+            $status = "Required validation unexpectedly skipped"
           } else {
             $status = "Success"
           }
@@ -193,9 +245,10 @@ jobs:
           echo "Status: ${{ steps.results.outputs.status }}" >> $env:GITHUB_STEP_SUMMARY
           echo "MSVC Version: ${{ needs.info_job.outputs.msvc_version }}" >> $env:GITHUB_STEP_SUMMARY
           echo "Clang Version: ${{ needs.info_job.outputs.clang_version }}" >> $env:GITHUB_STEP_SUMMARY
+          echo "Instrumented validation: ${{ needs.validate_instrumented.result }}" >> $env:GITHUB_STEP_SUMMARY
 
       - name: Fail workflow on cancelled/failed dependency jobs
-        if: ${{ steps.results.outputs.status != 'Success' }}
+        if: ${{ steps.results.outputs.status != 'Success' && needs.check_date.outputs.should_run != 'false' || needs.check_date.result != 'success' }}
         shell: pwsh
         run: |
           Write-Error "One or more required jobs did not complete successfully: ${{ steps.results.outputs.status }}"

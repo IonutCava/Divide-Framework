@@ -1,0 +1,34 @@
+name: 'Linux Build Tools'
+description: 'Install Linux tools and native prerequisites without modifying the checkout'
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/common-config
+      id: common-config
+
+    - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: ${{ steps.common-config.outputs.cmake-version }}
+        ninjaVersion: ${{ steps.common-config.outputs.ninja-version }}
+
+    - name: Install native prerequisites
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential clang lld python3 \
+          libxi-dev libx11-dev libxft-dev libxext-dev \
+          libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev \
+          libxrandr-dev libxxf86vm-dev libltdl-dev \
+          libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev \
+          autoconf automake libtool pkg-config bison autoconf-archive flex \
+          python3-venv m4 nasm
+
+    - name: Verify build tools
+      shell: bash
+      run: |
+        cmake --version
+        ninja --version
+        g++ --version
+        clang++ --version

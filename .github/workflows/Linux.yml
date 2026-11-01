@@ -75,6 +75,7 @@ jobs:
 
       - uses: ./.github/actions/build-setup/linux
         with:
+          compiler: gcc
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
 
       - uses: ./.github/actions/cmake-build/linux
@@ -109,6 +110,7 @@ jobs:
 
       - uses: ./.github/actions/build-setup/linux
         with:
+          compiler: clang
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
 
       - uses: ./.github/actions/cmake-build/linux
@@ -138,6 +140,7 @@ jobs:
 
       - uses: ./.github/actions/build-setup/linux
         with:
+          compiler: clang
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
 
       - uses: ./.github/actions/cmake-build/linux
@@ -175,6 +178,7 @@ jobs:
 
       - uses: ./.github/actions/build-setup/linux
         with:
+          compiler: gcc
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
 
       - uses: ./.github/actions/cmake-build/linux
@@ -187,26 +191,33 @@ jobs:
           test-preset: test-linux-gcc-debug-editor-asan-ubsan
 
   output_job:
-    needs: [build_gcc, build_clang, build_clang_asan_ubsan, build_gcc_asan_ubsan]
+    needs: [check_date, info_job, build_gcc, build_clang, build_clang_asan_ubsan, build_gcc_asan_ubsan]
     if: always()
     runs-on: ubuntu-24.04
     steps:
       - name: Retrieve results
         id: results
         run: |
-          if [[ "${{ needs.build_gcc.result }}" == "failure" || "${{ needs.build_clang.result }}" == "failure" || "${{ needs.build_clang_asan_ubsan.result }}" == "failure" || "${{ needs.build_gcc_asan_ubsan.result }}" == "failure" ]]; then
+          results="${{ needs.check_date.result }} ${{ needs.info_job.result }} ${{ needs.build_gcc.result }} ${{ needs.build_clang.result }} ${{ needs.build_clang_asan_ubsan.result }} ${{ needs.build_gcc_asan_ubsan.result }}"
+          if [[ "$results" == *failure* ]]; then
             echo "status=Build failed" >> $GITHUB_OUTPUT
-          elif [[ "${{ needs.build_gcc.result }}" == "cancelled" || "${{ needs.build_clang.result }}" == "cancelled" || "${{ needs.build_clang_asan_ubsan.result }}" == "cancelled" || "${{ needs.build_gcc_asan_ubsan.result }}" == "cancelled" ]]; then
+          elif [[ "$results" == *cancelled* ]]; then
             echo "status=Builds cancelled" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.check_date.outputs.should_run }}" == "false" ]]; then
+            echo "status=Skipped (no recent commits; no build or tests ran)" >> $GITHUB_OUTPUT
+          elif [[ "$results" == *skipped* ]]; then
+            echo "status=Required validation unexpectedly skipped" >> $GITHUB_OUTPUT
           else
             echo "status=Success" >> $GITHUB_OUTPUT
           fi
 
       - name: Report Status
-        run: echo "${{ steps.results.outputs.status }}"
+        run: |
+          echo "${{ steps.results.outputs.status }}"
+          echo "${{ steps.results.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Fail workflow on cancelled/failed dependency jobs
-        if: ${{ steps.results.outputs.status != 'Success' }}
+        if: ${{ steps.results.outputs.status != 'Success' && needs.check_date.outputs.should_run != 'false' || needs.check_date.result != 'success' }}
         run: |
           echo "One or more required jobs did not complete successfully: ${{ steps.results.outputs.status }}"
           exit 1

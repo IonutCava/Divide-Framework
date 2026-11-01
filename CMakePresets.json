@@ -754,6 +754,13 @@
   ],
   "testPresets": [
     {
+      "name": "test-windows-msvc-debug-editor-instrumentation",
+      "displayName": "Test-MSVC-Debug-Editor + Instrumentation",
+      "inherits": "test-common",
+      "configurePreset": "windows-msvc-editor-instrumentation",
+      "configuration": "Debug"
+    },
+    {
       "name": "test-common",
       "description": "Test CMake settings that apply to all configurations",
       "hidden": true,

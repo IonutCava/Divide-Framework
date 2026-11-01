@@ -2,6 +2,10 @@ name: 'Windows Build Setup'
 description: 'Common build setup steps for Windows builds'
 
 inputs:
+  compiler:
+    description: 'Compiler to use (msvc or clang)'
+    required: false
+    default: 'msvc'
   runner_type:
     description: 'Type of runner (GitHub or self-hosted)'
     required: false
@@ -52,7 +56,7 @@ runs:
           Remove-Item -Recurse -Force "${{ github.workspace }}\vcpkg\downloads\tools"
         }
 
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
+    - name: Setup cached vcpkg
+      uses: ./.github/actions/vcpkg-setup
       with:
-        vcpkgJsonGlob: 'vcpkg.json'
+        compiler: ${{ inputs.compiler }}
