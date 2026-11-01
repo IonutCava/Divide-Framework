@@ -110,6 +110,11 @@ dependencies. `ConfigureSanitizers.cmake` runs after manifest provisioning;
 its late `VCPKG_BUILD_TYPE` cache assignment does not rebuild or instrument
 dependencies. Do not report sanitizer runs as dependency instrumentation.
 
+Windows matrix steps invoke CMake/CTest presets directly after MSVC setup.
+Do not reinitialize MSVC through `run-cmake`: its automatic `vcpkg env` lookup
+can select Visual Studio's bundled, manifest-only vcpkg instead of the pinned
+repository checkout.
+
 ### Dependency configuration
 
 bzip2 and FreeType overlays preload byte-identical source archives from Debian
