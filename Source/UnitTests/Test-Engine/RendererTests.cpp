@@ -8,9 +8,35 @@
 #include "Platform/Video/Shaders/Headers/ShaderDataUploader.h"
 #include "Platform/Video/RenderBackend/Vulkan/Textures/Headers/vkTexture.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkDevice.h"
+#include "Platform/Video/Headers/CommandBuffer.h"
 
 namespace Divide
 {
+    TEST_CASE( "Push commands coalesce compatible slots without changing conflicts", "[push_constants]" )
+    {
+        GFX::SendPushConstantsCommand lhs, rhs;
+        lhs._fastData.data[0] = MAT4_IDENTITY;
+        lhs._fastData.computeFlags();
+        rhs._fastData.data[1] = MAT4_ZERO;
+        rhs._fastData.computeFlags();
+        REQUIRE( GFX::Merge( &lhs, &rhs ) );
+        CHECK( lhs._fastData.data[0] == MAT4_IDENTITY );
+        CHECK( lhs._fastData.data[1] == MAT4_ZERO );
+        CHECK( lhs._fastData.dataFlags() == PushConstantsStruct::BOTH );
+
+        rhs = {};
+        rhs._fastData.data[0] = MAT4_ZERO;
+        rhs._fastData.computeFlags();
+        const PushConstantsStruct before = lhs._fastData;
+        CHECK_FALSE( GFX::Merge( &lhs, &rhs ) );
+        CHECK( lhs._fastData == before );
+
+        rhs._fastData.data[0] = MAT4_IDENTITY;
+        rhs._fastData.computeFlags();
+        CHECK( GFX::Merge( &lhs, &rhs ) );
+        CHECK( lhs._fastData == before );
+    }
+
     TEST_CASE( "Optional Vulkan dynamic state requires every consumed feature", "[vulkan_features]" )
     {
         for ( U8 mask = 0; mask < 8; ++mask )

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 set( AI_SOURCE_HEADERS AI/ActionInterface/CustomGOAP/Action.h
                        AI/ActionInterface/CustomGOAP/Node.h
                        AI/ActionInterface/CustomGOAP/Planner.h
@@ -845,6 +846,7 @@ set( TEST_ENGINE_SOURCE UnitTests/unitTestCommon.h
 
 set( TEST_PLATFORM_SOURCE UnitTests/unitTestCommon.h
                           UnitTests/unitTestCommon.cpp
+                          UnitTests/Test-Platform/AssertTests.cpp
                           UnitTests/Test-Platform/FileManagement.cpp
                           UnitTests/Test-Platform/FactoryTests.cpp
                           UnitTests/Test-Platform/NetworkingTests.cpp

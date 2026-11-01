@@ -43,6 +43,8 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
 - Every Vulkan pipeline layout uses real shared layouts for sets 0-2, even if unused by a program, and an identical `VK_SHADER_STAGE_ALL` 128-byte push-constant range. This preserves shared-set/push-constant compatibility across pipeline changes.
 - Partial push-constant commands merge only `dataFlags()`-selected slots into
   the Vulkan replay cache; omitted slots retain their last explicit values.
+- Command coalescing accepts complementary or equal overlapping push slots,
+  rejecting conflicting overlapping values without mutating the earlier command.
 - `PER_DRAW` is per-program and uses push descriptors. Pipeline creation assembles a local layout array; never overwrite the global shared-layout array with a program-specific layout.
 - Descriptor layout-cache identity must include creation flags, so push-descriptor layouts cannot alias ordinary layouts with the same bindings.
 - Push-descriptor validation uses queried `VkPhysicalDevicePushDescriptorProperties::maxPushDescriptors`, not dynamic-buffer limits.

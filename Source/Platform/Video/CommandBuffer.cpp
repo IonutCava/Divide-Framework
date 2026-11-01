@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/CommandBuffer.h"
 #include "Headers/CommandBufferPool.h"
@@ -885,19 +885,6 @@ namespace
                     mergedFast.computeFlags();
                 }
             }
-        }
-
-        if ( lhs->_fastData.dataFlags() != PushConstantsStruct::DataFlags::NONE )
-        {
-            if ( rhs->_fastData.dataFlags() != PushConstantsStruct::DataFlags::NONE && 
-                 lhs->_fastData != rhs->_fastData)
-            {
-                return false;
-            }
-        }
-        else if ( rhs->_fastData.dataFlags() != PushConstantsStruct::DataFlags::NONE )
-        {
-            lhs->_fastData = rhs->_fastData;
         }
 
         UniformData* lhsUniforms = lhs->_uniformData;

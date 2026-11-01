@@ -50,6 +50,8 @@
 - Internal Catch2 tests live in `Source/UnitTests`; `BUILD_TESTING_INTERNAL` and `RUN_TESTING_INTERNAL` control them.
 - Consult `.github/workflows/Windows.yml`, `.github/workflows/Linux.yml`, `.github/workflows/MacOS.yml`, and their referenced actions for CI build configuration.
 - Start with the smallest relevant build/test selection; expand when results require it.
+- Unit tests are for engine code only. Do not add or retain automated tests for
+  CMake helpers, build-timing tools, CI orchestration, or the build environment.
 - Distinguish checks actually run from checks not run or blocked. Local success does not establish success on other platforms or in CI.
 - Documentation-only changes require no build unless they affect an executable example or have a dedicated documentation check.
 
@@ -105,6 +107,13 @@ require firewall access; prefer preloading dependencies over disabling the firew
 
 ### Dependency configuration
 
+bzip2 and FreeType overlays preload byte-identical source archives from Debian
+and FreeType's official GitHub mirror, respectively, using the unchanged
+upstream SHA-512 hashes. They reuse build logic and patches from the pinned
+vcpkg submodule. When updating vcpkg, keep these overlay versions/features in
+sync with those builtin ports and recheck archive hashes; do not weaken hashes
+or substitute merely source-equivalent archives.
+
 Optick is fetched and linked only when `ENABLE_OPTICK_PROFILER` is enabled;
 the Windows and Linux instrumentation presets enable it. Catch2 is installed
 and discovered only with `BUILD_TESTING_INTERNAL=ON` (the vcpkg `tests`
@@ -142,8 +151,6 @@ also select the corresponding `--x-feature=jolt-avx`, `jolt-avx2` or `jolt-avx51
 
 ### Dependency validation and timing
 
-- Gate checks: `cmake -P Source/CMakeHelpers/tests/DependencyConfigurationTests.cmake`.
-- Timing-tool tests: `python -m unittest discover -s Source/CMakeHelpers/tests`.
 - The vcpkg `tests` feature is synchronized with `BUILD_TESTING_INTERNAL` before `project()`. For manual dependency installation in a test build, add `--x-feature=tests`.
 - Resolve plans with `./vcpkg/vcpkg install --dry-run --triplet <triplet> --overlay-ports=Source/CMakeHelpers/OverlayPorts`; compare tests-off and tests-on plans separately.
 - Record timings with `python Source/CMakeHelpers/measure_build.py --scenario cold --output <session-dir>/cold.json --install "<vcpkg install command>" --configure "<cmake configure command>" --build "<cmake build command>"`.
