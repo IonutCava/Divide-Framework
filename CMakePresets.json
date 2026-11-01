@@ -85,7 +85,8 @@
       "hidden": true,
       "inherits": "conf-macos-common",
       "cacheVariables": {
-        "CMAKE_OSX_ARCHITECTURES": "x86_64"
+        "CMAKE_OSX_ARCHITECTURES": "x86_64",
+        "DIVIDE_VECTOR_EXTENSION_SET": "AVX"
       }
     },
     {

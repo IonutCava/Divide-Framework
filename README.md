@@ -39,11 +39,11 @@ If you plan to use any parts of this code in a commercial product, a couple of t
 Presets request AVX2 by default on x86. For older CPUs, configure with
 `-DDIVIDE_VECTOR_EXTENSION_SET=SSE42` (or `AVX` for an AVX-only target).
 Unsupported requested levels fail configuration before dependency installation.
-Jolt uses the selected dependency ISA; ARM uses NEON and macOS x86_64
-dependencies retain an SSE4.2 baseline for Rosetta compatibility.
-The engine's macOS x86_64 presets retain AVX2 on Intel hosts. On Apple Silicon,
+Jolt uses the selected dependency ISA; ARM uses NEON.
+The engine's macOS x86_64 presets default to AVX on Intel hosts. On Apple Silicon,
 the CMake Rosetta detector automatically overrides the engine request with
 SSE4.2 and reports the override, including during dependency-free preflight.
+Jolt follows the same AVX/Intel and SSE4.2/Rosetta selection.
 
 ### All:
 - Clone with recursive submodules (e.g. git clone --recurse-submodules). Needed for vcpkg.
