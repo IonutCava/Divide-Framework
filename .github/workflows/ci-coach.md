@@ -41,7 +41,13 @@ tools:
 safe-outputs:
   create-pull-request:
     expires: 2d
-    protected-files: fallback-to-issue
+    protected-files:
+      policy: fallback-to-issue
+      exclude:
+        - ".github/workflows/"
+    allowed-files:
+      - ".github/workflows/*.yml"
+      - ".github/workflows/*.yaml"
     title-prefix: "[ci-coach] "
 
 timeout-minutes: 30
