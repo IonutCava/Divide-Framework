@@ -966,7 +966,7 @@ namespace Divide
                     copyRegion.bufferOffset = dataOffset;
                     copyRegion.bufferRowLength = to_U32(pixelUnpackAlignment._rowLength);
                     copyRegion.bufferImageHeight = 0;
-                    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                    copyRegion.imageSubresource.aspectMask = GetAspectFlags(_descriptor);
                     copyRegion.imageSubresource.mipLevel = m;
                     copyRegion.imageSubresource.baseArrayLayer = l;
                     copyRegion.imageSubresource.layerCount = 1;

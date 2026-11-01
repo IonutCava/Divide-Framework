@@ -158,6 +158,7 @@ Binding conventions:
 - `DescriptorSetUsage` (`RenderAPIEnums.h`) is ordered by update frequency: `PER_FRAME`=0, `PER_PASS`=1, `PER_BATCH`=2, `PER_DRAW`=3 (`PER_DRAW` must stay last). The enum value is also the Vulkan set index, so no remapping exists anywhere. OpenGL has no sets and maps (usage, slot) to flat GL bindings. Changing the enum order requires bumping `BYTE_BUFFER_VERSION` in `ShaderDataUploader.cpp`, because cached reflection stores usage indices.
 - Every Vulkan pipeline layout contains the real shared layouts for sets 0-2 (no dummy layouts) and a `VK_SHADER_STAGE_ALL` 128-byte push-constant range. That makes all layouts compatible for the shared sets and push constants, so they stay bound across pipeline changes. `PER_DRAW` (set 3) is a per-program push-descriptor layout.
 - `VK_API::bindShaderResources` caches the resolved contents of each shared set. It only allocates and writes a new `VkDescriptorSet` when the resources change (otherwise only dynamic offsets change). It also tracks the sets and offsets bound per bind point (graphics/compute) and command buffer. `PER_DRAW` is only re-pushed when its contents or the pipeline layout change. Cached sets are invalidated in `frameStarted` (descriptor pools flip there).
+- Both OpenGL and Vulkan resolve null and omitted active combined image samplers through `ShaderProgram::resolveSampledImages`. Shared-set bindings remain persistent; missing per-draw slots cannot inherit stale textures. Non-MSAA fallbacks share 1x1 black texel values and nearest/clamp sampling, with compatible dimensionality (including arrays/cubes), numeric format and depth comparison. Missing active MSAA bindings are hard GPU assertions, never fallback textures. Reflection cache v5 stores these sampler traits.
 - `DescriptorSetBindingType::INDIRECT_BUFFER` (set via `SetIndirectBuffer`, `PER_BATCH` slot 0) is not a shader resource. It selects the buffer used by indirect draws (`GL_DRAW_INDIRECT_BUFFER` / `vkCmdDraw*Indirect`) and is skipped in VK layouts and GL binding tables. The same command buffer is still bound as a regular writable SSBO (`PER_BATCH` slot 2, `dvd_GPUCmds`) for HiZ occlusion culling in compute shaders. Sync is driven by `BufferUsageType::COMMAND_BUFFER` (storage + indirect usage/barriers), not by the binding type.
 
 ### 7. Shared Shader System Between OpenGL and Vulkan
@@ -193,6 +194,7 @@ When changing shader infrastructure, always think in terms of:
 
 ### 8. Vulkan Backend: Features, Extensions, and Overall Shape
 The Vulkan path is modern and explicit. Device selection and feature/extension enablement live in `vkDevice.cpp`.
+Vulkan 1.4 is the minimum supported version: device selection unconditionally requires `maintenance5`, `maintenance6`, and `pushDescriptor`, with no 1.3 retry. VMA also uses Vulkan API version 1.4.
 Required extensions currently include:
 - `VK_EXT_custom_border_color`
 - `VK_EXT_descriptor_buffer`

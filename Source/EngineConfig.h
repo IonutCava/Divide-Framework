@@ -91,7 +91,7 @@ namespace Profile
 
 constexpr float ALPHA_DISCARD_THRESHOLD = 1.f - 0.05f;
 
-constexpr unsigned char MINIMUM_VULKAN_MINOR_VERSION = 3u;
+constexpr unsigned char MINIMUM_VULKAN_MINOR_VERSION = 4u;
 constexpr unsigned char DESIRED_VULKAN_MINOR_VERSION = 4u;
 
 /// Application desired framerate for physics and input simulations

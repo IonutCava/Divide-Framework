@@ -358,6 +358,22 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
         const auto& traits = binding.image;
         target._isMultiSampled = traits.ms > 0u;
         target._isArray = traits.arrayed > 0u;
+        target._isDepth = traits.depth == 1u;
+        const auto* imageType = binding.type_description;
+        DIVIDE_GPU_ASSERT( imageType != nullptr );
+        if ( (imageType->type_flags & SPV_REFLECT_TYPE_FLAG_INT) != 0u )
+        {
+            target._sampledDataType = imageType->traits.numeric.scalar.signedness != 0u
+                ? GFXDataFormat::SIGNED_INT : GFXDataFormat::UNSIGNED_INT;
+        }
+        switch ( traits.dim )
+        {
+            case SpvDim1D: target._textureType = target._isArray ? TextureType::TEXTURE_1D_ARRAY : TextureType::TEXTURE_1D; break;
+            case SpvDim2D: target._textureType = target._isArray ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D; break;
+            case SpvDim3D: target._textureType = TextureType::TEXTURE_3D; break;
+            case SpvDimCube: target._textureType = target._isArray ? TextureType::TEXTURE_CUBE_ARRAY : TextureType::TEXTURE_CUBE_MAP; break;
+            default: DIVIDE_UNEXPECTED_CALL(); break;
+        }
         if ( binding.name != nullptr && strlen( binding.name ) > 0 )
         {
             target._name = binding.name;

@@ -108,6 +108,8 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         [[nodiscard]] static bool UseTextureDDSCache() noexcept;
         [[nodiscard]] static Handle<Texture> DefaultTexture2D() noexcept;
         [[nodiscard]] static Handle<Texture> DefaultTexture2DArray() noexcept;
+        [[nodiscard]] static Handle<Texture> DefaultTexture( TextureType type, GFXDataFormat sampledDataType, bool depth ) noexcept;
+        [[nodiscard]] static TextureDescriptor DefaultTextureDescriptor( TextureType type, GFXDataFormat sampledDataType, bool depth ) noexcept;
         [[nodiscard]] static const SamplerDescriptor DefaultSampler() noexcept;
         [[nodiscard]] static U8 GetBytesPerPixel( GFXDataFormat format, GFXImageFormat baseFormat, GFXImagePacking packing ) noexcept;
 
@@ -179,10 +181,12 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         virtual void submitTextureData(ImageUsage& crtUsageInOut);
 
     protected:
+        void createDefaultData();
         static bool s_useDDSCache;
         static SamplerDescriptor s_defaultSampler;
         static Handle<Texture> s_defaultTexture2D;
         static Handle<Texture> s_defaultTexture2DArray;
+        static std::array<Handle<Texture>, to_base( TextureType::COUNT ) * 4u> s_defaultTextures;
         static Str<64> s_missingTextureFileName;
 };
 

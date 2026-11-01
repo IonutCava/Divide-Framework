@@ -198,6 +198,7 @@ namespace Divide
         virtual ShaderResult validatePreBind( const Configuration& config, bool rebind = true );
 
         [[nodiscard]] bool uploadUniformData( const UniformData& data, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut );
+        [[nodiscard]] bool resolveSampledImages( const DescriptorSetEntry& entry, DescriptorSet& resolvedSet ) const;
 
         //==================== static methods ===============================//
         static void Idle( PlatformContext& platformContext, bool fast );
@@ -252,6 +253,7 @@ namespace Divide
 
     protected:
 
+        vector<Reflection::ImageEntry> _sampledImages;
         static bool SaveToCache( LoadData::ShaderCacheType cache, const LoadData& dataIn, const eastl::set<U64>& atomIDsIn );
         static bool LoadFromCache( LoadData::ShaderCacheType cache, LoadData& dataInOut, eastl::set<U64>& atomIDsOut );
 

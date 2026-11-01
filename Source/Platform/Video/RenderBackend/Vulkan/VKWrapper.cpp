@@ -1355,13 +1355,13 @@ namespace Divide
         VK_API::s_stateTracker._device = _device.get();
 
 
-        DIVIDE_GPU_ASSERT( Config::MINIMUM_VULKAN_MINOR_VERSION > 2 );
+        DIVIDE_GPU_ASSERT( Config::MINIMUM_VULKAN_MINOR_VERSION >= 4 );
 
         VmaAllocatorCreateInfo allocatorInfo = {};
         allocatorInfo.physicalDevice = physicalDevice;
         allocatorInfo.device = vkDevice;
         allocatorInfo.instance = _vkbInstance.instance;
-        allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+        allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_4;
         allocatorInfo.preferredLargeHeapBlockSize = 0;
 
         vmaCreateAllocator( &allocatorInfo, &_allocator );
@@ -1772,9 +1772,16 @@ namespace Divide
 
         thread_local fixed_vector<VkWriteDescriptorSet, MAX_BINDINGS_PER_DESCRIPTOR_SET> descriptorWrites;
         thread_local DescriptorSlotStates perDrawSlots;
+        thread_local std::array<DescriptorSet, to_base(DescriptorSetUsage::COUNT)> resolvedSets;
 
-        for ( const DescriptorSetEntry& entry : descriptorSetEntries )
+        for ( DescriptorSetEntry entry : descriptorSetEntries )
         {
+            DescriptorSet resolvedSet{};
+            const bool hasFallback = program->resolveSampledImages( entry, resolvedSet );
+            DescriptorSet& previousSet = resolvedSets[to_base(entry._usage)];
+            entry._isDirty = entry._isDirty || (hasFallback && previousSet != resolvedSet);
+            previousSet = resolvedSet;
+            entry._set = &resolvedSet;
             const BaseType<DescriptorSetUsage> usageIdx = to_base( entry._usage );
 
             // Indirect command buffers are not descriptors (vkCmdDraw*Indirect source), but are specified in the same way as any other
