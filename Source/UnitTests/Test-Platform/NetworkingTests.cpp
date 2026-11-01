@@ -3,8 +3,6 @@
 
 #include "Networking/Headers/Client.h"
 #include "Networking/Headers/Connection.h"
-#include "Core/Headers/ErrorCodes.h"
-#include "Utility/Headers/Localization.h"
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/asio/read.hpp>
@@ -14,23 +12,12 @@ namespace Divide::Networking
 {
     namespace
     {
-        struct NetworkingServices
-        {
-            NetworkingServices()
-            {
-                platformInitRunListener::PlatformInit();
-                REQUIRE( Locale::Init() == ErrorCode::NO_ERR );
-            }
-            ~NetworkingServices() { Locale::Clear(); }
-        };
-
         class HeartbeatClient final : public Client
         {
         public:
             HeartbeatClient()
                 : _peer(_context)
             {
-                platformInitRunListener::PlatformInit();
                 using boost::asio::ip::tcp;
                 tcp::acceptor acceptor(_context, tcp::endpoint(boost::asio::ip::address_v4::loopback(), 0));
                 tcp::socket socket(_context);
@@ -84,7 +71,8 @@ namespace Divide::Networking
 
     TEST_CASE("Heartbeat reset cancels the previous wait", "[networking_tests]")
     {
-        NetworkingServices services;
+        platformInitRunListener::PlatformInit();
+        platformInitRunListener::LocalizationScope localization;
         HeartbeatClient client;
         client.resetHeartbeat();
         client.runFor(std::chrono::milliseconds(20));
@@ -98,7 +86,8 @@ namespace Divide::Networking
 
     TEST_CASE("Disconnect does not rearm a cancelled heartbeat", "[networking_tests]")
     {
-        NetworkingServices services;
+        platformInitRunListener::PlatformInit();
+        platformInitRunListener::LocalizationScope localization;
         HeartbeatClient client;
         client.resetHeartbeat();
         client.runFor(std::chrono::milliseconds(20));
@@ -110,7 +99,8 @@ namespace Divide::Networking
 
     TEST_CASE("Heartbeat startup belongs to each client", "[networking_tests]")
     {
-        NetworkingServices services;
+        platformInitRunListener::PlatformInit();
+        platformInitRunListener::LocalizationScope localization;
         HeartbeatClient first;
         HeartbeatClient second;
         first.update();
@@ -123,7 +113,8 @@ namespace Divide::Networking
 
     TEST_CASE("Periodic ping resets the heartbeat counter", "[networking_tests]")
     {
-        NetworkingServices services;
+        platformInitRunListener::PlatformInit();
+        platformInitRunListener::LocalizationScope localization;
         HeartbeatClient client;
         for (int heartbeat = 0; heartbeat < 4; ++heartbeat)
         {
