@@ -85,6 +85,8 @@ and overlays. vcpkg checks package ABIs before reuse. Per-run keys save new arch
 after configuration, before engine compilation, even if compilation/tests later fail.
 Installed trees and engine outputs are not cached. Compare archive counts and
 package-restoration logs across two runs to distinguish cold and warm builds.
+Checkout and cache actions use Node.js 24-compatible releases (v5); keep nested
+composite-action references aligned to avoid deprecated Node.js 20 runtimes.
 
 Actions-backed Copilot setup installs Ubuntu prerequisites and configures
 `linux-gcc` dependencies before its firewall activates, without destructive

@@ -54,7 +54,7 @@ jobs:
           VCPKG_MAX_CONCURRENCY: '2'
         run: cmake --preset linux-gcc -DBUILD_TESTING_INTERNAL=ON -DRUN_TESTING_INTERNAL=OFF
       - name: Save prepared dependency binaries
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ${{ env.DIVIDE_VCPKG_BINARY_CACHE }}
           key: ${{ env.DIVIDE_VCPKG_CACHE_KEY }}

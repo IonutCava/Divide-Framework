@@ -71,7 +71,7 @@ runs:
 
     - name: Restore vcpkg binary archives
       id: cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       with:
         path: ${{ steps.identity.outputs.path }}
         key: vcpkg-files-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target-architecture }}-${{ inputs.compiler }}-${{ steps.identity.outputs.toolchain }}-${{ steps.identity.outputs.revision }}-${{ hashFiles(format('{0}/vcpkg.json', inputs.source-directory), format('{0}/vcpkg-configuration.json', inputs.source-directory), format('{0}/Source/CMakeHelpers/OverlayPorts/**', inputs.source-directory), '.github/actions/vcpkg-setup/action.yml') }}-${{ github.run_id }}-${{ github.run_attempt }}

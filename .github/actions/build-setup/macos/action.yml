@@ -13,7 +13,7 @@ runs:
     - uses: ./.github/actions/common-config
       id: common-config
       
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         ref: ${{ github.event.inputs.ci_sha || github.sha }}
         path: ci-source

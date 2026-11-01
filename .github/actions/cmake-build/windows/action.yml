@@ -50,7 +50,7 @@ runs:
         if ($LASTEXITCODE -ne 0) { throw "Configure failed: $LASTEXITCODE" }
 
     - name: Save dependency binaries before compiling the engine
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v5
       with:
         path: ${{ env.DIVIDE_VCPKG_BINARY_CACHE }}
         key: ${{ env.DIVIDE_VCPKG_CACHE_KEY }}
