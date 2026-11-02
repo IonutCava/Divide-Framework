@@ -153,6 +153,12 @@ and orders vignette edges; equal vignette edges produce a hard cutoff.
 Framebuffer debug views initialize all shared preview uniforms per view.
 Numerical render targets bypass sRGB decoding; signed normals and velocities
 are remapped for display, and zero-length normalization is defined.
+OIT composition preserves the existing normal/roughness RGB for revealage at
+or above 0.5. Below that threshold it selects the complete OIT normal RGB using
+independent attachment blending; the destination alpha is preserved. The OIT
+normal attachment currently contains the last drawn transparent normal and a
+zero roughness, so it remains an approximation rather than a depth-correct
+transparent G-buffer.
 Passes use `BeginRenderPassCommand` with ordinary pipeline/resource binding commands.
 
 - Screen-space effects using existing inputs generally belong in PostFX/pre-render operators.

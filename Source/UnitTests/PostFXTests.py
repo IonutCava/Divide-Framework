@@ -20,6 +20,24 @@ OPERATORS = ROOT / "Source" / "Rendering" / "PostFX" / "CustomOperators"
 
 
 class PostFXTests(unittest.TestCase):
+    def test_oit_normal_composition_uses_independent_alpha_blending(self):
+        source = (ROOT / "Source" / "Rendering" / "RenderPass" / "RenderPassExecutor.cpp").read_text(encoding="utf-8")
+        start = source.index("BlendingSettings& normalState =")
+        end = source.index("pipelineDescriptor._shaderProgramHandle = OITCompositionShader;", start)
+        normal_state = source[start:end]
+        for expression in (
+            "GFXDevice::ScreenTargets::NORMALS", "normalState.enabled( true )",
+            "normalState.blendOp( BlendOperation::ADD )",
+            "normalState.blendSrc( BlendProperty::SRC_ALPHA )",
+            "normalState.blendDest( BlendProperty::INV_SRC_ALPHA )",
+            "normalState.blendOpAlpha( BlendOperation::ADD )",
+            "normalState.blendSrcAlpha( BlendProperty::ZERO )",
+            "normalState.blendDestAlpha( BlendProperty::ONE )",
+        ):
+            self.assertIn(expression, normal_state)
+        self.assertIn("s_OITCompositionPipeline = context.newPipeline( pipelineDescriptor )", source[end:])
+        self.assertIn("s_OITCompositionMSPipeline = context.newPipeline( pipelineDescriptor )", source[end:])
+
     def test_preview_defaults_and_numeric_view_configuration(self):
         header = (ROOT / "Source" / "Platform" / "Video" / "Headers" / "GFXDevice.h").read_text(encoding="utf-8")
         begin = header.index('        _shaderData.set( _ID( "lodLevel" )')

@@ -314,6 +314,15 @@ namespace Divide
             state0.blendSrc( BlendProperty::INV_SRC_ALPHA );
             state0.blendDest( BlendProperty::ONE );
 
+            BlendingSettings& normalState = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::NORMALS )];
+            normalState.enabled( true );
+            normalState.blendOp( BlendOperation::ADD );
+            normalState.blendSrc( BlendProperty::SRC_ALPHA );
+            normalState.blendDest( BlendProperty::INV_SRC_ALPHA );
+            normalState.blendOpAlpha( BlendOperation::ADD );
+            normalState.blendSrcAlpha( BlendProperty::ZERO );
+            normalState.blendDestAlpha( BlendProperty::ONE );
+
             pipelineDescriptor._shaderProgramHandle = OITCompositionShader;
             s_OITCompositionPipeline = context.newPipeline( pipelineDescriptor );
 

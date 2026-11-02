@@ -459,6 +459,12 @@ class ShaderCompilationTests(unittest.TestCase):
             with self.subTest(backend=backend):
                 self.compile_shader("fbPreview.glsl", "Fragment", "frag", backend)
 
+    def test_oit_composition_variants(self):
+        for backend in ("opengl", "vulkan"):
+            for defines in ([], ["USE_MSAA_TARGET"]):
+                with self.subTest(backend=backend, multisampled=bool(defines)):
+                    self.compile_shader("OITComposition.glsl", "Fragment", "frag", backend, defines)
+
     def test_light_impostor_descriptor_visibility(self):
         host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
         renderer = (ROOT / "Source" / "Rendering" / "Renderer.cpp").read_text(encoding="utf-8")

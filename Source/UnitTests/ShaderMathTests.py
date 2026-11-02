@@ -575,6 +575,60 @@ void main() {{
 
 
 class PostFXMathTests(unittest.TestCase):
+    def test_oit_normal_composition_preserves_or_replaces_complete_rgb(self):
+        source = section("OITComposition.glsl", "Fragment")
+        source = source.replace('#include "utility.frag"', "")
+        source = re.sub(r"^DESCRIPTOR_SET_RESOURCE\(.*?uniform SamplerType (\w+);\s*$",
+                        r"const int \1 = 0;", source, flags=re.MULTILINE)
+        source = source.replace("const int revealageTexture = 0;", "const int revealageTexture = 1;")
+        source = source.replace("const int normalsTexture = 0;", "const int normalsTexture = 2;")
+        source = re.sub(r"^layout\(location = TARGET_\w+\)\s+out vec4 (\w+);",
+                        r"vec4 \1;", source, flags=re.MULTILINE)
+        source = source.replace("gl_FragCoord.xy", "vec2(0)")
+        source = source.replace("void main()", "void composePixel()").replace("discard;", "return;")
+        shader = f"""
+#version 460
+#define M_EPSILON 0.00001
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+float inputRevealage;
+vec4 sampleOIT(int id, ivec2 coord, int sampleId) {{
+    if (id == 1) return vec4(inputRevealage);
+    if (id == 2) return vec4(0.25, 0.75, 0.3, 0.4);
+    return vec4(1, 2, 3, 2);
+}}
+#define texelFetch(S, COORD, SAMPLE) sampleOIT(S, COORD, SAMPLE)
+{source}
+void main() {{
+    const float revealages[5] = float[5](1.0, 0.75, 0.5, 0.49, 0.0);
+    const vec4 previous = vec4(0.4, 0.6, 0.7, 0.9);
+    for (int i = 0; i < 5; ++i) {{
+        inputRevealage = revealages[i];
+        _colourOut = vec4(-1); _normalsOut = vec4(-1);
+        composePixel();
+        const vec3 blended = i == 0 ? vec3(-1) :
+            _normalsOut.rgb * _normalsOut.a + previous.rgb * (1.0 - _normalsOut.a);
+        values[5 * i] = _normalsOut.a;
+        values[5 * i + 1] = blended.r;
+        values[5 * i + 2] = blended.g;
+        values[5 * i + 3] = blended.b;
+        values[5 * i + 4] = _colourOut.a;
+    }}
+}}
+"""
+        actual = execute(shader, 25)
+        expected = (
+            (-1, -1, -1, -1, -1),
+            (0, 0.4, 0.6, 0.7, 0.75),
+            (0, 0.4, 0.6, 0.7, 0.5),
+            (1, 0.25, 0.75, 0.3, 0.49),
+            (1, 0.25, 0.75, 0.3, 0),
+        )
+        for index, result in enumerate(expected):
+            for component, value in enumerate(result):
+                with self.subTest(case=index, component=component):
+                    self.assertAlmostEqual(actual[index * 5 + component], value, delta=2e-6)
+
     def test_signed_and_color_framebuffer_previews(self):
         source = section("fbPreview.glsl", "Fragment")
         source = source.replace('#include "utility.frag"', "")
