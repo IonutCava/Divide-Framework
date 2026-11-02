@@ -39,95 +39,28 @@ if(ENABLE_OPTICK_PROFILER)
     include_directories(SYSTEM ${optick_SOURCE_DIR}/src)
 endif()
 
-#Skarupke hash maps
-message("Fetching Flat_hash_map Lib")
-FetchContent_Declare(
-    skarupke
-    GIT_REPOSITORY https://github.com/skarupke/flat_hash_map.git
-    GIT_TAG        2c4687431f978f02a3780e24b8b701d22aa32d9c
-    #GIT_PROGRESS   TRUE
-    EXCLUDE_FROM_ALL
-)
-FetchContent_MakeAvailable( skarupke )
+# Small, rarely changing libraries vendored under Source/ThirdParty (see docs/dependencies.md)
+get_filename_component(DIVIDE_VENDORED_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+set(skarupke_SOURCE_DIR              "${DIVIDE_VENDORED_DIR}/flat_hash_map")
+set(memory_pool_SOURCE_DIR           "${DIVIDE_VENDORED_DIR}/MemoryPool")
+set(tileable_volume_noise_SOURCE_DIR "${DIVIDE_VENDORED_DIR}/TileableVolumeNoise")
+set(curl_noise_SOURCE_DIR            "${DIVIDE_VENDORED_DIR}/CurlNoise")
+set(simple_file_watcher_SOURCE_DIR   "${DIVIDE_VENDORED_DIR}/SimpleFileWatcher")
+set(fcpp_SOURCE_DIR                  "${DIVIDE_VENDORED_DIR}/fcpp")
+set(imgui_club_SOURCE_DIR            "${DIVIDE_VENDORED_DIR}/imgui_club")
+set(icon_font_cpp_headers_SOURCE_DIR "${DIVIDE_VENDORED_DIR}/IconFontCppHeaders")
+set(imguizmo_SOURCE_DIR              "${DIVIDE_VENDORED_DIR}/ImGuizmo")
+set(chaiscript_SOURCE_DIR            "${DIVIDE_VENDORED_DIR}/ChaiScript")
+set(imgui_node_editor_SOURCE_DIR     "${DIVIDE_VENDORED_DIR}/imgui-node-editor")
 
-#MemoryPool
-message("Fetching MemoryPool Lib")
-FetchContent_Declare(
-    memory_pool
-    GIT_REPOSITORY https://github.com/cacay/MemoryPool.git
-    GIT_TAG        1ab4683e38f24940afb397b06a2d86814d898e63
-    #GIT_PROGRESS   TRUE
-    EXCLUDE_FROM_ALL
+add_library(divide_imgui_node_editor STATIC
+    "${imgui_node_editor_SOURCE_DIR}/crude_json.cpp"
+    "${imgui_node_editor_SOURCE_DIR}/imgui_canvas.cpp"
+    "${imgui_node_editor_SOURCE_DIR}/imgui_node_editor.cpp"
+    "${imgui_node_editor_SOURCE_DIR}/imgui_node_editor_api.cpp"
 )
-FetchContent_MakeAvailable( memory_pool )
-
-#TileableVolumeNoise
-message("Fetching TileableVolumeNoise Lib")
-FetchContent_Declare(
-    tileable_volume_noise
-    GIT_REPOSITORY https://github.com/IonutCava/TileableVolumeNoise.git
-    GIT_TAG        master
-    #GIT_PROGRESS   TRUE
-    EXCLUDE_FROM_ALL
-)
-FetchContent_MakeAvailable( tileable_volume_noise )
-
-#CurlNoise
-message("Fetching CurlNoise Lib")
-FetchContent_Declare(
-    curl_noise
-    GIT_REPOSITORY https://github.com/IonutCava/CurlNoise.git
-    GIT_TAG        master
-    #GIT_PROGRESS   TRUE
-    EXCLUDE_FROM_ALL
-)
-FetchContent_MakeAvailable( curl_noise )
-
-#SimpleFileWatcher
-message("Fetching SimpleFileWatcher Lib")
-FetchContent_Declare(
-    simple_file_watcher
-    GIT_REPOSITORY https://github.com/jameswynn/simplefilewatcher.git
-    GIT_TAG        4bccd086621698f21a6e95f3ff77c559f862184a
-    #GIT_PROGRESS   TRUE
-    #SYSTEM
-    EXCLUDE_FROM_ALL
-)
-FetchContent_MakeAvailable( simple_file_watcher )
-
-#fcpp
-message("Fetching fcpp Lib")
-FetchContent_Declare(
-    fcpp
-    GIT_REPOSITORY https://github.com/IonutCava/fcpp.git
-    GIT_TAG        master
-    #GIT_PROGRESS   TRUE
-    #SYSTEM
-    EXCLUDE_FROM_ALL
-)
-FetchContent_MakeAvailable( fcpp )
-
-#imgui_club
-message("Fetching ImGui Club Lib")
-FetchContent_Declare(
-    imgui_club
-    GIT_REPOSITORY https://github.com/ocornut/imgui_club.git
-    GIT_TAG        da32fb90bfb7e5b2a687b972105cc3b6d3db0321
-    #GIT_PROGRESS   TRUE
-    EXCLUDE_FROM_ALL
-)
-FetchContent_MakeAvailable( imgui_club )
-
-#IconFontCppHeaders
-message("Fetching IconFontCppHeaders Lib")
-FetchContent_Declare(
-    icon_font_cpp_headers
-    GIT_REPOSITORY https://github.com/juliettef/IconFontCppHeaders.git
-    GIT_TAG        8886c5657bac22b8fee34354871e3ade2a596433
-    #GIT_PROGRESS   TRUE
-    EXCLUDE_FROM_ALL
-)
-FetchContent_MakeAvailable( icon_font_cpp_headers )
+target_include_directories(divide_imgui_node_editor SYSTEM PUBLIC "${DIVIDE_VENDORED_DIR}")
+target_link_libraries(divide_imgui_node_editor PUBLIC imgui::imgui)
 
 if(NOT WINDOWS_OS_BUILD)
     set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_OLD})
@@ -151,6 +84,8 @@ include_directories(
     ${fcpp_SOURCE_DIR}
     ${imgui_club_SOURCE_DIR}
     ${icon_font_cpp_headers_SOURCE_DIR}
+    ${imguizmo_SOURCE_DIR}
+    ${chaiscript_SOURCE_DIR}/include
     #${SDL3_mixer_SOURCE_DIR}/include
     ${nri_SOURCE_DIR}/include
 )
@@ -180,6 +115,8 @@ set( FCPP_SRC_FILES ${fcpp_SOURCE_DIR}/cpp1.c
                     #${fcpp_SOURCE_DIR}/usecpp.c
 )
 
+set( IMGUIZMO_SRC_FILES ${imguizmo_SOURCE_DIR}/ImGuizmo.cpp )
+
 if (NOT MSVC_COMPILER)
     set_source_files_properties( ${FCPP_SRC_FILES} PROPERTIES COMPILE_FLAGS "-Wno-switch-default -Wno-date-time -Wno-pedantic -Wno-format -Wno-implicit-void-ptr-cast -Wno-c++-keyword" )
 endif()
@@ -188,4 +125,5 @@ set( THIRD_PARTY_FETCH_SRC_FILES ${TILEABLE_VOLUME_NOISE_SRC_FILES}
                                  ${CURL_NOISE_SRC_FILES}
                                  ${SIMPLE_FILE_WATCHER_SRC_FILES}
                                  ${FCPP_SRC_FILES}
+                                 ${IMGUIZMO_SRC_FILES}
 )
