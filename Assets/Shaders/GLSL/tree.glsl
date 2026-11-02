@@ -29,17 +29,20 @@ void main(void){
     const VegetationData data = TreeData(dvd_InstanceIndex);
 
     float scale = data.positionAndScale.w;
-    VAR._LoDLevel = data.data.z;
+    const bool isCulled = data.data.z < 0.f;
+    VAR._LoDLevel = isCulled ? 3u : uint(data.data.z);
 
 #if defined(HAS_CULLING_OUT)
-    gl_CullDistance[0] = -0.01f * when_gt(VAR._LoDLevel, 2.1f);
+    gl_CullDistance[0] = isCulled ? -0.01f : 0.01f;
 #else
-    scale -= scale * when_gt(VAR._LoDLevel, 2.1f);
+    if (isCulled) {
+        scale = 0.f;
+    }
 #endif
 
 
     dvd_Vertex.xyz = rotate_vertex_position(dvd_Vertex.xyz * scale, data.orientationQuad);
-    if (VAR._LoDLevel < 1.1f && dvd_Vertex.y * scale > 0.85f) {
+    if (VAR._LoDLevel < 2u && dvd_Vertex.y * scale > 0.85f) {
         //computeFoliageMovementTree(dvd_Vertex, dvd_Vertex.y * 0.5f);
     }
 

@@ -471,6 +471,25 @@ class ShaderCompilationTests(unittest.TestCase):
                 with self.subTest(backend=backend, variant=variant):
                     self.compile_shader("instanceCullVegetation.glsl", "Compute", "comp", backend, defines + variant)
 
+    def test_tree_vertex_cull_sentinel(self):
+        source = (SHADERS / "tree.glsl").read_text(encoding="utf-8")
+        self.assertRegex(
+            source,
+            r"const bool isCulled = data\.data\.z < 0\.f;\s*"
+            r"VAR\._LoDLevel = isCulled \? 3u : uint\(data\.data\.z\);",
+        )
+        self.assertIn("gl_CullDistance[0] = isCulled ? -0.01f : 0.01f;", source)
+        self.assertRegex(source, r"if \(isCulled\)\s*\{\s*scale = 0\.f;")
+        for backend in ("opengl", "vulkan"):
+            instance_index = "gl_InstanceID" if backend == "opengl" else "gl_InstanceIndex"
+            for defines in ([], ["HAS_CULLING_OUT"]):
+                with self.subTest(backend=backend, defines=defines):
+                    self.compile_shader(
+                        "tree.glsl", "Vertex", "vert", backend,
+                        ["MAIN_DISPLAY_PASS", "MAX_TREE_INSTANCES 128",
+                         f"dvd_InstanceIndex {instance_index}"] + defines,
+                    )
+
     def test_scene_data_visible_to_compute(self):
         host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
         visibility = re.search(
