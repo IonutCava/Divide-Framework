@@ -52,11 +52,13 @@ Textures use immutable `glTextureStorage*` storage and DSA mip/layer uploads; th
 
 `VKWrapper.cpp` creates a global VMA allocator after device creation; both buffers and images reuse it.
 
-- `vkBufferImpl` generally prefers device-local memory. Frequently updated/host-visible buffers request mapped VMA host access for direct writes; post-creation writes flush non-coherent mapped ranges before GPU use.
-- Non-mappable buffers use staging allocations and explicit transfer commands. Staged writes flush the staging range before the transfer is registered. Inspect mapping assumptions, staging lifetime, copies, and synchronization separately.
+- `vkBufferImpl` generally prefers device-local memory. Frequently updated buffers request persistent mapping; initial uploads temporarily map host-visible allocations when host access was requested. Initial and post-creation writes flush non-coherent mapped ranges before GPU use.
+- Non-mappable buffers and initial allocations without VMA host-access flags use staging allocations and explicit transfer commands. Initial and later staged writes flush the staging range before the transfer. Inspect mapping assumptions, staging lifetime, copies, and synchronization separately.
 - `vkTexture` derives image usage flags from engine `ImageUsage`, usually uses dedicated device-preferred VMA allocations, uploads through staging, explicitly transitions layouts, and can generate mipmaps on the GPU.
 
-`vkBufferImpl` constructor uploads and CPU readbacks do not yet explicitly flush or invalidate non-coherent mapped allocations. Those paths require a separate coherence audit; the post-creation write guarantee above does not cover them.
+`vkBufferImpl` CPU readbacks do not yet invalidate non-coherent mapped allocations,
+and assume that host-visible allocations are persistently mapped. Readback mapping,
+coherence, and synchronization require a separate audit.
 
 Changes to writable/readable images must audit usage flags, transitions, staging lifetime, and consumers together.
 `vkTexture::GetAspectFlags` follows depth/stencil packing, not attachment usage:

@@ -12,6 +12,11 @@ import subprocess
 import tempfile
 import unittest
 
+if __package__:
+    from .ExposureBufferTests import ExposureBufferTests
+else:
+    from ExposureBufferTests import ExposureBufferTests
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SHADERS = ROOT / "Assets" / "Shaders" / "GLSL"
@@ -359,6 +364,22 @@ class ShaderCompilationTests(unittest.TestCase):
         self.assertEqual(bindings[("PER_BATCH", 1)], 3)
         self.assertEqual(bindings[("PER_PASS", 9)], 10)
         self.assertEqual(bindings[("PER_FRAME", 8)], 14)
+
+    def test_exposure_histogram_compute_variants(self):
+        host = (ROOT / "Source" / "Rendering" / "PostFX" / "PreRenderBatch.cpp").read_text(encoding="utf-8")
+        dimensions = dict(re.findall(r"constexpr U8\s+(GROUP_[XY]_THREADS)\s*=\s*(\d+)u;", host))
+        self.assertEqual(set(dimensions), {"GROUP_X_THREADS", "GROUP_Y_THREADS"})
+        x, y = int(dimensions["GROUP_X_THREADS"]), int(dimensions["GROUP_Y_THREADS"])
+        group_defines = [f"GROUP_SIZE {x * y}", f"THREADS_X {x}", f"THREADS_Y {y}"]
+        variants = (
+            ("Compute.Create", ["u_params PushData0[0]"]),
+            ("Compute.Average", ["dvd_minLogLum PushData0[0].x", "dvd_logLumRange PushData0[0].y",
+                                 "dvd_timeCoeff PushData0[0].z", "dvd_numPixels PushData0[0].w"]),
+        )
+        for backend in ("opengl", "vulkan"):
+            for key, defines in variants:
+                with self.subTest(backend=backend, variant=key):
+                    self.compile_shader("luminanceCalc.glsl", key, "comp", backend, group_defines + defines)
 
     def test_light_impostor_descriptor_visibility(self):
         host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")

@@ -122,7 +122,7 @@ namespace Divide
             case BufferUsageType::UNBOUND_BUFFER:
             {
                 usageFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-                dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+                dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
                 dstStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
                 if (GFXDevice::GetDeviceInformation()._meshShading._supported)
                 {
@@ -179,11 +179,23 @@ namespace Divide
             g_bufferCount.fetch_add(1u);
         }
 
+        // VMA AUTO allocations may only be mapped when host access was requested.
+        const bool hasHostAccess = (vmaallocInfo.flags & (VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                                                          VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT)) != 0u;
+        const bool useStaging = !_isMemoryMappable || !hasHostAccess;
+        const bool mapTemporarily = !useStaging && _allocInfo.pMappedData == nullptr;
         Byte* mappedRange = nullptr;
-        if (!_isMemoryMappable)
+        if ( useStaging )
         {
             _stagingBuffer = VKUtil::createStagingBuffer( _totalBufferSize, bufferName, false );
             mappedRange = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
+        }
+        else if ( mapTemporarily )
+        {
+            void* mappedData = nullptr;
+            LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+            VK_CHECK( vmaMapMemory( *VK_API::GetStateTracker()._allocatorInstance._allocator, _allocation, &mappedData ) );
+            mappedRange = static_cast<Byte*>( mappedData );
         }
         else
         {
@@ -204,7 +216,23 @@ namespace Divide
 
         }
 
-        if ( !_isMemoryMappable )
+        if ( useStaging || !_isMemoryCoherent || mapTemporarily )
+        {
+            LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+            if ( useStaging || !_isMemoryCoherent )
+            {
+                VK_CHECK( vmaFlushAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator,
+                                              useStaging ? _stagingBuffer->_allocation : _allocation,
+                                              0u,
+                                              _totalBufferSize ) );
+            }
+            if ( mapTemporarily )
+            {
+                vmaUnmapMemory( *VK_API::GetStateTracker()._allocatorInstance._allocator, _allocation );
+            }
+        }
+
+        if ( useStaging )
         {
             const auto scopeName = Util::StringFormat( "Immediate Buffer Upload [ {} ]", bufferName );
 

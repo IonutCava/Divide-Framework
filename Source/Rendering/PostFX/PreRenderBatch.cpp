@@ -20,6 +20,8 @@
 #include "Rendering/PostFX/CustomOperators/Headers/PostAAPreRenderOperator.h"
 #include "Rendering/PostFX/CustomOperators/Headers/SSAOPreRenderOperator.h"
 
+#include <array>
+
 namespace Divide {
 
 namespace
@@ -27,6 +29,8 @@ namespace
     //ToneMap ref: https://bruop.github.io/exposure/
     constexpr U8  GROUP_X_THREADS = 16u;
     constexpr U8  GROUP_Y_THREADS = 16u;
+    constexpr U32 HISTOGRAM_BIN_COUNT = 256u;
+    static_assert(GROUP_X_THREADS * GROUP_Y_THREADS == HISTOGRAM_BIN_COUNT);
 };
 
 namespace TypeUtil
@@ -336,13 +340,15 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
         _lineariseDepthBuffer = CreateResource(lineariseDepthBuffer, loadTasks);
     }
 
+    std::array<U32, HISTOGRAM_BIN_COUNT> initialHistogram{};
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._name = "LUMINANCE_HISTOGRAM_BUFFER";
     bufferDescriptor._ringBufferLength = 0;
-    bufferDescriptor._elementCount = 256;
+    bufferDescriptor._elementCount = HISTOGRAM_BIN_COUNT;
     bufferDescriptor._elementSize = sizeof(U32);
     bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
     bufferDescriptor._updateFrequency = BufferUpdateFrequency::ONCE;
+    bufferDescriptor._initialData = { initialHistogram.data(), initialHistogram.size() * sizeof(U32) };
 
     _histogramBuffer = _context.newShaderBuffer(bufferDescriptor);
 
@@ -613,7 +619,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         memCmd->_bufferLocks.emplace_back(BufferLock
         {
             ._range = { 0u, U32_MAX },
-            ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+            ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE,
             ._buffer = _histogramBuffer->getBufferImpl()
         });
 
@@ -668,7 +674,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             memCmd->_bufferLocks.emplace_back( BufferLock
             {
                 ._range = { 0u, U32_MAX },
-                ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+                ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE,
                 ._buffer = _histogramBuffer->getBufferImpl()
             });
 

@@ -104,6 +104,12 @@ For stage-specific lighting failures, check stage buffer allocation, bindings, d
 
 Shared targets are created in `GFXDevice.cpp`: `SCREEN`, `SCREEN_PREV`, `NORMALS_RESOLVED`, `SSAO_RESULT`, `SSR_RESULT`, `BLOOM_RESULT`, `OIT`, and utilities such as Hi-Z/blur targets.
 Feature-local scratch targets often belong to `PreRenderBatch` or individual PostFX operators.
+The exposure histogram has 256 bins and receives explicit zero initial data on
+every buffer creation, including reuse of an OpenGL allocation. Vulkan flushes
+non-coherent initial uploads and orders staged storage-buffer uploads before
+shader reads and writes. The histogram and averaging dispatches use buffer
+dependencies covering both reads and writes; the averaging shader resets the
+bins for the next pass.
 The averaging luminance image retains sampled and storage creation capabilities.
 Each averaging pass transitions it from `SHADER_READ` to `SHADER_WRITE` and back;
 creation usage flags must not be confused with the current image layout.
