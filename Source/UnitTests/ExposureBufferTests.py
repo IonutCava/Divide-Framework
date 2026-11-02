@@ -46,6 +46,44 @@ def run_cpp(test, source):
 
 
 class ExposureBufferTests(unittest.TestCase):
+    def test_histogram_workgroup_synchronization(self):
+        shader = (ROOT / "Assets" / "Shaders" / "GLSL" / "luminanceCalc.glsl").read_text(encoding="utf-8")
+        create, average = shader.split("--Compute.Average", 1)
+        self.assertRegex(create, r"histogramShared\[gl_LocalInvocationIndex\]\s*=\s*0;\s*barrier\(\);")
+        self.assertRegex(
+            create,
+            r"atomicAdd\(histogramShared\[binIndex\],\s*1\);[\s\S]*?\}\s*"
+            r"(?://[^\n]*\n\s*)*barrier\(\);[\s\S]*?"
+            r"atomicAdd\(histogram\[gl_LocalInvocationIndex\],",
+        )
+        self.assertRegex(average, r"shared\s+float\s+histogramShared\[GROUP_SIZE\];")
+        self.assertRegex(
+            average,
+            r"histogramShared\[gl_LocalInvocationIndex\]\s*=\s*"
+            r"float\(countForThisBin\)\s*\*\s*float\(gl_LocalInvocationIndex\);\s*barrier\(\);",
+        )
+        self.assertRegex(
+            average,
+            r"histogramShared\[gl_LocalInvocationIndex\]\s*\+=\s*"
+            r"histogramShared\[gl_LocalInvocationIndex\s*\+\s*binIndex\];\s*\}\s*barrier\(\);",
+        )
+        self.assertNotIn("groupMemoryBarrier()", create + average)
+
+    def test_exposure_image_read_write_contract(self):
+        host = HOST.read_text(encoding="utf-8")
+        average = host[host.index("// Averaging pass"):host.index("if ( _adaptiveExposureValueNeedsUpdate )")]
+        self.assertRegex(
+            average,
+            r"\._sourceLayout\s*=\s*ImageUsage::SHADER_READ,\s*"
+            r"\._targetLayout\s*=\s*ImageUsage::SHADER_READ_WRITE,",
+        )
+        self.assertRegex(average, r"Set\(binding\._data,\s*luminanceView,\s*ImageUsage::SHADER_READ_WRITE\s*\);")
+        self.assertRegex(
+            average,
+            r"\._sourceLayout\s*=\s*ImageUsage::SHADER_READ_WRITE,\s*"
+            r"\._targetLayout\s*=\s*ImageUsage::SHADER_READ,",
+        )
+
     def test_histogram_initialization_and_dependencies_are_wired(self):
         host = HOST.read_text(encoding="utf-8")
         shader = (ROOT / "Assets" / "Shaders" / "GLSL" / "luminanceCalc.glsl").read_text(encoding="utf-8")

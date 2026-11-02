@@ -644,7 +644,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         {
             ._targetView   = luminanceView,
             ._sourceLayout = ImageUsage::SHADER_READ,
-            ._targetLayout = ImageUsage::SHADER_WRITE,
+            ._targetLayout = ImageUsage::SHADER_READ_WRITE,
         });
 
         GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _pipelineLumCalcAverage;
@@ -657,7 +657,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 12u, ShaderStageVisibility::COMPUTE );
-            Set(binding._data, luminanceView, ImageUsage::SHADER_WRITE );
+            Set(binding._data, luminanceView, ImageUsage::SHADER_READ_WRITE );
         }
 
 
@@ -681,7 +681,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             memCmd->_textureLayoutChanges.emplace_back(TextureLayoutChange
             {
                 ._targetView   = luminanceView,
-                ._sourceLayout = ImageUsage::SHADER_WRITE,
+                ._sourceLayout = ImageUsage::SHADER_READ_WRITE,
                 ._targetLayout = ImageUsage::SHADER_READ,
             });
         }

@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 import unittest
 
-from ShaderCompilationTests import SHADERS, cluster_config, expand_includes, shadow_config
+from ShaderCompilationTests import SHADERS, cluster_config, expand_includes, section, shadow_config
 
 
 VALIDATOR = os.environ.get("GLSLANG_VALIDATOR") or shutil.which("glslangValidator")
@@ -214,6 +214,56 @@ class ShaderMathTests(unittest.TestCase):
         for index, expected in enumerate((0.25, -0.25, 0.0, 1.0)):
             with self.subTest(component=index):
                 self.assert_close(self.values[PACKING_OFFSET + index], expected)
+
+
+class ExposureMathTests(unittest.TestCase):
+    def test_histogram_average_and_adaptation(self):
+        dark = [0] * 256
+        dark[0] = 100
+        bright_8k = [0] * 256
+        bright_8k[255] = 7680 * 4320
+        mixed = [0] * 256
+        mixed[0], mixed[1], mixed[128], mixed[255] = 123, 700_000, 15_000_000, 17_477_477
+        distributed = [(index * 7) % 17 for index in range(256)]
+
+        for counts, previous, coefficient in (
+            (dark, 2.0, 1.0),
+            (bright_8k, 2.0, 1.0),
+            (bright_8k, 2.0, 0.25),
+            (mixed, 1.5, 0.5),
+            (distributed, 0.25, 0.75),
+        ):
+            with self.subTest(pixels=sum(counts), previous=previous, coefficient=coefficient):
+                source = section("luminanceCalc.glsl", "Compute.Average")
+                replacements = {
+                    "DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 12, r32f) uniform ACCESS_RW image2D s_target;": "",
+                    "DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 13, std430) coherent ACCESS_RW buffer histogramBuffer\n{\n    uint histogram[];\n};": "",
+                    "uint countForThisBin = histogram[gl_LocalInvocationIndex];": "uint countForThisBin = counts[gl_LocalInvocationIndex];",
+                    "histogram[gl_LocalInvocationIndex] = 0;": "",
+                    "imageLoad(s_target, ivec2(0, 0)).x": f"{previous:.9f}",
+                    "imageStore(s_target, ivec2(0, 0), vec4(adaptedLum, 0.0, 0.0, 0.0));": "values[0] = adaptedLum;",
+                }
+                for old, new in replacements.items():
+                    self.assertEqual(source.count(old), 1, old)
+                    source = source.replace(old, new)
+                shader = f"""
+#version 460
+#define GROUP_SIZE 256
+#define dvd_minLogLum -8.0
+#define dvd_logLumRange 12.0
+#define dvd_timeCoeff {coefficient:.9f}
+#define dvd_numPixels {sum(counts):.1f}
+const uint counts[GROUP_SIZE] = uint[GROUP_SIZE]({", ".join(f"{count}u" for count in counts)});
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+{source}
+"""
+                actual = execute(shader, 1)[0]
+                weighted = sum(index * count for index, count in enumerate(counts))
+                average = weighted / max(sum(counts) - counts[0], 1) - 1
+                target = 2 ** (average / 254 * 12 - 8)
+                expected = previous + (target - previous) * coefficient
+                self.assertTrue(math.isfinite(actual))
+                self.assertAlmostEqual(actual, expected, delta=max(1e-5, abs(expected) * 2e-5))
 
 
 PERSPECTIVE = (60.0, 16.0 / 9.0, 0.5, 200.0)  # fov (degrees), aspect, near, far
