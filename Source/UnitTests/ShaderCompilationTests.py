@@ -14,8 +14,10 @@ import unittest
 
 if __package__:
     from .ExposureBufferTests import ExposureBufferTests
+    from .HiZSamplerTests import HiZSamplerTests
 else:
     from ExposureBufferTests import ExposureBufferTests
+    from HiZSamplerTests import HiZSamplerTests
 
 
 ROOT = Path(__file__).resolve().parents[2]

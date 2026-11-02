@@ -539,6 +539,90 @@ void main() {{
                 self.assertEqual(actual, [float(index) for _, index in cases])
 
 
+class HiZQueryTests(unittest.TestCase):
+    def test_conservative_queries_use_the_selected_mip(self):
+        size = 16
+        depth = [[0.2 for _ in range(size)] for _ in range(size)]
+        depth[9][8] = 1.0
+        base = [[max(depth[sy][sx]
+                     for sy in range(max(y - 1, 0), min(y + 2, size))
+                     for sx in range(max(x - 1, 0), min(x + 2, size)))
+                 for x in range(size)] for y in range(size)]
+        levels = [base]
+        while len(levels[-1]) > 1:
+            previous = levels[-1]
+            dimension = len(previous) // 2
+            levels.append([[max(previous[y * 2 + dy][x * 2 + dx]
+                                for dy in range(2) for dx in range(2))
+                            for x in range(dimension)] for y in range(dimension)])
+
+        # (screen centre, radius, expected cull result, expected mip)
+        cases = [
+            (0.5, 0.03125, False, 0), (0.5, 0.0625, False, 0), (0.5, 0.125, False, 1),
+            (0.5, 0.25, False, 2), (0.5, 0.375, False, 3),
+            (0.5, 1.0, False, 4), (0.0625, 0.03125, True, 0),
+            (0.0625, 0.0625, True, 0), (0.0625, 0.125, True, 1),
+            (0.0625, 0.25, True, 2), (0.125, 0.375, True, 3),
+        ]
+        # At mip 0 the four corners miss the interior far depth in the mip-2 case.
+        self.assertTrue(all(base[y][x] == 0.2 for x in (6, 10) for y in (6, 10)))
+
+        atom = (SHADERS / "Common" / "HiZCullingAlgorithm.cmn").read_text(encoding="utf-8")
+        replacements = {
+            "DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D HiZBuffer;": "",
+            "uniform vec2 dvd_viewSize;": "const vec2 dvd_viewSize = vec2(16.f);",
+            "uniform vec4 dvd_frustumPlanes[6];":
+                "const vec4 dvd_frustumPlanes[6] = vec4[6](vec4(0.f), vec4(0.f), vec4(0.f), "
+                "vec4(0.f), vec4(0.f), vec4(0.f));",
+        }
+        for original, replacement in replacements.items():
+            self.assertEqual(atom.count(original), 1)
+            atom = atom.replace(original, replacement)
+
+        offsets = []
+        flattened = []
+        for level in levels:
+            offsets.append(len(flattened))
+            flattened.extend(value for row in level for value in row)
+        depth_values = ", ".join(f"{value:.1f}f" for value in flattened)
+        offset_values = ", ".join(str(offset) for offset in offsets)
+        inputs = ", ".join(f"vec2({centre:.8f}f, {radius:.8f}f)" for centre, radius, _, _ in cases)
+        source = f"""
+#version 460
+#define M_EPSILON 1e-5f
+#define PushData0 mat4(1.f)
+#define PushData1 mat4(1.f)
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+const float depthValues[{len(flattened)}] = float[{len(flattened)}]({depth_values});
+const int offsets[{len(offsets)}] = int[{len(offsets)}]({offset_values});
+int observedMip = -1;
+vec4 sampleDepth(in vec2 uv, in int requestedMip) {{
+    const int mip = clamp(requestedMip, 0, {len(levels) - 1});
+    observedMip = mip;
+    const int dimension = max({size} >> mip, 1);
+    const ivec2 texel = clamp(ivec2(floor(uv * float(dimension))), ivec2(0), ivec2(dimension - 1));
+    return vec4(depthValues[offsets[mip] + texel.y * dimension + texel.x]);
+}}
+#define textureLod(tex, coord, lod) sampleDepth((coord), int(lod))
+{atom}
+void main() {{
+    const vec2 cases[{len(cases)}] = vec2[{len(cases)}]({inputs});
+    for (int i = 0; i < {len(cases)}; ++i) {{
+        const vec2 sampleCase = cases[i];
+        const float ndcCentre = sampleCase.x * 2.f - 1.f;
+        observedMip = -1;
+        values[2 * i] = HiZCull(vec3(ndcCentre, ndcCentre, 0.85f), sampleCase.y) ? 1.f : 0.f;
+        values[2 * i + 1] = float(observedMip);
+    }}
+}}
+"""
+        actual = execute(source, len(cases) * 2)
+        for index, (_, _, culled, mip) in enumerate(cases):
+            with self.subTest(case=cases[index]):
+                self.assertEqual(actual[2 * index:2 * index + 2], [float(culled), float(mip)])
+
+
 if __name__ == "__main__":
     result = unittest.main(exit=False).result
     if result.wasSuccessful() and result.testsRun == 0 and result.skipped:

@@ -49,7 +49,7 @@ Cluster conventions shared by the builder (`lightBuildClusteredAABBs.glsl`) and 
 
 - XY tiles are viewport-relative (`gl_FragCoord.xy - dvd_ViewPort.xy`), bottom-up on both backends, and clamped to the grid.
 - Z slices are exponential in view distance: `slice = log(d) * dvd_LightScale + dvd_LightBias`, with scale/bias computed from the camera planes in `GFXDevice::renderFromCamera`. Lookup recovers `d` with `ViewDistanceFromDepth`.
-- Clustered stages require perspective cameras with finite `0 < zNear < zFar` (`Config::Lighting::ClusteredForward::IsValidClusterDepthRange`). `Renderer::prepareLighting` asserts and skips cluster building otherwise; orthographic or nonpositive-plane clustered cameras are unsupported.
+- Clustered stages require finite `0 < zNear < zFar` (`Config::Lighting::ClusteredForward::IsValidClusterDepthRange`). `Renderer::prepareLighting` asserts and skips cluster building otherwise. This validates the depth range, not the camera projection type.
 - Each cluster has one `MAX_LIGHTS_PER_CLUSTER` budget shared by point and spot lights; indices are written points first, then spots.
 - `rendering.numLightsPerCluster` is normalized before shader and renderer startup: negative values select the engine maximum, zero warns and becomes one, and larger values are capped at the engine maximum. The effective value sizes both the shader array and the light-index buffer.
 - Spot lights are culled with the minimal sphere around their cone; the slant height travels as float bits in `_options.z` (`SpotConeSlantHeight`).
@@ -97,7 +97,7 @@ Tree mesh draws use separate child `RenderingComponent` packages. Each child car
 
 Materials that require instanced indirection must mark their rendering component instanced even for a single instance. Instanced draws upload `INDIRECT_DATA_IDX` and use base instance zero; ordinary draws encode the node indirection index plus one in the base instance. Grass and tree shaders use a draw-local instance index: OpenGL's `gl_InstanceID` is already local, while Vulkan's `gl_InstanceIndex` includes the base instance. Vegetation buffers accept CPU writes, and empty chunks do not issue zero-length uploads. A terrain can omit tree meshes when it only needs grass.
 
-Hi-Z culling queries select a mip level, so the Hi-Z sampler must permit nearest-mip sampling. The current Hi-Z sampler is configured with `TextureMipSampling::NONE`, so mip-based queries currently sample mip 0. Vegetation culling records a buffer dependency for each written buffer after the compute dispatches and before the subsequent draw commands.
+Hi-Z culling queries select a mip level and use nearest texel and nearest-mip sampling with a minimum LOD of zero. This preserves the max-reduced depths used for conservative visibility; the reduction itself reads single-mip views with `texelFetch`. Vegetation culling records a buffer dependency for each written buffer after the compute dispatches and before the subsequent draw commands.
 
 ### Custom-pass Hi-Z
 

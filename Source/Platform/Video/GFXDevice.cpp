@@ -811,7 +811,8 @@ namespace Divide
         hiZSampler._anisotropyLevel = 0u;
         hiZSampler._magFilter = TextureFilter::NEAREST;
         hiZSampler._minFilter = TextureFilter::NEAREST;
-        hiZSampler._mipSampling = TextureMipSampling::NONE;
+        hiZSampler._mipSampling = TextureMipSampling::NEAREST;
+        hiZSampler._lod._min = 0.f;
 
         RenderTargetDescriptor hizRTDesc = {};
         hizRTDesc._attachments =
