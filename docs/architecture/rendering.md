@@ -54,6 +54,12 @@ Cluster conventions shared by the builder (`lightBuildClusteredAABBs.glsl`) and 
 
 `HiZConstruct.glsl` max-reduces each output texel's full source footprint; push data `isBaseLevel` enables the conservative one-texel dilation for the first level only. The scene UBO (`PER_FRAME` 8) is visible to compute because vegetation culling reads water data.
 
+### Vegetation culling data
+
+Vegetation instance buffers are partitioned by terrain chunk, with fixed-capacity slots per chunk and separate active instance counts. Compute culling must check the active count before indexing a chunk's slots. Tree culling stores a negative `data.z` sentinel for hidden instances and positive integer-valued LOD flags for visible ones; the tree vertex shader must test the sentinel before converting the value to `uint`. LOD 3 is reserved by the vertex shader for the culled fallback.
+
+Hi-Z culling queries select a mip level, so the Hi-Z sampler must permit nearest-mip sampling. Vegetation culling writes must also be made visible to subsequent vertex reads with a buffer dependency recorded after the compute dispatches. The current implementation does not yet satisfy either requirement: the Hi-Z sampler is configured with `TextureMipSampling::NONE`, and `Vegetation::prepareRender` queues the buffer dependency before the culling dispatches.
+
 For stage-specific lighting failures, check stage buffer allocation, bindings, dispatch dimensions, and shader-header cluster/thread-group constants. See [shaders and descriptors](shader-descriptors.md).
 
 ## Render targets and feature insertion points
