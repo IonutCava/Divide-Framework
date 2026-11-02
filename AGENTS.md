@@ -78,14 +78,6 @@ This targeted run does not report a full daily-matrix status. CTest failures fai
 CI. Tests depend on the full engine executable/dependency graph and are not GPU
 rendering validation.
 
-For a lightweight cross-platform check, dispatch `SelectedValidation.yml` with
-`ci_sha`: it builds and tests one editor target per OS (Linux Clang Release,
-Windows MSVC Debug instrumented, macOS ARM64 Clang Debug). It reuses platform
-setup/build actions without launching the full matrices or publishing their
-required statuses.
-Until the workflow reaches the default branch and becomes dispatchable, changes
-to its file on `features/VK_GL_PARITY` also trigger this three-job check.
-
 Shared setup restores vcpkg binary archives with the supported `files` provider and
 `actions/cache`, replacing the removed `x-gha` provider. Cache identity includes
 OS, host/target architecture, compiler/toolchain, pinned vcpkg revision, manifest,
