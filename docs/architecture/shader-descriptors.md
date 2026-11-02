@@ -22,7 +22,7 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 `ShaderProgram` loads/reparses GLSL, loads/builds GLSL cache, loads/builds SPIR-V, loads/builds reflection, and hands shared results to the backend.
 OpenGL still consumes GLSL; Vulkan consumes SPIR-V. Reflection is shared, not duplicated per backend.
-Hot reload deliberately invalidates caches and reparses source. Clustered-lighting constants are injected into the generated shader header. GLSL, SPIR-V, and reflection caches are partitioned by the effective per-cluster light budget so a configuration change cannot reuse a shader compiled with a different array size. Other generated-header settings are not included in this partition.
+Hot reload deliberately invalidates caches and reparses source. Configuration-derived constants (clustered-lighting budget, reflection-probe size/mips, binding maps, etc.) are injected into the generated shader header by `InitGLSW`. Every generated line passes through one helper that folds the stage name and line into an FNV-1a (`_ID`) fingerprint. GLSL, SPIR-V, and reflection caches live under `header-<fingerprint>`, so any generated-header change invalidates them. New generated lines must use `AppendToShaderHeader`, not `glswAddDirectiveToken` directly.
 The newest shader-atom timestamp is read and updated under `g_cacheLock`,
 including file-watcher updates racing asset-loader cache reads.
 

@@ -589,15 +589,12 @@ class ShaderCompilationTests(unittest.TestCase):
         self.assertIn('"#define MAX_LIGHTS_PER_CLUSTER " + Util::to_string( config.rendering.numLightsPerCluster )',
                       shader_host)
         self.assertIn("InitGLSW( gfx.renderAPI(), gfx.context().config() )", shader_host)
-        startup_start = shader_host.index("ErrorCode ShaderProgram::OnStartup(")
-        startup_end = shader_host.index("ErrorCode ShaderProgram::SubmitSetLayouts(", startup_start)
-        startup = shader_host[startup_start:startup_end]
-        self.assertIn("s_clusterLightLimit = config.rendering.numLightsPerCluster;", startup)
+        self.assertNotIn("s_clusterLightLimit", shader_host)
         parent_start = shader_host.index("ResourcePath ShaderParentCacheLocation()")
         parent_end = shader_host.index("ResourcePath SpvCacheLocation()", parent_start)
         parent = shader_host[parent_start:parent_end]
         self.assertIn("ShaderBuildCacheLocation() / ShaderAPILocation()", parent)
-        self.assertIn('Util::StringFormat( "cluster-light-limit-{}", s_clusterLightLimit )', parent)
+        self.assertIn('Util::StringFormat( "header-{:016x}", s_generatedHeaderHash.load() )', parent)
         for name, next_name in (("SpvCacheLocation", "ReflCacheLocation"),
                                 ("ReflCacheLocation", "TxtCacheLocation"),
                                 ("TxtCacheLocation", "ShaderBinaryCacheTag")):
@@ -630,6 +627,76 @@ class ShaderCompilationTests(unittest.TestCase):
                 self.compile_shader("HiZConstruct.glsl", "Compute", "comp", backend, hiz_defines)
             with self.subTest(backend=backend, shader="HiZOcclusionCull"):
                 self.compile_shader("HiZOcclusionCull.glsl", "Compute", "comp", backend, ["WORK_GROUP_SIZE 64"])
+
+    def test_shader_cache_identity_fingerprints_generated_header(self):
+        shader_host = (ROOT / "Source" / "Platform" / "Video" / "Shaders" / "ShaderProgram.cpp").read_text(encoding="utf-8")
+        start = shader_host.index("static bool InitGLSW(")
+        end = shader_host.index("return glswState == 1;", start)
+        init = shader_host[start:end]
+        # Every generated line must go through the hashing lambda.
+        self.assertEqual(init.count("glswAddDirectiveToken"), 1)
+        lambda_start = init.index("U64 generatedHeaderHash")
+        lambda_end = init.index("};", lambda_start) + 2
+        hashing_lambda = init[lambda_start:lambda_end]
+        self.assertLess(hashing_lambda.index("generatedHeaderHash = _ID("), hashing_lambda.index("glswAddDirectiveToken"))
+        store = init.index("s_generatedHeaderHash.store( generatedHeaderHash );")
+        self.assertGreater(store, init.rindex("AppendToShaderHeader("))
+        for define in ("MAX_LIGHTS_PER_CLUSTER", "REFLECTION_PROBE_RESOLUTION", "REFLECTION_PROBE_MIP_COUNT"):
+            self.assertRegex(init, rf'AppendToShaderHeader\( ShaderType::COUNT, "#define {define} "')
+
+        platform = (ROOT / "Source" / "Platform" / "Headers" / "PlatformDefines.h").read_text(encoding="utf-8")
+        hash_start = platform.index("constexpr U64 val_64_const")
+        hash_end = platform.index("[[nodiscard]] constexpr U64 operator \"\"_id")
+        source = r"""
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <vector>
+using U8 = std::uint8_t;
+using U64 = std::uint64_t;
+using string = std::string;
+constexpr U64 to_U64(char c) { return static_cast<U64>(c); }
+template<typename T> constexpr U8 to_U8(T v) { return static_cast<U8>(v); }
+@HASH@
+enum class ShaderType { FRAGMENT = 0, VERTEX, COUNT };
+namespace Names { const char* shaderTypes[] = { "Fragment", "Vertex" }; }
+std::vector<std::string> g_tokens;
+void glswAddDirectiveToken(const char* stage, const char* entry) { g_tokens.push_back(std::string(stage) + "|" + entry); }
+U64 BuildHeader(const std::vector<std::pair<ShaderType, std::string>>& entries) {
+    g_tokens.clear();
+    @LAMBDA@
+    for (const auto& [type, entry] : entries) {
+        AppendToShaderHeader(type, entry);
+    }
+    return generatedHeaderHash;
+}
+int main() {
+    const std::vector<std::pair<ShaderType, std::string>> base{
+        {ShaderType::COUNT, "#version 460"},
+        {ShaderType::COUNT, "#define MAX_LIGHTS_PER_CLUSTER 64"},
+        {ShaderType::COUNT, "#define REFLECTION_PROBE_RESOLUTION 256"},
+        {ShaderType::FRAGMENT, "#define VAR _in"},
+    };
+    const U64 a = BuildHeader(base);
+    assert(g_tokens.size() == base.size() && g_tokens[3] == "Fragment|#define VAR _in" && g_tokens[0] == "|#version 460");
+    assert(BuildHeader(base) == a);
+    auto probe = base; probe[2].second = "#define REFLECTION_PROBE_RESOLUTION 512";
+    assert(BuildHeader(probe) != a);
+    auto lights = base; lights[1].second = "#define MAX_LIGHTS_PER_CLUSTER 128";
+    assert(BuildHeader(lights) != a);
+    auto stage = base; stage[3].first = ShaderType::VERTEX;
+    assert(BuildHeader(stage) != a);
+    auto order = base; std::swap(order[1], order[2]);
+    assert(BuildHeader(order) != a);
+}
+"""
+        from ExposureBufferTests import run_cpp
+        run_cpp(self, source.replace("@HASH@", platform[hash_start:hash_end]).replace("@LAMBDA@", hashing_lambda))
 
     def test_compute_workgroup_requirements_match_sources(self):
         gfx = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")

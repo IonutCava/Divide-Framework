@@ -258,7 +258,7 @@ namespace Divide
         U64 s_newestShaderAtomWriteTime = 0u; ///< Used to detect modified shader atoms to validate/invalidate shader cache
         bool s_useShaderCache = true;
         RenderAPI s_renderAPI = RenderAPI::COUNT;
-        I32 s_clusterLightLimit = 0;
+        std::atomic<U64> s_generatedHeaderHash{ 0u }; ///< Fingerprint of InitGLSW's generated header; keys the shader cache
 
         U8 s_textureSlot = 0u;
         U8 s_imageSlot   = 0u;
@@ -289,7 +289,7 @@ namespace Divide
         [[nodiscard]] ResourcePath ShaderParentCacheLocation()
         {
             return ShaderBuildCacheLocation() / ShaderAPILocation() /
-                   ResourcePath{ Util::StringFormat( "cluster-light-limit-{}", s_clusterLightLimit ) };
+                   ResourcePath{ Util::StringFormat( "header-{:016x}", s_generatedHeaderHash.load() ) };
         }
 
         [[nodiscard]] ResourcePath SpvCacheLocation()
@@ -412,9 +412,14 @@ namespace Divide
 
     static bool InitGLSW( const RenderAPI renderingAPI, const Configuration& config)
     {
-        const auto AppendToShaderHeader = []( const ShaderType type, const string& entry )
+        // Fingerprint every generated header line so that config-derived values (cluster budget, probe resolution,
+        // binding maps, etc.) become part of the shader cache identity.
+        U64 generatedHeaderHash = val_64_const;
+        const auto AppendToShaderHeader = [&generatedHeaderHash]( const ShaderType type, const string& entry )
         {
-            glswAddDirectiveToken( type != ShaderType::COUNT ? Names::shaderTypes[to_U8( type )] : "", entry.c_str() );
+            const char* stageName = type != ShaderType::COUNT ? Names::shaderTypes[to_U8( type )] : "";
+            generatedHeaderHash = _ID( entry.c_str(), _ID( stageName, generatedHeaderHash ) );
+            glswAddDirectiveToken( stageName, entry.c_str() );
         };
 
         const auto AppendResourceBindingSlots = [&AppendToShaderHeader]( const bool targetOpenGL )
@@ -784,6 +789,8 @@ namespace Divide
         AppendToShaderHeader( ShaderType::COUNT, "___CUSTOM_UNIFORMS___" );
         AppendToShaderHeader( ShaderType::COUNT, "___PUSH_CONSTANTS_DEFINE___" );
 
+        s_generatedHeaderHash.store( generatedHeaderHash );
+
         // Check initialization status for GLSL and glsl-optimizer
         return glswState == 1;
     }
@@ -1123,7 +1130,6 @@ namespace Divide
         const Configuration& config = context.config();
         s_useShaderCache = config.debug.cache.enabled && config.debug.cache.shaders;
         s_renderAPI = context.gfx().renderAPI();
-        s_clusterLightLimit = config.rendering.numLightsPerCluster;
 
         FileList list{};
         if ( s_useShaderCache )
