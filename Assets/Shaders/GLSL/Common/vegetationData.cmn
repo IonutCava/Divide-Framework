@@ -1,5 +1,14 @@
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #ifndef _VEGETATION_DATA_CMN_
 #define _VEGETATION_DATA_CMN_
+
+#if defined(TARGET_VULKAN)
+#define VEGETATION_INSTANCE_INDEX (uint(dvd_InstanceIndex) - uint(DVD_GL_BASE_INSTANCE))
+#else
+#define VEGETATION_INSTANCE_INDEX uint(dvd_InstanceIndex)
+#endif
 
 uniform uint dvd_terrainChunkOffset = 0u;
 

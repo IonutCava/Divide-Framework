@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/vkBufferImpl.h"
 #include "Utility/Headers/Localization.h"
@@ -172,7 +173,8 @@ namespace Divide
             vmaSetAllocationName( *VK_API::GetStateTracker()._allocatorInstance._allocator, _allocation, bufferName );
 
             Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)_buffer, VK_OBJECT_TYPE_BUFFER, bufferName );
-            _isMemoryMappable = memPropFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+            _isMemoryMappable = (memPropFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0u;
+            _isMemoryCoherent = (memPropFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0u;
 
             g_bufferCount.fetch_add(1u);
         }
@@ -258,6 +260,15 @@ namespace Divide
         else
         {
             memcpy( &mappedRange[mappedOffset], data, range._length );
+        }
+
+        if ( !_isMemoryMappable || !_isMemoryCoherent )
+        {
+            LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+            VK_CHECK( vmaFlushAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator,
+                                          _isMemoryMappable ? _allocation : _stagingBuffer->_allocation,
+                                          mappedOffset,
+                                          range._length ) );
         }
 
         BufferLock ret = {

@@ -1,5 +1,8 @@
 --Vertex
 
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #include "vbInputData.vert"
 #include "vegetationData.cmn"
 #include "lightingDefaults.vert"
@@ -26,7 +29,7 @@ void main(void){
 
     const NodeTransformData nodeData = fetchInputData();
 
-    const VegetationData data = TreeData(dvd_InstanceIndex);
+    const VegetationData data = TreeData(VEGETATION_INSTANCE_INDEX);
 
     float scale = data.positionAndScale.w;
     const bool isCulled = data.data.z < 0.f;

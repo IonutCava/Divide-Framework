@@ -1,5 +1,8 @@
 --Vertex
 
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #define COMPUTE_TBN
 #include "vbInputData.vert"
 #include "vegetationData.cmn"
@@ -31,7 +34,7 @@ void largetScaleMotion(inout vec4 vertexW, in vec4 vertex, in float heightExtent
 }
 
 void main() {
-    VegetationData data = GrassData(dvd_InstanceIndex);
+    VegetationData data = GrassData(VEGETATION_INSTANCE_INDEX);
     if (data.data.z < 0.f) {
         //gl_CullDistance[0] = -1.0f;
         gl_Position = vec4(2.f, 2.f, 2.f, 1.f);
@@ -39,7 +42,7 @@ void main() {
     }
 
     const NodeTransformData nodeData = fetchInputData();
-    _instanceID = dvd_InstanceIndex;
+    _instanceID = VEGETATION_INSTANCE_INDEX;
     float scale = data.positionAndScale.w * Saturate(data.data.z);
 
     _alphaFactor = Saturate(data.data.z);

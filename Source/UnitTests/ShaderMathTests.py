@@ -501,6 +501,44 @@ class ClusterMathTests(unittest.TestCase):
         self.assertEqual(int(self.values[CLUSTER_OFFSET + 1]), clusters_x * clusters_y * clusters_z - 1)
 
 
+class VegetationInstanceIndexTests(unittest.TestCase):
+    def test_draw_local_instance_index_for_both_backends(self):
+        cases = [(0, 0), (0, 1), (7, 0), (7, 1), (123, 5),
+                 (0x7FFFFFFF, 2), (0xFFFFFFFE, 5)]
+        atom = (SHADERS / "Common" / "vegetationData.cmn").read_text(encoding="utf-8")
+        chunk_uniform = "uniform uint dvd_terrainChunkOffset = 0u;"
+        self.assertEqual(atom.count(chunk_uniform), 1)
+        atom = atom.replace(chunk_uniform, "")
+        bases = ", ".join(f"{base}u" for base, _ in cases)
+        indices = ", ".join(f"{index}u" for _, index in cases)
+
+        for backend in ("OPENGL", "VULKAN"):
+            with self.subTest(backend=backend):
+                instance_index = "base + local" if backend == "VULKAN" else "local"
+                source = f"""
+#version 460
+#define TARGET_{backend}
+#define dvd_InstanceIndex testInstance
+#define DVD_GL_BASE_INSTANCE testBase
+{atom}
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+void main() {{
+    const uint bases[{len(cases)}] = uint[]({bases});
+    const uint indices[{len(cases)}] = uint[]({indices});
+    for (int i = 0; i < {len(cases)}; ++i) {{
+        const uint base = bases[i];
+        const uint local = indices[i];
+        const int testInstance = int({instance_index});
+        const int testBase = int(base);
+        values[i] = float(VEGETATION_INSTANCE_INDEX);
+    }}
+}}
+"""
+                actual = execute(source, len(cases))
+                self.assertEqual(actual, [float(index) for _, index in cases])
+
+
 if __name__ == "__main__":
     result = unittest.main(exit=False).result
     if result.wasSuccessful() and result.testsRun == 0 and result.skipped:

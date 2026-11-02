@@ -184,7 +184,8 @@ namespace Divide
             _editorComponent.registerField( MOV( renderLodField ) );
 
             mat->properties().isStatic( _parentSGN->usageContext() == NodeUsageContext::NODE_STATIC );
-            mat->properties().isInstanced( mat->properties().isInstanced() || isInstanced() );
+            isInstanced( RequiresInstancedIndirection( isInstanced(), mat->properties().isInstanced(), 0u ) );
+            mat->properties().isInstanced( isInstanced() );
         }
     }
 
@@ -428,10 +429,7 @@ namespace Divide
                     for ( GenericDrawCommand& cmd : _drawCommands._data )
                     {
                         enableOptions(cmd, drawCmdOptions);
-                        if ( cmd._cmd.instanceCount > 1 )
-                        {
-                            isInstanced( true );
-                        }
+                        isInstanced( RequiresInstancedIndirection( isInstanced(), false, cmd._cmd.instanceCount ) );
                     }
                 }
             }
@@ -617,7 +615,7 @@ namespace Divide
         {
             IndirectIndexedDrawCommand& iCmd = cmdsInOut.emplace_back(gCmd._cmd);
 
-            iCmd.baseInstance = isInstanced() ? 0u : (_indirectionBufferEntry + 1u); //Make sure to substract 1 in the shader!
+            iCmd.baseInstance = IndirectionBaseInstance( isInstanced(), _indirectionBufferEntry );
 
             if ( autoIndex )
             {

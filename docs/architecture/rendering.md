@@ -89,6 +89,8 @@ Vegetation instance buffers are partitioned by terrain chunk, with fixed-capacit
 
 Tree mesh draws use separate child `RenderingComponent` packages. Each child carries its terrain chunk ID in `dataFlag`, which must be supplied as `dvd_terrainChunkOffset` for every draw package; the tree shader uses it to select that chunk's fixed-capacity block. The uniform's GLSL initializer is not a fallback because shader preprocessing strips loose-uniform initializers.
 
+Materials that require instanced indirection must mark their rendering component instanced even for a single instance. Instanced draws upload `INDIRECT_DATA_IDX` and use base instance zero; ordinary draws encode the node indirection index plus one in the base instance. Grass and tree shaders use a draw-local instance index: OpenGL's `gl_InstanceID` is already local, while Vulkan's `gl_InstanceIndex` includes the base instance. Vegetation buffers accept CPU writes, and empty chunks do not issue zero-length uploads. A terrain can omit tree meshes when it only needs grass.
+
 Hi-Z culling queries select a mip level, so the Hi-Z sampler must permit nearest-mip sampling. The current Hi-Z sampler is configured with `TextureMipSampling::NONE`, so mip-based queries currently sample mip 0. Vegetation culling records a buffer dependency for each written buffer after the compute dispatches and before the subsequent draw commands.
 
 ### Custom-pass Hi-Z

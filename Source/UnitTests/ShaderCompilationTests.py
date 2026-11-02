@@ -200,6 +200,7 @@ def engine_header(stage, backend, defines):
         header.extend(f"#define {usage} {index}" for usage, index in descriptor_set_usages().items())
         header.extend([
             "#define dvd_VertexIndex gl_VertexIndex",
+            "#define dvd_InstanceIndex gl_InstanceIndex",
             "#define DVD_GL_BASE_INSTANCE gl_BaseInstanceARB",
             "#define DESCRIPTOR_SET_RESOURCE(SET, BINDING) layout(set = SET, binding = BINDING)",
             "#define DESCRIPTOR_SET_RESOURCE_LAYOUT(SET, BINDING, LAYOUT) layout(set = SET, binding = BINDING, LAYOUT)",
@@ -209,6 +210,7 @@ def engine_header(stage, backend, defines):
         header.extend(f"#define {usage}_{slot} {binding}" for (usage, slot), binding in opengl_bindings().items())
         header.extend([
             "#define dvd_VertexIndex gl_VertexID",
+            "#define dvd_InstanceIndex gl_InstanceID",
             "#define DVD_GL_BASE_INSTANCE gl_BaseInstance",
             "#define CONCATENATE_IMPL(s1, s2) s1 ## _ ## s2",
             "#define CONCATENATE(s1, s2) CONCATENATE_IMPL(s1, s2)",
@@ -561,14 +563,94 @@ class ShaderCompilationTests(unittest.TestCase):
         self.assertIn("gl_CullDistance[0] = isCulled ? -0.01f : 0.01f;", source)
         self.assertRegex(source, r"if \(isCulled\)\s*\{\s*scale = 0\.f;")
         for backend in ("opengl", "vulkan"):
-            instance_index = "gl_InstanceID" if backend == "opengl" else "gl_InstanceIndex"
             for defines in ([], ["HAS_CULLING_OUT"]):
                 with self.subTest(backend=backend, defines=defines):
                     self.compile_shader(
                         "tree.glsl", "Vertex", "vert", backend,
-                        ["MAIN_DISPLAY_PASS", "MAX_TREE_INSTANCES 128",
-                         f"dvd_InstanceIndex {instance_index}"] + defines,
+                        ["MAIN_DISPLAY_PASS", "MAX_TREE_INSTANCES 128"] + defines,
                     )
+
+    def test_vegetation_instanced_draw_contract(self):
+        rendering = (ROOT / "Source" / "ECS" / "Components" / "RenderingComponent.cpp").read_text(encoding="utf-8")
+        self.assertRegex(
+            rendering,
+            r"isInstanced\(\s*RequiresInstancedIndirection\(\s*isInstanced\(\),\s*"
+            r"mat->properties\(\)\.isInstanced\(\),\s*0u\s*\)\s*\)",
+        )
+        self.assertIn("mat->properties().isInstanced( isInstanced() );", rendering)
+        self.assertIn("RequiresInstancedIndirection( isInstanced(), false, cmd._cmd.instanceCount )", rendering)
+        self.assertIn("IndirectionBaseInstance( isInstanced(), _indirectionBufferEntry )", rendering)
+        self.assertRegex(
+            rendering,
+            r"if\s*\(\s*isInstanced\(\)\s*\)\s*\{\s*pkg\.pushConstantsCmd\(\)\._uniformData->set"
+            r'\(\s*_ID\(\s*"INDIRECT_DATA_IDX"\s*\),\s*PushConstantType::UINT,\s*_indirectionBufferEntry\s*\)',
+        )
+
+        shader_program = (ROOT / "Source" / "Platform" / "Video" / "Shaders" / "ShaderProgram.cpp").read_text(encoding="utf-8")
+        for definition in (
+            "#define dvd_InstanceIndex gl_InstanceID", "#define DVD_GL_BASE_INSTANCE gl_BaseInstance",
+            "#define dvd_InstanceIndex gl_InstanceIndex", "#define DVD_GL_BASE_INSTANCE gl_BaseInstanceARB",
+        ):
+            self.assertIn(definition, shader_program)
+
+        for shader, capacity, extra in (
+            ("grass.glsl", "MAX_GRASS_INSTANCES 256", ["ENABLE_TBN"]),
+            ("tree.glsl", "MAX_TREE_INSTANCES 128", []),
+        ):
+            source = (SHADERS / shader).read_text(encoding="utf-8")
+            self.assertNotIn("dvd_InstanceIndex", source)
+            self.assertIn("Data(VEGETATION_INSTANCE_INDEX)", source)
+            if shader == "grass.glsl":
+                self.assertIn("_instanceID = VEGETATION_INSTANCE_INDEX;", source)
+            for backend in ("opengl", "vulkan"):
+                for variant in (["MAIN_DISPLAY_PASS", "HAS_VELOCITY"],
+                                ["MAIN_DISPLAY_PASS", "PRE_PASS", "HAS_VELOCITY"], ["SHADOW_PASS"]):
+                    with self.subTest(shader=shader, backend=backend, variant=variant):
+                        defines = [capacity, "OVERRIDE_DATA_IDX"] + extra + variant
+                        preprocessed = self.prepare_source(section(shader, "Vertex"), "vert", backend, defines)
+                        self.assertIn("uint INDIRECT_DATA_IDX;", preprocessed)
+                        self.compile_source(section(shader, "Vertex"), "vert", backend, defines)
+
+    def test_vegetation_uploads_allow_empty_and_grass_only_chunks(self):
+        vegetation = (ROOT / "Source" / "Environment" / "Vegetation" / "Vegetation.cpp").read_text(encoding="utf-8")
+        self.assertIn("bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;", vegetation)
+        self.assertRegex(
+            vegetation,
+            r"if\s*\(\s*context\(\)\.config\(\)\.debug\.renderFilter\.treeInstances\s*&&\s*"
+            r"!parentPtr->_treeMeshNames\.empty\(\)\s*\)",
+        )
+        for kind in ("grass", "tree"):
+            self.assertRegex(
+                vegetation,
+                rf"if\s*\(\s*!data\.empty\(\)\s*\)\s*\{{\s*"
+                rf"DIVIDE_ASSERT\(\s*parentPtr->_{kind}Data\s*!=\s*nullptr[^;]*;\s*"
+                rf"const BufferLock lock = parentPtr->_{kind}Data->writeData\(",
+            )
+        self.assertIn("treeData ? to_U32( ID % parent->_treeMeshNames.size() ) : 0u", vegetation)
+        prepare_draw = vegetation[vegetation.index("void Vegetation::prepareDraw"):vegetation.index("void Vegetation::prepareRender")]
+        self.assertRegex(
+            prepare_draw,
+            r"if\s*\(\s*instance->_instanceCountTrees\s*>\s*0\s*&&\s*!_treeMeshNames\.empty\(\)\s*\)"
+            r"\s*\{\s*const U32 meshID = to_U32\(\s*ID % _treeMeshNames\.size\(\)\s*\)",
+        )
+
+    def test_vulkan_buffer_updates_flush_noncoherent_writes(self):
+        vulkan = ROOT / "Source" / "Platform" / "Video" / "RenderBackend" / "Vulkan" / "Buffers"
+        header = (vulkan / "Headers" / "vkBufferImpl.h").read_text(encoding="utf-8")
+        source = (vulkan / "vkBufferImpl.cpp").read_text(encoding="utf-8")
+        self.assertIn("bool _isMemoryCoherent{ false };", header)
+        self.assertIn("_isMemoryCoherent = (memPropFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0u;", source)
+        write = source[source.index("BufferLock vkBufferImpl::writeBytes"):source.index("void vkBufferImpl::readBytes")]
+        self.assertRegex(
+            write,
+            r"if\s*\(\s*!_isMemoryMappable\s*\|\|\s*!_isMemoryCoherent\s*\)\s*\{"
+            r"\s*LockGuard<Mutex> w_lock\([^;]+;\s*"
+            r"VK_CHECK\(\s*vmaFlushAllocation\([^,]+,\s*"
+            r"_isMemoryMappable\s*\?\s*_allocation\s*:\s*_stagingBuffer->_allocation,\s*"
+            r"mappedOffset,\s*range\._length\s*\)\s*\)",
+        )
+        self.assertLess(write.index("memcpy("), write.index("vmaFlushAllocation"))
+        self.assertLess(write.index("vmaFlushAllocation"), write.index("RegisterTransferRequest"))
 
     def test_tree_chunk_offset_flows_to_each_draw_package(self):
         vegetation = (ROOT / "Source" / "Environment" / "Vegetation" / "Vegetation.cpp").read_text(encoding="utf-8")

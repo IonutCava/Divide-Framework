@@ -12,9 +12,28 @@
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkDevice.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Rendering/RenderPass/Headers/NodeBufferedData.h"
 
 namespace Divide
 {
+    TEST_CASE( "Instanced draws agree with material indirection requirements", "[instancing][indirection]" )
+    {
+        for ( const U32 instanceCount : { 0u, 1u, 2u, 64u } )
+        {
+            const bool drawRequiresInstancing = instanceCount > 1u;
+            const bool nonInstancedMaterial = RequiresInstancedIndirection( false, false, instanceCount );
+            CHECK( nonInstancedMaterial == drawRequiresInstancing );
+            CHECK( IndirectionBaseInstance( nonInstancedMaterial, 37u ) == (drawRequiresInstancing ? 0u : 38u) );
+
+            const bool instancedMaterial = RequiresInstancedIndirection( false, true, instanceCount );
+            CHECK( instancedMaterial );
+            CHECK( IndirectionBaseInstance( instancedMaterial, 37u ) == 0u );
+            CHECK( RequiresInstancedIndirection( true, false, instanceCount ) );
+        }
+
+        CHECK( IndirectionBaseInstance( false, 0u ) == 1u );
+    }
+
     TEST_CASE( "Light descriptor visibility names match their shader stages", "[descriptors][lighting]" )
     {
         constexpr auto vertex = to_base( ShaderStageVisibility::VERTEX );

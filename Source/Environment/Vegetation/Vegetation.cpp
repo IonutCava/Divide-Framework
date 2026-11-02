@@ -326,7 +326,7 @@ namespace Divide
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._elementSize = sizeof( VegetationData );
         bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
-        bufferDescriptor._updateFrequency = BufferUpdateFrequency::ONCE;
+        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
 
         if ( _maxTreeInstances > 0 )
         {
@@ -503,10 +503,10 @@ namespace Divide
         }
 
         const U32 ID = sgn->dataFlag();
-        const U32 meshID = to_U32( ID % _treeMeshNames.size() );
 
         if ( instance->_instanceCountTrees > 0 && !_treeMeshNames.empty() )
         {
+            const U32 meshID = to_U32( ID % _treeMeshNames.size() );
             LockGuard<SharedMutex> w_lock( _treeMeshLock );
             if ( _treeMeshes.empty() )
             {
@@ -914,16 +914,24 @@ namespace Divide
             vector<VegetationData> data = computeTransforms( false );
             _instanceCountGrass = to_U32(data.size());
 
-            const BufferLock lock = parentPtr->_grassData->writeData(ElementRange<>{_chunk->id() * parentPtr->_maxGrassInstances, _instanceCountGrass}, data.data());
-            DIVIDE_UNUSED(lock);
+            if ( !data.empty() )
+            {
+                DIVIDE_ASSERT( parentPtr->_grassData != nullptr && "Grass instance data requires an allocated buffer" );
+                const BufferLock lock = parentPtr->_grassData->writeData(ElementRange<>{_chunk->id() * parentPtr->_maxGrassInstances, _instanceCountGrass}, data.data());
+                DIVIDE_UNUSED(lock);
+            }
         }
 
-        if ( context().config().debug.renderFilter.treeInstances )
+        if ( context().config().debug.renderFilter.treeInstances && !parentPtr->_treeMeshNames.empty() )
         {
             vector<VegetationData> data = computeTransforms( true );
             _instanceCountTrees = to_U32(data.size());
-            const BufferLock lock = parentPtr->_treeData->writeData(ElementRange<>{_chunk->id() * parentPtr->_maxTreeInstances, _instanceCountTrees }, data.data() );
-            DIVIDE_UNUSED( lock );
+            if ( !data.empty() )
+            {
+                DIVIDE_ASSERT( parentPtr->_treeData != nullptr && "Tree instance data requires an allocated buffer" );
+                const BufferLock lock = parentPtr->_treeData->writeData(ElementRange<>{_chunk->id() * parentPtr->_maxTreeInstances, _instanceCountTrees }, data.data() );
+                DIVIDE_UNUSED( lock );
+            }
         }
     }
 
@@ -974,7 +982,7 @@ namespace Divide
 
             std::default_random_engine generator( to_U32( std::chrono::system_clock::now().time_since_epoch().count() ) );
 
-            const U32 meshID = to_U32( ID % parent->_treeMeshNames.size() );
+            const U32 meshID = treeData ? to_U32( ID % parent->_treeMeshNames.size() ) : 0u;
 
             const float2 chunkSize = _chunk->getOffsetAndSize().zw;
             const float2 chunkPos = _chunk->getOffsetAndSize().xy;
