@@ -2101,8 +2101,11 @@ namespace Divide
     void GFXDevice::prevViewProjectionMatrix( const mat4<F32>& vpMatrix ) noexcept
     {
         GFXShaderData::CamData& data = _gpuBlock._camData;
-        data.dvd_PrevViewProjectionMatrix = vpMatrix;
-        _gpuBlock._camNeedsUpload = true;
+        if ( data.dvd_PrevViewProjectionMatrix != vpMatrix )
+        {
+            data.dvd_PrevViewProjectionMatrix = vpMatrix;
+            _gpuBlock._camNeedsUpload = true;
+        }
     } 
     
 
@@ -2129,9 +2132,8 @@ namespace Divide
         if ( projectionDirty || viewDirty )
         {
             mat4<F32>::Multiply( frameData._previousProjectionMatrix, frameData._previousViewMatrix, frameData._previousViewProjectionMatrix );
-
-            prevViewProjectionMatrix(frameData._previousProjectionMatrix);
         }
+        prevViewProjectionMatrix( frameData._previousViewProjectionMatrix );
     }
 
     bool GFXDevice::setViewport( const Rect<I32>& viewport )

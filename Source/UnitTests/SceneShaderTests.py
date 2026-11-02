@@ -17,6 +17,67 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class SceneShaderTests(unittest.TestCase):
+    def test_previous_view_projection_uses_both_matrices_per_player(self):
+        source = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
+        start = source.index("    void GFXDevice::prevViewProjectionMatrix(")
+        end = source.index("    bool GFXDevice::setViewport(", start)
+        functions = source[start:end]
+        run_cpp(self, f"""
+#include <cassert>
+#include <cstddef>
+#define PROFILE_SCOPE_AUTO(...)
+using F32 = float;
+using PlayerIndex = std::size_t;
+template<typename T> struct mat4 {{
+    T m[2][2] = {{{{1, 0}}, {{0, 1}}}};
+    bool operator!=(const mat4& other) const {{
+        for (int r = 0; r < 2; ++r)
+            for (int c = 0; c < 2; ++c)
+                if (m[r][c] != other.m[r][c]) return true;
+        return false;
+    }}
+    static void Multiply(const mat4& a, const mat4& b, mat4& out) {{
+        for (int r = 0; r < 2; ++r)
+            for (int c = 0; c < 2; ++c)
+                out.m[r][c] = a.m[r][0] * b.m[0][c] + a.m[r][1] * b.m[1][c];
+    }}
+}};
+struct GFXShaderData {{
+    struct CamData {{ mat4<F32> dvd_PrevViewProjectionMatrix; }};
+    struct PrevFrameData {{
+        mat4<F32> _previousViewMatrix;
+        mat4<F32> _previousProjectionMatrix;
+        mat4<F32> _previousViewProjectionMatrix;
+    }};
+}};
+struct GFXDevice {{
+    struct {{ GFXShaderData::CamData _camData; GFXShaderData::PrevFrameData _prevFrameData[2]; bool _camNeedsUpload = false; }} _gpuBlock;
+    void prevViewProjectionMatrix(const mat4<F32>& vpMatrix) noexcept;
+    void setPreviousViewProjectionMatrix(PlayerIndex index, const mat4<F32>& view, mat4<F32> projection);
+}};
+{functions}
+int main() {{
+    GFXDevice device;
+    const mat4<F32> view{{{{{{1, 3}}, {{0, 1}}}}}};
+    const mat4<F32> projection{{{{{{2, 0}}, {{0, 4}}}}}};
+    const mat4<F32> expected{{{{{{2, 6}}, {{0, 4}}}}}};
+    const mat4<F32> identity;
+    device.setPreviousViewProjectionMatrix(0, view, projection);
+    assert(!(device._gpuBlock._camData.dvd_PrevViewProjectionMatrix != expected));
+    assert(device._gpuBlock._camNeedsUpload);
+    device._gpuBlock._camNeedsUpload = false;
+    device.setPreviousViewProjectionMatrix(0, view, projection);
+    assert(!device._gpuBlock._camNeedsUpload);
+    device.setPreviousViewProjectionMatrix(1, identity, identity);
+    assert(!(device._gpuBlock._camData.dvd_PrevViewProjectionMatrix != identity));
+    assert(device._gpuBlock._camNeedsUpload);
+    device._gpuBlock._camNeedsUpload = false;
+    device.setPreviousViewProjectionMatrix(0, view, projection);
+    assert(!(device._gpuBlock._camData.dvd_PrevViewProjectionMatrix != expected));
+    assert(device._gpuBlock._camNeedsUpload);
+}}
+""")
+
     def test_prefiltered_probe_mips_are_not_regenerated(self):
         source = (ROOT / "Source" / "Scenes" / "SceneEnvironmentProbePool.cpp").read_text(encoding="utf-8")
         start = source.index("void SceneEnvironmentProbePool::PrefilterEnvMap(")

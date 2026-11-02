@@ -40,6 +40,10 @@ Before changing ordering, audit render-target producers/consumers, depth and clu
 Dirty ranges permit partial uploads. Preparation is partitioned with `g_nodesPerPrepareDrawPartition`; see [threading](threading.md) before changing parallel preparation or locking.
 Start here for CPU render scalability, draw-call buildup, or stale per-node data.
 
+The camera block's previous view-projection is the selected player's previous
+projection multiplied by its previous view. It is refreshed when switching
+players even if that player's cached matrices did not change.
+
 ## Clustered lighting
 
 `Renderer.cpp` allocates stage-scoped light indices, cluster AABBs, light grids, and global index counts. Compute pipelines generate AABBs, reset counters, and cull lights.
