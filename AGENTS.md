@@ -196,6 +196,11 @@ CI checks `master` and all open pull requests daily at 00:00 UTC (GitHub may del
 Linux, Windows, and macOS builds run only for head commits not previously queued for that target.
 Commit statuses record queued and completed builds; unchanged commits are
 not rebuilt, even after a failed build. Failed dispatches are retried at the next daily check.
+Platform reporters also publish each matrix job's result under its exact job name
+on `ci_sha`, preserving the existing per-job branch-protection requirements when
+workflow dispatches execute on a different commit. Missing, skipped, cancelled,
+or unsuccessful jobs never produce successful statuses. Keep the job-name lists
+in `.github/scripts/report-ci.cjs` aligned with the platform matrices.
 The first check builds every current target. PRs are built at their head commit, not a test merge.
 The platform workflows use `workflow_dispatch` for the scheduler, not push or PR triggers.
 These workflows must be present on the repository's default branch before scheduling takes effect.
