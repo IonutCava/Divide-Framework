@@ -267,6 +267,66 @@ layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
 
 
 class PostFXMathTests(unittest.TestCase):
+    def test_signed_and_color_framebuffer_previews(self):
+        source = section("fbPreview.glsl", "Fragment")
+        source = source.replace('#include "utility.frag"', "")
+        source = re.sub(r"^uniform (?:uint|float) \w+;\s*$", "", source, flags=re.MULTILINE)
+        source = source.replace("DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texDiffuse0;", "")
+        source = source.replace("layout(location = 0) out vec4 _colourOut;", "vec4 _colourOut;")
+        source = source.replace("void main()\n{", "void previewPixel()\n{")
+        utility = (SHADERS / "FragmentAtoms" / "utility.frag").read_text(encoding="utf-8")
+        normal = re.search(r"^vec3 unpackNormal\(.*?^\}", utility, re.MULTILINE | re.DOTALL)
+        self.assertIsNotNone(normal)
+        shader = f"""
+#version 460
+#define ToLinear(SRGB) pow((SRGB).rgb, vec3(2.2))
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+struct Varyings {{ vec2 _texCoord; }} VAR;
+const ivec2 dvd_ScreenDimensions = ivec2(1024, 768);
+const int texDiffuse0 = 0;
+uint channelCount, startChannel = 0u, channelsArePacked, scaleAndBias, normalizeOutput, skipLinearisation;
+float lodLevel = 0.0, multiplier;
+vec4 sampleValue;
+vec4 samplePreview(int samplerId, vec2 uv, float lod) {{ return sampleValue; }}
+#define textureLod(samplerId, uv, lod) samplePreview(samplerId, uv, lod)
+vec2 unpackVec2(float value) {{ return unpackHalf2x16(floatBitsToUint(value)); }}
+{normal.group(0)}
+{source}
+void storeResult(int index) {{
+    values[index * 4] = _colourOut.r;
+    values[index * 4 + 1] = _colourOut.g;
+    values[index * 4 + 2] = _colourOut.b;
+    values[index * 4 + 3] = _colourOut.a;
+}}
+void main() {{
+    channelCount = 2u; channelsArePacked = 1u; scaleAndBias = 1u;
+    normalizeOutput = 0u; skipLinearisation = 0u; multiplier = 1.0;
+    sampleValue = vec4(0.0, 0.5, 0.0, 0.0); previewPixel(); storeResult(0);
+    channelsArePacked = 0u; multiplier = 5.0;
+    sampleValue = vec4(-0.2, 0.1, 0.0, 0.0); previewPixel(); storeResult(1);
+    normalizeOutput = 1u; multiplier = 1.0;
+    sampleValue = vec4(0.0); previewPixel(); storeResult(2);
+    channelCount = 4u; scaleAndBias = 0u; normalizeOutput = 0u;
+    sampleValue = vec4(0.5, 0.25, 1.0, 0.7); previewPixel(); storeResult(3);
+    channelCount = 1u; skipLinearisation = 1u;
+    sampleValue = vec4(0.25); previewPixel(); storeResult(4);
+}}
+"""
+        actual = execute(shader, 20)
+        expected = (
+            (0.0, 0.5, 0.5, 1.0),
+            (0.0, 0.75, 0.5, 1.0),
+            (0.5, 0.5, 0.5, 1.0),
+            (0.5 ** 2.2, 0.25 ** 2.2, 1.0, 0.7),
+            (0.25, 0.25, 0.25, 1.0),
+        )
+        for index, result in enumerate(expected):
+            for component, value in enumerate(result):
+                with self.subTest(case=index, component=component):
+                    self.assertTrue(math.isfinite(actual[index * 4 + component]))
+                    self.assertAlmostEqual(actual[index * 4 + component], value, delta=1e-5)
+
     def test_tonemap_black_and_all_mapping_functions(self):
         source = section("toneMap.glsl", "Fragment")
         source = source.replace('#include "utility.frag"', "")

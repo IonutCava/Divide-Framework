@@ -132,6 +132,9 @@ Tone mapping handles black without dividing by zero, and every exposed tone-map
 function has a distinct selector. Infinite-grid depth uses the same zero-to-one
 projection convention as the render backends. DoF uses a symmetric depth blur
 and orders vignette edges; equal vignette edges produce a hard cutoff.
+Framebuffer debug views initialize all shared preview uniforms per view.
+Numerical render targets bypass sRGB decoding; signed normals and velocities
+are remapped for display, and zero-length normalization is defined.
 Passes use `BeginRenderPassCommand` with ordinary pipeline/resource binding commands.
 
 - Screen-space effects using existing inputs generally belong in PostFX/pre-render operators.

@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2026 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -131,6 +131,13 @@ struct DebugView final : GUIDWrapper
         : GUIDWrapper()
         , _sortIndex(to_I16(sortIndex))
     {
+        _shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.f );
+        _shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.f );
+        _shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 4u );
+        _shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
+        _shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
+        _shaderData.set( _ID( "scaleAndBias" ), PushConstantType::UINT, 0u );
+        _shaderData.set( _ID( "normalizeOutput" ), PushConstantType::UINT, 0u );
         _shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 0u );
     }
 

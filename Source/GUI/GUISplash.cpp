@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/GUISplash.h"
 
@@ -39,10 +39,12 @@ GUISplash::GUISplash(const std::string_view splashImageName, vec2<U16> dimension
     _splashShader = CreateResource(splashShader);
 
     _uniformData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 1.f );
-    _uniformData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+    _uniformData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
     _uniformData.set( _ID( "channelCount" ), PushConstantType::UINT, 4u );
     _uniformData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
     _uniformData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.f );
+    _uniformData.set( _ID( "scaleAndBias" ), PushConstantType::UINT, 0u );
+    _uniformData.set( _ID( "normalizeOutput" ), PushConstantType::UINT, 0u );
     _uniformData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 0u );
 }
 

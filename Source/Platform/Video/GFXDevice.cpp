@@ -2594,7 +2594,7 @@ namespace Divide
     void GFXDevice::initDebugViews()
     {
         // Lazy-load preview shader
-        if ( _previewDepthMapShader != INVALID_HANDLE<ShaderProgram>)
+        if ( _previewDepthMapShader == INVALID_HANDLE<ShaderProgram>)
         {
             ShaderModuleDescriptor vertModule = {};
             vertModule._moduleType = ShaderType::VERTEX;
@@ -2619,9 +2619,10 @@ namespace Divide
             HiZ->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::UTILS.HI_Z )->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
             HiZ->_name = "Hierarchical-Z";
             HiZ->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.f );
-            HiZ->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            HiZ->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
             HiZ->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             HiZ->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 1u );
+            HiZ->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
             HiZ->_cycleMips = true;
 
             DebugView_ptr DepthPreview = std::make_shared<DebugView>();
@@ -2638,10 +2639,12 @@ namespace Divide
             NormalPreview->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::NORMALS_RESOLVED )->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
             NormalPreview->_name = "Normals";
             NormalPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
-            NormalPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, true );
+            NormalPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 1u );
             NormalPreview->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             NormalPreview->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 2u );
             NormalPreview->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
+            NormalPreview->_shaderData.set( _ID( "scaleAndBias" ), PushConstantType::UINT, 1u );
+            NormalPreview->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
 
             DebugView_ptr VelocityPreview = std::make_shared<DebugView>();
             VelocityPreview->_shader = _renderTargetDraw;
@@ -2649,12 +2652,13 @@ namespace Divide
             VelocityPreview->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::VELOCITY )->_descriptor._sampler;
             VelocityPreview->_name = "Velocity Map";
             VelocityPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
-            VelocityPreview->_shaderData.set( _ID( "scaleAndBias" ), PushConstantType::BOOL, true );
-            VelocityPreview->_shaderData.set( _ID( "normalizeOutput" ), PushConstantType::BOOL, true );
-            VelocityPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            VelocityPreview->_shaderData.set( _ID( "scaleAndBias" ), PushConstantType::UINT, 1u );
+            VelocityPreview->_shaderData.set( _ID( "normalizeOutput" ), PushConstantType::UINT, 0u );
+            VelocityPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
             VelocityPreview->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             VelocityPreview->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 2u );
             VelocityPreview->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 5.0f );
+            VelocityPreview->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
 
             DebugView_ptr SSAOPreview = std::make_shared<DebugView>();
             SSAOPreview->_shader = _renderTargetDraw;
@@ -2662,10 +2666,11 @@ namespace Divide
             SSAOPreview->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::SSAO_RESULT )->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
             SSAOPreview->_name = "SSAO Map";
             SSAOPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
-            SSAOPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            SSAOPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
             SSAOPreview->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             SSAOPreview->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 1u );
             SSAOPreview->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );  
+            SSAOPreview->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
             
             DebugView_ptr BloomPreview = std::make_shared<DebugView>();
             BloomPreview->_shader = _renderTargetDraw;
@@ -2673,10 +2678,11 @@ namespace Divide
             BloomPreview->_sampler = renderTargetPool().getRenderTarget(RenderTargetNames::BLOOM_RESULT)->getAttachment(RTAttachmentType::COLOUR)->_descriptor._sampler;
             BloomPreview->_name = "BLOOM Map";
             BloomPreview->_shaderData.set(_ID("lodLevel"), PushConstantType::FLOAT, 0.0f);
-            BloomPreview->_shaderData.set(_ID("channelsArePacked"), PushConstantType::BOOL, false);
+            BloomPreview->_shaderData.set(_ID("channelsArePacked"), PushConstantType::UINT, 0u);
             BloomPreview->_shaderData.set(_ID("startChannel"), PushConstantType::UINT, 0u);
             BloomPreview->_shaderData.set(_ID("channelCount"), PushConstantType::UINT, 3u);
             BloomPreview->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
+            BloomPreview->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
 
             DebugView_ptr AlphaAccumulationHigh = std::make_shared<DebugView>();
             AlphaAccumulationHigh->_shader = _renderTargetDraw;
@@ -2684,10 +2690,11 @@ namespace Divide
             AlphaAccumulationHigh->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::ALBEDO )->_descriptor._sampler;
             AlphaAccumulationHigh->_name = "Alpha Accumulation High";
             AlphaAccumulationHigh->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
-            AlphaAccumulationHigh->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            AlphaAccumulationHigh->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
             AlphaAccumulationHigh->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             AlphaAccumulationHigh->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 4u );
             AlphaAccumulationHigh->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
+            AlphaAccumulationHigh->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
 
             DebugView_ptr AlphaRevealageHigh = std::make_shared<DebugView>();
             AlphaRevealageHigh->_shader = _renderTargetDraw;
@@ -2695,10 +2702,11 @@ namespace Divide
             AlphaRevealageHigh->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::REVEALAGE )->_descriptor._sampler;
             AlphaRevealageHigh->_name = "Alpha Revealage High";
             AlphaRevealageHigh->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
-            AlphaRevealageHigh->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            AlphaRevealageHigh->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
             AlphaRevealageHigh->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             AlphaRevealageHigh->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 1u );
             AlphaRevealageHigh->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
+            AlphaRevealageHigh->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
 
             SamplerDescriptor lumaSampler = {};
             lumaSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
@@ -2715,10 +2723,11 @@ namespace Divide
             Luminance->_sampler = lumaSampler;
             Luminance->_name = "Luminance";
             Luminance->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
-            Luminance->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            Luminance->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
             Luminance->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             Luminance->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 1u );
             Luminance->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
+            Luminance->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
 
             const RenderTargetHandle& edgeRTHandle = getRenderer().postFX().getFilterBatch().edgesRT();
 
@@ -2728,10 +2737,11 @@ namespace Divide
             Edges->_sampler = renderTargetPool().getRenderTarget( edgeRTHandle._targetID )->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
             Edges->_name = "Edges";
             Edges->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
-            Edges->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            Edges->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
             Edges->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             Edges->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 4u );
             Edges->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
+            Edges->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
 
             addDebugView( HiZ );
             addDebugView( DepthPreview );

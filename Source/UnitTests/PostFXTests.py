@@ -20,6 +20,62 @@ OPERATORS = ROOT / "Source" / "Rendering" / "PostFX" / "CustomOperators"
 
 
 class PostFXTests(unittest.TestCase):
+    def test_preview_defaults_and_numeric_view_configuration(self):
+        header = (ROOT / "Source" / "Platform" / "Video" / "Headers" / "GFXDevice.h").read_text(encoding="utf-8")
+        begin = header.index('        _shaderData.set( _ID( "lodLevel" )')
+        end = header.index("\n    }", begin)
+        defaults = header[begin:end]
+        run_cpp(self, f"""
+#include <cassert>
+#include <cstdint>
+#include <map>
+#include <string>
+using U32 = std::uint32_t;
+enum class PushConstantType {{ FLOAT, UINT }};
+#define _ID(value) value
+struct Uniforms {{
+    std::map<std::string, double> values;
+    template<typename T> void set(const char* name, PushConstantType, T value) {{ values[name] = value; }}
+}};
+struct DebugView {{
+    Uniforms _shaderData;
+    DebugView() {{
+{defaults}
+    }}
+}};
+int main() {{
+    DebugView first, second;
+    assert(first._shaderData.values.size() == 8u);
+    assert(first._shaderData.values.at("lodLevel") == 0.0);
+    assert(first._shaderData.values.at("multiplier") == 1.0);
+    assert(first._shaderData.values.at("channelCount") == 4.0);
+    for (const char* name : {{"startChannel", "channelsArePacked", "scaleAndBias", "normalizeOutput", "skipLinearisation"}})
+        assert(first._shaderData.values.at(name) == 0.0);
+    first._shaderData.set("scaleAndBias", PushConstantType::UINT, 1u);
+    assert(second._shaderData.values.at("scaleAndBias") == 0.0);
+}}
+""")
+        host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
+        start = host.index("void GFXDevice::initDebugViews()")
+        end = host.index("void GFXDevice::renderDebugViews", start)
+        previews = host[start:end]
+        self.assertIn("_previewDepthMapShader == INVALID_HANDLE<ShaderProgram>", previews)
+        for name in ("HiZ", "NormalPreview", "VelocityPreview", "SSAOPreview", "BloomPreview",
+                     "AlphaAccumulationHigh", "AlphaRevealageHigh", "Luminance", "Edges"):
+            self.assertRegex(
+                previews,
+                rf'{name}->_shaderData\.set\(\s*_ID\(\s*"skipLinearisation"\s*\),\s*'
+                r"PushConstantType::UINT,\s*1u\s*\);",
+            )
+        self.assertRegex(previews, r'NormalPreview->_shaderData\.set\(\s*_ID\(\s*"scaleAndBias"\s*\)')
+        splash = (ROOT / "Source" / "GUI" / "GUISplash.cpp").read_text(encoding="utf-8")
+        for name in ("channelsArePacked", "scaleAndBias", "normalizeOutput"):
+            self.assertIn(f'_ID( "{name}" ), PushConstantType::UINT, 0u', splash)
+        self.assertNotRegex(
+            previews,
+            r'_ID\(\s*"(?:channelsArePacked|scaleAndBias|normalizeOutput)"\s*\),\s*PushConstantType::BOOL',
+        )
+
     def test_depth_of_field_defines_match_shader(self):
         host = (OPERATORS / "DoFPreRenderOperator.cpp").read_text(encoding="utf-8")
         shader = (SHADERS / "DepthOfField.glsl").read_text(encoding="utf-8")

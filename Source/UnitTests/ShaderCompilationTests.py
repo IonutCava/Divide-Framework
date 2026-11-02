@@ -450,6 +450,11 @@ class ShaderCompilationTests(unittest.TestCase):
                 with self.subTest(backend=backend, shader=name):
                     self.compile_shader(name, variant, "frag", backend, defines)
 
+    def test_framebuffer_preview_variant(self):
+        for backend in ("opengl", "vulkan"):
+            with self.subTest(backend=backend):
+                self.compile_shader("fbPreview.glsl", "Fragment", "frag", backend)
+
     def test_light_impostor_descriptor_visibility(self):
         host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
         renderer = (ROOT / "Source" / "Rendering" / "Renderer.cpp").read_text(encoding="utf-8")

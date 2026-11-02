@@ -144,6 +144,24 @@ namespace Divide
         CHECK( value == 0u );
     }
 
+    TEST_CASE( "Debug previews reset numerical display options", "[texture_fallbacks]" )
+    {
+        DebugView view;
+        const auto& entries = view._shaderData.entries();
+        for (const U64 hash : { _ID( "channelsArePacked" ), _ID( "scaleAndBias" ), _ID( "normalizeOutput" ) })
+        {
+            const auto entry = std::find_if( entries.begin(), entries.end(), [hash](const auto& value)
+            {
+                return value._bindingHash == hash;
+            } );
+            REQUIRE( entry != entries.end() );
+            CHECK( entry->_type == PushConstantType::UINT );
+            U32 value = 1u;
+            std::memcpy( &value, view._shaderData.data( entry->_range._startOffset ), sizeof(value) );
+            CHECK( value == 0u );
+        }
+    }
+
     TEST_CASE( "Push command merging preserves shared uniform storage", "[push_constants]" )
     {
         UniformData uniforms;
