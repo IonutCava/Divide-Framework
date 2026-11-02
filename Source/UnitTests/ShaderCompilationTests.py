@@ -419,6 +419,37 @@ class ShaderCompilationTests(unittest.TestCase):
                 with self.subTest(backend=backend, shader=variant):
                     self.compile_shader("bloom.glsl", variant, "frag", backend, defines)
 
+    def test_tonemap_depth_and_dof_variants(self):
+        tone_names = (
+            "REINHARD", "REINHARD_MODIFIED", "GT", "ACES", "UNREAL_ACES",
+            "AMD_ACES", "GT_DIFF_PARAMETERS", "UNCHARTED_2", "NONE",
+        )
+        tone_defines = [f"{name} {index}" for index, name in enumerate(tone_names)] + [
+            "manualExposureFactor PushData0[0].x",
+            "mappingFunction int(PushData0[0].y)",
+            "useAdaptiveExposure uint(PushData0[0].z)",
+            "skipToneMapping uint(PushData0[0].w)",
+            "bloomStrength PushData0[1].x",
+        ]
+        dof_defines = [
+            "USE_DEPTH_BLUR", "USE_NOISE", "RING_COUNT 4", "FIRST_RING_SAMPLES 3",
+            "size PushData0[0].xy", "focus PushData0[0].zw", "_zPlanes PushData0[1].xy",
+            "focalDepth PushData0[1].z", "focalLength PushData0[1].w",
+            "fstop PushData0[2].x", "ndofstart PushData0[2].y", "ndofdist PushData0[2].z",
+            "fdofstart PushData0[2].w", "fdofdist PushData0[3].x",
+            "vignout PushData0[3].y", "vignin PushData0[3].z",
+            "showFocus uint(PushData0[3].w)", "manualdof uint(PushData1[0].x)",
+            "vignetting uint(PushData1[0].y)", "autofocus uint(PushData1[0].z)",
+        ]
+        for backend in ("opengl", "vulkan"):
+            for name, variant, defines in (
+                ("toneMap.glsl", "Fragment", tone_defines),
+                ("InfiniteGrid.glsl", "Fragment", ["axisWidth 1.f", "gridScale 1.f"]),
+                ("DepthOfField.glsl", "Fragment", dof_defines),
+            ):
+                with self.subTest(backend=backend, shader=name):
+                    self.compile_shader(name, variant, "frag", backend, defines)
+
     def test_light_impostor_descriptor_visibility(self):
         host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
         renderer = (ROOT / "Source" / "Rendering" / "Renderer.cpp").read_text(encoding="utf-8")

@@ -267,6 +267,148 @@ layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
 
 
 class PostFXMathTests(unittest.TestCase):
+    def test_tonemap_black_and_all_mapping_functions(self):
+        source = section("toneMap.glsl", "Fragment")
+        source = source.replace('#include "utility.frag"', "")
+        source = re.sub(r"^DESCRIPTOR_SET_RESOURCE\(PER_DRAW, \d+\) uniform sampler2D \w+;\s*$",
+                        "", source, flags=re.MULTILINE)
+        source = source.replace("layout(location = 0) out vec4 _colourOut;", "vec4 _colourOut;")
+        source = source.replace("void main() {", "void toneMapPixel() {")
+        shader = f"""
+#version 460
+#define Luminance(RGB) max(dot((RGB), vec3(0.299, 0.587, 0.114)), 0.0001)
+#define REINHARD 0
+#define REINHARD_MODIFIED 1
+#define GT 2
+#define ACES 3
+#define UNREAL_ACES 4
+#define AMD_ACES 5
+#define GT_DIFF_PARAMETERS 6
+#define UNCHARTED_2 7
+#define NONE 8
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+struct Varyings {{ vec2 _texCoord; }} VAR;
+const int texScreen = 0, texExposure = 1, texBloom = 2;
+vec3 inputColor;
+uint skipToneMapping = 0u, useAdaptiveExposure;
+int mappingFunction;
+float manualExposureFactor = 1.0, bloomStrength = 0.0;
+vec4 sampleInput(int samplerId, vec2 uv) {{
+    return samplerId == texScreen ? vec4(inputColor, 1.0) :
+           samplerId == texExposure ? vec4(1.0) : vec4(0.0);
+}}
+#define texture(samplerId, uv) sampleInput(samplerId, uv)
+{source}
+float expectedCurve(int mode, float x) {{
+    if (mode == REINHARD) return Reinhard(x);
+    if (mode == REINHARD_MODIFIED) return Reinhard2(x);
+    if (mode == GT) return Tonemap_Uchimura(x);
+    if (mode == ACES) return Tonemap_ACES(x);
+    if (mode == UNREAL_ACES) return Tonemap_Unreal(x);
+    if (mode == AMD_ACES) return Tonemap_Lottes(x);
+    if (mode == GT_DIFF_PARAMETERS) return Tonemap_Uchimura(x, 1.0, 1.7, 0.1, 0.0, 1.33, 0.0);
+    if (mode == UNCHARTED_2) return Uncharted2(x);
+    return x;
+}}
+void main() {{
+    const vec3 colors[3] = vec3[3](vec3(0.0), vec3(1e-8, 2e-8, 3e-8), vec3(1.0, 0.5, 0.25));
+    for (int c = 0; c < 3; ++c) {{
+        inputColor = colors[c];
+        for (int a = 0; a < 2; ++a) {{
+            useAdaptiveExposure = uint(a);
+            for (int mode = 0; mode <= NONE; ++mode) {{
+                mappingFunction = mode;
+                toneMapPixel();
+                int base = ((c * 2 + a) * 9 + mode) * 5;
+                values[base] = _colourOut.r;
+                values[base + 1] = _colourOut.g;
+                values[base + 2] = _colourOut.b;
+                float lum = dot(inputColor, vec3(0.2126729, 0.7151522, 0.0721750));
+                if (a != 0 && mode != NONE) lum /= 9.6001;
+                values[base + 3] = expectedCurve(mode, lum);
+                values[base + 4] = dot(_colourOut.rgb, vec3(0.2126729, 0.7151522, 0.0721750));
+            }}
+        }}
+    }}
+}}
+"""
+        actual = execute(shader, 270)
+        for color in range(3):
+            for adaptive in range(2):
+                for mode in range(9):
+                    base = ((color * 2 + adaptive) * 9 + mode) * 5
+                    with self.subTest(color=color, adaptive=adaptive, mode=mode):
+                        self.assertTrue(all(math.isfinite(value) for value in actual[base:base + 5]))
+                        if color == 0:
+                            self.assertEqual(actual[base:base + 3], [0.0, 0.0, 0.0])
+                        self.assertAlmostEqual(actual[base + 4], actual[base + 3],
+                                               delta=max(1e-6, abs(actual[base + 3]) * 2e-5))
+
+    def test_projected_depth_uses_zero_to_one_range(self):
+        utility = (SHADERS / "FragmentAtoms" / "utility.frag").read_text(encoding="utf-8")
+        match = re.search(r"^float computeDepth\(.*?^\}", utility, re.MULTILINE | re.DOTALL)
+        self.assertIsNotNone(match)
+        shader = f"""
+#version 460
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+{match.group(0)}
+void main() {{
+    values[0] = computeDepth(vec4(0, 0, 0.0, 1), mat4(1), vec2(0, 1));
+    values[1] = computeDepth(vec4(0, 0, 0.4, 2), mat4(1), vec2(0, 1));
+    values[2] = computeDepth(vec4(0, 0, 1.0, 1), mat4(1), vec2(0.2, 0.8));
+    values[3] = computeDepth(vec4(0, 0, 0.25, 1), mat4(1), vec2(1, 0));
+}}
+"""
+        for actual, expected in zip(execute(shader, 4), (0.0, 0.2, 0.8, 0.75)):
+            self.assertAlmostEqual(actual, expected, delta=1e-6)
+
+    def test_depth_of_field_kernel_offsets_and_vignette(self):
+        source = section("DepthOfField.glsl", "Fragment")
+        depth = re.search(r"^float bdepth\(.*?^\}", source, re.MULTILINE | re.DOTALL)
+        vignette = re.search(r"^float vignette\(.*?^\}", source, re.MULTILINE | re.DOTALL)
+        self.assertIsNotNone(depth)
+        self.assertIsNotNone(vignette)
+        shader = f"""
+#version 460
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+vec2 texel = vec2(0.01, 0.02);
+float dbsize = 1.25, vignin, vignout, fstop = 0.0, vignfade = 22.0;
+const int texLinearDepth = 0;
+int tap = 0;
+vec4 sampleDepth(vec2 coord) {{
+    values[2 * tap] = coord.x;
+    values[2 * tap + 1] = coord.y;
+    ++tap;
+    return vec4(1.0);
+}}
+#define texture(samplerId, coord) sampleDepth(coord)
+{depth.group(0)}
+{vignette.group(0)}
+void main() {{
+    values[18] = bdepth(vec2(0.0));
+    vignin = 0.1; vignout = 0.5;
+    values[19] = vignette(vec2(0.5, 0.5));
+    values[20] = vignette(vec2(0.8, 0.5));
+    values[21] = vignette(vec2(1.1, 0.5));
+    vignin = 0.5; vignout = 0.1;
+    values[22] = vignette(vec2(0.8, 0.5));
+    vignin = 0.3; vignout = 0.3;
+    values[23] = vignette(vec2(0.7, 0.5));
+    values[24] = vignette(vec2(0.9, 0.5));
+}}
+"""
+        actual = execute(shader, 25)
+        offsets = [(-1, -1), (0, -1), (1, -1), (-1, 0), (0, 0),
+                   (1, 0), (-1, 1), (0, 1), (1, 1)]
+        for index, (x, y) in enumerate(offsets):
+            self.assertAlmostEqual(actual[index * 2], x * 0.0125, delta=1e-6)
+            self.assertAlmostEqual(actual[index * 2 + 1], y * 0.025, delta=1e-6)
+        for value, expected in zip(actual[18:], (1.0, 1.0, 0.5, 0.0, 0.5, 1.0, 0.0)):
+            self.assertAlmostEqual(value, expected, delta=1e-6)
+
     def test_bloom_soft_knee_and_zero_knee(self):
         source = section("bloom.glsl", "Fragment.BloomDownscale")
         match = re.search(r"^vec3 quadratic_threshold\(.*?^\}", source, re.MULTILINE | re.DOTALL)

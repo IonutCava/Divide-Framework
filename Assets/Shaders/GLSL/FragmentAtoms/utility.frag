@@ -48,7 +48,7 @@ vec3 ToSRGBAccurate(in vec3 linearCol) {
 
 float computeDepth(in vec4 posWV, in mat4 projMatrix, in vec2 zPlanes) {
     const vec4 clip_space_pos = projMatrix * posWV;
-    return (((zPlanes.y - zPlanes.x) * (clip_space_pos.z / clip_space_pos.w)) + zPlanes.x + zPlanes.y) * 0.5f;
+    return zPlanes.x + (zPlanes.y - zPlanes.x) * (clip_space_pos.z / clip_space_pos.w);
 }
 
 #define IsInScreenRect(COORDS) all(bvec4(COORDS.x >= 0.f, COORDS.x <= 1.f, COORDS.y >= 0.f, COORDS.y <= 1.f))

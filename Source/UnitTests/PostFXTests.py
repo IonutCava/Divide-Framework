@@ -20,6 +20,15 @@ OPERATORS = ROOT / "Source" / "Rendering" / "PostFX" / "CustomOperators"
 
 
 class PostFXTests(unittest.TestCase):
+    def test_depth_of_field_defines_match_shader(self):
+        host = (OPERATORS / "DoFPreRenderOperator.cpp").read_text(encoding="utf-8")
+        shader = (SHADERS / "DepthOfField.glsl").read_text(encoding="utf-8")
+        self.assertIn('fragModule._defines.emplace_back("USE_DEPTH_BLUR");', host)
+        self.assertIn('fragModule._defines.emplace_back("USE_NOISE");', host)
+        self.assertNotIn('"USER_NOISE"', host)
+        self.assertEqual(host.count('"FIRST_RING_SAMPLES {}"'), 1)
+        self.assertIn("#if defined(USE_NOISE)", shader)
+
     def test_bloom_state_source_views_and_configuration(self):
         host = (OPERATORS / "BloomPreRenderOperator.cpp").read_text(encoding="utf-8")
         shader = (SHADERS / "bloom.glsl").read_text(encoding="utf-8")
