@@ -17,6 +17,58 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class SceneShaderTests(unittest.TestCase):
+    def test_cull_counter_initializes_every_reused_ring_slot(self):
+        source = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
+        begin = source.index("                ShaderBuffer& counter = *_gfxBuffers._perFrameBuffers[i]._cullCounter;")
+        end = source.index("\n            }", begin)
+        initialize = source[begin:end]
+        run_cpp(self, f"""
+#include <array>
+#include <cassert>
+#include <cstdint>
+#include <memory>
+#include <vector>
+#define DIVIDE_UNUSED(value) (void)(value)
+using U16 = std::uint16_t;
+struct BufferLock {{}};
+struct Range {{ unsigned offset, length; }};
+struct ShaderBuffer {{
+    std::vector<std::array<unsigned, 4>> slots;
+    U16 current = 0;
+    U16 queueLength() const {{ return static_cast<U16>(slots.size()); }}
+    BufferLock clearData(Range range) {{
+        assert(range.offset == 0 && range.length == 1);
+        slots[current].fill(0);
+        return {{}};
+    }}
+    void incQueue() {{ current = (current + 1) % queueLength(); }}
+}};
+struct Frame {{ std::unique_ptr<ShaderBuffer> _cullCounter; }};
+struct Device {{
+    struct {{ std::array<Frame, 3> _perFrameBuffers; }} _gfxBuffers;
+    void initialize(unsigned i) {{
+{initialize}
+    }}
+}};
+int main() {{
+    Device device;
+    for (U16 length : {{1, 4, 7}}) {{
+        for (auto& frame : device._gfxBuffers._perFrameBuffers) {{
+            frame._cullCounter = std::make_unique<ShaderBuffer>();
+            frame._cullCounter->slots.resize(length);
+            for (auto& slot : frame._cullCounter->slots) slot.fill(0xdeadbeefu);
+        }}
+        for (unsigned i = 0; i < device._gfxBuffers._perFrameBuffers.size(); ++i)
+            device.initialize(i);
+        for (const auto& frame : device._gfxBuffers._perFrameBuffers) {{
+            assert(frame._cullCounter->current == 0);
+            for (const auto& slot : frame._cullCounter->slots)
+                for (unsigned value : slot) assert(value == 0);
+        }}
+    }}
+}}
+""")
+
     def test_previous_view_projection_uses_both_matrices_per_player(self):
         source = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
         start = source.index("    void GFXDevice::prevViewProjectionMatrix(")

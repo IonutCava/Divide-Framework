@@ -579,6 +579,13 @@ namespace Divide
             {
                 Util::StringFormatTo( bufferDescriptor._name, "CULL_COUNTER_{}", i );
                 _gfxBuffers._perFrameBuffers[i]._cullCounter = newShaderBuffer( bufferDescriptor );
+                ShaderBuffer& counter = *_gfxBuffers._perFrameBuffers[i]._cullCounter;
+                for ( U16 slot = 0u; slot < counter.queueLength(); ++slot )
+                {
+                    const BufferLock lock = counter.clearData( { 0u, 1u } );
+                    DIVIDE_UNUSED( lock );
+                    counter.incQueue();
+                }
             }
         }
         _gpuBlock._camNeedsUpload = true;
