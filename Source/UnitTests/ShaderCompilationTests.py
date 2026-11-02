@@ -350,6 +350,32 @@ class ShaderCompilationTests(unittest.TestCase):
         self.assertEqual(bindings[("PER_PASS", 9)], 10)
         self.assertEqual(bindings[("PER_FRAME", 8)], 14)
 
+    def test_light_impostor_descriptor_visibility(self):
+        host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
+        renderer = (ROOT / "Source" / "Rendering" / "Renderer.cpp").read_text(encoding="utf-8")
+        for slot, visibility in ((8, "COMPUTE_AND_FRAGMENT"), (9, "VERTEX_FRAGMENT_COMPUTE"),
+                                 (10, "COMPUTE_AND_FRAGMENT"), (11, "COMPUTE_AND_FRAGMENT")):
+            with self.subTest(slot=slot):
+                self.assertRegex(
+                    host,
+                    rf"RegisterSetLayoutBinding\(\s*DescriptorSetUsage::PER_PASS,\s*{slot},\s*"
+                    rf"DescriptorSetBindingType::\w+,\s*ShaderStageVisibility::{visibility}\s*\)",
+                )
+                self.assertRegex(
+                    renderer,
+                    rf"AddBinding\(\s*cmd->_set,\s*{slot}u,\s*ShaderStageVisibility::{visibility}\s*\)",
+                )
+
+        graph = (ROOT / "Source" / "Graphs" / "SceneGraphNode.cpp").read_text(encoding="utf-8")
+        self.assertRegex(graph, r"AddBinding\(\s*set,\s*13u,\s*ShaderStageVisibility::VERTEX\s*\)")
+        light_input = (SHADERS / "Common" / "lightInput.cmn").read_text(encoding="utf-8")
+        self.assertRegex(light_input, r"DESCRIPTOR_SET_RESOURCE_LAYOUT\(PER_PASS,\s*9,\s*std430\)"
+                                      r"\s+coherent\s+ACCESS_R\s+buffer\s+dvd_LightBlock")
+        self.assertRegex(section("lightImpostorShader.glsl", "Vertex"), r"dvd_LightSource\[dvd_VertexIndex\]")
+        for backend in ("opengl", "vulkan"):
+            with self.subTest(backend=backend):
+                self.compile_shader("lightImpostorShader.glsl", "Vertex", "vert", backend)
+
     def test_particle_variants(self):
         variants = [
             ("Fragment.PrePass", ["MAIN_DISPLAY_PASS", "PRE_PASS", "HAS_VELOCITY"]),
@@ -638,7 +664,8 @@ class ShaderCompilationTests(unittest.TestCase):
             r"RegisterSetLayoutBinding\(\s*DescriptorSetUsage::PER_FRAME,\s*8,\s*DescriptorSetBindingType::\w+,\s*"
             r"ShaderStageVisibility::(\w+)\s*\)", host)
         self.assertIsNotNone(visibility)
-        self.assertIn(visibility.group(1), ("ALL", "COMPUTE_AND_DRAW", "COMPUTE_AND_GEOMETRY"))
+        self.assertIn(visibility.group(1), ("ALL", "COMPUTE_AND_FRAGMENT",
+                                            "VERTEX_FRAGMENT_COMPUTE", "COMPUTE_AND_GEOMETRY"))
 
     def test_common_easing_and_packing_helpers(self):
         names = [

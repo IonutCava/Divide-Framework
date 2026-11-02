@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/Renderer.h"
 
@@ -169,19 +170,19 @@ void Renderer::prepareLighting(const RenderStage stage,
 
             const size_t stageIndex = to_size( stage );
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 8u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 8u, ShaderStageVisibility::COMPUTE_AND_FRAGMENT );
                 Set(binding._data, LightPool::SceneBuffer(), {stageIndex, 1u});
             }
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 9u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 9u, ShaderStageVisibility::VERTEX_FRAGMENT_COMPUTE );
                 Set(binding._data, LightPool::LightBuffer(), {stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME } );
             }
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 10u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 10u, ShaderStageVisibility::COMPUTE_AND_FRAGMENT );
                 Set(binding._data, data._lightIndexBuffer.get() );
             }
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 11u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 11u, ShaderStageVisibility::COMPUTE_AND_FRAGMENT );
                 Set(binding._data, data._lightGridBuffer.get() );
             }
             {

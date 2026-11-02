@@ -15,6 +15,21 @@
 
 namespace Divide
 {
+    TEST_CASE( "Light descriptor visibility names match their shader stages", "[descriptors][lighting]" )
+    {
+        constexpr auto vertex = to_base( ShaderStageVisibility::VERTEX );
+        constexpr auto fragment = to_base( ShaderStageVisibility::FRAGMENT );
+        constexpr auto compute = to_base( ShaderStageVisibility::COMPUTE );
+        constexpr auto fragmentCompute = to_base( ShaderStageVisibility::COMPUTE_AND_FRAGMENT );
+        constexpr auto lightBuffer = to_base( ShaderStageVisibility::VERTEX_FRAGMENT_COMPUTE );
+
+        CHECK( fragmentCompute == (fragment | compute) );
+        CHECK( (fragmentCompute & vertex) == 0u );
+        CHECK( lightBuffer == (vertex | fragment | compute) );
+        CHECK( (lightBuffer & to_base( ShaderStageVisibility::GEOMETRY )) == 0u );
+        CHECK( to_base( ShaderStageVisibility::COMPUTE_AND_DRAW ) == fragmentCompute );
+    }
+
     struct WindowManagerTestAccess
     {
         static ErrorCode ApplyContextSettings(WindowManager& manager, const bool debug)

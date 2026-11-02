@@ -50,6 +50,7 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
 - `DescriptorSetUsage` is ordered by update frequency; `PER_DRAW` must remain last. Vulkan uses the enum value directly; OpenGL maps `(usage, slot)` to flat bindings.
 - Changing enum order requires bumping `BYTE_BUFFER_VERSION`: cached reflection stores usage indices.
 - Every Vulkan pipeline layout uses real shared layouts for sets 0-2, even if unused by a program, and an identical `VK_SHADER_STAGE_ALL` 128-byte push-constant range. This preserves shared-set/push-constant compatibility across pipeline changes.
+- The `PER_PASS` light buffer at slot 9 is visible to vertex, fragment, and compute stages: debug light impostors read it in their vertex shader. Slots 8, 10, and 11 are fragment/compute only. The legacy `COMPUTE_AND_DRAW` name means fragment and compute, not all draw stages; use the explicit visibility names for new bindings.
 - Partial push-constant commands merge only `dataFlags()`-selected slots into
   the Vulkan replay cache; omitted slots retain their last explicit values.
 - Command coalescing accepts complementary or equal overlapping push slots,

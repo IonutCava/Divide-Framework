@@ -1,3 +1,6 @@
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #include "Headers/GFXDevice.h"
 #include "Headers/GFXRTPool.h"
 #include "Editor/Headers/Editor.h"
@@ -260,10 +263,10 @@ namespace Divide
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 5,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_GEOMETRY ); // TREE_DATA;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 6,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_GEOMETRY ); // GRASS_DATA;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 7,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE );              // ATOMIC_COUNTER;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 8,   DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_SCENE;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 9,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_NORMAL;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 10,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_INDICES;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 11,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_GRID;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 8,   DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::COMPUTE_AND_FRAGMENT ); // LIGHT_SCENE;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 9,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::VERTEX_FRAGMENT_COMPUTE ); // LIGHT_NORMAL;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 10,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_FRAGMENT ); // LIGHT_INDICES;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 11,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_FRAGMENT ); // LIGHT_GRID;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 12,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE );              // LIGHT_CLUSTER_AABB;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 13,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE );              // LIGHT_GLOBAL_INDEX_COUNT;
         
