@@ -96,6 +96,14 @@ def cluster_config():
     return values
 
 
+def max_lights_per_cluster():
+    source = (ROOT / "Source" / "EngineConfig.h").read_text(encoding="utf-8")
+    match = re.search(r"constexpr U16 MAX_LIGHTS_PER_CLUSTER = (\d+)u;", source)
+    if not match:
+        raise ValueError("Maximum cluster light budget not found")
+    return int(match.group(1))
+
+
 def shadow_config():
     source = (ROOT / "Source" / "EngineConfig.h").read_text(encoding="utf-8")
     names = (
@@ -108,7 +116,7 @@ def shadow_config():
     return values
 
 
-def engine_header(stage, backend, defines):
+def engine_header(stage, backend, defines, cluster_light_limit=64):
     debug_source = (SHADERS / "FragmentAtoms" / "debug.frag").read_text(encoding="utf-8")
     debug_names = sorted(set(re.findall(r"\bcase\s+(DEBUG_[A-Z_]+)", debug_source)))
     texture_source = (SHADERS / "FragmentAtoms" / "materialData.frag").read_text(encoding="utf-8")
@@ -146,7 +154,7 @@ def engine_header(stage, backend, defines):
         f"#define MAX_SHADOW_CASTING_POINT_LIGHTS {shadows['MAX_SHADOW_CASTING_POINT_LIGHTS']}",
         f"#define MAX_SHADOW_CASTING_SPOT_LIGHTS {shadows['MAX_SHADOW_CASTING_SPOT_LIGHTS']}",
         f"#define MAX_SHADOW_CASTING_DIR_LIGHTS {shadows['MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS']}",
-        "#define MAX_LIGHTS_PER_CLUSTER 64",
+        f"#define MAX_LIGHTS_PER_CLUSTER {cluster_light_limit}",
         *(f"#define {name} {value}" for name, value in cluster_config().items()),
         "#define SKY_LIGHT_LAYER_IDX 0",
         f"#define WORLD_AO_LAYER_INDEX {shadows['MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS'] * shadows['MAX_CSM_SPLITS_PER_LIGHT']}",
@@ -287,8 +295,8 @@ class ShaderCompilationTests(unittest.TestCase):
         if not VALIDATOR:
             raise RuntimeError("glslangValidator is required to run the shader compilation tests")
 
-    def prepare_source(self, body, stage, backend, defines=()):
-        source = engine_header(stage, backend, defines) + expand_includes(body)
+    def prepare_source(self, body, stage, backend, defines=(), cluster_light_limit=64):
+        source = engine_header(stage, backend, defines, cluster_light_limit) + expand_includes(body)
         preprocessed = subprocess.run(
             [VALIDATOR, "--stdin", "-S", stage, "-E"],
             input=source, capture_output=True, text=True, encoding="utf-8",
@@ -296,8 +304,8 @@ class ShaderCompilationTests(unittest.TestCase):
         self.assertEqual(preprocessed.returncode, 0, preprocessed.stdout + preprocessed.stderr)
         return pack_loose_uniforms(preprocessed.stdout, backend)
 
-    def compile_source(self, body, stage, backend, defines=()):
-        source = self.prepare_source(body, stage, backend, defines)
+    def compile_source(self, body, stage, backend, defines=(), cluster_light_limit=64):
+        source = self.prepare_source(body, stage, backend, defines, cluster_light_limit)
         with tempfile.TemporaryDirectory() as directory:
             shader = Path(directory) / f"test.{stage}"
             binary = Path(directory) / "test.spv"
@@ -315,8 +323,8 @@ class ShaderCompilationTests(unittest.TestCase):
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-    def compile_shader(self, filename, key, stage, backend, defines=()):
-        self.compile_source(section(filename, key), stage, backend, defines)
+    def compile_shader(self, filename, key, stage, backend, defines=(), cluster_light_limit=64):
+        self.compile_source(section(filename, key), stage, backend, defines, cluster_light_limit)
 
     def link_shaders(self, filename, stages, backend, defines=()):
         with tempfile.TemporaryDirectory() as directory:
@@ -487,6 +495,74 @@ class ShaderCompilationTests(unittest.TestCase):
         light_input = (SHADERS / "Common" / "lightInput.cmn").read_text(encoding="utf-8")
         cluster_index = re.search(r"^uint GetClusterIndex\(.*?^\}$", light_input, re.DOTALL | re.MULTILINE).group(0)
         self.assertNotIn("TARGET_VULKAN", cluster_index)
+
+    def test_cluster_light_budget_limits(self):
+        body = section("lightCull.glsl", "Compute")
+        for backend in ("opengl", "vulkan"):
+            for limit in (1, max_lights_per_cluster()):
+                with self.subTest(backend=backend, limit=limit):
+                    header = engine_header("comp", backend, (), cluster_light_limit=limit)
+                    self.assertEqual(len(re.findall(r"^#define MAX_LIGHTS_PER_CLUSTER\b", header, re.MULTILINE)), 1)
+                    source = self.prepare_source(body, "comp", backend, cluster_light_limit=limit)
+                    self.assertRegex(source, rf"uint\s+visibleLightIndices\s*\[\s*{limit}\s*\]")
+                    self.compile_shader("lightCull.glsl", "Compute", "comp", backend, cluster_light_limit=limit)
+
+    def test_cluster_light_budget_host_and_cache_wiring(self):
+        gfx = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
+        start = gfx.index("ErrorCode GFXDevice::initRenderingAPI(")
+        end = gfx.index("ShaderProgram::OnStartup( context() )", start)
+        init = gfx[start:end]
+        self.assertGreater(gfx.index("hardwareState = initDescriptorSets();", end), end)
+        self.assertIn("return ShaderProgram::SubmitSetLayouts(*this);", gfx)
+        self.assertIn("configuredLightsPerCluster = config.rendering.numLightsPerCluster", init)
+        self.assertIn("ResolveLightsPerCluster( configuredLightsPerCluster )", init)
+        self.assertRegex(
+            init,
+            r'if\s*\(\s*configuredLightsPerCluster\s*==\s*0\s*\)\s*\{\s*'
+            r'Console::warnfn\(\s*LOCALE_STR\(\s*"WARN_ZERO_LIGHTS_PER_CLUSTER"\s*\),\s*numLightsPerCluster\s*\)',
+        )
+        self.assertRegex(
+            init,
+            r"if\s*\(\s*numLightsPerCluster\s*!=\s*configuredLightsPerCluster\s*\)\s*\{\s*"
+            r"config\.rendering\.numLightsPerCluster\s*=\s*numLightsPerCluster;\s*config\.changed\(\s*true\s*\);",
+        )
+        locale = (ROOT / "Localisation" / "enGB.ini").read_text(encoding="utf-8")
+        self.assertRegex(locale, r"(?m)^WARN_ZERO_LIGHTS_PER_CLUSTER\s*=.*\{\}")
+
+        kernel = (ROOT / "Source" / "Core" / "Kernel.cpp").read_text(encoding="utf-8")
+        self.assertLess(kernel.index(".gfx().initRenderingAPI("), kernel.index(".gfx().postInitRenderingAPI("))
+        self.assertIn("_renderer = std::make_unique<Renderer>( context() );", gfx)
+        renderer = (ROOT / "Source" / "Rendering" / "Renderer.cpp").read_text(encoding="utf-8")
+        self.assertIn("numClusters * to_U32(config.rendering.numLightsPerCluster)", renderer)
+        shader_host = (ROOT / "Source" / "Platform" / "Video" / "Shaders" / "ShaderProgram.cpp").read_text(encoding="utf-8")
+        self.assertIn('"#define MAX_LIGHTS_PER_CLUSTER " + Util::to_string( config.rendering.numLightsPerCluster )',
+                      shader_host)
+        self.assertIn("InitGLSW( gfx.renderAPI(), gfx.context().config() )", shader_host)
+        startup_start = shader_host.index("ErrorCode ShaderProgram::OnStartup(")
+        startup_end = shader_host.index("ErrorCode ShaderProgram::SubmitSetLayouts(", startup_start)
+        startup = shader_host[startup_start:startup_end]
+        self.assertIn("s_clusterLightLimit = config.rendering.numLightsPerCluster;", startup)
+        parent_start = shader_host.index("ResourcePath ShaderParentCacheLocation()")
+        parent_end = shader_host.index("ResourcePath SpvCacheLocation()", parent_start)
+        parent = shader_host[parent_start:parent_end]
+        self.assertIn("ShaderBuildCacheLocation() / ShaderAPILocation()", parent)
+        self.assertIn('Util::StringFormat( "cluster-light-limit-{}", s_clusterLightLimit )', parent)
+        for name, next_name in (("SpvCacheLocation", "ReflCacheLocation"),
+                                ("ReflCacheLocation", "TxtCacheLocation"),
+                                ("TxtCacheLocation", "ShaderBinaryCacheTag")):
+            with self.subTest(cache=name):
+                start = shader_host.index(f"ResourcePath {name}()")
+                end = shader_host.index(next_name, start)
+                self.assertIn("ShaderParentCacheLocation()", shader_host[start:end])
+        for start_name, end_name in (("bool ValidateCacheLocked(", "bool DeleteCacheLocked("),
+                                     ("bool DeleteCacheLocked(", "bool DeleteCache("),
+                                     ("bool ShaderProgram::SaveToCache(", "bool ShaderProgram::LoadFromCache("),
+                                     ("bool ShaderProgram::LoadFromCache(", "bool ShaderProgram::loadInternal(")):
+            start = shader_host.index(start_name)
+            end = shader_host.index(end_name, start)
+            for cache in ("SpvCacheLocation()", "ReflCacheLocation()", "TxtCacheLocation()"):
+                with self.subTest(operation=start_name, cache=cache):
+                    self.assertIn(cache, shader_host[start:end])
 
     def test_hiz_compute(self):
         host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")

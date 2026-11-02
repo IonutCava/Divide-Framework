@@ -258,6 +258,7 @@ namespace Divide
         U64 s_newestShaderAtomWriteTime = 0u; ///< Used to detect modified shader atoms to validate/invalidate shader cache
         bool s_useShaderCache = true;
         RenderAPI s_renderAPI = RenderAPI::COUNT;
+        I32 s_clusterLightLimit = 0;
 
         U8 s_textureSlot = 0u;
         U8 s_imageSlot   = 0u;
@@ -287,7 +288,8 @@ namespace Divide
 
         [[nodiscard]] ResourcePath ShaderParentCacheLocation()
         {
-            return ShaderBuildCacheLocation() / ShaderAPILocation();
+            return ShaderBuildCacheLocation() / ShaderAPILocation() /
+                   ResourcePath{ Util::StringFormat( "cluster-light-limit-{}", s_clusterLightLimit ) };
         }
 
         [[nodiscard]] ResourcePath SpvCacheLocation()
@@ -537,8 +539,8 @@ namespace Divide
         // Add version as the first shader statement, followed by copyright notice
         AppendToShaderHeader( ShaderType::COUNT, "#version 460" );
         AppendToShaderHeader( ShaderType::COUNT, "___PROGRAM_NAME___" );
-        AppendToShaderHeader( ShaderType::COUNT, "/*Copyright (c) 2018 DIVIDE-Studio*/" );
-        AppendToShaderHeader( ShaderType::COUNT, "/*Copyright (c) 2009 Ionut Cava*/" );
+        AppendToShaderHeader( ShaderType::COUNT, "/*Copyright (c) 2026 DIVIDE-Studio*/" );
+        AppendToShaderHeader( ShaderType::COUNT, "/*Copyright (c) 2009-2026 Ionut Cava*/" );
 
         if ( renderingAPI == RenderAPI::OpenGL )
         {
@@ -1121,6 +1123,7 @@ namespace Divide
         const Configuration& config = context.config();
         s_useShaderCache = config.debug.cache.enabled && config.debug.cache.shaders;
         s_renderAPI = context.gfx().renderAPI();
+        s_clusterLightLimit = config.rendering.numLightsPerCluster;
 
         FileList list{};
         if ( s_useShaderCache )

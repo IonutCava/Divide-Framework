@@ -421,16 +421,13 @@ namespace Divide
 
         _rtPool = std::make_unique<GFXRTPool>( *this );
 
-        I32 numLightsPerCluster = config.rendering.numLightsPerCluster;
-        if ( numLightsPerCluster < 0 )
+        const I32 configuredLightsPerCluster = config.rendering.numLightsPerCluster;
+        const I32 numLightsPerCluster = Config::Lighting::ClusteredForward::ResolveLightsPerCluster( configuredLightsPerCluster );
+        if ( configuredLightsPerCluster == 0 )
         {
-            numLightsPerCluster = to_I32( Config::Lighting::ClusteredForward::MAX_LIGHTS_PER_CLUSTER );
+            Console::warnfn( LOCALE_STR( "WARN_ZERO_LIGHTS_PER_CLUSTER" ), numLightsPerCluster );
         }
-        else
-        {
-            numLightsPerCluster = std::min( numLightsPerCluster, to_I32( Config::Lighting::ClusteredForward::MAX_LIGHTS_PER_CLUSTER ) );
-        }
-        if ( numLightsPerCluster != config.rendering.numLightsPerCluster )
+        if ( numLightsPerCluster != configuredLightsPerCluster )
         {
             config.rendering.numLightsPerCluster = numLightsPerCluster;
             config.changed( true );

@@ -50,6 +50,7 @@ Cluster conventions shared by the builder (`lightBuildClusteredAABBs.glsl`) and 
 - XY tiles are viewport-relative (`gl_FragCoord.xy - dvd_ViewPort.xy`), bottom-up on both backends, and clamped to the grid.
 - Z slices are exponential in view distance: `slice = log(d) * dvd_LightScale + dvd_LightBias`, with scale/bias computed from the camera planes in `GFXDevice::renderFromCamera`. Lookup recovers `d` with `ViewDistanceFromDepth`, which handles perspective and orthographic projections.
 - Each cluster has one `MAX_LIGHTS_PER_CLUSTER` budget shared by point and spot lights; indices are written points first, then spots.
+- `rendering.numLightsPerCluster` is normalized before shader and renderer startup: negative values select the engine maximum, zero warns and becomes one, and larger values are capped at the engine maximum. The effective value sizes both the shader array and the light-index buffer.
 - Spot lights are culled with the minimal sphere around their cone; the slant height travels as float bits in `_options.z` (`SpotConeSlantHeight`).
 - Each render stage uploads at most `MAX_ACTIVE_LIGHTS_PER_FRAME` eligible lights. A stage with no eligible lights skips the light-buffer write but still uploads scene data with zero light counts.
 

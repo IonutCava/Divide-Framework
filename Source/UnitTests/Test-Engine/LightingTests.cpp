@@ -7,6 +7,7 @@
 */
 
 #include "UnitTests/unitTestCommon.h"
+#include "EngineConfig.h"
 #include "Rendering/Lighting/Headers/LightUploadState.h"
 #include "Rendering/Lighting/Headers/ShadowPassState.h"
 #include "Rendering/Lighting/Headers/SpotLightGeometry.h"
@@ -14,9 +15,33 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 
 namespace Divide
 {
+    TEST_CASE("Cluster light budgets always resolve to a valid limit", "[lighting][clusters]")
+    {
+        using namespace Config::Lighting::ClusteredForward;
+        constexpr I32 maxLimit = static_cast<I32>( MAX_LIGHTS_PER_CLUSTER );
+
+        STATIC_CHECK( ResolveLightsPerCluster( -1 ) == maxLimit );
+        STATIC_CHECK( ResolveLightsPerCluster( 0 ) == 1 );
+        STATIC_CHECK( ResolveLightsPerCluster( 1 ) == 1 );
+        STATIC_CHECK( ResolveLightsPerCluster( maxLimit ) == maxLimit );
+        CHECK( ResolveLightsPerCluster( std::numeric_limits<I32>::min() ) == maxLimit );
+        CHECK( ResolveLightsPerCluster( -2 ) == maxLimit );
+        if constexpr ( maxLimit > 1 )
+        {
+            CHECK( ResolveLightsPerCluster( maxLimit / 2 ) == maxLimit / 2 );
+        }
+        for ( I32 limit = 1; limit <= maxLimit; ++limit )
+        {
+            CHECK( ResolveLightsPerCluster( limit ) == limit );
+        }
+        CHECK( ResolveLightsPerCluster( maxLimit + 1 ) == maxLimit );
+        CHECK( ResolveLightsPerCluster( std::numeric_limits<I32>::max() ) == maxLimit );
+    }
+
     TEST_CASE("Light uploads never reserve past the configured capacity", "[lighting][lights]")
     {
         std::uint32_t count = 4095u;

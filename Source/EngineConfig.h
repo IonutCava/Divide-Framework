@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -168,6 +168,17 @@ namespace Lighting {
     namespace ClusteredForward {
         /// Upper limit of lights used in a cluster. The lower, the better performance at the cost of pop-in/glitches. At ~100, any temporal issues should remain fairly hidden
         constexpr U16 MAX_LIGHTS_PER_CLUSTER = 100u;
+
+        [[nodiscard]] constexpr I32 ResolveLightsPerCluster( const I32 configuredLimit ) noexcept
+        {
+            static_assert( MAX_LIGHTS_PER_CLUSTER >= 1u );
+            constexpr I32 maxLimit = static_cast<I32>( MAX_LIGHTS_PER_CLUSTER );
+            if ( configuredLimit < 0 || configuredLimit > maxLimit )
+            {
+                return maxLimit;
+            }
+            return configuredLimit == 0 ? 1 : configuredLimit;
+        }
 
         /// Controls compute shader dispatch. e.g. Dispatch Z count = CLUSTERS_Z / CLUSTERS_Z_THREADS
         constexpr U8 CLUSTERS_X = 16u;
