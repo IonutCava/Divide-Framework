@@ -343,6 +343,138 @@ int main() {
 """
         run_cpp(self, source.replace("@VULKAN_INITIALIZATION@", initialization))
 
+    def test_vulkan_readback_allocation_requests_mapped_random_access(self):
+        vulkan = (VULKAN / "Buffers" / "vkBufferImpl.cpp").read_text(encoding="utf-8")
+        constructor = vulkan[vulkan.index("vkBufferImpl::vkBufferImpl"):vulkan.index("BufferLock vkBufferImpl::writeBytes")]
+        self.assertRegex(
+            constructor,
+            r"if \( _params\._hostVisible \)\s*\{[^}]*?"
+            r"vmaallocInfo\.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT \| VMA_ALLOCATION_CREATE_MAPPED_BIT;",
+        )
+        self.assertLess(constructor.index("if ( _params._hostVisible )"),
+                        constructor.index("_params._updateFrequency != BufferUpdateFrequency::ONCE"))
+        shader_buffer = (ROOT / "Source" / "Platform" / "Video" / "Buffers" / "ShaderBuffer" / "ShaderBuffer.cpp").read_text(encoding="utf-8")
+        self.assertRegex(shader_buffer, r"void ShaderBuffer::readBytes[\s\S]*?_params\._hostVisible")
+        vk_wrapper = (VULKAN / "VKWrapper.cpp").read_text(encoding="utf-8")
+        self.assertRegex(
+            vk_wrapper,
+            r"case BufferSyncUsage::GPU_WRITE_TO_CPU_READ:\s*\{[^}]*?"
+            r"dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT;\s*"
+            r"memoryBarrier\.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT;",
+        )
+
+    def test_vulkan_readback_visibility_for_memory_types(self):
+        vulkan = (VULKAN / "Buffers" / "vkBufferImpl.cpp").read_text(encoding="utf-8")
+        begin = vulkan.index("void vkBufferImpl::readBytes")
+        begin = vulkan.index("{", begin) + 1
+        end = vulkan.index("\n    }\n\n    namespace VKUtil", begin)
+        readback = vulkan[begin:end]
+
+        source = r"""
+#include <algorithm>
+#include <array>
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+#include <cassert>
+#include <cstdint>
+#include <cstring>
+#include <utility>
+#include <vector>
+using Byte = std::uint8_t;
+using U32 = std::uint32_t;
+using bufferPtr = void*;
+struct Mutex {};
+template<typename T> struct LockGuard { explicit LockGuard(T&) {} };
+struct AllocatorInstance {
+    int value = 0;
+    int* _allocator = &value;
+    Mutex _allocatorLock;
+};
+struct Tracker { AllocatorInstance _allocatorInstance; };
+struct VK_API {
+    static Tracker& GetStateTracker() { static Tracker tracker; return tracker; }
+};
+// "device" holds GPU writes made available to the host domain; "host" is the CPU's view of the mapping.
+struct Allocation {
+    std::vector<Byte> device;
+    std::vector<Byte> host;
+    std::vector<int> events;
+    bool mapped = false;
+};
+int vmaMapMemory(int, Allocation* allocation, void** data) {
+    assert(!allocation->mapped);
+    allocation->mapped = true;
+    allocation->events.push_back(1);
+    *data = allocation->host.data();
+    return 0;
+}
+int vmaInvalidateAllocation(int, Allocation* allocation, std::size_t offset, std::size_t size) {
+    assert(allocation->mapped && offset + size <= allocation->host.size());
+    allocation->events.push_back(2);
+    std::copy_n(allocation->device.begin() + offset, size, allocation->host.begin() + offset);
+    return 0;
+}
+void vmaUnmapMemory(int, Allocation* allocation) {
+    assert(allocation->mapped);
+    allocation->mapped = false;
+    allocation->events.push_back(3);
+}
+#define VK_CHECK(call) do { assert((call) == 0); } while (false)
+#define DIVIDE_ASSERT(expression, message) (expression)
+struct AllocationInfo { void* pMappedData = nullptr; };
+struct Params { bool _hostVisible = true; };
+struct Range { std::size_t _startOffset; std::size_t _length; };
+struct Readback {
+    Allocation* _allocation;
+    Params _params;
+    bool _isMemoryMappable;
+    bool _isMemoryCoherent;
+    AllocationInfo _allocInfo;
+    void readBytes(const Range range, std::pair<bufferPtr, std::size_t> outData) {
+        @VULKAN_READBACK@
+    }
+};
+int main() {
+    constexpr std::size_t size = 64;
+    struct Case { bool hostVisible, mappable, coherent, persistent; };
+    const std::array<Case, 6> cases{{
+        {true, true, true, true}, {true, true, false, true}, {true, true, true, false},
+        {true, true, false, false}, {true, false, false, false}, {false, true, true, true}
+    }};
+    for (const Case c : cases) {
+        for (const Range range : {Range{0u, size}, Range{16u, 32u}}) {
+            Allocation allocation;
+            allocation.device.resize(size);
+            for (std::size_t i = 0; i < size; ++i) {
+                allocation.device[i] = static_cast<Byte>(i * 3u + 1u);
+            }
+            allocation.host = c.coherent ? allocation.device : std::vector<Byte>(size, 0xa5);
+            allocation.mapped = c.persistent;
+            Readback readback{&allocation, {c.hostVisible}, c.mappable, c.coherent,
+                              {c.persistent ? allocation.host.data() : nullptr}};
+            std::vector<Byte> out(range._length, 0xcc);
+            readback.readBytes(range, {out.data(), out.size()});
+
+            const bool readable = c.hostVisible && c.mappable;
+            if (!readable) {
+                assert(std::all_of(out.begin(), out.end(), [](Byte b) { return b == 0u; }));
+                assert(allocation.events.empty());
+                continue;
+            }
+            assert(std::equal(out.begin(), out.end(), allocation.device.begin() + range._startOffset));
+            std::vector<int> expected;
+            if (!c.persistent) expected.push_back(1);
+            if (!c.coherent) expected.push_back(2);
+            if (!c.persistent) expected.push_back(3);
+            assert(allocation.events == expected);
+            assert(allocation.mapped == c.persistent);
+        }
+    }
+}
+"""
+        run_cpp(self, source.replace("@VULKAN_READBACK@", readback))
+
 
 if __name__ == "__main__":
     unittest.main()

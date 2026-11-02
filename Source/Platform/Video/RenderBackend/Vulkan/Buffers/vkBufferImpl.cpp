@@ -143,16 +143,18 @@ namespace Divide
         VmaAllocationCreateInfo vmaallocInfo{};
         vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
         vmaallocInfo.flags = 0;
-        if ( _params._updateFrequency != BufferUpdateFrequency::ONCE )
+        if ( _params._hostVisible )
+        {
+            // CPU readback needs host-visible memory that is efficient to read (cached when available), so request
+            // random host access. Keeping it persistently mapped lets readBytes avoid mapping on every read.
+            vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        }
+        else if ( _params._updateFrequency != BufferUpdateFrequency::ONCE )
         {
             // If we write to this buffer often (e.g. GPU uniform blocks), we might as well persistently map it and use
             // a lock manager to protect writes (same as GL_API's lockManager system)
             // A staging buffer is just way too slow for multiple writes per frame.
             vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
-        }
-        else if ( _params._hostVisible )
-        {
-            vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
         }
         // Allocate the vertex buffer (as a vb buffer and transfer destination)
         VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo( usageFlags, _totalBufferSize );
@@ -327,20 +329,37 @@ namespace Divide
 
     void vkBufferImpl::readBytes( const BufferRange<> range, std::pair<bufferPtr, size_t> outData )
     {
-        if (_isMemoryMappable )
+        // Host-visible buffers request VMA host access, so their memory is always mappable. Device-local memory
+        // cannot be mapped at all; reading it would need a GPU copy into a readback buffer instead.
+        if ( !DIVIDE_ASSERT( _params._hostVisible && _isMemoryMappable, "vkBufferImpl::readBytes: buffer memory is not host-visible!" ) )
         {
-            Byte* mappedRange = (Byte*)_allocInfo.pMappedData;
-            memcpy( outData.first, &mappedRange[range._startOffset], range._length );
+            memset( outData.first, 0, range._length );
+            return;
         }
-        else
+
+        LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+        const bool mapTemporarily = _allocInfo.pMappedData == nullptr;
+        Byte* mappedRange = (Byte*)_allocInfo.pMappedData;
+        if ( mapTemporarily )
         {
-            void* mappedData;
-            LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
-            vmaMapMemory( *VK_API::GetStateTracker()._allocatorInstance._allocator, _allocation, &mappedData );
+            void* mappedData = nullptr;
+            VK_CHECK( vmaMapMemory( *VK_API::GetStateTracker()._allocatorInstance._allocator, _allocation, &mappedData ) );
+            mappedRange = static_cast<Byte*>( mappedData );
+        }
 
-            Byte* mappedRange = (Byte*)mappedData;
-            memcpy( outData.first, &mappedRange[range._startOffset], range._length );
+        if ( !_isMemoryCoherent )
+        {
+            // Make GPU writes (already made available to the host domain by a HOST_READ barrier) visible to the CPU.
+            VK_CHECK( vmaInvalidateAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator,
+                                               _allocation,
+                                               range._startOffset,
+                                               range._length ) );
+        }
 
+        memcpy( outData.first, &mappedRange[range._startOffset], range._length );
+
+        if ( mapTemporarily )
+        {
             vmaUnmapMemory( *VK_API::GetStateTracker()._allocatorInstance._allocator, _allocation );
         }
     }

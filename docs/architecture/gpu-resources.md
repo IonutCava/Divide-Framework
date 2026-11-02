@@ -56,9 +56,7 @@ Textures use immutable `glTextureStorage*` storage and DSA mip/layer uploads; th
 - Non-mappable buffers and initial allocations without VMA host-access flags use staging allocations and explicit transfer commands. Initial and later staged writes flush the staging range before the transfer. Inspect mapping assumptions, staging lifetime, copies, and synchronization separately.
 - `vkTexture` derives image usage flags from engine `ImageUsage`, usually uses dedicated device-preferred VMA allocations, uploads through staging, explicitly transitions layouts, and can generate mipmaps on the GPU.
 
-`vkBufferImpl` CPU readbacks do not yet invalidate non-coherent mapped allocations,
-and assume that host-visible allocations are persistently mapped. Readback mapping,
-coherence, and synchronization require a separate audit.
+CPU-readable buffers (`_hostVisible`, required by `ShaderBuffer::readBytes`) request `HOST_ACCESS_RANDOM | MAPPED`. VMA therefore places them in host-visible, preferably cached memory and keeps them persistently mapped. `vkBufferImpl::readBytes` invalidates non-coherent ranges before copying. If a mapping is missing, it maps temporarily. It rejects non-host-visible memory instead of mapping it. GPU writers must record a `GPU_WRITE_TO_CPU_READ` lock, which becomes a shader-write to host-read barrier. Callers must not read a slot the GPU may still be writing. The occlusion cull counter uses per-frame buffers, so its statistics lag by design.
 
 Changes to writable/readable images must audit usage flags, transitions, staging lifetime, and consumers together.
 `vkTexture::GetAspectFlags` follows depth/stencil packing, not attachment usage:
