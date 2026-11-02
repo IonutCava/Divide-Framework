@@ -17,8 +17,10 @@ vcpkg_from_github(
         skip-building-libsquish.patch
         fix-intrinsic-function.patch
         fix-release-flags.patch
-        portable-architecture.patch
 )
+
+vcpkg_replace_string("${SOURCE_PATH}/cmake/OptimalOptions.cmake"
+    " -march=native" "")
 
 vcpkg_check_features(
     OUT_FEATURE_OPTIONS FEATURE_OPTIONS
