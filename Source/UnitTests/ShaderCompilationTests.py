@@ -530,6 +530,21 @@ class ShaderCompilationTests(unittest.TestCase):
         gfx = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
         self.assertIn("if ( Config::Lighting::ClusteredForward::IsValidClusterDepthRange( zNear, zFar ) )", gfx)
 
+    def test_light_constructors_apply_requested_range(self):
+        light = (ROOT / "Source" / "Rendering" / "Lighting" / "Light.cpp").read_text(encoding="utf-8")
+        constructor = re.search(r"Light::Light\((.*?)\)\s*:(.*?)\{", light, re.DOTALL)
+        self.assertIn("const F32 range", constructor.group(1))
+        self.assertNotIn("maybe_unused", constructor.group(1))
+        self.assertRegex(constructor.group(2), r"_range\( range \)")
+        components = ROOT / "Source" / "ECS" / "Components"
+        for name, expected in (("PointLightComponent.cpp", "20.0f"), ("SpotLightComponent.cpp", "30.0f"),
+                               ("DirectionalLightComponent.cpp", "g_defaultLightDistance")):
+            with self.subTest(component=name):
+                source = (components / name).read_text(encoding="utf-8")
+                self.assertRegex(source, rf"Light\(sgn, {re.escape(expected)}, LightType::")
+        directional = (components / "DirectionalLightComponent.cpp").read_text(encoding="utf-8")
+        self.assertNotIn("range(g_defaultLightDistance)", directional)
+
     def test_cluster_light_budget_limits(self):
         body = section("lightCull.glsl", "Compute")
         for backend in ("opengl", "vulkan"):

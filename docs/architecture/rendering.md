@@ -59,6 +59,9 @@ Cluster conventions shared by the builder (`lightBuildClusteredAABBs.glsl`) and 
 
 ### Shadow maps and spotlights
 
+Light components pass their initial range to the `Light` constructor (point 20, spot 30, directional
+`g_defaultLightDistance`); serialized scene values override it on load.
+
 The shadow pass assigns per-type property indices afresh after eligibility and
 successful generation or cache reuse. A cached layer range is reusable only
 while every reserved layer still belongs to that light and has the expected

@@ -38,9 +38,10 @@ namespace Divide
         }
     }
 
-    Light::Light( SceneGraphNode* sgn, [[maybe_unused]] const F32 range, const LightType type, LightPool& parentPool )
+    Light::Light( SceneGraphNode* sgn, const F32 range, const LightType type, LightPool& parentPool )
         : IEventListener( sgn->sceneGraph()->GetECSEngine() ),
         _castsShadows( false ),
+        _range( range ),
         _sgn( sgn ),
         _parentPool( parentPool ),
         _type( type )
