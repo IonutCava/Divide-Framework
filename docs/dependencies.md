@@ -40,4 +40,5 @@ below.
 
 The imgui-node-editor sources retain the `fix-vec2-math-operators`,
 `remove-getkeyindex`, and `fix-imgui-v1.92.5` patches from the pinned vcpkg port.
-They also adapt draw calls to ImGui 1.92.8's parameter order and closed-path flag.
+They also include `<exception>` for `std::terminate` and adapt draw calls to
+ImGui 1.92.8's parameter order and closed-path flag.

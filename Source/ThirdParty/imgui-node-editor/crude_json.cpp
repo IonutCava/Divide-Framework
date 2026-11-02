@@ -9,9 +9,11 @@
 //
 // CREDITS
 //   Written by Michal Cichon
+//   Local modifications copyright (c) 2026 DIVIDE-Studio
 # include "crude_json.h"
 # include <iomanip>
 # include <limits>
+# include <exception>
 # include <cstdlib>
 # include <clocale>
 # include <cmath>
