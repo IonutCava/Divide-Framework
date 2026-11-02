@@ -201,7 +201,7 @@ endif()
 
 target_link_libraries( ${APP_EXE_DIVIDE} PUBLIC ${COMMON_LIBS}
                                          PRIVATE glm::glm
-                                         PRIVATE unofficial::imgui-node-editor::imgui-node-editor
+                                         PRIVATE divide_imgui_node_editor
 )
 
 
@@ -256,6 +256,7 @@ if( BUILD_TESTING_INTERNAL )
 
     add_executable( ${APP_EXE_TEST_ENGINE} "UnitTests/main.cpp" ${TEST_ENGINE_SOURCE})
     target_compile_definitions( ${APP_EXE_TEST_ENGINE} PRIVATE ENGINE_TESTS )
+    target_link_libraries( ${APP_EXE_TEST_ENGINE} PRIVATE divide_imgui_node_editor )
 
     foreach( APP_TEST_EXE ${APP_TEST_EXES} )
         add_dependencies(${APP_TEST_EXE} ${APP_EXE_DIVIDE}BinGenerated)
