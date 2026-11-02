@@ -20,6 +20,27 @@ OPERATORS = ROOT / "Source" / "Rendering" / "PostFX" / "CustomOperators"
 
 
 class PostFXTests(unittest.TestCase):
+    def test_bloom_state_source_views_and_configuration(self):
+        host = (OPERATORS / "BloomPreRenderOperator.cpp").read_text(encoding="utf-8")
+        shader = (SHADERS / "bloom.glsl").read_text(encoding="utf-8")
+        for field in ("filterRadius", "strength", "useThreshold", "threshold", "knee"):
+            self.assertIn(f"_{field} = bloomConfig.{field};", host)
+        self.assertIn("ImageView inputView = screenTex->getView();", host)
+        self.assertIn("inputView = bloomTex->getView({._offset = i, ._count = 1u});", host)
+        self.assertIn("1.f / vec2(textureSize(srcTexture, 0))", shader)
+        self.assertIn("const F32 knee = std::max(_knee, 0.f);", host)
+        start = host.index("for (U16 i = mipCount() - 1u")
+        end = host.index("GFX::EnqueueCommand<GFX::EndDebugScopeCommand>", start)
+        upsample = host[start:end]
+        self.assertNotIn("if (", upsample)
+        pipeline = upsample.index("BindPipelineCommand")
+        push = upsample.index("SendPushConstantsCommand")
+        draw = upsample.index("DrawCommand")
+        self.assertLess(pipeline, push)
+        self.assertLess(push, draw)
+        self.assertIn("_bloomUpscalePipeline", upsample)
+        self.assertNotIn("_filterRadiusChanged", host)
+
     def test_antialiasing_quality_contract(self):
         header = (OPERATORS / "Headers" / "PostAAPreRenderOperator.h").read_text(encoding="utf-8")
         begin = header.index("    static constexpr U8 MAX_SMAA_QUALITY_LEVEL")

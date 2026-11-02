@@ -59,15 +59,15 @@ float KarisAverage(in vec3 col)
 }
 
 //ref: https://github.com/tgalaj/RapidGL/blob/master/src/demos/26_bloom/downscale.comp
-// Curve = (threshold - knee, knee * 2.0, knee * 0.25)
-vec3 quadratic_threshold(vec3 color, float threshold, vec3 curve)
+// Curve = (threshold - knee, knee * 2.0).
+vec3 quadratic_threshold(vec3 color, float threshold, vec2 curve)
 {
     // Pixel brightness
     float br = max(color.r, max(color.g, color.b));
 
     // Under-threshold part: quadratic curve
     float rq = clamp(br - curve.x, 0.0, curve.y);
-    rq = curve.z * rq * rq;
+    rq = curve.y > 0.f ? 0.5f * rq * (rq / curve.y) : 0.f;
 
     // Combine and apply the brightness response curve.
     color *= max(rq, br - threshold) / max(br, M_EPSILON);
@@ -81,8 +81,9 @@ void main()
     //x = threshold
     //y = threshold - knee
     //z = 2.0 * knee
-    //w = 0.25 * knee
+    //w = unused
 
+    const vec2 invSrcResolution = 1.f / vec2(textureSize(srcTexture, 0));
     const float x = invSrcResolution.x;
     const float y = invSrcResolution.y;
 
@@ -142,7 +143,7 @@ void main()
         _downsample = max(_downsample, M_EPSILON);
         if (useThreshold)
         {
-            _downsample = quadratic_threshold(_downsample, thresholdParams.x, thresholdParams.yzw);
+            _downsample = quadratic_threshold(_downsample, thresholdParams.x, thresholdParams.yz);
         }
     }
     else

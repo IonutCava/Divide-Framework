@@ -267,6 +267,63 @@ layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
 
 
 class PostFXMathTests(unittest.TestCase):
+    def test_bloom_soft_knee_and_zero_knee(self):
+        source = section("bloom.glsl", "Fragment.BloomDownscale")
+        match = re.search(r"^vec3 quadratic_threshold\(.*?^\}", source, re.MULTILINE | re.DOTALL)
+        self.assertIsNotNone(match)
+        cases = [
+            (0.0, 1.0, 0.1), (0.8, 1.0, 0.1), (0.9, 1.0, 0.1),
+            (1.0, 1.0, 0.1), (1.1, 1.0, 0.1), (2.0, 1.0, 0.1),
+            (1.0, 1.0, 0.0), (1.5, 1.0, 0.0), (1.0, 1.0, 1e-7),
+        ]
+        calls = "\n".join(
+            f"values[{index}] = quadratic_threshold(vec3({brightness:.9f}, {brightness * 0.5:.9f}, "
+            f"{brightness * 0.25:.9f}), {threshold:.9f}, "
+            f"vec2({threshold - knee:.9f}, {2 * knee:.9f})).x;"
+            for index, (brightness, threshold, knee) in enumerate(cases)
+        )
+        shader = f"""
+#version 460
+#define M_EPSILON 1e-5
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+{match.group(0)}
+void main() {{ {calls} }}
+"""
+        actual = execute(shader, len(cases))
+        for index, (brightness, threshold, knee) in enumerate(cases):
+            with self.subTest(brightness=brightness, knee=knee):
+                part = max(0.0, min(brightness - threshold + knee, 2 * knee))
+                soft = 0.25 * part * part / knee if knee > 0 else 0
+                expected = brightness * max(soft, brightness - threshold) / max(brightness, 1e-5)
+                self.assertTrue(math.isfinite(actual[index]))
+                self.assertAlmostEqual(actual[index], expected, delta=2e-6)
+
+    def test_bloom_uses_source_view_texel_size(self):
+        source = section("bloom.glsl", "Fragment.BloomDownscale")
+        match = re.search(r"const vec2 invSrcResolution\s*=\s*[^;]+;", source)
+        self.assertIsNotNone(match)
+        shader = f"""
+#version 460
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+#define textureSize(tex, lod) (tex)
+void main() {{
+    const ivec2 sizes[4] = ivec2[4](ivec2(1920,1080), ivec2(960,540),
+                                    ivec2(479,269), ivec2(1,1));
+    for (int i = 0; i < 4; ++i) {{
+        ivec2 srcTexture = sizes[i];
+        {match.group(0)}
+        values[2 * i] = invSrcResolution.x;
+        values[2 * i + 1] = invSrcResolution.y;
+    }}
+}}
+"""
+        actual = execute(shader, 8)
+        for index, size in enumerate(((1920, 1080), (960, 540), (479, 269), (1, 1))):
+            self.assertAlmostEqual(actual[2 * index], 1 / size[0], delta=1e-7)
+            self.assertAlmostEqual(actual[2 * index + 1], 1 / size[1], delta=1e-7)
+
     def test_ssao_upsample_always_selects_a_valid_sample(self):
         source = section("SSAOPass.glsl", "Fragment.SSAOUpsample")
         match = re.search(r"^float nearest_depth_ao\(\).*?^\}", source, re.MULTILINE | re.DOTALL)

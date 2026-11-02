@@ -125,6 +125,9 @@ FXAA accepts levels 1-5. The host normalizes configured levels and both shader
 paths clamp their table indices. Half-resolution SSAO selects one of its four
 sampled depths deterministically, including ties, before copying that sample's
 normal.
+Bloom downsampling derives texel spacing from the bound source view. Its
+threshold uses a soft knee, or a hard threshold for a zero/negative knee, and
+every upsample pass rebinds its pipeline and radius data.
 Passes use `BeginRenderPassCommand` with ordinary pipeline/resource binding commands.
 
 - Screen-space effects using existing inputs generally belong in PostFX/pre-render operators.

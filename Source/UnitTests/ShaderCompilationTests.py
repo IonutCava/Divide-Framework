@@ -153,6 +153,8 @@ def engine_header(stage, backend, defines, cluster_light_limit=64):
         "#define INV_M_PI 0.31830988618379067153",
         "#define TWO_M_PI 6.28318530717958647692",
         "#define M_EPSILON 1e-5f",
+        "#define M_LUMA_VEC vec3(0.2126f, 0.7152f, 0.0722f)",
+        "#define GET_LUMA_VEC3(X) dot(X, M_LUMA_VEC)",
         "#define Squared(X) (X * X)",
         "#define Saturate(X) clamp(X, 0, 1)",
         "#define Mad(a, b, c) (a * b + c)",
@@ -403,6 +405,19 @@ class ShaderCompilationTests(unittest.TestCase):
             for variant in ("Fragment.SSAODownsample", "Fragment.SSAOUpsample", "Fragment.SSAOBlur"):
                 with self.subTest(backend=backend, shader=variant):
                     self.compile_shader("SSAOPass.glsl", variant, "frag", backend)
+
+    def test_bloom_variants(self):
+        defines = [
+            "performKarisAverage (uint(PushData0[0].z) == 1)",
+            "useThreshold (uint(PushData0[0].w) == 1)",
+            "thresholdParams PushData0[1].xyzw",
+            "filterRadiusX PushData0[0].x",
+            "filterRadiusY PushData0[0].y",
+        ]
+        for backend in ("opengl", "vulkan"):
+            for variant in ("Fragment.BloomDownscale", "Fragment.BloomUpscale"):
+                with self.subTest(backend=backend, shader=variant):
+                    self.compile_shader("bloom.glsl", variant, "frag", backend, defines)
 
     def test_light_impostor_descriptor_visibility(self):
         host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
