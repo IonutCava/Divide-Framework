@@ -20,6 +20,19 @@ OPERATORS = ROOT / "Source" / "Rendering" / "PostFX" / "CustomOperators"
 
 
 class PostFXTests(unittest.TestCase):
+    def test_ssr_uses_previous_frame_and_current_camera_projection(self):
+        shader = (SHADERS / "ScreenSpaceReflections.glsl").read_text(encoding="utf-8")
+        host = (OPERATORS / "SSRPreRenderOperator.cpp").read_text(encoding="utf-8")
+        batch = (ROOT / "Source" / "Rendering" / "PostFX" / "PreRenderBatch.cpp").read_text(encoding="utf-8")
+        self.assertIn("RenderTargetNames::SCREEN_PREV", batch)
+        self.assertIn("op->execute(idx, cameraSnapshot, prevScreenHandle", batch)
+        self.assertIn('_ID( "previousViewProjectionMatrix" )', host)
+        self.assertIn("sendPushConstantsCmd->_fastData.data[1] = cameraSnapshot._projectionMatrix;", host)
+        self.assertIn("PreviousFrameUV(prevClip, prevUV)", shader)
+        self.assertIn("textureLod(texScreen, prevUV", shader)
+        self.assertNotIn('_ID( "previousViewMatrix" )', host)
+        self.assertNotIn('_ID( "previousProjectionMatrix" )', host)
+
     def test_oit_normal_composition_uses_independent_alpha_blending(self):
         source = (ROOT / "Source" / "Rendering" / "RenderPass" / "RenderPassExecutor.cpp").read_text(encoding="utf-8")
         start = source.index("BlendingSettings& normalState =")

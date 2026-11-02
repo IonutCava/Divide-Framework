@@ -153,6 +153,14 @@ and orders vignette edges; equal vignette edges produce a hard cutoff.
 Framebuffer debug views initialize all shared preview uniforms per view.
 Numerical render targets bypass sRGB decoding; signed normals and velocities
 are remapped for display, and zero-length normalization is defined.
+SSR traces view-space ray segments in either depth direction, clips them to the
+near plane, ray endpoint and screen rectangle, and reconstructs hit positions
+with the same perspective-correct progress used by the march. It reconstructs
+scene depth from the current projection and uses a parallel camera direction for
+orthographic views. Previous-frame colour is sampled only for valid clip-space
+reprojections and stored unweighted; the material pass applies the SSR blend
+weight once. There is no previous-depth disocclusion test, so temporal
+reflections remain approximate.
 OIT composition preserves the existing normal/roughness RGB for revealage at
 or above 0.5. Below that threshold it selects the complete OIT normal RGB using
 independent attachment blending; the destination alpha is preserved. The OIT

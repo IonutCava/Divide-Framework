@@ -465,6 +465,12 @@ class ShaderCompilationTests(unittest.TestCase):
                 with self.subTest(backend=backend, multisampled=bool(defines)):
                     self.compile_shader("OITComposition.glsl", "Fragment", "frag", backend, defines)
 
+    def test_screen_space_reflections(self):
+        for backend in ("opengl", "vulkan"):
+            with self.subTest(backend=backend):
+                self.compile_shader("ScreenSpaceReflections.glsl", "Fragment", "frag", backend,
+                                    ["INV_Z_TEST_SIGMA 0.99999f"])
+
     def test_light_impostor_descriptor_visibility(self):
         host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
         renderer = (ROOT / "Source" / "Rendering" / "Renderer.cpp").read_text(encoding="utf-8")

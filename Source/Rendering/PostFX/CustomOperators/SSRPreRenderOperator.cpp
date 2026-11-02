@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/SSRPreRenderOperator.h"
 
@@ -159,8 +159,6 @@ bool SSRPreRenderOperator::execute( const PlayerIndex idx, const CameraSnapshot&
 
     _uniforms.set( _ID( "invProjectionMatrix" ), PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix );
     _uniforms.set( _ID( "invViewMatrix" ), PushConstantType::MAT4, cameraSnapshot._invViewMatrix );
-    _uniforms.set( _ID( "previousViewMatrix" ), PushConstantType::MAT4, prevFrameData._previousViewMatrix );
-    _uniforms.set( _ID( "previousProjectionMatrix" ), PushConstantType::MAT4, prevFrameData._previousProjectionMatrix );
     _uniforms.set( _ID( "previousViewProjectionMatrix" ), PushConstantType::MAT4, prevFrameData._previousViewProjectionMatrix );
     _uniforms.set( _ID( "screenDimensions" ), PushConstantType::VEC2, float2( Get( screenTex )->width(), Get( screenTex )->height() ) );
     _uniforms.set( _ID( "maxScreenMips" ), PushConstantType::UINT, screenMipCount );

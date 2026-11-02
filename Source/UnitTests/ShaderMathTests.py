@@ -575,6 +575,182 @@ void main() {{
 
 
 class PostFXMathTests(unittest.TestCase):
+    def test_ssr_ray_segments_reprojection_and_fades(self):
+        cases = [
+            # name, origin, direction, scene Z, ray length, stride, jitter, refinement, perspective, depth mode, hit
+            ("away", (0, 0, -8), (1, 0, -1), -9, 8, 0, 0, 0, False, 0, True),
+            ("toward", (0, 0, -10), (1, 0, 1), -9, 8, 0, 0, 0, False, 0, True),
+            ("negative_x", (0, 0, -10), (-1, 0, 1), -9, 8, 0, 0, 0, False, 0, True),
+            ("vertical", (0, 0, -10), (0, -1, 1), -9, 8, 0, 0, 0, False, 0, True),
+            ("away_miss", (0, 0, -10), (1, 0, -1), -9, 8, 0, 0, 0, False, 0, False),
+            ("short_hit", (0, 0, -10), (1, 0, 1), -9.5, 0.9, 3, 1, 10, False, 0, True),
+            ("short_miss", (0, 0, -10), (1, 0, 1), -9.5, 0.5, 3, 1, 10, False, 0, False),
+            ("near_plane", (0, 0, -1.5), (1, 0, 1), -2, 4, 3, 1, 8, False, 0, False),
+            ("screen_edge_hit", (49.75, 0, -10), (1, 0, 1), -9.8, 8, 3, 0, 10, False, 0, True),
+            ("screen_edge_miss", (49.75, 0, -10), (1, 0, 1), -9.5, 8, 3, 0, 10, False, 0, False),
+            ("clear_depth", (0, 0, -99), (1, 0, -1), -100, 4, 0, 0, 0, False, 1, False),
+            ("perspective", (0, 0, -10), (1, 0, 1), -8, 8, 0, 0, 0, True, 0, True),
+            ("perspective_jitter", (0, 0, -10), (0, -1, 1), -7, 10, 3, 0.5, 12, True, 0, True),
+            ("perspective_away", (1, 1, -7), (-1, 0, -1), -10, 10, 3, 0.25, 12, True, 0, True),
+            ("discontinuous_depth", (0, 0, -10), (1, 0, 1), -9, 8, 3, 0, 8, False, 2, False),
+        ]
+        source = section("ScreenSpaceReflections.glsl", "Fragment")
+        methods = extract(r"^#define DistanceSquared.*?(?=^void main\(\))", source)
+        reflection_assignment = extract(r"ambientReflected = [^;]+;",
+                                        source[source.index("const vec3 ssr = textureLod"):])
+        ibl = (SHADERS / "FragmentAtoms" / "IBL.frag").read_text(encoding="utf-8")
+        apply_ssr = extract(r"^vec3 ApplySSR\(.*?^\}$", ibl)
+        common = (SHADERS / "Common" / "utility.cmn").read_text(encoding="utf-8")
+        utility = (SHADERS / "FragmentAtoms" / "utility.frag").read_text(encoding="utf-8")
+        depth_macro = extract(r"^#define ViewDistanceFromDepth\([^\n]*$", common)
+        bounds_macros = "\n".join(extract(rf"^#define {name}\([^\n]*$", utility)
+                                  for name in ("IsInScreenRect", "IsInFrustum"))
+
+        def vector(values):
+            return "vec3(" + ", ".join(f"{value:.8f}f" for value in values) + ")"
+
+        calls = "\n".join(
+            f"    runCase({index}, {vector(origin)}, normalize({vector(direction)}), {scene_z:.8f}f, "
+            f"{distance:.8f}f, {stride:.8f}f, {jitter:.8f}f, {refinement:.8f}f, "
+            f"{str(perspective).lower()}, {mode});"
+            for index, (_, origin, direction, scene_z, distance, stride, jitter, refinement,
+                        perspective, mode, _) in enumerate(cases)
+        )
+        reprojection_offset = 10 * len(cases)
+        fade_offset = reprojection_offset + 3 * 7
+        shader = f"""
+#version 460
+#define INV_Z_TEST_SIGMA 0.99999f
+#define Saturate(X) clamp((X), 0.f, 1.f)
+{depth_macro}
+{bounds_macros}
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+mat4 projToPixel, projectionMatrix;
+vec2 _zPlanes = vec2(1.f, 100.f), screenDimensions = vec2(100.f);
+float maxSteps = 128.f, binarySearchIterations, maxDistance, stride, zThickness = 0.1f;
+float strideZCutoff = 1000.f, screenEdgeFadeStart = 0.75f, eyeFadeStart = 0.5f, eyeFadeEnd = 1.f;
+const int texDepth = 0;
+const int texSSR = 1;
+const vec2 dvd_screenPositionNormalised = vec2(0.5f);
+vec4 ssrSample;
+float sceneZ;
+int depthMode, sampleCount, outsideCount;
+
+float depthAt(in float z) {{
+    const vec4 clip = projectionMatrix * vec4(0.f, 0.f, z, 1.f);
+    return clip.z / clip.w;
+}}
+vec4 sampleSceneDepth(in int unused, in vec2 uv) {{
+    if (unused == texSSR) return ssrSample;
+    ++sampleCount;
+    if (any(lessThan(uv, vec2(0.f))) || any(greaterThan(uv, vec2(1.f)))) ++outsideCount;
+    if (depthMode == 1) return vec4(1.f);
+    return vec4(depthAt(depthMode == 2 && uv.x < 0.52f ? -20.f : sceneZ));
+}}
+#define texture(T, UV) sampleSceneDepth(T, UV)
+{methods}
+{apply_ssr}
+
+void runCase(in int index, in vec3 origin, in vec3 direction, in float planeZ, in float distanceLimit,
+             in float stepStride, in float jitter, in float refinement, in bool perspective, in int mode) {{
+    projectionMatrix = mat4(0.f);
+    projectionMatrix[0][0] = 1.f;
+    projectionMatrix[1][1] = 1.f;
+    if (perspective) {{
+        projectionMatrix[2][2] = -100.f / 99.f;
+        projectionMatrix[2][3] = -1.f;
+        projectionMatrix[3][2] = -100.f / 99.f;
+        projToPixel = mat4(vec4(80.f, 0.f, 0.f, 0.f), vec4(0.f, 80.f, 0.f, 0.f),
+                           vec4(-50.f, -50.f, 0.f, -1.f), vec4(0.f));
+    }} else {{
+        projectionMatrix[2][2] = -1.f / 99.f;
+        projectionMatrix[3][2] = -1.f / 99.f;
+        projectionMatrix[3][3] = 1.f;
+        projToPixel = mat4(vec4(1.f, 0.f, 0.f, 0.f), vec4(0.f, 1.f, 0.f, 0.f),
+                           vec4(0.f), vec4(50.f, 50.f, 0.f, 1.f));
+    }}
+    sceneZ = planeZ; maxDistance = distanceLimit; stride = stepStride;
+    binarySearchIterations = refinement; depthMode = mode; sampleCount = 0; outsideCount = 0;
+    vec2 pixel; vec3 point; float iterations;
+    const bool hit = FindSSRHit(origin, direction, jitter, pixel, point, iterations);
+    const vec4 projected = projToPixel * vec4(point, 1.f);
+    const vec2 projectedPixel = projected.xy / projected.w / screenDimensions;
+    const int base = index * 10;
+    values[base] = hit ? 1.f : 0.f;
+    values[base + 1] = pixel.x; values[base + 2] = pixel.y;
+    values[base + 3] = point.x; values[base + 4] = point.y; values[base + 5] = point.z;
+    values[base + 6] = iterations; values[base + 7] = float(sampleCount);
+    values[base + 8] = float(outsideCount);
+    values[base + 9] = length(pixel - projectedPixel);
+}}
+
+void main() {{
+{calls}
+    const vec4 clips[7] = vec4[7](
+        vec4(0.f, 0.f, 0.5f, 1.f), vec4(-1.f, 1.f, 0.f, 1.f),
+        vec4(0.f, 0.f, 0.5f, 0.f), vec4(0.f, 0.f, 0.5f, -1.f),
+        vec4(1.1f, 0.f, 0.5f, 1.f), vec4(0.f, 0.f, -0.1f, 1.f),
+        vec4(0.f, 0.f, 1.1f, 1.f));
+    for (int i = 0; i < 7; ++i) {{
+        vec2 uv; const bool valid = PreviousFrameUV(clips[i], uv);
+        values[{reprojection_offset} + i * 3] = valid ? 1.f : 0.f;
+        values[{reprojection_offset} + i * 3 + 1] = uv.x;
+        values[{reprojection_offset} + i * 3 + 2] = uv.y;
+    }}
+    screenEdgeFadeStart = 1.f; eyeFadeStart = 0.5f; eyeFadeEnd = 0.5f;
+    maxDistance = 10.f; maxSteps = 128.f;
+    values[{fade_offset}] = ComputeBlendFactorForIntersection(1.f, vec2(0.5f), vec3(0.f), vec3(0.f), vec3(0.f, 0.f, 0.4f));
+    values[{fade_offset + 1}] = ComputeBlendFactorForIntersection(1.f, vec2(0.5f), vec3(0.f), vec3(0.f), vec3(0.f, 0.f, 0.6f));
+    values[{fade_offset + 2}] = ComputeBlendFactorForIntersection(1.f, vec2(1.f, 0.5f), vec3(0.f), vec3(0.f), vec3(0.f, 0.f, 0.4f));
+    projectionMatrix[3][3] = 1.f;
+    const vec3 orthoDirection = CameraIncidentDirection(vec3(3.f, 0.f, -4.f));
+    projectionMatrix[3][3] = 0.f;
+    const vec3 perspectiveDirection = CameraIncidentDirection(vec3(3.f, 0.f, -4.f));
+    for (int i = 0; i < 3; ++i) {{
+        values[{fade_offset + 3} + i] = orthoDirection[i];
+        values[{fade_offset + 6} + i] = perspectiveDirection[i];
+    }}
+    const vec3 ssr = vec3(1.f, 0.5f, 0.25f);
+    const float reflBlend = 0.5f;
+    vec3 ambientReflected = vec3(0.f);
+    {reflection_assignment}
+    ssrSample = vec4(ambientReflected, reflBlend);
+    const vec3 reflected = ApplySSR(0.f, vec3(0.2f));
+    for (int i = 0; i < 3; ++i) values[{fade_offset + 9} + i] = reflected[i];
+}}
+"""
+        actual = execute(shader, fade_offset + 12)
+        for index, (name, origin, direction, scene_z, distance, stride, jitter, refinement,
+                    perspective, mode, expected_hit) in enumerate(cases):
+            with self.subTest(case=name):
+                result = actual[index * 10:(index + 1) * 10]
+                self.assertTrue(all(math.isfinite(value) for value in result), result)
+                self.assertEqual(result[0], float(expected_hit), result)
+                self.assertEqual(result[8], 0, "depth sample escaped the viewport")
+                self.assertGreater(result[7], 0, "the ray should sample the visible segment")
+                self.assertLess(result[9], 3e-5, "hit pixel and reconstructed point disagree")
+                point = result[3:6]
+                offset = [point[i] - origin[i] for i in range(3)]
+                direction_length = math.sqrt(sum(component * component for component in direction))
+                direction = [component / direction_length for component in direction]
+                self.assertLess(math.sqrt(sum(component * component for component in cross(offset, direction))), 3e-4)
+                self.assertLessEqual(math.sqrt(sum(component * component for component in offset)), distance + 3e-4)
+                self.assertLessEqual(point[2], -1 + 3e-4)
+                if expected_hit and refinement:
+                    self.assertGreaterEqual(point[2], scene_z - 0.1 - 0.003)
+                    self.assertLessEqual(point[2], scene_z + 0.003)
+        for index, expected in enumerate((1, 1, 0, 0, 0, 0, 0)):
+            self.assertEqual(actual[reprojection_offset + index * 3], expected)
+        self.assertEqual(actual[reprojection_offset + 1:reprojection_offset + 3], [0.5, 0.5])
+        self.assertEqual(actual[reprojection_offset + 4:reprojection_offset + 6], [0, 1])
+        self.assertAlmostEqual(actual[fade_offset], 1, delta=1e-6)
+        self.assertEqual(actual[fade_offset + 1:fade_offset + 3], [0, 0])
+        for value, expected in zip(actual[fade_offset + 3:fade_offset + 9], (0, 0, -1, 0.6, 0, -0.8)):
+            self.assertAlmostEqual(value, expected, delta=1e-6)
+        for value, expected in zip(actual[fade_offset + 9:fade_offset + 12], (0.6, 0.35, 0.225)):
+            self.assertAlmostEqual(value, expected, delta=1e-6)
+
     def test_oit_normal_composition_preserves_or_replaces_complete_rgb(self):
         source = section("OITComposition.glsl", "Fragment")
         source = source.replace('#include "utility.frag"', "")
