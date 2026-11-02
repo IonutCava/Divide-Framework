@@ -1,13 +1,18 @@
 -- Vertex
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "vbInputData.vert"
+#include "lightingDefaults.vert"
 
 #if !defined(PRE_PASS)
 layout(location = ATTRIB_FREE_START + 0) out vec4 _scrollingUV;
 #endif //!PRE_PASS
 
 void main(void) {
-    const vec4 vertexWVP = computeData(fetchInputData());
+    const NodeTransformData data = fetchInputData();
+    const vec4 vertexWVP = computeData(data);
+    computeLightVectors(data);
     setClipPlanes();
 
 #if !defined(PRE_PASS)

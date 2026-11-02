@@ -118,6 +118,12 @@ samples use world-space reflection directions and local probe box projection.
 OpenGL enables seamless cubemap sampling and Vulkan samplers use the default
 seamless behavior. Source environment mips are generated before convolution;
 the explicitly prefiltered destination mips must not be regenerated afterward.
+Normals use inverse scale and node rotation; tangents use forward scale with
+orthogonalization and mirrored-scale handedness. Vegetation instances are
+already positioned in world space, so their normal/tangent basis uses the
+instance orientation rather than the parent node transform. Grass and tree
+velocity currently projects the current instance geometry through the previous
+camera; per-instance deformation, LOD and prior animation are not buffered.
 
 ### Custom-pass Hi-Z
 

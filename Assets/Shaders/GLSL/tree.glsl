@@ -28,6 +28,7 @@ void computeFoliageMovementTree(inout vec4 vertex, in float heightExtent) {
 void main(void){
 
     const NodeTransformData nodeData = fetchInputData();
+    VAR._SelectionFlag = dvd_SelectionFlag(nodeData);
 
     const VegetationData data = TreeData(VEGETATION_INSTANCE_INDEX);
 
@@ -53,8 +54,12 @@ void main(void){
 
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
 
+#if defined(HAS_VELOCITY)
+    VAR._prevVertexWVP = dvd_PrevViewProjectionMatrix * VAR._vertexW;
+#endif //HAS_VELOCITY
+
 #if !defined(SHADOW_PASS)
-    computeLightVectors(nodeData);
+    computeLightVectors(data.orientationQuad, vec3(scale));
     setClipPlanes();
 #endif
 

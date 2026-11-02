@@ -42,6 +42,7 @@ void main() {
     }
 
     const NodeTransformData nodeData = fetchInputData();
+    VAR._SelectionFlag = dvd_SelectionFlag(nodeData);
     _instanceID = VEGETATION_INSTANCE_INDEX;
     float scale = data.positionAndScale.w * Saturate(data.data.z);
 
@@ -53,7 +54,6 @@ void main() {
     const float timeGrass = dvd_windDetails.w * MSToSeconds(dvd_GameTimeMS) * 0.5f;
     const bool animate = VAR._LoDLevel < 2u && dvd_Vertex.y > 0.5f;
 
-    const float height = dvd_Vertex.y;
     dvd_Vertex.xyz *= scale;
     dvd_Vertex.y -= (1.f - scale) * 0.25f;
     dvd_Vertex.xyz = QuaternionRotate(data.orientationQuad, dvd_Vertex.xyz);
@@ -72,14 +72,17 @@ void main() {
         VAR._vertexW.xz += viewDirection * displacement;
     }
 
+#if defined(HAS_VELOCITY)
+    // Per-instance deformation history is not buffered.
+    VAR._prevVertexWVP = dvd_PrevViewProjectionMatrix * VAR._vertexW;
+#endif //HAS_VELOCITY
+
 #if !defined(SHADOW_PASS)
     setClipPlanes();
 #endif //!SHADOW_PASS
 
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
-    dvd_Normal = normalize(QuaternionRotate(data.orientationQuad, dvd_Normal));
-
-    computeLightVectors(nodeData);
+    computeLightVectors(data.orientationQuad, vec3(scale));
 
     gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
 }

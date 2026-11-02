@@ -907,6 +907,18 @@ int main() {
                         ["MAIN_DISPLAY_PASS", "MAX_TREE_INSTANCES 128"] + defines,
                     )
 
+    def test_infinite_plane_normal_and_velocity_variants(self):
+        source = section("terrainPlane.glsl", "Vertex")
+        self.assertIn("computeLightVectors(data);", source)
+        for backend in ("opengl", "vulkan"):
+            for variant in ([], ["PRE_PASS", "HAS_VELOCITY"]):
+                with self.subTest(backend=backend, variant=variant):
+                    self.link_shaders(
+                        "terrainPlane.glsl", [("Vertex", "vert", ()), ("Fragment", "frag", ())], backend,
+                        ["MAIN_DISPLAY_PASS", "HAS_POSITION_ATTRIBUTE", "HAS_NORMAL_ATTRIBUTE",
+                         "HAS_TEXCOORD_ATTRIBUTE", "USE_UNIT0_TEXTURE"] + variant,
+                    )
+
     def test_vegetation_instanced_draw_contract(self):
         rendering = (ROOT / "Source" / "ECS" / "Components" / "RenderingComponent.cpp").read_text(encoding="utf-8")
         self.assertRegex(
@@ -937,6 +949,9 @@ int main() {
             source = (SHADERS / shader).read_text(encoding="utf-8")
             self.assertNotIn("dvd_InstanceIndex", source)
             self.assertIn("Data(VEGETATION_INSTANCE_INDEX)", source)
+            self.assertIn("VAR._SelectionFlag = dvd_SelectionFlag(nodeData);", source)
+            self.assertIn("VAR._prevVertexWVP = dvd_PrevViewProjectionMatrix * VAR._vertexW;", source)
+            self.assertIn("computeLightVectors(data.orientationQuad, vec3(scale));", source)
             if shader == "grass.glsl":
                 self.assertIn("_instanceID = VEGETATION_INSTANCE_INDEX;", source)
             for backend in ("opengl", "vulkan"):

@@ -267,6 +267,79 @@ layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
 
 
 class WorldGeometryMathTests(unittest.TestCase):
+    def test_normal_and_tangent_transforms_match_scaled_geometry(self):
+        source = (SHADERS / "VertexAtoms" / "lightingDefaults.vert").read_text(encoding="utf-8")
+        utility = (SHADERS / "Common" / "utility.cmn").read_text(encoding="utf-8")
+        rotation_macro = extract(r"^#define QuaternionRotate\([^\n]*$", utility)
+        scales = [(1, 1, 1), (2, 3, 0.5), (-2, 3, 0.5), (2, -3, 0.5), (-2, -3, 0.5)]
+        scale_values = ", ".join("vec3(" + ", ".join(f"{value:.8f}f" for value in scale) + ")"
+                                 for scale in scales)
+        shader = f"""
+#version 460
+#define COMPUTE_TBN
+{rotation_macro}
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+struct TransformData {{ vec4 _rotation; vec4 _scale; }};
+struct NodeTransformData {{ TransformData _transform; }};
+struct VertexData {{ mat3 _tbnWV; vec3 _normalWV; }};
+VertexData VAR;
+mat4 dvd_ViewMatrix = mat4(1.f);
+vec3 dvd_Normal, dvd_Tangent;
+{source}
+void main() {{
+    const vec3 scales[{len(scales)}] = vec3[]({scale_values});
+    const vec4 rotation = vec4(0.f, 0.f, 0.7071067811865476f, 0.7071067811865476f);
+    dvd_Normal = normalize(vec3(1.f, 2.f, 3.f));
+    dvd_Tangent = normalize(vec3(2.f, -1.f, 0.f));
+    for (int i = 0; i < {len(scales)}; ++i) {{
+        NodeTransformData node;
+        node._transform._rotation = rotation;
+        node._transform._scale = vec4(scales[i], 1.f);
+        if (i % 2 == 0) computeLightVectors(node);
+        else computeLightVectors(rotation, scales[i]);
+        for (int axis = 0; axis < 3; ++axis)
+            for (int component = 0; component < 3; ++component)
+                values[9 * i + 3 * axis + component] = VAR._tbnWV[axis][component];
+    }}
+    dvd_Normal = vec3(0.f, 0.f, 1.f);
+    dvd_Tangent = vec3(1.f, 0.f, 0.f);
+    computeLightVectors(vec4(0.f, 0.f, 0.f, 1.f), vec3(0.f, 1.f, 1.f));
+    for (int axis = 0; axis < 3; ++axis)
+        for (int component = 0; component < 3; ++component)
+            values[{9 * len(scales)} + 3 * axis + component] = VAR._tbnWV[axis][component];
+}}
+"""
+        actual = execute(shader, 9 * (len(scales) + 1))
+
+        def unit(vector):
+            length = math.sqrt(sum(component * component for component in vector))
+            return [component / length for component in vector]
+
+        def rotate(vector):
+            return [-vector[1], vector[0], vector[2]]
+
+        normal = unit((1, 2, 3))
+        tangent = unit((2, -1, 0))
+        bitangent = cross(normal, tangent)
+        for index, scale in enumerate(scales):
+            with self.subTest(scale=scale):
+                basis = [actual[index * 9 + 3 * axis:index * 9 + 3 * axis + 3] for axis in range(3)]
+                expected_normal = unit(rotate([normal[i] / scale[i] for i in range(3)]))
+                transformed_tangent = rotate([tangent[i] * scale[i] for i in range(3)])
+                expected_tangent = unit(transformed_tangent)
+                sign = -1 if math.prod(scale) < 0 else 1
+                expected_bitangent = [sign * component for component in cross(expected_normal, expected_tangent)]
+                for actual_axis, expected_axis in zip(basis, (expected_tangent, expected_bitangent, expected_normal)):
+                    for value, expected in zip(actual_axis, expected_axis):
+                        self.assertTrue(math.isfinite(value))
+                        self.assertAlmostEqual(value, expected, delta=2e-6)
+                transformed_bitangent = rotate([bitangent[i] * scale[i] for i in range(3)])
+                self.assertGreater(sum(a * b for a, b in zip(basis[1], transformed_bitangent)), 0)
+        for value, expected in zip(actual[-9:], (1, 0, 0, 0, 1, 0, 0, 0, 1)):
+            self.assertTrue(math.isfinite(value))
+            self.assertAlmostEqual(value, expected, delta=1e-6)
+
     def test_octahedral_normal_round_trip_including_negative_pole(self):
         utility = (SHADERS / "FragmentAtoms" / "utility.frag").read_text(encoding="utf-8")
         pack = re.search(r"^vec2 packNormal\(.*?^\}", utility, re.MULTILINE | re.DOTALL)
