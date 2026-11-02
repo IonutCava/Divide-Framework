@@ -2,6 +2,11 @@
 name: Selected Platform Validation
 
 on:
+  push:
+    branches:
+      - features/VK_GL_PARITY
+    paths:
+      - .github/workflows/SelectedValidation.yml
   workflow_dispatch:
     inputs:
       ci_sha:
@@ -9,7 +14,7 @@ on:
         required: true
         type: string
 
-run-name: Selected Platform Validation - ${{ inputs.ci_sha }}
+run-name: Selected Platform Validation - ${{ inputs.ci_sha || github.sha }}
 
 permissions:
   contents: read
