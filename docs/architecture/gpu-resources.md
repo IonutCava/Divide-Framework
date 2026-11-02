@@ -36,6 +36,10 @@ Descriptor-buffer and push-descriptor support are required assumptions; descript
 
 ## OpenGL memory
 
+`WindowManager::applyAPISettingsPreCreate` explicitly sets the no-error context
+attribute for every attempt. SDL retains attributes between retries; enabling a
+debug context must clear a previous non-debug no-error request.
+
 `glMemoryManager` creates large persistently mapped chunks, suballocates `Block`s, reuses compatible free blocks, and merges released free ranges.
 `glBufferImpl` chooses target alignment, requests pooled allocations, keeps mapped CPU pointers, and uses `glLockManager` sync for frequent updates. Copy/readback buffers are used when needed.
 

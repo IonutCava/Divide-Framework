@@ -1,6 +1,8 @@
 // Copyright (c) 2026 DIVIDE-Studio
 #include "UnitTests/unitTestCommon.h"
 
+#include "Core/Headers/WindowManager.h"
+#include "Core/Headers/ErrorCodes.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
@@ -13,6 +15,48 @@
 
 namespace Divide
 {
+    struct WindowManagerTestAccess
+    {
+        static ErrorCode ApplyContextSettings(WindowManager& manager, const bool debug)
+        {
+            manager._apiSettings._createDebugContext = debug;
+            return manager.applyAPISettingsPreCreate(0u, RenderAPI::OpenGL);
+        }
+    };
+
+    TEST_CASE( "OpenGL debug retries clear no-error context attributes", "[window_context]" )
+    {
+        platformInitRunListener::PlatformInit();
+        const char* previousDriverHint = SDL_GetHint(SDL_HINT_VIDEO_DRIVER);
+        const std::string previousDriver = previousDriverHint == nullptr ? "" : previousDriverHint;
+        const bool hadDriverHint = previousDriverHint != nullptr;
+        REQUIRE( SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy") );
+        SCOPE_EXIT
+        {
+            SDL_QuitSubSystem(SDL_INIT_VIDEO);
+            if (hadDriverHint)
+            {
+                SDL_SetHint(SDL_HINT_VIDEO_DRIVER, previousDriver.c_str());
+            }
+            else
+            {
+                SDL_ResetHint(SDL_HINT_VIDEO_DRIVER);
+            }
+        };
+        REQUIRE( SDL_InitSubSystem(SDL_INIT_VIDEO) );
+        WindowManager manager;
+        for (const bool debug : { false, true, false, true })
+        {
+            REQUIRE( WindowManagerTestAccess::ApplyContextSettings(manager, debug) == ErrorCode::NO_ERR );
+            int noError = -1;
+            int flags = 0;
+            REQUIRE( SDL_GL_GetAttribute(SDL_GL_CONTEXT_NO_ERROR, &noError) );
+            REQUIRE( SDL_GL_GetAttribute(SDL_GL_CONTEXT_FLAGS, &flags) );
+            CHECK( noError == (debug ? 0 : 1) );
+            CHECK( ((flags & SDL_GL_CONTEXT_DEBUG_FLAG) != 0) == debug );
+        }
+    }
+
     TEST_CASE( "Debug previews explicitly reset splash linearisation state", "[texture_fallbacks]" )
     {
         DebugView view;

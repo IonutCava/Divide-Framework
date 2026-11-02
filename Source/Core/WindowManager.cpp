@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/WindowManager.h"
 
@@ -353,7 +353,7 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
     }
 
     auto window = std::make_unique<DisplayWindow>(*this, *_context);
-    err = applyAPISettingsPreCreate(*_context, descriptor.targetAPI);
+    err = applyAPISettingsPreCreate(_context->config().rendering.MSAASamples, descriptor.targetAPI);
     if (err != ErrorCode::NO_ERR)
     {
         Console::errorfn(LOCALE_STR("ERROR_SDL_WINDOW"), SDL_GetError());
@@ -469,7 +469,7 @@ void WindowManager::DestroyAPISettings(DisplayWindow* window) noexcept
     window->userData()._glContext = nullptr;
 }
 
-ErrorCode WindowManager::applyAPISettingsPreCreate(const PlatformContext& context, const RenderAPI api)
+ErrorCode WindowManager::applyAPISettingsPreCreate(const U8 msaaSamples, const RenderAPI api)
 {
     if ( api != RenderAPI::OpenGL)
     {
@@ -494,10 +494,7 @@ ErrorCode WindowManager::applyAPISettingsPreCreate(const PlatformContext& contex
     {
         OpenGLFlags |= SDL_GL_CONTEXT_DEBUG_FLAG;
     }
-    else
-    {
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_NO_ERROR, 1));
-    }
+    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_NO_ERROR, _apiSettings._createDebugContext ? 0 : 1));
 
     ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, OpenGLFlags));
     ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_RELEASE_BEHAVIOR, SDL_GL_CONTEXT_RELEASE_BEHAVIOR_NONE));
@@ -516,10 +513,10 @@ ErrorCode WindowManager::applyAPISettingsPreCreate(const PlatformContext& contex
     ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4));
     ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6));
     ValidateAssert(SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1));
-    if (context.config().rendering.MSAASamples > 0u)
+    if (msaaSamples > 0u)
     {
         ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1));
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, std::min(context.config().rendering.MSAASamples, to_U8(4u)))); // Cap to 4xMSAA as we can't query HW support yet
+        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, std::min(msaaSamples, to_U8(4u)))); // Cap to 4xMSAA as we can't query HW support yet
     }
 
     return ErrorCode::NO_ERR;
@@ -543,7 +540,7 @@ ErrorCode WindowManager::findAndApplyAPISettings(const PlatformContext& context,
         const auto applyCurrentSettings = [&]()
         {
             windowCreationFailed = false;
-            ErrorCode err = applyAPISettingsPreCreate(context, descriptor.targetAPI);
+            ErrorCode err = applyAPISettingsPreCreate(context.config().rendering.MSAASamples, descriptor.targetAPI);
             if ( err != ErrorCode::NO_ERR )
             {
                 return err;

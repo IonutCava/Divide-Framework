@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
+Copyright (c) 2026 DIVIDE-Studio
 Copyright (c) 2009 Ionut Cava
 
 This file is part of DIVIDE Framework.
@@ -123,6 +123,7 @@ public:
 
 protected:
     friend class Application;
+    friend struct WindowManagerTestAccess;
 
     // Can be called at startup directly
     ErrorCode init(PlatformContext& context,
@@ -148,7 +149,7 @@ protected:
     };
     friend class DisplayWindow;
     [[nodiscard]] ErrorCode findAndApplyAPISettings(const PlatformContext& context, const WindowDescriptor& descriptor);
-    [[nodiscard]] ErrorCode applyAPISettingsPreCreate(const PlatformContext& context, RenderAPI api);
+    [[nodiscard]] ErrorCode applyAPISettingsPreCreate(U8 msaaSamples, RenderAPI api);
     [[nodiscard]] ErrorCode applyAPISettingsPostCreate( const PlatformContext& context, RenderAPI api, DisplayWindow* targetWindow );
 
     static void DestroyAPISettings(DisplayWindow* window) noexcept;
