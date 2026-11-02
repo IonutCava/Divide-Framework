@@ -65,12 +65,19 @@ void ShaderBuffer::readData(const ElementRange<> range, const std::pair<bufferPt
 void ShaderBuffer::readBytes(BufferRange<> range, std::pair<bufferPtr, size_t> outData) {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    DIVIDE_ASSERT(range._length > 0u &&
-                  _params._hostVisible &&
-                  getUsage() == BufferUsageType::UNBOUND_BUFFER &&
-                  range._startOffset == Util::GetAlignmentCorrected(range._startOffset, _alignmentRequirement));
+    if ( !DIVIDE_ASSERT( range._length > 0u &&
+                         _params._hostVisible &&
+                         getUsage() == BufferUsageType::UNBOUND_BUFFER &&
+                         range._startOffset < _alignedBufferSize &&
+                         range._startOffset == Util::GetAlignmentCorrected(range._startOffset, _alignmentRequirement) &&
+                         outData.first != nullptr && outData.second > 0u,
+                         "ShaderBuffer::readBytes: invalid read range or output buffer" ) )
+    {
+        return;
+    }
 
-    range._startOffset += to_size(std::max<U16>(0u, queueIndex()))* _alignedBufferSize;
+    range._length = std::min( std::min( range._length, outData.second ), _alignedBufferSize - range._startOffset );
+    range._startOffset += to_size(std::max<U16>(0u, queueIndex())) * _alignedBufferSize;
 
     readBytesInternal(range, outData);
 }

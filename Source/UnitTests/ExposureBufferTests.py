@@ -475,6 +475,127 @@ int main() {
 """
         run_cpp(self, source.replace("@VULKAN_READBACK@", readback))
 
+    def test_shader_buffer_readback_is_bounded_per_ring_slot(self):
+        shared = (ROOT / "Source" / "Platform" / "Video" / "Buffers" / "ShaderBuffer" / "ShaderBuffer.cpp").read_text(encoding="utf-8")
+        begin = shared.index("void ShaderBuffer::readBytes(")
+        end = shared.index("\nBufferLock ShaderBuffer::clearBytes(", begin)
+        readback = shared[begin:end]
+
+        def backend_body(path, name):
+            source = path.read_text(encoding="utf-8")
+            begin = source.index("{", source.index(f"void {name}::readBytesInternal")) + 1
+            return source[begin:source.index("\n    }", begin)]
+
+        gl = backend_body(OPENGL / "Buffers" / "glShaderBuffer.cpp", "glShaderBuffer")
+        vk = backend_body(VULKAN / "Buffers" / "vkShaderBuffer.cpp", "vkShaderBuffer")
+        source = r"""
+#include <algorithm>
+#include <array>
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <utility>
+using U16 = std::uint16_t;
+using bufferPtr = void*;
+template<typename T = std::size_t> struct BufferRange { T _startOffset, _length; };
+template<typename T> constexpr std::size_t to_size(T value) { return static_cast<std::size_t>(value); }
+enum class BufferUsageType { UNBOUND_BUFFER, CONSTANT_BUFFER };
+namespace Util {
+    std::size_t GetAlignmentCorrected(std::size_t value, std::size_t alignment) {
+        return (value + alignment - 1u) / alignment * alignment;
+    }
+}
+unsigned assertionFailures = 0;
+#define PROFILE_SCOPE_AUTO(...) do {} while (false)
+#define DIVIDE_ASSERT(expression, ...) ((expression) ? true : (++assertionFailures, false))
+#define DIVIDE_EXPECTED_CALL(expression) assert(expression)
+struct Mutex {};
+template<typename T> struct LockGuard { explicit LockGuard(T&) {} };
+struct Params { bool _hostVisible = true; };
+struct StubBuffer {
+    BufferRange<> last{};
+    unsigned calls = 0;
+    bool waitForLockedRange(BufferRange<>) { return true; }
+    void readBytes(std::size_t offset, std::size_t length, std::pair<bufferPtr, std::size_t>) {
+        last = {offset, length};
+        ++calls;
+    }
+    void readBytes(BufferRange<> range, std::pair<bufferPtr, std::size_t> out) {
+        readBytes(range._startOffset, range._length, out);
+    }
+};
+struct ShaderBuffer {
+    Params _params;
+    BufferUsageType usage = BufferUsageType::UNBOUND_BUFFER;
+    std::size_t _alignedBufferSize = 64u;
+    std::size_t _alignmentRequirement = 16u;
+    U16 slot = 0;
+    U16 queueIndex() const { return slot; }
+    BufferUsageType getUsage() const { return usage; }
+    void readBytes(BufferRange<> range, std::pair<bufferPtr, std::size_t> outData);
+    virtual void readBytesInternal(BufferRange<> range, std::pair<bufferPtr, std::size_t> outData) = 0;
+};
+@SHARED_READBACK@
+struct GLBuffer : ShaderBuffer {
+    StubBuffer impl;
+    StubBuffer* bufferImpl() { return &impl; }
+    void readBytesInternal(BufferRange<> range, std::pair<bufferPtr, std::size_t> outData) override {
+        @GL_READBACK@
+    }
+};
+struct VKBuffer : ShaderBuffer {
+    StubBuffer impl;
+    StubBuffer* _bufferImpl = &impl;
+    Mutex _implLock;
+    void readBytesInternal(BufferRange<> range, std::pair<bufferPtr, std::size_t> outData) override {
+        @VK_READBACK@
+    }
+};
+template<typename T> void Check(T& buffer) {
+    std::array<std::uint8_t, 64> output{};
+    for (U16 slot = 0; slot < 4; ++slot) {
+        buffer.slot = slot;
+        buffer.readBytes({0u, 16u}, {output.data(), output.size()});
+        assert(buffer.impl.last._startOffset == slot * 64u && buffer.impl.last._length == 16u);
+        buffer.readBytes({48u, 32u}, {output.data(), output.size()});
+        assert(buffer.impl.last._startOffset == slot * 64u + 48u && buffer.impl.last._length == 16u);
+        buffer.readBytes({16u, 32u}, {output.data(), 8u});
+        assert(buffer.impl.last._startOffset == slot * 64u + 16u && buffer.impl.last._length == 8u);
+    }
+    const unsigned calls = buffer.impl.calls;
+    unsigned failures = assertionFailures;
+    buffer.readBytes({64u, 16u}, {output.data(), output.size()});
+    assert(buffer.impl.calls == calls && assertionFailures == ++failures);
+    buffer.readBytes({0u, 16u}, {nullptr, output.size()});
+    assert(buffer.impl.calls == calls && assertionFailures == ++failures);
+    buffer.readBytes({0u, 16u}, {output.data(), 0u});
+    assert(buffer.impl.calls == calls && assertionFailures == ++failures);
+    buffer.readBytes({0u, 0u}, {output.data(), output.size()});
+    assert(buffer.impl.calls == calls && assertionFailures == ++failures);
+    buffer.readBytes({1u, 16u}, {output.data(), output.size()});
+    assert(buffer.impl.calls == calls && assertionFailures == ++failures);
+    buffer._params._hostVisible = false;
+    buffer.readBytes({0u, 16u}, {output.data(), output.size()});
+    assert(buffer.impl.calls == calls && assertionFailures == ++failures);
+    buffer._params._hostVisible = true;
+    buffer.usage = BufferUsageType::CONSTANT_BUFFER;
+    buffer.readBytes({0u, 16u}, {output.data(), output.size()});
+    assert(buffer.impl.calls == calls && assertionFailures == ++failures);
+}
+int main() {
+    GLBuffer gl;
+    VKBuffer vk;
+    Check(gl);
+    Check(vk);
+}
+"""
+        run_cpp(self, source.replace("@SHARED_READBACK@", readback)
+                           .replace("@GL_READBACK@", gl)
+                           .replace("@VK_READBACK@", vk))
+
 
 if __name__ == "__main__":
     unittest.main()

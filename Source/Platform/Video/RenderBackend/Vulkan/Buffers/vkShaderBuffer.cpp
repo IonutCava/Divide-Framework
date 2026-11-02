@@ -56,11 +56,9 @@ namespace Divide
         return _bufferImpl->writeBytes(range, dstAccessMask, dstStageMask, data);
     }
 
-    void vkShaderBuffer::readBytesInternal( BufferRange<> range, std::pair<bufferPtr, size_t> outData ) noexcept
+    void vkShaderBuffer::readBytesInternal( const BufferRange<> range, std::pair<bufferPtr, size_t> outData ) noexcept
     {
         DIVIDE_EXPECTED_CALL( _bufferImpl->waitForLockedRange( range ) );
-
-        range._length = std::min( std::min( range._length, outData.second ), _alignedBufferSize - range._startOffset );
 
         LockGuard<Mutex> w_lock( _implLock );
         _bufferImpl->readBytes(range, outData);
