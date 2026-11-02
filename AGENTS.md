@@ -201,6 +201,8 @@ on `ci_sha`, preserving the existing per-job branch-protection requirements when
 workflow dispatches execute on a different commit. Missing, skipped, cancelled,
 or unsuccessful jobs never produce successful statuses. Keep the job-name lists
 in `.github/scripts/report-ci.cjs` aligned with the platform matrices.
+Failed Linux builds run existing test executables under GDB in list-only mode
+to capture startup crashes, including the faulting instruction and backtrace.
 The first check builds every current target. PRs are built at their head commit, not a test merge.
 The platform workflows use `workflow_dispatch` for the scheduler, not push or PR triggers.
 These workflows must be present on the repository's default branch before scheduling takes effect.

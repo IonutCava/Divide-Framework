@@ -82,6 +82,25 @@ runs:
         testPreset: test-linux-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
         cmakeListsTxtPath: ${{ github.workspace }}/ci-source/CMakeLists.txt
 
+    - name: Diagnose test executable startup failures
+      if: ${{ failure() }}
+      shell: bash
+      working-directory: ci-source
+      run: |
+        if ! command -v gdb; then
+          sudo apt-get update -qq
+          sudo apt-get install -y gdb
+        fi
+        while IFS= read -r executable; do
+          echo "::group::Startup diagnostics: $executable"
+          timeout 90s gdb --batch \
+            -ex 'set pagination off' \
+            -ex run -ex 'thread apply all bt' \
+            -ex 'x/12i $pc-16' -ex 'info registers' \
+            --args "$executable" --list-tests
+          echo "::endgroup::"
+        done < <(find out/build -type f -executable -name 'Divide-Test-*')
+
     - name: Record build end time and metrics
       shell: bash
       run: |
