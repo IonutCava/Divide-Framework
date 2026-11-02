@@ -76,6 +76,13 @@ namespace Divide
                                                                                  : DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC;
     }
 
+    void SetIndirectBuffer( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, const BufferRange<> range ) noexcept
+    {
+        assert( buffer != nullptr && buffer->getUsage() == BufferUsageType::COMMAND_BUFFER );
+        dataInOut._buffer = { buffer, range, buffer->queueIndex() };
+        dataInOut._type = DescriptorSetBindingType::INDIRECT_BUFFER;
+    }
+
     void Set( DescriptorSetBindingData& dataInOut, const Handle<Texture> defaultTextureView, const SamplerDescriptor sampler ) noexcept
     {
         Set( dataInOut, Get( defaultTextureView )->getView(), sampler );

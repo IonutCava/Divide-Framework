@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 if( RUN_ASAN )
     message("ASAN enabled!")
 else()
@@ -12,6 +13,12 @@ endif()
 
 if( RUN_ASAN OR RUN_UBSAN )
     include(CheckCXXCompilerFlag)
+
+    message(STATUS "Sanitizers enabled for project targets; vcpkg dependencies are not sanitizer-instrumented by this configuration")
+    # Provisioning has already run; this cache value does not rebuild or instrument dependencies.
+    if(NOT VCPKG_BUILD_TYPE)
+        set(VCPKG_BUILD_TYPE "debug" CACHE STRING "Force debug build type for vcpkg with sanitizers")
+    endif()
 
     set(SAN_COMPILE_FLAGS "")
     set(SAN_LINK_FLAGS "")

@@ -1,7 +1,12 @@
+# Copyright (c) 2026 DIVIDE-Studio
 name: 'Windows Build Setup'
 description: 'Common build setup steps for Windows builds'
 
 inputs:
+  compiler:
+    description: 'Compiler to use (msvc or clang)'
+    required: false
+    default: 'msvc'
   runner_type:
     description: 'Type of runner (GitHub or self-hosted)'
     required: false
@@ -13,8 +18,11 @@ runs:
     - uses: ./.github/actions/common-config
       id: common-config
       
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
+        ref: ${{ github.event.inputs.ci_sha || github.sha }}
+        path: ci-source
+        persist-credentials: false
         submodules: true
         fetch-depth: 0
 
@@ -24,19 +32,36 @@ runs:
         ninjaVersion: ${{ steps.common-config.outputs.ninja-version }}
         
     - name: Setup MSVC
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: amd64
+      shell: pwsh
+      run: |
+        $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+        if (-not (Test-Path $vswhere)) { throw "vswhere.exe not found at '$vswhere'." }
+
+        $vsInstallDir = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+        if ([string]::IsNullOrWhiteSpace($vsInstallDir)) { throw 'Unable to determine Visual Studio installation path from vswhere.' }
+
+        $vsDevCmd = Join-Path $vsInstallDir 'Common7\Tools\VsDevCmd.bat'
+        if (-not (Test-Path $vsDevCmd)) { throw "VsDevCmd.bat not found at '$vsDevCmd'." }
+
+        $envDump = cmd /s /c "`"$vsDevCmd`" -arch=amd64 >nul && set"
+        if ($LASTEXITCODE -ne 0) { throw "VsDevCmd initialization failed with exit code $LASTEXITCODE." }
+
+        $envDump | ForEach-Object {
+          if (-not [string]::IsNullOrWhiteSpace($_) -and -not $_.StartsWith('=')) {
+            $_ >> $env:GITHUB_ENV
+          }
+        }
 
     - name: Clean workspace (self-hosted only)
       if: runner.self-hosted
       shell: pwsh
       run: |
-        if (Test-Path "${{ github.workspace }}\vcpkg\downloads\tools") {
-          Remove-Item -Recurse -Force "${{ github.workspace }}\vcpkg\downloads\tools"
+        if (Test-Path "${{ github.workspace }}\ci-source\vcpkg\downloads\tools") {
+          Remove-Item -Recurse -Force "${{ github.workspace }}\ci-source\vcpkg\downloads\tools"
         }
 
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
+    - name: Setup cached vcpkg
+      uses: ./.github/actions/vcpkg-setup
       with:
-        vcpkgJsonGlob: 'vcpkg.json'
+        compiler: ${{ inputs.compiler }}
+        source-directory: ci-source

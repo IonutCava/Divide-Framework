@@ -62,6 +62,11 @@ glShader::~glShader()
     }
 }
 
+namespace
+{
+   
+}
+
 ShaderResult glShader::uploadToGPU(const Configuration& config)
 {
     if (!_valid)
@@ -102,6 +107,8 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
         }
 
         bool shouldLink = false;
+
+        std::array<bool, to_base(ShaderType::COUNT)> stageUsed = {};
         for (ShaderProgram::LoadData& data : _loadData)
         {
             if (data._type == ShaderType::COUNT)
@@ -112,16 +119,63 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
 
             assert(!data._compiled);
 
+            stageUsed[to_base(data._type)] = true;
             if constexpr(Config::ENABLE_GPU_VALIDATION)
             {
                 timers[1].start();
             }
 
             gl46core::GLuint shader = GL_NULL_HANDLE;
-            DIVIDE_GPU_ASSERT(shader != 0u && !data._sourceCodeGLSL.empty());
+            DIVIDE_GPU_ASSERT( !data._sourceCodeGLSL.empty() || !data._sourceCodeSpirV.empty() );
 
             shader = gl46core::glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
-            if (config.debug.renderer.useSPIRVForOpenGL && !data._sourceCodeSpirV.empty())
+            DIVIDE_GPU_ASSERT( shader != 0u && shader != GL_NULL_HANDLE );
+
+            static I8 s_spirvSupportState = -1;
+            const auto SupportsSPIRVForGL = [&]()
+            {
+                if ( s_spirvSupportState >= 0 )
+                {
+                    return s_spirvSupportState == 1;
+                }
+
+                gl46core::GLint formatCount = 0;
+                gl46core::glGetIntegerv( gl46core::GL_NUM_SHADER_BINARY_FORMATS, &formatCount );
+                bool supported = false;
+                if ( formatCount > 0 )
+                {
+                    vector<gl46core::GLint> formats( formatCount, 0 );
+                    gl46core::glGetIntegerv( gl46core::GL_SHADER_BINARY_FORMATS, formats.data() );
+                    for ( const gl46core::GLint format : formats )
+                    {
+                        if ( format == to_I32( gl46core::GL_SHADER_BINARY_FORMAT_SPIR_V ) )
+                        {
+                            supported = true;
+                            break;
+                        }
+                    }
+                }
+
+                s_spirvSupportState = supported ? 1 : 0;
+                return supported;
+            };
+
+            _usingSPIRV = config.debug.renderer.useSPIRVForOpenGL &&
+                                            !data._sourceCodeSpirV.empty() &&
+                                            SupportsSPIRVForGL();
+            if ( config.debug.renderer.useSPIRVForOpenGL &&
+                 !data._sourceCodeSpirV.empty() &&
+                 !_usingSPIRV)
+            {
+                static bool s_reportedSPIRVFallback = false;
+                if ( !s_reportedSPIRVFallback )
+                {
+                    s_reportedSPIRVFallback = true;
+                    Console::warnfn( "OpenGL SPIR-V path requested for shader [{}] but GL_ARB_gl_spirv is not available. Falling back to GLSL source compilation.", _name.c_str() );
+                }
+            }
+
+            if (_usingSPIRV)
             {
                 gl46core::glShaderBinary(
                     1,
@@ -264,6 +318,11 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
         string perStageTiming = "";
         for (U8 i = 0u; i < to_base(ShaderType::COUNT); ++i)
         {
+            if (!stageUsed[i])
+            {
+                continue;
+            }
+
             perStageTiming.append(Util::StringFormat("---- [ {} ] - [{:5.5f} ms] - [{:5.5f}  ms]\n",
                                                      Names::shaderTypes[i],
                                                      Time::MicrosecondsToMilliseconds<F32>(timingData._stageCompileTime[i]),
@@ -296,6 +355,33 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
 
 bool glShader::load(const ShaderProgram::ShaderLoadData& data)
 {
+    using namespace Reflection;
+
+    const auto mergePushConstantsState = [](const PushConstantsState a, const PushConstantsState b) noexcept
+    {
+        if (a == PushConstantsState::USED_BOTH || b == PushConstantsState::USED_BOTH)
+        {
+            return PushConstantsState::USED_BOTH;
+        }
+
+        const bool aSlot1 = a == PushConstantsState::USED_SLOT_1;
+        const bool aSlot2 = a == PushConstantsState::USED_SLOT_2;
+        const bool bSlot1 = b == PushConstantsState::USED_SLOT_1;
+        const bool bSlot2 = b == PushConstantsState::USED_SLOT_2;
+
+        if ((aSlot1 && bSlot2) || (aSlot2 && bSlot1))
+        {
+            return PushConstantsState::USED_BOTH;
+        }
+
+        if (a == PushConstantsState::NOT_CHECKED) return b;
+        if (b == PushConstantsState::NOT_CHECKED) return a;
+        if (a == PushConstantsState::NOT_USED)    return b;
+        if (b == PushConstantsState::NOT_USED)    return a;
+
+        return a;
+    };
+
     _loadData = data;
 
     _valid = false; _linked = false; 
@@ -306,6 +392,7 @@ bool glShader::load(const ShaderProgram::ShaderLoadData& data)
     }
 
     _stageMask = gl46core::UseProgramStageMask::GL_NONE_BIT;
+    _pushConstantsState = PushConstantsState::NOT_CHECKED;
     for (const ShaderProgram::LoadData& it : _loadData)
     {
         if (it._type == ShaderType::COUNT)
@@ -315,6 +402,9 @@ bool glShader::load(const ShaderProgram::ShaderLoadData& data)
 
         assert(!it._sourceCodeGLSL.empty() || !it._sourceCodeSpirV.empty());
         _stageMask |= GetStageMask(it._type);
+
+        _pushConstantsState = mergePushConstantsState(_pushConstantsState, it._reflectionData._pushConstantsState);
+
     }
 
     if (_stageMask == gl46core::UseProgramStageMask::GL_NONE_BIT)
@@ -339,7 +429,7 @@ glShaderEntry glShader::LoadShader(GFXDevice& context,
         ._generation = targetGeneration
     };
     {
-        // If we loaded the source code successfully,  register it
+        // If we loaded the source code successfully, register it
         LockGuard<SharedMutex> w_lock(ShaderModule::s_shaderNameLock);
         auto& shader_ptr = s_shaderNameMap[ret._fileHash];
         if (shader_ptr == nullptr || shader_ptr->generation() < ret._generation )
@@ -377,14 +467,19 @@ void glShader::onParentValidation()
 
 void glShader::uploadPushConstants(const PushConstantsStruct& pushConstants)
 {
-    if (_pushConstantsLocation == -2)
+    using namespace Reflection;
+    DIVIDE_GPU_ASSERT (_pushConstantsState != PushConstantsState::NOT_CHECKED);
+    if ( _pushConstantsState != PushConstantsState::NOT_USED)
     {
-        _pushConstantsLocation = gl46core::glGetUniformLocation( _handle, "PushConstantData" );
-    }
-
-    if ( _pushConstantsLocation > -1 )
-    {
-        gl46core::glProgramUniformMatrix4fv(_handle, _pushConstantsLocation, 2, gl46core::GL_FALSE, pushConstants.dataPtr());
+        const auto flags = pushConstants.dataFlags();
+        if (flags & to_base(PushConstantsStruct::DataFlags::FIRST) && (_pushConstantsState == PushConstantsState::USED_SLOT_1 || _pushConstantsState == PushConstantsState::USED_BOTH))
+        {
+            gl46core::glProgramUniformMatrix4fv(_handle, ShaderProgram::GL_PUSH_CONSTANTS_LOCATION, 1, gl46core::GL_FALSE, pushConstants.data[0].mat);
+        }
+        if (flags & to_base(PushConstantsStruct::DataFlags::SECOND) && (_pushConstantsState == PushConstantsState::USED_SLOT_2 || _pushConstantsState == PushConstantsState::USED_BOTH))
+        {
+            gl46core::glProgramUniformMatrix4fv(_handle, ShaderProgram::GL_PUSH_CONSTANTS_LOCATION + 1, 1, gl46core::GL_FALSE, pushConstants.data[1].mat);
+        }
     }
 }
 } // namespace Divide

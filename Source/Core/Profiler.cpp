@@ -5,7 +5,7 @@
 
 namespace Divide::Profiler
 {
-#if ENABLE_OPTICK_PROFILER
+#if USE_OPTICK
 
     namespace
     {
@@ -37,20 +37,20 @@ namespace Divide::Profiler
 
         return OnProfilerStateChanged( Profiler::State::COUNT );
     }
-#endif //ENABLE_OPTICK_PROFILER
+#endif //USE_OPTICK
 
     void RegisterApp( Application * app )
     {
-#       if ENABLE_OPTICK_PROFILER
+#       if USE_OPTICK
             g_appPtr = app;
-#       else //ENABLE_OPTICK_PROFILER
+#       else //USE_OPTICK
             DIVIDE_UNUSED(app);
-#       endif //ENABLE_OPTICK_PROFILER
+#       endif //USE_OPTICK
     }
 
     void Initialise()
     {
-#       if ENABLE_OPTICK_PROFILER
+#       if USE_OPTICK
 #           if defined(ENABLE_MIMALLOC)
                 OPTICK_SET_MEMORY_ALLOCATOR([](size_t size) -> void*
                                              {
@@ -70,29 +70,29 @@ namespace Divide::Profiler
             {
                 OPTICK_SET_STATE_CHANGED_CALLBACK( OnOptickStateChanged )
             }
-#       endif //ENABLE_OPTICK_PROFILER
+#       endif //USE_OPTICK
     }
 
     void Shutdown()
     {
-#       if ENABLE_OPTICK_PROFILER
+#       if USE_OPTICK
             g_appPtr = nullptr;
             OPTICK_SHUTDOWN()
-#       endif //ENABLE_OPTICK_PROFILER
+#       endif //USE_OPTICK
     }
 
     void OnThreadStart( const std::string_view threadName )
     {
-#       if ENABLE_OPTICK_PROFILER
+#       if USE_OPTICK
             OPTICK_START_THREAD(threadName.data())
-#       else //ENABLE_OPTICK_PROFILER
+#       else //USE_OPTICK
             DIVIDE_UNUSED(threadName);
-#       endif //ENABLE_OPTICK_PROFILER
+#       endif //USE_OPTICK
     }
     void OnThreadStop()
     {
-#       if ENABLE_OPTICK_PROFILER
+#       if USE_OPTICK
             OPTICK_STOP_THREAD()
-#       endif //ENABLE_OPTICK_PROFILER
+#       endif //USE_OPTICK
     }
 }; //namespace Divide::Profiler

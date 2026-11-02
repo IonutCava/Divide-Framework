@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
+Copyright (c) 2026 DIVIDE-Studio
 Copyright (c) 2009 Ionut Cava
 
 This file is part of DIVIDE Framework.
@@ -123,6 +123,7 @@ public:
 
 protected:
     friend class Application;
+    friend struct WindowManagerTestAccess;
 
     // Can be called at startup directly
     ErrorCode init(PlatformContext& context,
@@ -144,10 +145,11 @@ protected:
         bool _createDebugContext{ !Config::Build::IS_RELEASE_BUILD && Config::ENABLE_GPU_VALIDATION };
         bool _enableCompatibilityLayer{ false };
         bool _requestRobustContext{ true };
+        bool _requestSRGBFramebuffer{ true }; //< If true, we request an sRGB capable default framebuffer. The actual capability is queried by the GL backend after context creation.
     };
     friend class DisplayWindow;
     [[nodiscard]] ErrorCode findAndApplyAPISettings(const PlatformContext& context, const WindowDescriptor& descriptor);
-    [[nodiscard]] ErrorCode applyAPISettingsPreCreate(const PlatformContext& context, RenderAPI api);
+    [[nodiscard]] ErrorCode applyAPISettingsPreCreate(U8 msaaSamples, RenderAPI api);
     [[nodiscard]] ErrorCode applyAPISettingsPostCreate( const PlatformContext& context, RenderAPI api, DisplayWindow* targetWindow );
 
     static void DestroyAPISettings(DisplayWindow* window) noexcept;

@@ -37,6 +37,7 @@
 
 #include "Core/Resources/Headers/Resource.h"
 #include "Core/Headers/PlatformContextComponent.h"
+#include "Core/TemplateLibraries/Headers/SharedPtrFactory.h"
 #include "Environment/Sky/Headers/Sun.h"
 #include "Graphs/Headers/SceneNodeFwd.h"
 #include "Utility/Headers/XMLParser.h"
@@ -547,7 +548,7 @@ class SceneInput {
 #pragma region Scene Factory
 namespace SceneList {
     template<typename T>
-    using SharedPtrFactory = boost::factory<std::shared_ptr<T>>;
+    using SharedPtrFactory = Divide::SharedPtrFactory<T>;
     using ScenePtrFactory = std::function<std::shared_ptr<Scene>(PlatformContext& context, Project& parent, const SceneEntry& name)>;
     using SceneFactoryMap = std::unordered_map<U64, ScenePtrFactory>;
     using SceneNameMap = std::unordered_map<U64, Str<256>>;
@@ -560,7 +561,7 @@ namespace SceneList {
     }
 }
 
-#define STRUCT_NAME(M) BOOST_PP_CAT(M, RegisterStruct)
+#define STRUCT_NAME(M) CONCATENATE(M, RegisterStruct)
 #define REGISTER_SCENE(SceneName)                                                    \
 class SceneName;                                                                     \
 static struct STRUCT_NAME(SceneName) {                                               \
@@ -568,7 +569,7 @@ static struct STRUCT_NAME(SceneName) {                                          
   {                                                                                  \
      SceneList::registerScene(#SceneName, SceneList::SharedPtrFactory<SceneName>()); \
   }                                                                                  \
-} BOOST_PP_CAT(SceneName, RegisterVariable);
+} CONCATENATE(SceneName, RegisterVariable);
 #define BEGIN_SCENE(SceneName)         \
 REGISTER_SCENE(SceneName);             \
 class SceneName final : public Scene { \

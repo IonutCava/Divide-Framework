@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 # CMakeList.txt : Top-level CMake project file, do global configuration and include sub-projects here.
 cmake_minimum_required (VERSION 3.29.2)
 
@@ -10,7 +11,10 @@ option(ENABLE_JUST_MY_CODE "Enable just my code debugging in MSVC in debug build
 option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their values at the end of the configure step. Mostly for debugging." OFF)
 option(SHOW_CONSOLE_WINDOW "Show the console window and Win32 builds and direct all log output to it" OFF)
 option(ENABLE_MIMALLOC "Use mimalloc to override malloc/free calls" OFF)
+option(ENABLE_OPTICK_PROFILER "Enable Optick instrumentation" OFF)
 option(ENABLE_DYNAMIC_DEOPTIMISATION "Enable Dynamic Deoptimisation" OFF)
+set(DIVIDE_VECTOR_EXTENSION_SET "AVX2" CACHE STRING "Required SIMD extension set (AUTO, SSE42, AVX, AVX2, AVX512, NEON). Unsupported requested x86 levels fail configuration.")
+set_property(CACHE DIVIDE_VECTOR_EXTENSION_SET PROPERTY STRINGS "AUTO" "SSE42" "AVX" "AVX2" "AVX512" "NEON")
 
 include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/OptimizeForArchitecture.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/ToggleVectorExtensions.cmake")
@@ -112,13 +116,16 @@ cmake_policy(SET CMP0141 NEW)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CXX_SCAN_FOR_MODULES OFF)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 set(FETCHCONTENT_QUIET TRUE)
 set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/OverlayPorts")
+
+include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/ValidateSIMDRequest.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/ConfigureDependencies.cmake")
 
 project(
     Divide-Framework
@@ -203,9 +210,11 @@ else()
 endif()
 
 if( ENABLE_OPTICK_PROFILER )
-    add_compile_definitions( ENABLE_OPTICK_PROFILER )
+    add_compile_definitions( USE_OPTICK=1 )
+    add_compile_definitions( OPTICK_ENABLE_GPU_VULKAN=1 )
     message("Enabling Optick sampling!")
 else()
+    add_compile_definitions( USE_OPTICK=0 )
     message("Optick sampling disabled!")
 endif()
 
@@ -235,6 +244,7 @@ if( MSVC_COMPILER OR CLANG_MSVC_FRONTEND )
 
     add_compile_definitions( _DISABLE_STRING_ANNOTATION )
     add_compile_definitions( _DISABLE_VECTOR_ANNOTATION )
+    add_compile_definitions( _DISABLE_OPTIONAL_ANNOTATION )
     add_compile_definitions( _CRT_SECURE_NO_WARNINGS )
 
     add_compile_options(
@@ -285,6 +295,8 @@ if( MSVC_COMPILER OR CLANG_MSVC_FRONTEND )
         add_compile_options(
             $<$<CONFIG:Debug>:/d2Obforceinline>
         )
+
+        add_compile_options( /EHsc )
 
         # RelWithDebInfo: either dynamic-deopt mode or LTCG mode
         if (ENABLE_DYNAMIC_DEOPTIMISATION AND NOT RUN_ASAN AND NOT RUN_UBSAN AND NOT IS_GITHUB_ACTIONS)

@@ -35,7 +35,8 @@
 #define DVD_NETWORKING_CLIENT_H_	
 
 #include "Common.h"
-#include <boost/asio/deadline_timer.hpp>
+#include <atomic>
+#include <boost/asio/steady_timer.hpp>
 
 namespace Divide
 {
@@ -76,7 +77,10 @@ namespace Networking
         boost::asio::io_context _context;
         std::thread _contextThread;
         U8 _heartbeatCounter = 0u;
-        boost::asio::deadline_timer _heartbeatTimer;
+        boost::asio::steady_timer _heartbeatTimer;
+        U64 _heartbeatGeneration = 0u;
+        std::atomic_bool _stopping{false};
+        bool _heartbeatStarted = false;
 
         // The client has a single instance of a "connection" object, which handles data transfer
         Connection_uptr _connection;

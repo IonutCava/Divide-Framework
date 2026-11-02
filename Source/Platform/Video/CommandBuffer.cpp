@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/CommandBuffer.h"
 #include "Headers/CommandBufferPool.h"
@@ -335,8 +335,10 @@ namespace
                     PROFILE_SCOPE( "Clean Push Constants", Profiler::Category::Graphics );
 
                     SendPushConstantsCommand* sendPushConstantsCommand = cmd->As<SendPushConstantsCommand>();
-                    if ( !sendPushConstantsCommand->_fastData.set() &&
-                         (sendPushConstantsCommand->_uniformData == nullptr || sendPushConstantsCommand->_uniformData->entries().empty()))
+                    const auto flags = sendPushConstantsCommand->_fastData.computeFlags();
+                    DIVIDE_GPU_ASSERT(flags != PushConstantsStruct::DataFlags::COUNT);
+                    if (flags == to_base(PushConstantsStruct::DataFlags::NONE) &&
+                       (sendPushConstantsCommand->_uniformData == nullptr || sendPushConstantsCommand->_uniformData->entries().empty()))
                     {
                         erase = true;
                     }
@@ -846,33 +848,63 @@ namespace
 
     bool Merge(SendPushConstantsCommand* lhs, SendPushConstantsCommand* rhs)
     {
-        if ( lhs->_fastData.set() )
+        using Flags = PushConstantsStruct::DataFlags;
+        PushConstantsStruct mergedFast = lhs->_fastData;
         {
-            if ( rhs->_fastData.set() && lhs->_fastData != rhs->_fastData)
+            const Flags lFlags = lhs->_fastData.dataFlags();
+            const Flags rFlags = rhs->_fastData.dataFlags();
+
+            if (rFlags != Flags::NONE)
+            {
+                if (lFlags == Flags::NONE)
+                {
+                    mergedFast = rhs->_fastData;
+                }
+                else
+                {
+                    const bool rFirst  = (rFlags & Flags::FIRST) != 0;
+                    const bool rSecond = (rFlags & Flags::SECOND) != 0;
+                    const bool lFirst  = (lFlags & Flags::FIRST) != 0;
+                    const bool lSecond = (lFlags & Flags::SECOND) != 0;
+
+                    if ((rFirst && lFirst && lhs->_fastData.data[0] != rhs->_fastData.data[0]) ||
+                        (rSecond && lSecond && lhs->_fastData.data[1] != rhs->_fastData.data[1]))
+                    {
+                        return false;
+                    }
+
+                    if (rFirst)
+                    {
+                        mergedFast.data[0] = rhs->_fastData.data[0];
+                    }
+
+                    if (rSecond)
+                    {
+                        mergedFast.data[1] = rhs->_fastData.data[1];
+                    }
+                    mergedFast.computeFlags();
+                }
+            }
+        }
+
+        UniformData* lhsUniforms = lhs->_uniformData;
+        UniformData* rhsUniforms = rhs->_uniformData;
+
+        if (lhsUniforms != nullptr && rhsUniforms != nullptr)
+        {
+            if (!Merge(*lhsUniforms, *rhsUniforms))
             {
                 return false;
             }
         }
-        else if ( rhs->_fastData.set() )
+
+        lhs->_fastData = mergedFast;
+        if (lhsUniforms == nullptr)
         {
-            lhs->_fastData = rhs->_fastData;
+            lhs->_uniformData = rhsUniforms;
         }
 
-        bool partial = false;
-
-        UniformData* lhsUniforms = static_cast<SendPushConstantsCommand*>(lhs)->_uniformData;
-        UniformData* rhsUniforms = static_cast<SendPushConstantsCommand*>(rhs)->_uniformData;
-        if ( lhsUniforms == nullptr )
-        {
-            lhsUniforms = rhsUniforms;
-            return true;
-        }
-        else if ( rhsUniforms == nullptr )
-        {
-            return true;
-        }
-
-        return Merge(*lhsUniforms, *rhsUniforms, partial);
+        return true;
     }
 
 }; //namespace Divide::GFX

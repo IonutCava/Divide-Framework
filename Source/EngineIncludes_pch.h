@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
+Copyright (c) 2018-2026 DIVIDE-Studio
 Copyright (c) 2009 Ionut Cava
 
 This file is part of DIVIDE Framework.
@@ -44,9 +44,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define HAS_NEON 1
 #endif //__ARM_NEON || __ARM_NEON__
 
-#if !defined(__SSE4_1__) && !defined(HAS_NEON)
-#   error "Divide Framework requires SSE4.1 or Neon at a minimum! (e.g. for _mm_dp_ps)"
-#endif //__SSE4_1__
+#if !defined(__SSE4_2__) && !defined(HAS_SSE42) && !defined(HAS_NEON)
+#   error "Divide Framework requires SSE4.2 or Neon at a minimum! (e.g. for _mm_dp_ps)"
+#endif //__SSE4_2__ || HAS_SSE42 || HAS_NEON
 
 #if defined(IS_WINDOWS_BUILD) && defined(HAS_NEON)
 #define _DISABLE_SOFTINTRIN_ 1
@@ -96,7 +96,6 @@ DISABLE_GCC_WARNING_POP()
 #include "Core/TemplateLibraries/Headers/String.h"
 
 #include <boost/property_tree/ptree.hpp>
-#include <boost/functional/factory.hpp>
 
 #include <SDL3/SDL.h>
 

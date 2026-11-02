@@ -1,7 +1,12 @@
+# Copyright (c) 2026 DIVIDE-Studio
 name: 'Linux Build Setup'
 description: 'Common build setup steps for Linux builds'
 
 inputs:
+  compiler:
+    description: 'Compiler to use (gcc or clang)'
+    required: false
+    default: 'gcc'
   runner_type:
     description: 'Type of runner (GitHub or self-hosted)'
     required: false
@@ -10,73 +15,29 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: ./.github/actions/common-config
-      id: common-config
-      
-    - name: Clean workspace (self-hosted only)
-      if: runner.self-hosted
-      shell: bash
-      run: |
-        sudo git clean -xdf
-        sudo git reset --hard
-
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
+        ref: ${{ github.event.inputs.ci_sha || github.sha }}
+        path: ci-source
+        persist-credentials: false
         submodules: true
         fetch-depth: 0
 
+    - uses: ./.github/actions/build-tools/linux
+      if: inputs.runner_type == 'GitHub'
+
+    - uses: ./.github/actions/common-config
+      if: inputs.runner_type != 'GitHub'
+      id: common-config
+
     - uses: lukka/get-cmake@latest
+      if: inputs.runner_type != 'GitHub'
       with:
         cmakeVersion: ${{ steps.common-config.outputs.cmake-version }}
         ninjaVersion: ${{ steps.common-config.outputs.ninja-version }}
 
-    - name: Check Ninja version and path
-      shell: bash
-      id: ninja-setup
-      run: |
-        if ! which ninja > /dev/null; then
-          echo "::error::Ninja not found in PATH"
-          exit 1
-        fi
-        NINJA_PATH=$(which ninja)
-        echo "ninja_path=${NINJA_PATH}" >> $GITHUB_OUTPUT
-        echo "PATH=$(dirname ${NINJA_PATH}):$PATH" >> $GITHUB_ENV
-        ninja --version
-
-    - name: Install extra required packages
-      if: inputs.runner_type == 'GitHub'
-      continue-on-error: true
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          libxi-dev \
-          libx11-dev \
-          libxft-dev \
-          libxext-dev \
-          libgl1-mesa-dev \
-          libglu1-mesa-dev \
-          mesa-common-dev \
-          libxrandr-dev \
-          libxxf86vm-dev \
-          autoconf \
-          automake \
-          libtool \
-          pkg-config \
-          libltdl-dev \
-          libwayland-dev \
-          libxkbcommon-dev \
-          libegl1-mesa-dev \
-          libibus-1.0-dev \
-          bison \
-          autoconf-archive \
-          libltdl-dev \
-          lld
-
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ steps.ninja-setup.outputs.ninja_path }}
+    - name: Setup cached vcpkg
+      uses: ./.github/actions/vcpkg-setup
       with:
-        vcpkgJsonGlob: 'vcpkg.json'
+        compiler: ${{ inputs.compiler }}
+        source-directory: ci-source

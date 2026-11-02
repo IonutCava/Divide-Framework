@@ -22,6 +22,8 @@ void main()
 //ref: https://github.com/clayjohn/realtime_clouds
 //ref: https://github.com/clayjohn/godot-volumetric-cloud-demo/tree/main
 
+#define USE_GLOBAL_INIT 0
+
 #if !defined(PRE_PASS)
 layout(early_fragment_tests) in;
 #endif //!PRE_PASS
@@ -43,10 +45,17 @@ DESCRIPTOR_SET_RESOURCE( PER_DRAW, 9 ) uniform sampler2DArray curl;
 
 #define UP_DIR WORLD_Y_AXIS
 
-float TIME = MSToSeconds( dvd_GameTimeMS );
-float sky_b_radius = dvd_PlanetRadius + dvd_CloudLayerMinMaxHeight.x;//bottom of cloud layer
-float sky_t_radius = dvd_PlanetRadius + dvd_CloudLayerMinMaxHeight.y;//top of cloud layer
-vec3 sunDirection = -GetSunFWDDirection();
+#if USE_GLOBAL_INIT
+    float TIME = MSToSeconds( dvd_GameTimeMS );
+    float sky_b_radius = dvd_PlanetRadius + dvd_CloudLayerMinMaxHeight.x;//bottom of cloud layer
+    float sky_t_radius = dvd_PlanetRadius + dvd_CloudLayerMinMaxHeight.y;//top of cloud layer
+    vec3 sunDirection = -GetSunFWDDirection();
+#else //USE_GLOBAL_INIT
+    float TIME;
+    float sky_b_radius;
+    float sky_t_radius;
+    vec3 sunDirection;
+#endif //USE_GLOBAL_INIT
 
 // optical length at zenith for molecules
 #define rayleigh_zenith_size 8.4e3
@@ -132,9 +141,9 @@ float SimplexPolkaDot3D(in vec3 P, in float density)
 }
 
 // From: https://www.shadertoy.com/view/4sfGzS credit to iq
-float hash( in vec3 p )
+float hash( in vec3 val )
 {
-    p = fract( p * 0.3183099 + 0.1 );
+    vec3 p = fract( val * 0.3183099 + 0.1 );
     p *= 17.0;
     return fract( p.x * p.y * p.z * (p.x + p.y + p.z) );
 }
@@ -469,10 +478,12 @@ vec3 getRawAlbedo(in vec3 rayDirection, in float lerpValue)
 
 void main()
 {
-    //TIME = MSToSeconds( dvd_GameTimeMS );
-    //sky_b_radius = dvd_PlanetRadius + dvd_CloudLayerMinMaxHeight.x;//bottom of cloud layer
-    //sky_t_radius = dvd_PlanetRadius + dvd_CloudLayerMinMaxHeight.y;//top of cloud layer
-    //sunDirection = -GetSunFWDDirection();
+#if !USE_GLOBAL_INIT
+    TIME = MSToSeconds( dvd_GameTimeMS );
+    sky_b_radius = dvd_PlanetRadius + dvd_CloudLayerMinMaxHeight.x;//bottom of cloud layer
+    sky_t_radius = dvd_PlanetRadius + dvd_CloudLayerMinMaxHeight.y;//top of cloud layer
+    sunDirection = -GetSunFWDDirection();
+#endif //!USE_GLOBAL_INIT
 
     // Guess work based on what "look right"
     const float lerpValue = Saturate(2.95f * (-sunDirection.y + 0.15f));

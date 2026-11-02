@@ -8,6 +8,9 @@
 #include "Platform/File/Headers/FileManagement.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 
+#include <boost/asio/post.hpp>
+#include <chrono>
+
 namespace Divide::Networking
 {
     Client::Client()
@@ -56,7 +59,7 @@ namespace Divide::Networking
 
     void Client::disconnect()
     {
-        _heartbeatTimer.cancel();
+        _stopping = true;
 
         // If connection exists, and it's connected then...
         if (isConnected())
@@ -74,8 +77,11 @@ namespace Divide::Networking
             _contextThread.join();
         }
 
+        // The context thread has stopped, so cancellation cannot race a timer reset.
+        _heartbeatTimer.cancel();
+
         // Destroy the connection object
-        _connection.release();
+        _connection.reset();
     }
 
 
@@ -94,9 +100,14 @@ namespace Divide::Networking
     {
         if (isConnected())
         {
-            _heartbeatTimer.expires_at(boost::posix_time::neg_infin);
-            sendMessage(p);
-            heartbeatWait();
+            boost::asio::post(_context, [this, p]()
+            {
+                if (!_stopping && isConnected())
+                {
+                    sendMessage(p);
+                    heartbeatWait();
+                }
+            });
         }
     }
 
@@ -113,21 +124,40 @@ namespace Divide::Networking
             receiveMessage(msg);
         }
 
-        static bool init = false;
-        if ( !init)
+        if (!_heartbeatStarted)
         {
-            init = true;
-            heartbeatSend();
+            _heartbeatStarted = true;
+            boost::asio::post(_context, [this]()
+            {
+                if (!_stopping && isConnected())
+                {
+                    heartbeatSend();
+                }
+            });
         }
     }
 
     void Client::heartbeatWait()
     {
-        _heartbeatTimer.expires_from_now(boost::posix_time::seconds(2));
+        if (_stopping || !isConnected())
+        {
+            return;
+        }
+        _heartbeatTimer.expires_after(std::chrono::seconds(2));
+        const U64 generation = ++_heartbeatGeneration;
         _heartbeatTimer.async_wait
         (
-            [&]([[maybe_unused]] const boost::system::error_code ec)
+            [this, generation](const boost::system::error_code ec)
             {
+                if (ec == boost::asio::error::operation_aborted || _stopping || generation != _heartbeatGeneration)
+                {
+                    return;
+                }
+                if (ec)
+                {
+                    Console::errorfn(LOCALE_STR("NETWORK_ERROR_CODE_ERROR"), ec.message());
+                    return;
+                }
                 heartbeatSend();
             }
         );
@@ -135,11 +165,16 @@ namespace Divide::Networking
 
     void Client::heartbeatSend()
     {
+        if (_stopping || !isConnected())
+        {
+            return;
+        }
         if ( ++_heartbeatCounter == HeartbeastPerPingRequest)
         {
             NetworkPacket msg{ OPCodes::CMSG_PING };
             msg << Time::App::ElapsedMilliseconds();
             _heartbeatCounter = 0u;
+            sendMessage(msg);
         }
         else
         {
@@ -228,6 +263,6 @@ namespace Divide::Networking
         NetworkPacket msg{OPCodes::CMSG_REQUEST_FILE};
         msg << path;
         msg << name;
-        sendMessage(msg);
+        send(msg);
     }
 } //namespace Divide::Networking

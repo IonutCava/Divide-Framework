@@ -53,8 +53,7 @@ namespace CEGUI
 String CEGUIRenderer::s_rendererID("Divide CEGUI Renderer");
 
 CEGUIRenderer::CEGUIRenderer( Divide::GFXDevice& context, Divide::Handle<Divide::ShaderProgram> shader, const CEGUI::Sizef resolution )
-    : _flipClippingHeight(context.renderAPI() != Divide::RenderAPI::OpenGL)
-    , _context(context)
+    : _context(context)
     , _displaySize(resolution)
 {
     using namespace Divide;
@@ -366,8 +365,8 @@ void CEGUIRenderer::bindDefaultState( bool const scissor, const BlendMode mode, 
 
     DIVIDE_ASSERT(mode != BlendMode::BM_INVALID);
 
-    const PipelineType pipelineType = scissor ? (mode == BlendMode::BM_NORMAL ? PipelineType::BLEND_NORMAL_SCISSOR        : PipelineType::BLEND_NORMAL_NO_SCISSOR)
-                                              : (mode == BlendMode::BM_NORMAL ? PipelineType::BLEND_PREMULTIPLIED_SCISSOR : PipelineType::BLEND_PREMULTIPLIED_NO_SCISSOR);
+    const PipelineType pipelineType = mode == BlendMode::BM_NORMAL ? (scissor ? PipelineType::BLEND_NORMAL_SCISSOR        : PipelineType::BLEND_NORMAL_NO_SCISSOR)
+                                                                   : (scissor ? PipelineType::BLEND_PREMULTIPLIED_SCISSOR : PipelineType::BLEND_PREMULTIPLIED_NO_SCISSOR);
 
     if (_activePipelineType != pipelineType )
     {

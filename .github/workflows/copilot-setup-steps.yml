@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 name: "Copilot Setup Steps"
 
 # This workflow configures the environment for GitHub Copilot Agent with gh-aw MCP server
@@ -6,6 +7,15 @@ on:
   push:
     paths:
       - .github/workflows/copilot-setup-steps.yml
+      - .github/actions/build-tools/linux/**
+      - .github/actions/vcpkg-setup/**
+      - .github/actions/common-config/**
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+      - .github/actions/build-tools/linux/**
+      - .github/actions/vcpkg-setup/**
+      - .github/actions/common-config/**
 
 permissions:
   contents: read
@@ -18,7 +28,8 @@ jobs:
   # The job MUST be called 'copilot-setup-steps' to be recognized by GitHub Copilot Agent
   copilot-setup-steps:
     name: Copilot Setup Steps
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 59
 
     # Set minimal permissions for setup steps
     # Copilot Agent receives its own token with appropriate permissions
@@ -27,9 +38,26 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+          submodules: true
+      - name: Install Linux build prerequisites
+        uses: ./.github/actions/build-tools/linux
+      - name: Restore dependency binaries and bootstrap vcpkg
+        uses: ./.github/actions/vcpkg-setup
+        with:
+          compiler: gcc
+      - name: Configure Linux dependencies before the agent firewall
+        shell: bash
+        env:
+          VCPKG_MAX_CONCURRENCY: '2'
+        run: cmake --preset linux-gcc -DBUILD_TESTING_INTERNAL=ON -DRUN_TESTING_INTERNAL=OFF
+      - name: Save prepared dependency binaries
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ env.DIVIDE_VCPKG_BINARY_CACHE }}
+          key: ${{ env.DIVIDE_VCPKG_CACHE_KEY }}
       - name: Install gh-aw extension
         uses: github/gh-aw-actions/setup-cli@924af5fdc64061cfbf66fb584c8b07e2ac230c60 # v0.89.21
         with:

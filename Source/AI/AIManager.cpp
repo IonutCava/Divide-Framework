@@ -174,7 +174,7 @@ AITeam* AIManager::registerTeam( const U32 id )
 {
     LockGuard<Mutex> w_lock(_updateMutex);
     auto& team = _aiTeams[id];
-    auto it = _aiTeams.find(id);
+    //auto it = _aiTeams.find(id);
     if ( team == nullptr )
     {
         team.reset( new AITeam( id, *this ) );

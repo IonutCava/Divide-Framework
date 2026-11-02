@@ -1,0 +1,62 @@
+{
+  "name": "joltphysics",
+  "version": "5.6.0",
+  "port-version": 2,
+  "description": "A multi core friendly rigid body physics and collision detection library suitable for games and VR applications",
+  "homepage": "https://github.com/jrouwe/JoltPhysics",
+  "license": "MIT",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ],
+  "default-features": [
+    "object-stream"
+  ],
+  "features": {
+    "avx": {
+      "description": "Enable AVX (baseline is SSE4.2 on x86, NEON on ARM)"
+    },
+    "avx2": {
+      "description": "Enable AVX2, AVX, LZCNT, TZCNT, F16C and FMA"
+    },
+    "avx512": {
+      "description": "Enable AVX512 and the AVX2 feature set"
+    },
+    "asserts": {
+      "description": "Enable asserts"
+    },
+    "debugrenderer": {
+      "description": "Enable debug renderer in Debug and Release builds"
+    },
+    "disable-custom-allocator": {
+      "description": "Disable support for a custom memory allocator"
+    },
+    "double-precision": {
+      "description": "Use double precision math"
+    },
+    "exceptions": {
+      "description": "Enable C++ exceptions"
+    },
+    "object-stream": {
+      "description": "Compile the ObjectStream class and RTTI attribute information"
+    },
+    "profiler": {
+      "description": "Enable the profiler in Debug and Release builds"
+    },
+    "rtti": {
+      "description": "Enable C++ RTTI"
+    },
+    "floating-point-exceptions": {
+      "description": "Turns on division by zero and invalid floating point exception support"
+    },
+    "std-vector": {
+      "description": "Use std::vector instead of Jolt's own Array class"
+    }
+  }
+}
