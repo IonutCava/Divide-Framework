@@ -22,7 +22,6 @@
     "openal-soft",
     "expat",
     "recastnavigation",
-    "imgui-node-editor",
     "vulkan",
     "vulkan-memory-allocator",
     "vk-bootstrap",
@@ -30,7 +29,6 @@
     "mimalloc",
     "meshoptimizer",
     "spirv-reflect",
-    "chaiscript",
     {
       "name": "sdl3-mixer",
       "default-features": false,
@@ -80,10 +78,6 @@
     {
       "name": "nvtt",
       "platform": "!osx"
-    },
-    {
-      "name": "date",
-      "platform": "osx"
     },
     {
       "name": "wayland",

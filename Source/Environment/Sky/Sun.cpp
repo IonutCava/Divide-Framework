@@ -1,10 +1,8 @@
-
-
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/Sun.h"
 
-#if defined(USE_HINNANT_DATE)
-#include <date/tz.h>
-#endif //USE_HINNANT_DATE
+#include <ctime>
+#include <stdexcept>
 
 namespace Divide {
 
@@ -117,17 +115,20 @@ SunInfo SunPosition::CalculateSunPosition(const struct tm &dateTime, const Angle
     const auto h = dateTime.tm_hour + dateTime.tm_min / 60.0;
 
     std::tm tm_copy = dateTime;
-    time_t tt = TimeGM(&tm_copy); // Use timegm for UTC
+    const time_t tt = TimeGM(&tm_copy); // Use timegm for UTC
 
-    auto tp = std::chrono::system_clock::from_time_t(tt);
-
-#if defined(USE_HINNANT_DATE)
-    auto* tz = date::get_tzdb().current_zone(); // macOS uses date library for timezone handling
-#else //USE_HINNANT_DATE
-    auto* tz = std::chrono::current_zone();
-#endif //USE_HINNANT_DATE
-
+#if defined(IS_MACOS_BUILD)
+    std::tm localTime{};
+    if (localtime_r(&tt, &localTime) == nullptr)
+    {
+        throw std::runtime_error("Unable to determine local time zone offset");
+    }
+    const auto tzone = static_cast<D64>(localTime.tm_gmtoff) / 3600.0;
+#else //IS_MACOS_BUILD
+    const auto tp = std::chrono::system_clock::from_time_t(tt);
+    const auto* tz = std::chrono::current_zone();
     const auto tzone = tz->get_info( tp ).offset.count() / 3600.0;
+#endif //IS_MACOS_BUILD
 
     // year = 1990; m=4; day=19; h=11.99;	// local time
     const auto UT = h - tzone;	// universal time

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
+Copyright (c) 2018-2026 DIVIDE-Studio
 Copyright (c) 2009 Ionut Cava
 
 This file is part of DIVIDE Framework.
@@ -32,6 +32,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #ifndef DVD_IMGUI_CUSTOM_CONFIG_H_
 #define DVD_IMGUI_CUSTOM_CONFIG_H_
+
+#include <string_view>
 
 namespace Divide {
 	bool DebugBreak(const bool condition) noexcept;

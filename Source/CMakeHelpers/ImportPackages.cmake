@@ -40,7 +40,6 @@ find_package(meshoptimizer CONFIG REQUIRED)
 find_package(OpenAL CONFIG REQUIRED)
 find_package(expat CONFIG REQUIRED)
 find_package(recastnavigation CONFIG REQUIRED)
-find_package(unofficial-imgui-node-editor CONFIG REQUIRED)
 find_package(Vulkan)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(vk-bootstrap CONFIG REQUIRED)
@@ -57,17 +56,12 @@ find_package(ZLIB REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 find_package(Jolt CONFIG REQUIRED)
 
-if(MAC_OS_BUILD)
-    find_package(date CONFIG REQUIRED)
-endif()
-
 if(LINUX_OS_BUILD)
     include(CMakeHelpers/PlatformHelpers/FindWayland.cmake)
 endif()
 
 
 find_path(expat_INCLUDE_DIR "expat.h")
-find_path(CHAISCRIPT_INCLUDE_DIRS "chaiscript/chaiscript.hpp")
 
 set(NVTT_LIBRARIES "")
 
@@ -137,7 +131,6 @@ include_directories(
     ${Boost_INCLUDE_DIR}
     ${expat_INCLUDE_DIR}
     ${Vulkan_INCLUDE_DIR}/vma
-    ${CHAISCRIPT_INCLUDE_DIRS}
 )
 
 include_directories(
@@ -183,10 +176,6 @@ if(ENABLE_OPTICK_PROFILER)
     list(APPEND EXTERNAL_LIBS OptickCore)
 endif()
 
-if(MAC_OS_BUILD)
-    set(EXTERNAL_LIBS ${EXTERNAL_LIBS} date::date date::date-tz)
-    add_compile_definitions(USE_HINNANT_DATE)
-endif()
 if(WAYLAND_FOUND)
     set(EXTERNAL_LIBS ${EXTERNAL_LIBS} ${WAYLAND_LIBRARIES})
     include_directories(${WAYLAND_INCLUDE_DIR})

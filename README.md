@@ -113,6 +113,9 @@ If I accidentally breached any license, please open an issue and I will address 
 I did try to comply with all of them, but I may have missed something.
 ```
 
+Vendored library revisions, licenses, and local patches are listed in
+[docs/dependencies.md](docs/dependencies.md).
+
 * EASTL: https://github.com/electronicarts/EASTL
 * SDL: https://github.com/libsdl-org
 * {fmt}: https://github.com/fmtlib/fmt

@@ -39,7 +39,7 @@ if(ENABLE_OPTICK_PROFILER)
     include_directories(SYSTEM ${optick_SOURCE_DIR}/src)
 endif()
 
-# Small, rarely changing libraries vendored under Source/ThirdParty (see Source/ThirdParty/VENDORED.md)
+# Small, rarely changing libraries vendored under Source/ThirdParty (see docs/dependencies.md)
 get_filename_component(DIVIDE_VENDORED_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 set(skarupke_SOURCE_DIR              "${DIVIDE_VENDORED_DIR}/flat_hash_map")
 set(memory_pool_SOURCE_DIR           "${DIVIDE_VENDORED_DIR}/MemoryPool")
@@ -50,6 +50,17 @@ set(fcpp_SOURCE_DIR                  "${DIVIDE_VENDORED_DIR}/fcpp")
 set(imgui_club_SOURCE_DIR            "${DIVIDE_VENDORED_DIR}/imgui_club")
 set(icon_font_cpp_headers_SOURCE_DIR "${DIVIDE_VENDORED_DIR}/IconFontCppHeaders")
 set(imguizmo_SOURCE_DIR              "${DIVIDE_VENDORED_DIR}/ImGuizmo")
+set(chaiscript_SOURCE_DIR            "${DIVIDE_VENDORED_DIR}/ChaiScript")
+set(imgui_node_editor_SOURCE_DIR     "${DIVIDE_VENDORED_DIR}/imgui-node-editor")
+
+add_library(divide_imgui_node_editor STATIC
+    "${imgui_node_editor_SOURCE_DIR}/crude_json.cpp"
+    "${imgui_node_editor_SOURCE_DIR}/imgui_canvas.cpp"
+    "${imgui_node_editor_SOURCE_DIR}/imgui_node_editor.cpp"
+    "${imgui_node_editor_SOURCE_DIR}/imgui_node_editor_api.cpp"
+)
+target_include_directories(divide_imgui_node_editor SYSTEM PUBLIC "${DIVIDE_VENDORED_DIR}")
+target_link_libraries(divide_imgui_node_editor PUBLIC imgui::imgui)
 
 if(NOT WINDOWS_OS_BUILD)
     set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_OLD})
@@ -74,6 +85,7 @@ include_directories(
     ${imgui_club_SOURCE_DIR}
     ${icon_font_cpp_headers_SOURCE_DIR}
     ${imguizmo_SOURCE_DIR}
+    ${chaiscript_SOURCE_DIR}/include
     #${SDL3_mixer_SOURCE_DIR}/include
     ${nri_SOURCE_DIR}/include
 )
