@@ -6,7 +6,7 @@ They are wired up in `CMakeHelpers/ImportPackages.cmake`.
 
 To update one, re-copy the listed files from the new upstream commit and update the commit here.
 
-| Folder | Upstream | Commit | License | Files |
+| Library / folder | Upstream | Commit | License | Files |
 |---|---|---|---|---|
 | `flat_hash_map` | https://github.com/skarupke/flat_hash_map | `2c4687431f978f02a3780e24b8b701d22aa32d9c` | BSL-1.0 (`LICENSE_1_0.txt`) | `bytell_hash_map.hpp`, `flat_hash_map.hpp` |
 | `MemoryPool` | https://github.com/cacay/MemoryPool | `1ab4683e38f24940afb397b06a2d86814d898e63` | MIT (file headers) | `StackAlloc.h`, `C-11/MemoryPool.h`, `C-11/MemoryPool.tcc` |
@@ -16,3 +16,6 @@ To update one, re-copy the listed files from the new upstream commit and update 
 | `fcpp` | https://github.com/IonutCava/fcpp | `f25c3bfc38fa5bef669a0845edeba0882fc81ecb` | BSD-3-Clause (`COPYING`), MIT notices in sources | `cpp1-6.c`, headers, `README` |
 | `imgui_club` | https://github.com/ocornut/imgui_club | `da32fb90bfb7e5b2a687b972105cc3b6d3db0321` | MIT (`LICENSE.txt`) | `imgui_memory_editor/imgui_memory_editor.h` |
 | `IconFontCppHeaders` | https://github.com/juliettef/IconFontCppHeaders | `8886c5657bac22b8fee34354871e3ade2a596433` | zlib (`licence.txt`) | `IconsForkAwesome.h` |
+| SimpleIni (`.`) | https://github.com/brofield/simpleini | `877f7357d1fa4232f1f3352e5028f99899210b27` (`v4.26`) | MIT (`LICENCE.txt`) | `SimpleIni.h` |
+| concurrentqueue | https://github.com/cameron314/concurrentqueue | `9afb99746f0f5fc94ac8aef737053ae0481ba8d1` (`v1.0.5`) | BSD-2-Clause or BSL-1.0 (`concurrentqueue/LICENSE.md`) | `concurrentqueue/moodycamel/{concurrentqueue,blockingconcurrentqueue,lightweightsemaphore}.h` and internal debug header |
+| CTRE (`.`) | https://github.com/hanickadot/compile-time-regular-expressions | `4ab18abfd88ccfc867734bf5d31b13285854577e` (`v3.11.0`) | Apache-2.0 (`CTRE-LICENSE`) | Complete upstream `include/` tree |

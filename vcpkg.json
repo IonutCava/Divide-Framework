@@ -12,13 +12,11 @@
     "stb",
     "freetype",
     "fmt",
-    "concurrentqueue",
     {
       "name": "devil",
       "default-features": false
     },
     "eastl",
-    "simpleini",
     "glbinding",
     "glm",
     "openal-soft",
@@ -28,7 +26,6 @@
     "vulkan",
     "vulkan-memory-allocator",
     "vk-bootstrap",
-    "ctre",
     "assimp",
     "mimalloc",
     "imguizmo",

@@ -32,7 +32,6 @@ find_package(PkgConfig REQUIRED)
 find_package(Stb REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(fmt CONFIG REQUIRED)
-find_package(concurrentqueue CONFIG REQUIRED)
 find_package(DevIL REQUIRED)
 find_package(EASTL CONFIG REQUIRED)
 find_package(glbinding CONFIG REQUIRED)
@@ -46,7 +45,6 @@ find_package(Vulkan)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(vk-bootstrap CONFIG REQUIRED)
 find_package(glslang CONFIG REQUIRED)
-find_package(ctre CONFIG REQUIRED)
 if(BUILD_TESTING_INTERNAL)
     find_package(Catch2 CONFIG REQUIRED)
 endif()
@@ -58,7 +56,6 @@ find_package(assimp CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(imguizmo CONFIG REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
-find_package(SimpleIni CONFIG REQUIRED)
 find_package(Jolt CONFIG REQUIRED)
 
 if(MAC_OS_BUILD)
@@ -168,14 +165,12 @@ set(EXTERNAL_LIBS
     imgui::imgui
     imguizmo::imguizmo
     assimp::assimp
-    ctre::ctre
     unofficial::spirv-reflect
     meshoptimizer::meshoptimizer
     glbinding::glbinding glbinding::glbinding-aux
     vk-bootstrap::vk-bootstrap
     expat::expat
     Vulkan::Vulkan
-    concurrentqueue::concurrentqueue
     GPUOpen::VulkanMemoryAllocator
     RecastNavigation::Detour
     RecastNavigation::Recast
@@ -187,7 +182,6 @@ set(EXTERNAL_LIBS
     glslang::glslang-default-resource-limits
     glslang::SPIRV
     #glslang::SPVRemapper
-    SimpleIni::SimpleIni
     Jolt::Jolt
 )
 
