@@ -1,0 +1,84 @@
+# Copyright (c) 2026 DIVIDE-Studio
+name: Selected Platform Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      ci_sha:
+        description: 'Commit to validate with one target per OS'
+        required: true
+        type: string
+
+run-name: Selected Platform Validation - ${{ inputs.ci_sha }}
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Selected - ${{ matrix.os }} ${{ matrix.compiler }} ${{ matrix.build-type }} ${{ matrix.configuration }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: Linux
+            runner: ubuntu-24.04
+            compiler: clang
+            build-type: editor
+            configuration: release
+          - os: Windows
+            runner: windows-latest
+            compiler: msvc
+            build-type: editor
+            configuration: debug
+          - os: macOS
+            runner: macos-15
+            compiler: clang
+            build-type: editor
+            configuration: debug
+    steps:
+      - name: Free disk space
+        if: matrix.os == 'Linux'
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          large-packages: false
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/build-setup/linux
+        if: matrix.os == 'Linux'
+        with:
+          compiler: ${{ matrix.compiler }}
+      - uses: ./.github/actions/build-setup/windows
+        if: matrix.os == 'Windows'
+        with:
+          compiler: ${{ matrix.compiler }}
+      - uses: ./.github/actions/build-setup/macos
+        if: matrix.os == 'macOS'
+        with:
+          architecture: arm64
+      - uses: ./.github/actions/cmake-build/linux
+        if: matrix.os == 'Linux'
+        with:
+          compiler: ${{ matrix.compiler }}
+          build-type: ${{ matrix.build-type }}
+          configuration: ${{ matrix.configuration }}
+      - uses: ./.github/actions/cmake-build/windows
+        if: matrix.os == 'Windows'
+        with:
+          compiler: ${{ matrix.compiler }}
+          build-type: ${{ matrix.build-type }}
+          configuration: ${{ matrix.configuration }}
+          configure-preset: windows-msvc-editor-instrumentation
+          build-preset: windows-msvc-debug-editor-instrumentation
+          test-preset: test-windows-msvc-debug-editor-instrumentation
+      - uses: ./.github/actions/cmake-build/macos
+        if: matrix.os == 'macOS'
+        with:
+          architecture: arm64
+          build-type: ${{ matrix.build-type }}
+          configuration: ${{ matrix.configuration }}
