@@ -1,5 +1,7 @@
 -- Vertex
 
+#include "nodeBufferedInput.cmn"
+
 layout(location = ATTRIB_POSITION)  in vec3 inVertexData;
 layout(location = ATTRIB_COLOR)     in vec4 inColourData;
 layout(location = ATTRIB_NORMAL)    in vec4 particleNormalData;
@@ -9,18 +11,16 @@ layout(location = ATTRIB_FREE_START + 0) out vec4 particleColour;
 
 void main()
 {
-    vec3 camRighW = dvd_ViewMatrix[0].xyz;
-    vec3 camUpW = dvd_ViewMatrix[1].xyz;
+    ComputeIndirectionData();
 
-    float spriteSize = particleNormalData.w;
-    vec3 vertexPositionWV = (dvd_ViewMatrix * vec4( particleNormalData.xyz + 
-                                                   (camRighW * inVertexData.x * spriteSize) +
-                                                   (camUpW * inVertexData.y * spriteSize), 1.0f)).xyz;
-    // Output position of the vertex
-    // Even though the variable ends with WV, we'll store WVP to skip adding a new varying variable
-
-    VAR._vertexWV = vec4(vertexPositionWV, 1.0f);
-    VAR._normalWV = mat3(dvd_ViewMatrix) * vec3(0.0, 0.0f, 1.0);
+    const vec3 centreWV = (dvd_ViewMatrix * vec4(particleNormalData.xyz, 1.f)).xyz;
+    VAR._vertexWV = vec4(centreWV + vec3(inVertexData.xy * particleNormalData.w, 0.f), 1.f);
+    VAR._vertexW = dvd_InverseViewMatrix * VAR._vertexWV;
+    VAR._normalWV = vec3(0.f, 0.f, 1.f);
+#if defined(HAS_VELOCITY)
+    // Per-particle previous positions are not buffered, so retain camera motion only.
+    VAR._prevVertexWVP = dvd_PrevViewProjectionMatrix * VAR._vertexW;
+#endif //HAS_VELOCITY
     gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
     
     // UV of the vertex. No special space for this one.
@@ -31,37 +31,37 @@ void main()
 
 --Fragment.Shadow.VSM
 
-#include "nodeDataInput.cmn"
-#ifdef HAS_TEXTURE
+#include "nodeBufferedInput.cmn"
 #include "vsm.frag"
 layout(location = 0) out vec2 _colourOut;
 
 layout(location = ATTRIB_FREE_START + 0) in vec4 particleColour;
-DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2DArray texDiffuse0;
 
 void main() {
-    if (texture(texDiffuse0, vec3(VAR._texCoord,0)).a < ALPHA_DISCARD_THRESHOLD) {
+    float alpha = particleColour.a;
+#ifdef HAS_TEXTURE
+    alpha *= texture(texDiffuse0, vec3(VAR._texCoord, 0)).a;
+#endif //HAS_TEXTURE
+    if (alpha <= ALPHA_DISCARD_THRESHOLD) {
         discard;
     }
 
     _colourOut = computeMoments();
 }
-#endif
 
 -- Fragment
 
 #if defined(PRE_PASS)
-#include "utility.frag"
 #include "prePass.frag"
 #else
+#include "materialData.frag"
 #include "output.frag"
+#if defined(MAIN_DISPLAY_PASS) && !defined(OIT_PASS)
+DESCRIPTOR_SET_RESOURCE(PER_PASS, 1) uniform sampler2D texDepth;
+#endif //MAIN_DISPLAY_PASS && !OIT_PASS
 #endif
 // Interpolated values from the vertex shaders
 layout(location = ATTRIB_FREE_START + 0) in vec4 particleColour;
-
-#ifdef HAS_TEXTURE
-DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2DArray texDiffuse0;
-#endif
 
 void main(){
    
@@ -73,9 +73,11 @@ void main(){
     vec4 colour = particleColour;
 #endif
 
-    float d = texture(texDepth, gl_FragCoord.xy * ivec2(dvd_ViewPort.zw)).r - gl_FragCoord.z;
+#if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS)
+    float d = texture(texDepth, gl_FragCoord.xy / vec2(textureSize(texDepth, 0))).r - gl_FragCoord.z;
     float softness = pow(1.f - min(1.f, 200.f * d), 2.f);
     colour.a *= max(0.1f, 1.f - pow(softness, 2.f));
+#endif //MAIN_DISPLAY_PASS && !PRE_PASS
 
 #if defined(PRE_PASS)
     if (colour.a <= ALPHA_DISCARD_THRESHOLD) {
@@ -89,6 +91,6 @@ void main(){
     const vec3 normalWV = getNormalWV( data, vec3( VAR._texCoord, 0 ), normalVariation );
 
     writeScreenColour(colour, vec3( 0.f ), normalWV );
-#ensif //PRE_PASS
+#endif //PRE_PASS
 
 }

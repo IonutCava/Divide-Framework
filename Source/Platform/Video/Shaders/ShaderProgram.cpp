@@ -265,6 +265,7 @@ namespace Divide
         U8 s_computeBufferSlot =  0u;
 
         constexpr U8 s_uniformsStartOffset = 14u;
+        constexpr std::string_view s_compiledShaderCacheVersion = "target-env-v2";
 
         void RefreshBindingSlots()
         {
@@ -291,12 +292,12 @@ namespace Divide
 
         [[nodiscard]] ResourcePath SpvCacheLocation()
         {
-            return ShaderParentCacheLocation() / Paths::Shaders::g_cacheLocationSpv;
+            return ShaderParentCacheLocation() / Paths::Shaders::g_cacheLocationSpv / s_compiledShaderCacheVersion;
         }
 
         [[nodiscard]] ResourcePath ReflCacheLocation()
         {
-            return ShaderParentCacheLocation() / Paths::Shaders::g_cacheLocationRefl;
+            return ShaderParentCacheLocation() / Paths::Shaders::g_cacheLocationRefl / s_compiledShaderCacheVersion;
         }
 
         [[nodiscard]] ResourcePath TxtCacheLocation()

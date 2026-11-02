@@ -172,7 +172,8 @@ void main(void)
                                      gl_in[1].gl_Position.xyz +
                                      gl_in[2].gl_Position.xyz +
                                      gl_in[3].gl_Position.xyz);
-        const mat4 worldMat = Transform(dvd_terrainWorld, dvd_Transforms[TRANSFORM_IDX]._transform);
+        const TransformData nodeTransform = dvd_Transforms[TRANSFORM_IDX]._transform;
+        const mat4 worldMat = TransformMatrix(dvd_terrainWorld, nodeTransform);
         const vec4 pos0 = worldMat * gl_in[0].gl_Position;
         const vec4 pos1 = worldMat * gl_in[2].gl_Position;
         const float radius = length(pos0.xyz - pos1.xyz) * 0.5f;
@@ -445,38 +446,42 @@ void main(void)
         const vec3 T = cross(N, B);
 
         vec3 P = gl_in[i].gl_Position.xyz;
-        PerVertex(i, edge_dist, ViewProjectionMatrix );
+        PerVertex(i, edge_dist, dvd_ViewProjectionMatrix );
 
         { // normals
             gs_wireColor = vec3(0.0f, 0.0f, 1.0f);
-            gl_Position = ViewProjectionMatrix * vec4(P, 1.0);
+            gl_Position = dvd_ViewProjectionMatrix * vec4(P, 1.0);
             EmitVertex();
 
-            PerVertex(1, edge_dist, ViewProjectionMatrix );
+            PerVertex(i, edge_dist, dvd_ViewProjectionMatrix );
             gs_wireColor = vec3(0.0f, 0.0f, 1.0f);
-            gl_Position = ViewProjectionMatrix * vec4(P + N * sizeFactor, 1.0);
+            gl_Position = dvd_ViewProjectionMatrix * vec4(P + N * sizeFactor, 1.0);
             EmitVertex();
 
             EndPrimitive();
         }
         { // binormals
+            PerVertex(i, edge_dist, dvd_ViewProjectionMatrix );
             gs_wireColor = vec3(0.0f, 1.0f, 0.0f);
-            gl_Position = ViewProjectionMatrix * vec4(P, 1.0);
+            gl_Position = dvd_ViewProjectionMatrix * vec4(P, 1.0);
             EmitVertex();
 
+            PerVertex(i, edge_dist, dvd_ViewProjectionMatrix );
             gs_wireColor = vec3(0.0f, 1.0f, 0.0f);
-            gl_Position = ViewProjectionMatrix * vec4(P + B * sizeFactor, 1.0);
+            gl_Position = dvd_ViewProjectionMatrix * vec4(P + B * sizeFactor, 1.0);
             EmitVertex();
 
             EndPrimitive();
         }
         { // tangents
+            PerVertex(i, edge_dist, dvd_ViewProjectionMatrix );
             gs_wireColor = vec3(1.0f, 0.0f, 0.0f);
-            gl_Position = ViewProjectionMatrix * vec4(P, 1.0);
+            gl_Position = dvd_ViewProjectionMatrix * vec4(P, 1.0);
             EmitVertex();
 
+            PerVertex(i, edge_dist, dvd_ViewProjectionMatrix );
             gs_wireColor = vec3(1.0f, 0.0f, 0.0f);
-            gl_Position = ViewProjectionMatrix * vec4(P + T * sizeFactor, 1.0);
+            gl_Position = dvd_ViewProjectionMatrix * vec4(P + T * sizeFactor, 1.0);
             EmitVertex();
 
             EndPrimitive();
@@ -487,13 +492,13 @@ void main(void)
     // Output verts
     for (int i = 0; i < count; ++i)
     {
-        PerVertex(i, edge_dist, ViewProjectionMatrix );
+        PerVertex(i, edge_dist, dvd_ViewProjectionMatrix );
         gs_wireColor = tes_debugColour[i];
         EmitVertex();
     }
 
     // This closes the triangle
-    PerVertex(0, edge_dist, ViewProjectionMatrix );
+    PerVertex(0, edge_dist, dvd_ViewProjectionMatrix );
     gs_wireColor = tes_debugColour[0];
     EmitVertex();
 
@@ -516,7 +521,7 @@ layout(location = ATTRIB_FREE_START + 2) noperspective in vec4 gs_edgeDist;  //w
 #else //TOGGLE_DEBUG
 
 #if defined(TOGGLE_TESS_LEVEL)
-layout(location = ATTRIB_FREE_START + 3) in vec3 tes_debugColour;
+layout(location = ATTRIB_FREE_START + 4) in vec3 tes_debugColour;
 #endif //TOGGLE_TESS_LEVEL
 
 #endif //TOGGLE_DEBUG

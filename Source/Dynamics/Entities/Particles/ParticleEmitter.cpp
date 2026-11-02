@@ -29,8 +29,8 @@ namespace
     constexpr U32 g_particleBufferSizeFactor = 3;
     constexpr U32 g_particleGeometryBuffer = 0;
     constexpr U32 g_particlePositionBuffer = g_particleGeometryBuffer + 1;
-    constexpr U32 g_particleColourBuffer = g_particlePositionBuffer* + 2;
-    constexpr U32 g_particleIndexBuffer = g_particleColourBuffer* + 2;
+    constexpr U32 g_particleColourBuffer = g_particlePositionBuffer + 1;
+    constexpr U32 g_particleIndexBuffer = g_particleColourBuffer + 1;
 
     constexpr U64 g_updateInterval = Time::MillisecondsToMicroseconds(33);
 }
@@ -180,7 +180,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
         
         auto& vertBinding = vertexFormat._vertexBindings.emplace_back();
         vertBinding._bufferBindIndex = desc._vertexBindingIndex;
-        vertBinding._strideInBytes = 3 * sizeof( F32 );
+        vertBinding._strideInBytes = sizeof( float4 );
         vertBinding._perVertexInputRate = false;
     }
     {
@@ -193,7 +193,8 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
 
         auto& vertBinding = vertexFormat._vertexBindings.emplace_back();
         vertBinding._bufferBindIndex = desc._vertexBindingIndex;
-        vertBinding._strideInBytes = 3 * sizeof( F32 );
+        vertBinding._strideInBytes = sizeof( UColour4 );
+        vertBinding._perVertexInputRate = false;
     }
 
     const bool useTexture = !_particles->_textureFileName.empty();
@@ -201,9 +202,16 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
     Material* mat = Get(matHandle);
 
     mat->setPipelineLayout(topology, vertexFormat);
-    mat->computeRenderStateCBK([]([[maybe_unused]] Material* material, [[maybe_unused]] const RenderStagePass stagePass, RenderStateBlock& blockInOut)
+    mat->computeRenderStateCBK([]([[maybe_unused]] Material* material, const RenderStagePass stagePass, RenderStateBlock& blockInOut)
     {
         blockInOut._cullMode = CullMode::NONE;
+        if (stagePass._stage == RenderStage::DISPLAY && stagePass._passType == RenderPassType::PRE_PASS)
+        {
+            // Leave scene depth and G-buffer data untouched for soft particles.
+            blockInOut._depthWriteEnabled = false;
+            blockInOut._colourWrite.b[0] = blockInOut._colourWrite.b[1] =
+                blockInOut._colourWrite.b[2] = blockInOut._colourWrite.b[3] = false;
+        }
     });
 
     mat->computeShaderCBK([useTexture]([[maybe_unused]] Material* material, const RenderStagePass stagePass)
@@ -254,7 +262,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
         textureDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
         textureDescriptor._packing = GFXImagePacking::NORMALIZED_SRGB;
 
-        mat->setTexture(TextureSlot::UNIT0, texture, {}, TextureOperation::NONE);
+        mat->setTexture(TextureSlot::UNIT0, texture, {}, TextureOperation::NONE, true);
     }
 
     setMaterialTemplate( matHandle, vertexFormat );

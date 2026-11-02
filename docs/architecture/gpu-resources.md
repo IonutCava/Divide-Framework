@@ -69,6 +69,7 @@ OpenGL is the reference. Client code does not branch on the API for Y: projectio
 - Vulkan offscreen targets use an unflipped viewport and pass-through scissor; texel row 0 is clip-space bottom, matching GL sampling, `texelFetch(gl_FragCoord)`, copies, and readbacks. Dynamic front face is inverted to compensate.
 - Only the Vulkan swapchain uses a negative-height viewport and top-left scissor conversion (`IsSwapChainTargetActive()` in `VKWrapper.cpp`); its front face is not inverted.
 - Shaders drawing to the screen must not rely on `gl_FragCoord.y`.
+- Both APIs use zero-to-one depth: OpenGL enables `GL_ZERO_TO_ONE` via `glClipControl`, Vulkan's viewport depth range is 0..1, and camera projection builders default to `zeroToOneDepth=true`. Depth reconstruction must not apply `0.5*z+0.5` remapping.
 - Future backends should flip only at presentation and adjust winding internally.
 
 ## Colour-space convention

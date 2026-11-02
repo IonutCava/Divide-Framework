@@ -16,7 +16,7 @@
 #define easeInOutSine(X) (-(cos(M_PI * X) - 1) * 0.5f)
 #define easeInQuad(X) (X * X)
 #define easeOutQuad(X) (1.f - (1.f - X) * (1.f - X))
-#define easeInOutQuad(X) (X < 0.5.f ? 2.f * X * X : 1.f - pow(-2 * X + 2, 2) * 0.5f)
+#define easeInOutQuad(X) ((X) < 0.5f ? 2.f * (X) * (X) : 1.f - pow(-2.f * (X) + 2.f, 2.f) * 0.5f)
 #define easeInCubic(X) (X * X * X)
 #define easeOutCubic(X) (1.f - pow(1.f - X, 3))
 #define easeInOutCubic(X) (X < 0.5f ? 4 * X * X * X : 1.f - pow(-2 * X + 2, 3) * 0.5f)
@@ -28,19 +28,30 @@
 #define easeInOutQuint(X) (X < 0.5f ? 16 * X * X * X * X * X : 1.f - pow(-2 * X + 2, 5) * 0.5f)
 #define easeInEXpo(X) (X == 0.f ? 0.f : pow(2.f, 10 * X - 10))
 #define easeOutEXpo(X) (X == 1.f ? 1.f : 1.f - pow(2.f, -10 * X))
-#define easeInOutEXpo(X) (X == 0.f ? 0.f : X == 1.f ? 1.f : X < 0.5f ? pow(2f, 20 * X - 10) * 0.5f : (2.f - pow(2, -20 * X + 10)) * 0.5f)
+#define easeInOutEXpo(X) ((X) == 0.f ? 0.f : (X) == 1.f ? 1.f : (X) < 0.5f ? pow(2.f, 20.f * (X) - 10.f) * 0.5f : (2.f - pow(2.f, -20.f * (X) + 10.f)) * 0.5f)
 #define easeInCirc(X) (1.f - sqrt(1.f - pow(X, 2)))
 #define easeOutCirc(X) (sqrt(1.f - pow(X - 1, 2)))
 #define easeInOutCirc(X) (X < 0.5f ? (1.f - sqrt(1.f - pow(2 * X, 2))) * 0.5f : (sqrt(1.f - pow(-2 * X + 2, 2)) + 1.f) * 0.5f)
-#define easeInBack(X) (const float c1 = 1.70158f; const float c3 = c1 + 1; c3 * X * X * X - c1 * X * X)
-#define easeOutBack(X) (const float c1 = 1.70158f; const float c3 = c1 + 1; 1 + c3 * pow(X - 1, 3) + c1 * pow(X - 1, 2))
-#define easeInOutBack(X) (const float c1 = 1.70158f; const float c2 = c1 * 1.525f; X < 0.5f ? (pow(2 * X, 2) * ((c2 + 1) * 2 * X - c2)) * 0.5f : (pow(2 * X - 2, 2) * ((c2 + 1) * (X * 2 - 2) + c2) + 2) * 0.5f)
-#define easeInElastic(X) (const float c4 = (2 * M_PI) / 3.f; X == 0 ? 0 : X == 1 ? 1 : -pow(2, 10 * X - 10) * sin((X * 10 - 10.75f) * c4))
-#define easeOutElastic(X) (const float c4 = (2 * M_PI) / 3.f; X == 0 ? 0 : X == 1 ? 1 : pow(2, -10 * X) * sin((X * 10 - 0.75f) * c4) + 1)
-#define easeInOutElastic(X) (const float c5 = (2 * M_PI) / 4.5f; X == 0 ? 0 : X == 1 ? 1 : X < 0.5f ? -(pow(2, 20 * X - 10) * sin((20 * X - 11.125f) * c5)) * 0.5f : (pow(2, -20 * X + 10) * sin((20 * X - 11.125f) * c5)) * 0.5f + 1)
-#define easeOutBounce(X) (const float n1 = 7.5625f; const float d1 = 2.75f; if (X < 1 / d1) { n1 * X * X} else if (X < 2 / d1) { n1 * (X -= 1.5f / d1) * X + 0.75}  else if (X < 2.5f / d1) { n1 * (X -= 2.25f / d1) * X + 0.9375f}  } else { n1 * (X -= 2.625f / d1) * X + 0.984375f})
-#define easeInBounce(X) (1.f - easeOutBounce(1.f - X))
-#define easeInOutBounce(X) (X < 0.5f ? (1 - easeOutBounce(1 - 2 * X)) * 0.5f: (1 + easeOutBounce(2 * X - 1)) * 0.5f)
+// Easing macro arguments may be evaluated more than once.
+#define DVD_EASE_BACK_C1 1.70158f
+#define DVD_EASE_BACK_C2 (DVD_EASE_BACK_C1 * 1.525f)
+#define easeInBack(X) ((DVD_EASE_BACK_C1 + 1.f) * (X) * (X) * (X) - DVD_EASE_BACK_C1 * (X) * (X))
+#define easeOutBack(X) (1.f + (DVD_EASE_BACK_C1 + 1.f) * ((X) - 1.f) * ((X) - 1.f) * ((X) - 1.f) + DVD_EASE_BACK_C1 * ((X) - 1.f) * ((X) - 1.f))
+#define easeInOutBack(X) ((X) < 0.5f \
+    ? (2.f * (X)) * (2.f * (X)) * ((DVD_EASE_BACK_C2 + 1.f) * (2.f * (X)) - DVD_EASE_BACK_C2) * 0.5f \
+    : ((2.f * (X) - 2.f) * (2.f * (X) - 2.f) * ((DVD_EASE_BACK_C2 + 1.f) * (2.f * (X) - 2.f) + DVD_EASE_BACK_C2) + 2.f) * 0.5f)
+#define easeInElastic(X) ((X) == 0.f || (X) == 1.f ? (X) : -pow(2.f, 10.f * (X) - 10.f) * sin((10.f * (X) - 10.75f) * (2.f * M_PI / 3.f)))
+#define easeOutElastic(X) ((X) == 0.f || (X) == 1.f ? (X) : pow(2.f, -10.f * (X)) * sin((10.f * (X) - 0.75f) * (2.f * M_PI / 3.f)) + 1.f)
+#define easeInOutElastic(X) ((X) == 0.f || (X) == 1.f ? (X) : (X) < 0.5f \
+    ? -pow(2.f, 20.f * (X) - 10.f) * sin((20.f * (X) - 11.125f) * (2.f * M_PI / 4.5f)) * 0.5f \
+    : pow(2.f, -20.f * (X) + 10.f) * sin((20.f * (X) - 11.125f) * (2.f * M_PI / 4.5f)) * 0.5f + 1.f)
+#define DVD_EASE_BOUNCE_TERM(X, OFFSET, ADD) (7.5625f * ((X) - (OFFSET)) * ((X) - (OFFSET)) + (ADD))
+#define easeOutBounce(X) ((X) < 1.f / 2.75f ? 7.5625f * (X) * (X) \
+    : (X) < 2.f / 2.75f ? DVD_EASE_BOUNCE_TERM((X), 1.5f / 2.75f, 0.75f) \
+    : (X) < 2.5f / 2.75f ? DVD_EASE_BOUNCE_TERM((X), 2.25f / 2.75f, 0.9375f) \
+    : DVD_EASE_BOUNCE_TERM((X), 2.625f / 2.75f, 0.984375f))
+#define easeInBounce(X) (1.f - easeOutBounce(1.f - (X)))
+#define easeInOutBounce(X) ((X) < 0.5f ? (1.f - easeOutBounce(1.f - 2.f * (X))) * 0.5f : (1.f + easeOutBounce(2.f * (X) - 1.f)) * 0.5f)
 // easing functions
 
 // Can't use as a define because

@@ -28,6 +28,15 @@ including file-watcher updates racing asset-loader cache reads.
 
 Changes must cover source parsing, generated declarations, cache invalidation, SPIR-V generation, reflection compatibility, and both backend consumers.
 
+### GLSL authoring and preprocessing
+
+- Effect files are GLSW collections; `ShaderModuleDescriptor` selects a `file.Stage.variant` section, and module/global defines select material, pass, and debug variants.
+- `PreprocessIncludes` runs **before** `PreProcessMacros`, so every `#include` must resolve even inside a disabled `#if`.
+- Loose uniforms are collected into generated `std140` blocks at `PER_DRAW` slots `s_uniformsStartOffset` (+1 for a second distinct block; at most two per program).
+- Prefer GLSL expression defines over helper functions so preprocessed shaders stay as inline as practical. Parenthesize macro arguments, keep bodies expression-only, and do not pass side-effecting or expensive expressions to macros that evaluate an argument more than once.
+- `GLSLToSPIRV` targets Vulkan 1.4 / SPIR-V 1.6 for Vulkan and the OpenGL 4.5 environment / SPIR-V 1.0 for OpenGL (`debug.renderer.useSPIRVForOpenGL` ingests the latter directly). Compiled-binary and reflection cache paths include `s_compiledShaderCacheVersion`; bump it whenever compiler targets change.
+- `Source/UnitTests/ShaderCompilationTests.py` compiles representative generated-header variants for both APIs and checks cross-stage links. `ShaderMathTests.py` executes selected shader macros numerically on a Vulkan compute device (skipping when none is available). Neither replaces the engine preprocessor or image-based rendering checks.
+
 ## Descriptor ownership and invariants
 
 | Usage | Vulkan set index | Main resources |

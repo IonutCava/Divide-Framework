@@ -841,6 +841,7 @@ set( TEST_ENGINE_SOURCE UnitTests/unitTestCommon.h
                         UnitTests/Test-Engine/MathMatrixTests.cpp
                         UnitTests/Test-Engine/MathVectorTests.cpp
                         UnitTests/Test-Engine/RendererTests.cpp
+                        UnitTests/Test-Engine/ShaderCompilerTests.cpp
                         UnitTests/Test-Engine/ScriptingTests.cpp
 )
 
