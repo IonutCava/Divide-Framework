@@ -26,118 +26,104 @@ void main()
 
 #define GROUP_SIZE (CLUSTERS_X_THREADS * CLUSTERS_Y_THREADS * CLUSTERS_Z_THREADS)
 
-bool testSphereAABB( uint light, uint tile );
-float sqDistPointAABB( vec3 point, uint tile );
-
 struct SharedEntry
 {
     vec3 positionWV;
     float radius;
     uint isSpot;
-    uint enabled;
 };
 
 shared SharedEntry sharedLights[GROUP_SIZE];
+
+bool SphereIntersectsAABB( in vec3 center, in float radius, in VolumeTileAABB cell )
+{
+    // Squared distance from the sphere centre to the closest point of the box
+    const vec3 delta = center - clamp( center, cell.minPoint.xyz, cell.maxPoint.xyz );
+    return dot( delta, delta ) <= radius * radius;
+}
 
 // each thread handles one cluster
 layout( local_size_x = CLUSTERS_X_THREADS, local_size_y = CLUSTERS_Y_THREADS, local_size_z = CLUSTERS_Z_THREADS ) in;
 void main()
 {
-
-    const uint threadCount = gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z;
+    // Uniform across the dispatch, so the barriers inside the batch loop are in uniform control flow
     const uint lightCount = POINT_LIGHT_COUNT + SPOT_LIGHT_COUNT;
-    const uint numBatches = (lightCount + threadCount - 1) / threadCount;
-    const uint tileIndex = gl_LocalInvocationIndex + gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z * gl_WorkGroupID.z;
+    const uint numBatches = (lightCount + GROUP_SIZE - 1u) / GROUP_SIZE;
+    const uint tileIndex = gl_GlobalInvocationID.x +
+                           gl_GlobalInvocationID.y * CLUSTERS_X +
+                           gl_GlobalInvocationID.z * (CLUSTERS_X * CLUSTERS_Y);
 
-    uvec2 visibleLightIndices[MAX_LIGHTS_PER_CLUSTER];
-    uvec2 visibleLightCount = uvec2(0u, 0u);
+    const VolumeTileAABB cell = lightClusterAABBs[tileIndex];
+
+    // One budget shared by both light types (the global index buffer holds MAX_LIGHTS_PER_CLUSTER entries per cluster).
+    // Point lights fill from the front, spot lights from the back. Lights past the budget are dropped in buffer order.
+    uint visibleLightIndices[MAX_LIGHTS_PER_CLUSTER];
+    uint pointCount = 0u;
+    uint spotCount = 0u;
 
     for ( uint batch = 0u; batch < numBatches; ++batch )
     {
-        const uint lightIndex = batch * threadCount + gl_LocalInvocationIndex;
+        const uint batchStart = batch * GROUP_SIZE;
+        const uint lightIndex = batchStart + gl_LocalInvocationIndex;
 
-        //Prevent overflow
         if ( lightIndex < lightCount )
         {
             const Light source = dvd_LightSource[DIRECTIONAL_LIGHT_COUNT + lightIndex];
             // Light position is already in view space and thus it matches our cluster format
-            const vec4 lightPos = getPositionAndRangeForLight( source );
+            const vec4 bounds = getPositionAndRangeForLight( source );
 
             SharedEntry light;
-            light.enabled = 1u;
-            light.positionWV = lightPos.xyz;
-            light.radius = lightPos.w;
+            light.positionWV = bounds.xyz;
+            light.radius = bounds.w;
             light.isSpot = source._TYPE == LIGHT_SPOT ? 1u : 0u;
-
             sharedLights[gl_LocalInvocationIndex] = light;
         }
-    }
 
-    // wait for all threads to finish copying
-    barrier();
+        // wait for the whole batch to be copied
+        barrier();
 
-    for ( uint batch = 0u; batch < numBatches; ++batch )
-    {
-        //Iterating within the current batch of lights
-        for ( uint light = 0; light < threadCount; ++light )
+        // only the entries written for this batch are valid
+        const uint batchSize = min( GROUP_SIZE, lightCount - batchStart );
+        for ( uint i = 0u; i < batchSize; ++i )
         {
-            if (sharedLights[light].enabled == 1u && testSphereAABB( light, tileIndex ) )
+            const SharedEntry light = sharedLights[i];
+            if ( pointCount + spotCount < MAX_LIGHTS_PER_CLUSTER && SphereIntersectsAABB( light.positionWV, light.radius, cell ) )
             {
-                const uint arrayIdx = sharedLights[light].isSpot;
-                visibleLightIndices[visibleLightCount[arrayIdx]++][arrayIdx] = batch * threadCount + light;
+                if ( light.isSpot == 1u )
+                {
+                    visibleLightIndices[MAX_LIGHTS_PER_CLUSTER - 1u - spotCount] = batchStart + i;
+                    ++spotCount;
+                }
+                else
+                {
+                    visibleLightIndices[pointCount] = batchStart + i;
+                    ++pointCount;
+                }
             }
         }
-    }
 
-    // wait for all threads to finish checking lights
-    barrier();
+        // wait for every thread to finish reading before the next batch overwrites the shared entries
+        barrier();
+    }
 
     // get a unique index into the light index list where we can write this cluster's lights
-    const uint offset = atomicAdd( globalIndexCount[0], visibleLightCount.x + visibleLightCount.y );
-    const uint pointLightCount = visibleLightCount.x;
-    // copy indices of lights
-    for ( uint i = 0u; i < pointLightCount; ++i )
-    {
-        globalLightIndexList[offset + i] = visibleLightIndices[i].x;
-    }
+    const uint offset = atomicAdd( globalIndexCount[0], pointCount + spotCount );
 
-    for ( uint i = 0u; i < visibleLightCount.y; ++i )
+    // point lights first, then spot lights (in discovery order)
+    for ( uint i = 0u; i < pointCount; ++i )
     {
-        globalLightIndexList[pointLightCount + offset + i] = visibleLightIndices[i].y;
+        globalLightIndexList[offset + i] = visibleLightIndices[i];
+    }
+    for ( uint i = 0u; i < spotCount; ++i )
+    {
+        globalLightIndexList[offset + pointCount + i] = visibleLightIndices[MAX_LIGHTS_PER_CLUSTER - 1u - i];
     }
 
     // write light grid for this cluster
     LightGrid cluster;
     cluster._offset = offset;
-    cluster._countPoint = visibleLightCount.x;
-    cluster._countSpot  = visibleLightCount.y;
+    cluster._countPoint = pointCount;
+    cluster._countSpot = spotCount;
+    cluster._unused = 0u;
     lightGrid[tileIndex] = cluster;
-}
-
-bool testSphereAABB( uint light, uint tile )
-{
-    const SharedEntry lightEntry = sharedLights[light];
-    const float squaredDistance = sqDistPointAABB( lightEntry.positionWV, tile );
-    return squaredDistance <= Squared( lightEntry.radius );
-}
-
-float sqDistPointAABB( vec3 point, uint tile )
-{
-    float sqDist = 0.0;
-    VolumeTileAABB currentCell = lightClusterAABBs[tile];
-    currentCell.maxPoint[3] = tile;
-    for ( int i = 0; i < 3; ++i )
-    {
-        float v = point[i];
-        if ( v < currentCell.minPoint[i] )
-        {
-            sqDist += (currentCell.minPoint[i] - v) * (currentCell.minPoint[i] - v);
-        }
-        if ( v > currentCell.maxPoint[i] )
-        {
-            sqDist += (v - currentCell.maxPoint[i]) * (v - currentCell.maxPoint[i]);
-        }
-    }
-
-    return sqDist;
 }

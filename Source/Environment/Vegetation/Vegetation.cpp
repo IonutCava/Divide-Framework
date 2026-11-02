@@ -304,8 +304,8 @@ namespace Divide
             return SceneNode::load( context );
         }
 
-        _maxGrassInstances += _maxGrassInstances % WORK_GROUP_SIZE;
-        _maxTreeInstances  += _maxTreeInstances  % WORK_GROUP_SIZE;
+        _maxGrassInstances = ((_maxGrassInstances + WORK_GROUP_SIZE - 1u) / WORK_GROUP_SIZE) * WORK_GROUP_SIZE;
+        _maxTreeInstances  = ((_maxTreeInstances  + WORK_GROUP_SIZE - 1u) / WORK_GROUP_SIZE) * WORK_GROUP_SIZE;
 
         const auto& chunks = _descriptor.parentTerrain->terrainChunks();
 
@@ -666,6 +666,8 @@ namespace Divide
                 uniforms->set( _ID( "dvd_treeExtents" ), PushConstantType::VEC4, _treeExtents );
                 uniforms->set( _ID( "dvd_grassExtents" ), PushConstantType::VEC4, _grassExtents );
                 uniforms->set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, sgn->dataFlag() );
+                uniforms->set( _ID( "dvd_grassInstanceCount" ), PushConstantType::UINT, instance->_instanceCountGrass );
+                uniforms->set( _ID( "dvd_treeInstanceCount" ), PushConstantType::UINT, instance->_instanceCountTrees );
                 
                 PushConstantsStruct& fastConstants = cullConstantsCmd._fastData;
                 fastConstants.data[0] = viewProjectionMatrix;

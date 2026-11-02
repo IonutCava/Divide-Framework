@@ -275,7 +275,7 @@ namespace Divide
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 5,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // Shadow Cube
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 6,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // Shadow Single
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 7,  DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::FRAGMENT );             // PROBE_DATA;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 8,  DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::ALL_DRAW );             // SCENE_DATA;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 8,  DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::ALL );                  // SCENE_DATA; (vegetation culling reads water data in compute)
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 9,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::FRAGMENT );             // LIGHT_SHADOW;
 
         _api->initDescriptorSets();
@@ -996,7 +996,7 @@ namespace Divide
             compModule._defines.emplace_back( Util::StringFormat( "LOCAL_SIZE {}", DEPTH_REDUCE_LOCAL_SIZE ) );
             compModule._defines.emplace_back( "imageSizeIn PushData0[0].xy");
             compModule._defines.emplace_back( "imageSizeOut PushData0[0].zw");
-            compModule._defines.emplace_back( "wasEven (uint(PushData0[1].x) == 1u)");
+            compModule._defines.emplace_back( "isBaseLevel (uint(PushData0[1].x) == 1u)");
 
             compModule._sourceFile = "HiZConstruct.glsl";
 
@@ -2019,19 +2019,20 @@ namespace Divide
             data.dvd_ProjectionMatrix.set( cameraSnapshot._projectionMatrix );
             data.dvd_camProperties.xyz.set( zNear, zFar, cameraSnapshot._fov );
 
-            if ( cameraSnapshot._isOrthoCamera )
+            // Exponential depth slices (ref: http://www.aortiz.me/2018/12/21/CG.html). Cluster lookup converts depth to
+            // view distance for both perspective and orthographic projections, so the same distribution applies to both.
+            if ( zNear > 0.f && zFar > zNear )
             {
-                data.dvd_lightingTweakValues.x = 1.f; //scale
-                data.dvd_lightingTweakValues.y = 0.f; //bias
-            }
-            else
-            {
-                //ref: http://www.aortiz.me/2018/12/21/CG.html
                 constexpr F32 CLUSTERS_Z = to_F32( Config::Lighting::ClusteredForward::CLUSTERS_Z );
                 const F32 zLogRatio = std::log( zFar / zNear );
 
                 data.dvd_lightingTweakValues.x = CLUSTERS_Z / zLogRatio; //scale
                 data.dvd_lightingTweakValues.y = -(CLUSTERS_Z * std::log( zNear ) / zLogRatio); //bias
+            }
+            else
+            {
+                data.dvd_lightingTweakValues.x = 1.f; //scale
+                data.dvd_lightingTweakValues.y = 0.f; //bias
             }
             projectionDirty = true;
         }
@@ -2370,9 +2371,9 @@ namespace Divide
 
         U32 twidth = HiZTex->width();
         U32 theight = HiZTex->height();
-        bool wasEven = false;
-        U32 owidth = twidth;
-        U32 oheight = theight;
+        // Level 0 reads the depth buffer, so start from its real size; each later level reads the previous HiZ mip.
+        U32 owidth = Get( SrcAtt->texture() )->width();
+        U32 oheight = Get( SrcAtt->texture() )->height();
 
         for ( U16 i = 0u; i < HiZTex->mipCount(); ++i )
         {
@@ -2405,7 +2406,7 @@ namespace Divide
 
             PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( cmdBufferInOut )->_fastData;
             pushConstants.data[0]._vec[0].set( owidth, oheight, twidth, theight );
-            pushConstants.data[0]._vec[1].x = wasEven ? 1.f : 0.f;
+            pushConstants.data[0]._vec[1].x = i == 0u ? 1.f : 0.f;
 
             GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( cmdBufferInOut )->_workGroupSize =
             {
@@ -2414,7 +2415,6 @@ namespace Divide
                 1u
             };
 
-            wasEven = twidth % 2 == 0 && theight % 2 == 0;
             owidth = twidth;
             oheight = theight;
             twidth /= 2;

@@ -9,17 +9,19 @@ The shader tree contains 35 GLSW effect files and 35 shared shader atoms: 20 fra
 
 Findings below distinguish source-proven defects, conditional/latent defects, and profiling-dependent improvements. They are not claims of observed GPU failures on a particular driver. Most arithmetic, indexing, and culling problems affect both backends.
 
-**Repair status:** C7, C12, M1, M2 and M5 have been addressed. The particle shader
+**Repair status:** C1-C12, M1, M2 and M5 have been addressed. The particle shader
 compilation defects in M3 and the billboard/UV errors in M16 have been repaired,
 as have the dormant water and vector-packing compilation failures. These changes
-have focused compiler/link checks; the new transform, easing, and packing macros
-also have Vulkan numerical checks. The particle renderer still has the host-side
-blockers listed below and has not been validated end to end.
+have focused compiler/link checks (including every clustered-lighting and culling
+compute shader on both backends); the new transform, easing, packing, depth
+reconstruction, spot bounding-sphere and cluster-index code also have Vulkan
+numerical checks. The particle renderer still has the host-side blockers listed
+below and has not been validated end to end.
 
-**Remaining priorities:** clustered-light batching/capacity, CSM split upload,
-HiZ footprints, exposure synchronization/access, Vulkan descriptor visibility,
-and the particle host integration. Several less dramatic visual defects are also
-genuine math or contract errors, not simply stylistic opportunities.
+**Remaining priorities:** CSM split upload, exposure synchronization/access,
+the particle host integration, and the post-processing and material defects below.
+Several less dramatic visual defects are also genuine math or contract errors, not
+simply stylistic opportunities.
 
 ## How the source actually reaches the APIs
 
@@ -88,6 +90,8 @@ The current group has 512 invocations. With 513 lights, the shared array ends as
 
 **Correction:** Load one batch, explicitly initialize invalid lanes, synchronize, test only that batch's valid entries, then synchronize before reusing shared storage. Retain the correct original index and type together.
 
+**Status: fixed.** Each batch is loaded, fenced by `barrier()` on both sides, and only its `min(GROUP_SIZE, lightCount - batchStart)` valid entries are tested (sphere-vs-AABB by closest-point clamp).
+
 ### C2. High: cluster light capacity is never enforced
 
 **Locations:** `lightCull.glsl:52-53,84-106`; backing allocation in `Source\Rendering\Renderer.cpp:84-90`.
@@ -96,6 +100,8 @@ The current group has 512 invocations. With 513 lights, the shared array ends as
 
 **Correction:** Define and enforce a total per-cluster budget, with point and spot counts whose sum never exceeds it. Keep the emitted indices and advertised counts consistent; make overflow policy explicit.
 
+**Status: fixed.** One `MAX_LIGHTS_PER_CLUSTER` array is shared: point lights fill from the front, spot lights from the back, and both stop when they meet. Overflowing lights are dropped. Output is points then spots, matching the grid's two counts and the index-buffer allocation.
+
 ### C3. High: depth linearization does not match the engine's projection
 
 **Locations:** `Common\utility.cmn:55`; cluster consumer `Common\lightInput.cmn:100-102`; also SSAO and depth previews.
@@ -103,6 +109,8 @@ The current group has 512 invocations. With 513 lights, the shared array ends as
 `ToLinearDepth` implements the formula for a minus-one-to-one NDC depth input but receives raw zero-to-one depth. With near=0.1 and far=1000, a surface at view distance 10 reconstructs as approximately 19.802. Cluster lookup therefore chooses a different Z slice than the one used to build the cluster bounds.
 
 **Correction:** For ordinary zero-to-one perspective depth, use `near * far / (far - depth * (far - near))`, or consistently reconstruct with the inverse projection. Give orthographic reconstruction its own path.
+
+**Status: fixed.** `ToLinearDepth` uses the zero-to-one perspective formula. Cluster lookup uses the new `ViewDistanceFromDepth(depth, projection)`, which is exact for both perspective and orthographic projections. Note that SSAO's range threshold (`SSAOPass.glsl`) now compares against true view distance, which is roughly half the previous value for the same surface; retune `SSAO` max-range settings if occlusion reach changes visibly.
 
 ### C4. High: even HiZ reduction uses a shifted source footprint
 
@@ -114,6 +122,8 @@ The base level's conservative 3x3 dilation does not fix the whole pyramid. A sou
 
 **Correction:** Use a footprint covering the entire destination texel's source region. For exact even reductions, start at `2 * outputPosition`; handle odd dimensions explicitly and make the base-level operation intentional.
 
+**Status: fixed.** Each output texel max-reduces its full source footprint `[p*in/out, ceil((p+1)*in/out) - 1]`, which handles even and odd sizes alike. The base level (flagged by push data `isBaseLevel`) is deliberately dilated by one texel on each side. The host starts from the real depth-texture size instead of a rounded pyramid size.
+
 ### C5. High for vegetation: padded culling invocations do not stop at valid items
 
 **Locations:** `HiZOcclusionCull.glsl:61-65`; `instanceCullVegetation.glsl:56-61`; host dispatch `GFXDevice.cpp:2436-2437,2480`; `Vegetation.cpp:688,703`.
@@ -124,6 +134,10 @@ Vegetation has an additional host-side alignment mistake: `_maxGrassInstances +=
 
 **Correction:** Return without item writes for every out-of-range invocation. Use correct capacity round-up on the host and pass the actual active instance count separately from chunk capacity.
 
+**Status: fixed.** Padding lanes only bump the padding statistic and return. Vegetation capacity is rounded up to a multiple of `WORK_GROUP_SIZE`, and `dvd_grassInstanceCount` / `dvd_treeInstanceCount` bound the shader's work.
+
+**Open notes (not changed):** `HiZOcclusionCull` still returns early when `dvd_numEntities < WORK_GROUP_SIZE`, so small command lists are never occlusion-culled; this is conservative but probably unintended. In `HiZCullingAlgorithm.cmn`, `pos.x < -pos.w * 0x01` reads as a bit test but is plain multiplication by one; drop the `* 0x01` for clarity.
+
 ### C6. High, Vulkan-specific: vegetation compute reads a draw-only descriptor
 
 **Locations:** `instanceCullVegetation.glsl:29-31,81`; `Common\sceneData.cmn:20-33`; `Source\Platform\Video\GFXDevice.cpp:278`; `VKWrapper.cpp:3113-3167`.
@@ -131,6 +145,8 @@ Vegetation has an additional host-side alignment mistake: `_maxGrassInstances +=
 Vegetation compute accesses `dvd_waterEntities` through `IsUnderWater`, but the containing scene UBO (`PER_FRAME`, slot 8) is registered with `ALL_DRAW`, excluding compute. Vulkan copies those stage flags into the descriptor set layout. Reflection only augments `PER_DRAW` layouts, so it does not repair this registration.
 
 **Correction:** Include compute visibility for the scene block, or move the required data to a compute-visible block. The descriptor must also be bound consistently for the compute pipeline.
+
+**Status: fixed.** The scene block is registered with `ShaderStageVisibility::ALL`. It is not compute-only, so its OpenGL binding (UBO 14) is unchanged.
 
 ### C7. Fixed: SPIR-V target was incompatible with baseline OpenGL ingestion
 
@@ -150,6 +166,8 @@ A minimal OpenGL-target shader generated with SPIR-V 1.6 is rejected by `spirv-v
 
 **Correction:** Capture the current inverse projection, viewport and Z planes unconditionally; then decide whether a rebuild is required and commit that data before sending push constants.
 
+**Status: fixed.** The current grid data is always captured and stored; `needRebuild` additionally compares it with the previous data.
+
 ### C9. Medium: cluster lookup is not clamped and assumes a zero-origin viewport
 
 **Locations:** `Common\lightInput.cmn:100-110`; `lightBuildClusteredAABBs.glsl:28-29,81-83`; cluster sizing `GFXDevice.cpp:1912-1918`.
@@ -157,6 +175,8 @@ A minimal OpenGL-target shader generated with SPIR-V 1.6 is rejected by `spirv-v
 The far plane can evaluate to Z index `CLUSTERS_Z`, which is outside the grid. XY lookup divides absolute `gl_FragCoord.xy` by cluster size without subtracting viewport origin; a sufficiently offset viewport can generate columns/rows outside the allocated dimensions. The builder also generates grid screen coordinates without adding the viewport origin before subtracting it in `screen2View`.
 
 **Correction:** Use viewport-relative coordinates consistently, add the origin when constructing absolute screen points, and clamp every grid component to its legal maximum.
+
+**Status: fixed.** Lookup and builder both work in viewport-relative coordinates; XY tiles are clamped in float space and Z to `CLUSTERS_Z - 1`. The builder now unprojects tile corners at depth 0 and 1 and intersects them with the exponential slice planes.
 
 ### C10. Medium: vegetation culling applies scale twice to the center offset
 
@@ -166,6 +186,8 @@ The far plane can evaluate to Z index `CLUSTERS_Z`, which is outside the grid. X
 
 **Correction:** Construct a local-space center and scale it exactly once. Derive transformed center and conservative extents from the same transform used by rendering.
 
+**Status: fixed.** The centre offset is built from the already-scaled extents and only rotated.
+
 ### C11. Medium: spotlight culling geometry is quantized down to an integer
 
 **Locations:** `Source\Rendering\Lighting\LightPool.cpp:413`; `ECS\Components\SpotLightComponent.cpp:80-83`; `Common\lightInput.cmn:43-50`.
@@ -173,6 +195,8 @@ The far plane can evaluate to Z index `CLUSTERS_Z`, which is outside the grid. X
 The host converts floating-point cone slant height to `I32`; the shader uses that integer to construct the culling sphere. A positive slant height below one becomes a zero-radius sphere; larger lights are also rounded down, making bounds nonconservative.
 
 **Correction:** Preserve this geometric value as a float, or derive conservative bounds directly from floating-point range and cone parameters. If integer packing is retained, rounding down is not safe for a bounding volume.
+
+**Status: fixed.** The host packs the slant height with `std::bit_cast<I32>` and shaders read it via `SpotConeSlantHeight`. Culling uses the minimal sphere enclosing the spherical sector (apex-and-rim sphere for narrow cones, rim-equator sphere for wide ones).
 
 ### C12. Fixed, latent: several easing macros could not be instantiated as GLSL expressions
 

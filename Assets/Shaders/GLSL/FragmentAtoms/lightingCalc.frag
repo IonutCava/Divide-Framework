@@ -105,7 +105,7 @@ vec3 getLightContribution(in PBRMaterial material, in vec3 N, in vec3 V, in bool
         const float theta = dot(lightVec, normalize(-spotDirectionWV));
         const float intensity = Saturate((theta - cosOuterConeAngle) / (cosInnerConeAngle - cosOuterConeAngle));
 
-        const float radius = mix(float(light._SPOT_CONE_SLANT_HEIGHT), light._positionWV.w, 1.f - intensity);
+        const float radius = mix(SpotConeSlantHeight(light), light._positionWV.w, 1.f - intensity);
         const float att = Saturate(1.0f - (Squared(length(lightDir)) / Squared(radius))) * intensity;
 
         radianceIn += GetBRDF(lightVec, V, N, light._colour.rgb, att * shadowMultiplier, ndl, ndv, material);

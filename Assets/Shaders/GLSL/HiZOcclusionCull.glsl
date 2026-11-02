@@ -60,8 +60,8 @@ void main()
 
     if (ident >= dvd_numEntities)
     {
+        // Padding lane of the rounded-up dispatch: there is no command here, so only bump the padding statistic.
         atomicAdd(culledCount[1], 1);
-        CullItem(ident);
         return;
     }
 

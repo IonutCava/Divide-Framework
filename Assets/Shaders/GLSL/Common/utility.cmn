@@ -63,7 +63,10 @@ vec3 Homogenize( in vec4 v ) { return v.xyz / v.w; }
 
 #define ViewSpaceZ(DEPTH, INV_PROJ_MAT) (-1.f / (INV_PROJ_MAT[2][3] * DEPTH + INV_PROJ_MAT[3][3]))
 #define ViewSpacePos(TEX_COORD, DEPTH, INV_PROJ_MAT) Homogenize( INV_PROJ_MAT * vec4( 2.f * TEX_COORD - 1.f, DEPTH, 1.f ) )
-#define ToLinearDepth(DEPTH, ZPLANES) (2.f * (ZPLANES).x * (ZPLANES).y / ((ZPLANES).y + (ZPLANES).x - DEPTH * ((ZPLANES).y - (ZPLANES).x)))
+// Positive view distance from zero-to-one perspective depth (both backends use zero-to-one clip depth).
+#define ToLinearDepth(DEPTH, ZPLANES) ((ZPLANES).x * (ZPLANES).y / ((ZPLANES).y - (DEPTH) * ((ZPLANES).y - (ZPLANES).x)))
+// Positive view distance from zero-to-one depth for any perspective or orthographic projection (column-major PROJ_MAT[col][row]).
+#define ViewDistanceFromDepth(DEPTH, PROJ_MAT) (((DEPTH) * (PROJ_MAT)[3][3] - (PROJ_MAT)[3][2]) / ((DEPTH) * (PROJ_MAT)[2][3] - (PROJ_MAT)[2][2]))
 
 #define QuaternionRotate(Q, V) (V + 2.f * cross(Q.xyz, cross(Q.xyz, V) + Q.w * V))
 

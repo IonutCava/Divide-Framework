@@ -86,13 +86,25 @@ def descriptor_set_usages():
     return {name: index for index, name in enumerate(names)}
 
 
+def cluster_config():
+    source = (ROOT / "Source" / "EngineConfig.h").read_text(encoding="utf-8")
+    values = {name: int(value) for name, value in re.findall(r"constexpr U8 (CLUSTERS_[XYZ]) = (\d+)u;", source)}
+    divisors = dict(re.findall(r"constexpr U8 (CLUSTERS_[XYZ])_THREADS = CLUSTERS_[XYZ](?: / (\d+)u)?;", source))
+    if set(values) != {"CLUSTERS_X", "CLUSTERS_Y", "CLUSTERS_Z"} or set(divisors) != set(values):
+        raise ValueError("Cluster grid configuration not found")
+    values.update({f"{name}_THREADS": values[name] // int(divisor or 1) for name, divisor in divisors.items()})
+    return values
+
+
 def engine_header(stage, backend, defines):
     debug_source = (SHADERS / "FragmentAtoms" / "debug.frag").read_text(encoding="utf-8")
     debug_names = sorted(set(re.findall(r"\bcase\s+(DEBUG_[A-Z_]+)", debug_source)))
     texture_source = (SHADERS / "FragmentAtoms" / "materialData.frag").read_text(encoding="utf-8")
     texture_names = sorted(set(re.findall(r"\bTEX_[A-Z_]+", texture_source)))
 
-    stage_define = {"tesc": "TESS_CTRL", "tese": "TESS_EVAL", "geom": "GEOM"}.get(stage, stage.upper())
+    stage_define = {"tesc": "TESS_CTRL", "tese": "TESS_EVAL", "geom": "GEOM", "comp": "COMPUTE"}.get(stage, stage.upper())
+    compute_access = ["#define COMP_ONLY_W ACCESS_W", "#define COMP_ONLY_R ACCESS_R", "#define COMP_ONLY_RW ACCESS_RW"]
+    graphics_access = ["#define COMP_ONLY_W readonly", "#define COMP_ONLY_R", "#define COMP_ONLY_RW readonly"]
     header = [
         "#version 460",
         "#extension GL_ARB_shader_draw_parameters : require",
@@ -105,9 +117,7 @@ def engine_header(stage, backend, defines):
         "#define ACCESS_R readonly",
         "#define ACCESS_W writeonly",
         "#define ACCESS_RW",
-        "#define COMP_ONLY_W readonly",
-        "#define COMP_ONLY_R",
-        "#define COMP_ONLY_RW readonly",
+        *(compute_access if stage == "comp" else graphics_access),
         "#define M_PI 3.14159265358979323846",
         "#define INV_M_PI 0.31830988618379067153",
         "#define M_EPSILON 1e-5f",
@@ -124,9 +134,7 @@ def engine_header(stage, backend, defines):
         "#define MAX_SHADOW_CASTING_SPOT_LIGHTS 4",
         "#define MAX_SHADOW_CASTING_DIR_LIGHTS 4",
         "#define MAX_LIGHTS_PER_CLUSTER 64",
-        "#define CLUSTERS_X 16",
-        "#define CLUSTERS_Y 9",
-        "#define CLUSTERS_Z 24",
+        *(f"#define {name} {value}" for name, value in cluster_config().items()),
         "#define SKY_LIGHT_LAYER_IDX 0",
         "#define WORLD_AO_LAYER_INDEX 0",
         "#define REFLECTION_PROBE_RESOLUTION 128",
@@ -217,7 +225,7 @@ def engine_header(stage, backend, defines):
         header.extend([f"layout(location = 0) out Data {{\n{members}\n}} _out;", "#define VAR _out"])
     elif stage == "frag":
         header.extend([f"layout(location = 0) in Data {{\n{members}\n}} _in;", "#define VAR _in"])
-    else:
+    elif stage != "comp":
         input_size = "gl_MaxPatchVertices" if stage in ("tesc", "tese") else "INPUT_PRIMITIVE_SIZE"
         output_size = "[TESSELLATION_OUTPUT_VERTICES]" if stage == "tesc" else ""
         header.extend([
@@ -242,7 +250,8 @@ def pack_loose_uniforms(source, backend):
     declarations = []
 
     def collect(match):
-        declarations.append(match.group(1))
+        # Like ShaderDataUploader (g_uniformPattern), default initialisers are dropped when packing.
+        declarations.append(re.sub(r"\s*=[^;]*;$", ";", match.group(1)))
         return ""
 
     source = re.sub(r"(?m)^\s*uniform\s+([^;{}]+;)\s*$", collect, source)
@@ -420,6 +429,55 @@ class ShaderCompilationTests(unittest.TestCase):
             body = section("water.glsl", "Fragment") + "\nvec2 testNoiseFactor() { return _noiseFactor; }\n"
             with self.subTest(backend=backend, variant="noise factor define"):
                 self.compile_source(body, "frag", backend, defines + ["SKIP_REFLECT_REFRACT"])
+
+    def test_cluster_light_compute(self):
+        renderer = (ROOT / "Source" / "Rendering" / "Renderer.cpp").read_text(encoding="utf-8")
+        aabb_defines = re.findall(r'buildDescritpor\._globalDefines\.emplace_back\(\s*"([^"]+)"\s*\)', renderer)
+        self.assertEqual({define.split()[0] for define in aabb_defines}, {"inverseProjectionMatrix", "viewport", "_zPlanes"})
+        for backend in ("opengl", "vulkan"):
+            for key in ("Compute", "Compute.ResetCounter"):
+                with self.subTest(backend=backend, shader="lightCull", stage=key):
+                    self.compile_shader("lightCull.glsl", key, "comp", backend)
+            with self.subTest(backend=backend, shader="lightBuildClusteredAABBs"):
+                self.compile_shader("lightBuildClusteredAABBs.glsl", "Compute", "comp", backend, aabb_defines)
+            with self.subTest(backend=backend, shader="lightCull", check="batched shared-memory barriers"):
+                preprocessed = self.prepare_source(section("lightCull.glsl", "Compute"), "comp", backend)
+                self.assertRegex(preprocessed, r"barrier\(\)[\s\S]*barrier\(\)")
+        light_input = (SHADERS / "Common" / "lightInput.cmn").read_text(encoding="utf-8")
+        cluster_index = re.search(r"^uint GetClusterIndex\(.*?^\}$", light_input, re.DOTALL | re.MULTILINE).group(0)
+        self.assertNotIn("TARGET_VULKAN", cluster_index)
+
+    def test_hiz_compute(self):
+        host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
+        hiz_block = re.search(r"ShaderModuleDescriptor compModule = \{\};((?:(?!ShaderModuleDescriptor).)*?)"
+                              r'compModule\._sourceFile = "HiZConstruct\.glsl";', host, re.DOTALL).group(1)
+        hiz_defines = re.findall(r'compModule\._defines\.emplace_back\(\s*"([^"]+)"\s*\)', hiz_block)
+        self.assertEqual({define.split()[0] for define in hiz_defines}, {"imageSizeIn", "imageSizeOut", "isBaseLevel"})
+        self.assertRegex(host, r"_vec\[1\]\.x\s*=\s*i\s*==\s*0u")
+        hiz_defines.append("LOCAL_SIZE 32")
+        for backend in ("opengl", "vulkan"):
+            with self.subTest(backend=backend, shader="HiZConstruct"):
+                self.compile_shader("HiZConstruct.glsl", "Compute", "comp", backend, hiz_defines)
+            with self.subTest(backend=backend, shader="HiZOcclusionCull"):
+                self.compile_shader("HiZOcclusionCull.glsl", "Compute", "comp", backend, ["WORK_GROUP_SIZE 64"])
+
+    def test_vegetation_cull_compute(self):
+        host = (ROOT / "Source" / "Environment" / "Vegetation" / "Vegetation.cpp").read_text(encoding="utf-8")
+        for name in ("dvd_grassInstanceCount", "dvd_treeInstanceCount"):
+            self.assertRegex(host, rf'_ID\(\s*"{name}"\s*\)')
+        defines = ["WORK_GROUP_SIZE 64", "MAX_TREE_INSTANCES 128", "MAX_GRASS_INSTANCES 256"]
+        for backend in ("opengl", "vulkan"):
+            for variant in ([], ["CULL_TREES"]):
+                with self.subTest(backend=backend, variant=variant):
+                    self.compile_shader("instanceCullVegetation.glsl", "Compute", "comp", backend, defines + variant)
+
+    def test_scene_data_visible_to_compute(self):
+        host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
+        visibility = re.search(
+            r"RegisterSetLayoutBinding\(\s*DescriptorSetUsage::PER_FRAME,\s*8,\s*DescriptorSetBindingType::\w+,\s*"
+            r"ShaderStageVisibility::(\w+)\s*\)", host)
+        self.assertIsNotNone(visibility)
+        self.assertIn(visibility.group(1), ("ALL", "COMPUTE_AND_DRAW", "COMPUTE_AND_GEOMETRY"))
 
     def test_common_easing_and_packing_helpers(self):
         names = [

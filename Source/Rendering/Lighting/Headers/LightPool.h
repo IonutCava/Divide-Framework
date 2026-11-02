@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -66,11 +66,11 @@ class LightPool final : public FrameListener,
           /// w = range
           float4 _position = { 0.0f, 0.0f, 0.0f, 0.0f };
           /// xyz = light direction (spot and directional lights only. (0,0,0) for point)
-          /// w = spot angle
+          /// w = cosInnerConeAngle
           float4 _direction = { 0.0f, 0.0f, 0.0f, 45.0f };
           /// x = light type: 0 - directional, 1 - point, 2 - spot, 3 - none
           /// y = shadow index (-1 = no shadows)
-          /// z = reserved
+          /// z = spot cone slant height, stored as raw float bits (std::bit_cast). Read with intBitsToFloat in shaders.
           /// w = reserved
           int4 _options = { 3, -1, 0, 0 };
       };

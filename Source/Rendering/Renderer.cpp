@@ -219,20 +219,14 @@ void Renderer::prepareLighting(const RenderStage stage,
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
         }
 
-        bool needRebuild = data._invalidated || g_rebuildLightGridEachFrame;
-        if (!needRebuild )
-        {
-            PerRenderStageData::GridBuildData tempData;
-            tempData._invProjectionMatrix = cameraSnapshot._invProjectionMatrix;
-            tempData._viewport = viewport;
-            tempData._zPlanes = cameraSnapshot._zPlanes;
+        // Always capture the current inputs so a forced rebuild never dispatches with stale (or never-initialised) grid data.
+        PerRenderStageData::GridBuildData tempData;
+        tempData._invProjectionMatrix = cameraSnapshot._invProjectionMatrix;
+        tempData._viewport = viewport;
+        tempData._zPlanes = cameraSnapshot._zPlanes;
 
-             needRebuild = data._gridData != tempData;
-             if (needRebuild)
-             {
-                 data._gridData = tempData;
-             }
-        }
+        const bool needRebuild = data._invalidated || g_rebuildLightGridEachFrame || data._gridData != tempData;
+        data._gridData = tempData;
 
         if ( needRebuild )
         {

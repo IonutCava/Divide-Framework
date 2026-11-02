@@ -16,6 +16,8 @@
 #include "ECS/Components/Headers/SpotLightComponent.h"
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
 
+#include <bit>
+
 namespace Divide
 {
     Handle<Texture>       LightPool::s_lightIconsTexture = INVALID_HANDLE<Texture>;
@@ -410,7 +412,7 @@ namespace Divide
                 // Omni and spot lights have a position. Directional lights have this set to (0,0,0)
                 temp._position.set( isDir ? VECTOR3_ZERO : (viewMatrix * float4( light->positionCache(), 1.0f )).xyz, light->range() );
                 temp._direction.set( isOmni ? VECTOR3_ZERO : (viewMatrix * float4( light->directionCache(), 0.0f )).xyz, isSpot ? std::cos( Angle::to_RADIANS( spot->coneCutoffAngle() ) ) : 0.f );
-                temp._options.xyz = { typeIndex, light->shadowPropertyIndex(), isSpot ? to_I32( spot->coneSlantHeight() ) : 0 };
+                temp._options.xyz = { typeIndex, light->shadowPropertyIndex(), isSpot ? std::bit_cast<I32>( spot->coneSlantHeight() ) : 0 };
 
                 ++lightCount[typeIndex];
             }
