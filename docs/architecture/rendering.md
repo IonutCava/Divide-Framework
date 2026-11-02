@@ -127,6 +127,10 @@ camera; per-instance deformation, LOD and prior animation are not buffered.
 Terrain's normal-debug geometry derives height gradients using the heightmap
 texel spacing, vertical amplitude and the terrain/node transforms. Terrain
 shading itself uses geometric screen-space derivatives for its tangent frame.
+Particle sorting and bounds calculation complete before their callers return;
+particle drawing still needs correct non-indexed geometry, instancing and
+per-draw buffer-ring capture. Particle bounds currently contain centres only
+and are treated as node-local even though simulation positions are world-space.
 
 ### Custom-pass Hi-Z
 

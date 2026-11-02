@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/ParticleEmitter.h"
 
@@ -304,8 +304,6 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
 
     if ( _enabled &&  getAliveParticleCount() > 0)
     {
-        sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY).wait( *_bufferUpdate );
-
         ParticleBufferRet buffers = getDataBuffer(renderStagePass._stage, 0);
 
         rComp.setIndexBufferElementOffset(buffers._buffers[g_particleIndexBuffer]->firstIndexOffsetCount());
@@ -351,15 +349,8 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
                 }
             });
 
-            _bufferUpdate = CreateTask(
-                [this, &renderStagePass](const Task&)
-                {
-                    // invalidateCache means that the existing particle data is no longer partially sorted
-                    _particles->sort();
-                    _buffersDirty[to_U32(renderStagePass._stage)] = true;
-                });
-
-            sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY).enqueue( *_bufferUpdate );
+            _particles->sort();
+            _buffersDirty[to_U32(renderStagePass._stage)] = true;
         }
     }
 
@@ -376,25 +367,18 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
 
     if (_enabled)
     {
-        U32 aliveCount = getAliveParticleCount();
-        renderState().drawState(aliveCount > 0);
-
         const TransformComponent* transform = sgn->get<TransformComponent>();
 
         const float3& pos = transform->getWorldPosition();
         const quatf& rot = transform->getWorldOrientation();
 
-        F32 averageEmitRate = 0;
         for (const std::shared_ptr<ParticleSource>& source : _sources)
         {
             source->updateTransform(pos, rot);
             source->emit(g_updateInterval, _particles);
-            averageEmitRate += source->emitRate();
         }
-        averageEmitRate /= _sources.size();
 
-        aliveCount = getAliveParticleCount();
-
+        U32 aliveCount = getAliveParticleCount();
 
         ParallelForDescriptor descriptor = {};
         descriptor._iterCount = aliveCount;
@@ -414,18 +398,17 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
             up->update(g_updateInterval, data);
         }
 
-        sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY).wait(*_bbUpdate);
-
-        _bbUpdate = CreateTask([this, aliveCount, averageEmitRate](const Task&)
+        aliveCount = getAliveParticleCount();
+        renderState().drawState(aliveCount > 0u);
+        if (aliveCount > 0u)
         {
             BoundingBox aabb{};
-            for (U32 i = 0; i < aliveCount; i += to_U32(averageEmitRate) / 4)
+            for (U32 i = 0u; i < aliveCount; ++i)
             {
-                aabb.add(_particles->_position[i]);
+                aabb.add(_particles->_position[i].xyz);
             }
             setBounds(aabb);
-        });
-        sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY).enqueue(*_bbUpdate);
+        }
     }
 
     SceneNode::sceneUpdate(deltaTimeUS, sgn, sceneState);

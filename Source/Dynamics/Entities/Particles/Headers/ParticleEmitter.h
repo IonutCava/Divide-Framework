@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -120,8 +120,6 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
     HandlesPerPlayer _particleGPUBufferHandles{};
     std::array<bool, to_base(RenderStage::COUNT)> _buffersDirty{};
 
-    Task* _bufferUpdate = nullptr;
-    Task* _bbUpdate = nullptr;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(ParticleEmitter);
