@@ -96,6 +96,18 @@ def cluster_config():
     return values
 
 
+def shadow_config():
+    source = (ROOT / "Source" / "EngineConfig.h").read_text(encoding="utf-8")
+    names = (
+        "MAX_CSM_SPLITS_PER_LIGHT", "MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS",
+        "MAX_SHADOW_CASTING_POINT_LIGHTS", "MAX_SHADOW_CASTING_SPOT_LIGHTS",
+    )
+    values = {name: int(value) for name, value in re.findall(r"constexpr U8 (\w+) = (\d+)u;", source) if name in names}
+    if set(values) != set(names):
+        raise ValueError("Shadow configuration not found")
+    return values
+
+
 def engine_header(stage, backend, defines):
     debug_source = (SHADERS / "FragmentAtoms" / "debug.frag").read_text(encoding="utf-8")
     debug_names = sorted(set(re.findall(r"\bcase\s+(DEBUG_[A-Z_]+)", debug_source)))
@@ -105,6 +117,7 @@ def engine_header(stage, backend, defines):
     stage_define = {"tesc": "TESS_CTRL", "tese": "TESS_EVAL", "geom": "GEOM", "comp": "COMPUTE"}.get(stage, stage.upper())
     compute_access = ["#define COMP_ONLY_W ACCESS_W", "#define COMP_ONLY_R ACCESS_R", "#define COMP_ONLY_RW ACCESS_RW"]
     graphics_access = ["#define COMP_ONLY_W readonly", "#define COMP_ONLY_R", "#define COMP_ONLY_RW readonly"]
+    shadows = shadow_config()
     header = [
         "#version 460",
         "#extension GL_ARB_shader_draw_parameters : require",
@@ -129,14 +142,14 @@ def engine_header(stage, backend, defines):
         "#define GLOBAL_WATER_BODIES_COUNT 1",
         "#define GLOBAL_PROBE_COUNT 2",
         "#define MAX_SHININESS 255.f",
-        "#define MAX_CSM_SPLITS_PER_LIGHT 4",
-        "#define MAX_SHADOW_CASTING_POINT_LIGHTS 4",
-        "#define MAX_SHADOW_CASTING_SPOT_LIGHTS 4",
-        "#define MAX_SHADOW_CASTING_DIR_LIGHTS 4",
+        f"#define MAX_CSM_SPLITS_PER_LIGHT {shadows['MAX_CSM_SPLITS_PER_LIGHT']}",
+        f"#define MAX_SHADOW_CASTING_POINT_LIGHTS {shadows['MAX_SHADOW_CASTING_POINT_LIGHTS']}",
+        f"#define MAX_SHADOW_CASTING_SPOT_LIGHTS {shadows['MAX_SHADOW_CASTING_SPOT_LIGHTS']}",
+        f"#define MAX_SHADOW_CASTING_DIR_LIGHTS {shadows['MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS']}",
         "#define MAX_LIGHTS_PER_CLUSTER 64",
         *(f"#define {name} {value}" for name, value in cluster_config().items()),
         "#define SKY_LIGHT_LAYER_IDX 0",
-        "#define WORLD_AO_LAYER_INDEX 0",
+        f"#define WORLD_AO_LAYER_INDEX {shadows['MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS'] * shadows['MAX_CSM_SPLITS_PER_LIGHT']}",
         "#define REFLECTION_PROBE_RESOLUTION 128",
         "#define REFLECTION_PROBE_MIP_COUNT 7",
         "#define SHADING_COUNT 6",
@@ -471,6 +484,47 @@ class ShaderCompilationTests(unittest.TestCase):
                 with self.subTest(backend=backend, variant=variant):
                     self.compile_shader("instanceCullVegetation.glsl", "Compute", "comp", backend, defines + variant)
 
+    def test_vegetation_compute_barrier_follows_dispatches(self):
+        host = (ROOT / "Source" / "Environment" / "Vegetation" / "Vegetation.cpp").read_text(encoding="utf-8")
+        start = host.index('"Occlusion Cull Vegetation"')
+        end = host.index("GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );", start)
+        cull_block = host[start:end]
+
+        dispatch_positions = [
+            match.start()
+            for match in re.finditer(r"GFX::EnqueueCommand\( bufferInOut, computeCmd \);", cull_block)
+        ]
+        self.assertEqual(len(dispatch_positions), 2)
+        barrier_position = cull_block.index("GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )")
+        self.assertGreater(barrier_position, max(dispatch_positions))
+        for buffer in ("_grassData", "_treeData"):
+            self.assertRegex(
+                cull_block,
+                rf"BufferSyncUsage::GPU_WRITE_TO_GPU_READ,\s*\._buffer = {buffer}->getBufferImpl\(\)",
+            )
+
+    def test_custom_pass_hiz_uses_pass_targets(self):
+        executor = (ROOT / "Source" / "Rendering" / "RenderPass" / "RenderPassExecutor.cpp").read_text(encoding="utf-8")
+        self.assertIn(
+            "occlusionPass( playerIdx, camSnapshot, visibleNodeCount, params._target, params._targetHIZ, bufferInOut );",
+            executor,
+        )
+        self.assertNotIn(
+            "occlusionPass( playerIdx, camSnapshot, visibleNodeCount, RenderTargetNames::SCREEN,",
+            executor,
+        )
+
+        vegetation = (ROOT / "Source" / "Environment" / "Vegetation" / "Vegetation.cpp").read_text(encoding="utf-8")
+        for stage, target in (
+            ("REFLECTION", "REFLECT::UTILS.HI_Z"),
+            ("REFRACTION", "REFRACT::UTILS.HI_Z"),
+        ):
+            self.assertRegex(
+                vegetation,
+                rf"case RenderStage::{stage}:\s*return RenderTargetNames::{target};",
+            )
+        self.assertIn("return RenderTargetNames::UTILS.HI_Z;", vegetation)
+
     def test_tree_vertex_cull_sentinel(self):
         source = (SHADERS / "tree.glsl").read_text(encoding="utf-8")
         self.assertRegex(
@@ -489,6 +543,94 @@ class ShaderCompilationTests(unittest.TestCase):
                         ["MAIN_DISPLAY_PASS", "MAX_TREE_INSTANCES 128",
                          f"dvd_InstanceIndex {instance_index}"] + defines,
                     )
+
+    def test_tree_chunk_offset_flows_to_each_draw_package(self):
+        vegetation = (ROOT / "Source" / "Environment" / "Vegetation" / "Vegetation.cpp").read_text(encoding="utf-8")
+        self.assertRegex(vegetation, r"rComp->dataFlag\(\s*to_F32\( ID \)\s*\)")
+
+        rendering = (ROOT / "Source" / "ECS" / "Components" / "RenderingComponent.cpp").read_text(encoding="utf-8")
+        self.assertRegex(
+            rendering,
+            r'pkg\.pushConstantsCmd\(\)\._uniformData->set\(\s*_ID\(\s*"dvd_terrainChunkOffset"\s*\),'
+            r"\s*PushConstantType::UINT,\s*to_U32\( dataFlag\(\) \)\s*\)",
+        )
+        self.assertLess(
+            rendering.index('_ID( "dvd_terrainChunkOffset" )'),
+            rendering.index("Attorney::SceneGraphNodeComponent::prepareRender"),
+        )
+
+        tree_shader = (SHADERS / "tree.glsl").read_text(encoding="utf-8")
+        self.assertIn("treeData[dvd_terrainChunkOffset * MAX_TREE_INSTANCES + instanceID]", tree_shader)
+
+    def test_shadow_slot_and_camera_contracts(self):
+        host = (ROOT / "Source" / "Rendering" / "Lighting" / "LightPool.cpp").read_text(encoding="utf-8")
+        start = host.index("void LightPool::generateShadowMaps")
+        end = host.index("void LightPool::debugLight", start)
+        shadow_pass = host[start:end]
+        self.assertIn("light->shadowPropertyIndex( -1 );", shadow_pass)
+        self.assertIn("camera._viewMatrix, camera._projectionMatrix, camera._zPlanes.x, camera._zPlanes.y", shadow_pass)
+        self.assertLess(shadow_pass.index("light->staticShadowsDirty( true )"), shadow_pass.index("slots.hasCapacity"))
+        self.assertLess(shadow_pass.index("isShadowCacheInvalidated( light )"), shadow_pass.index("slots.hasCapacity"))
+        self.assertLess(shadow_pass.index("slots.hasCapacity"), shadow_pass.index("IsLightInViewFrustum"))
+        self.assertLess(shadow_pass.index("ShadowMap::generateShadowMaps"), shadow_pass.index("slots.reserve"))
+        self.assertIn("!cacheInvalidated && ShadowMap::tryReuseShadowMaps( *light )", shadow_pass)
+        self.assertIn("propsSource._lightPosition[i]._v", shadow_pass)
+        self.assertIn("ShadowMap::getLightLayerRequirements( *light )", shadow_pass)
+        self.assertIn("light->castsShadows() ? light->shadowPropertyIndex() : -1", host)
+        self.assertIn("light->_shadowRangeState.update( light->range() )", host)
+        self.assertIn("directional._shadowDirectionalSettings.update(", host)
+
+        allocation = (ROOT / "Source" / "Rendering" / "Lighting" / "ShadowMapping" / "ShadowMap.cpp").read_text(encoding="utf-8")
+        self.assertIn("TryReuseShadowLayers( lifetimeMask, light.getGUID(), offset, reservationCount, contentCount )", allocation)
+        self.assertIn("ReleaseShadowLayers( lifetimeMask, light.getGUID(), MAX_SHADOW_FRAME_LIFETIME )", allocation)
+        self.assertIn("isCSM ? WORLD_AO_LAYER_INDEX : shadowMapDescriptor._layerCount", allocation)
+        self.assertIn("FindAvailableShadowLayers( lifetimeMask, reservationCount, 1u )", allocation)
+        self.assertIn("s_shadowMapGenerators[i] = std::make_unique<CascadedShadowMapsGenerator>", allocation)
+        self.assertIn("s_shadowMapGenerators[i] = std::make_unique<SingleShadowMapGenerator>", allocation)
+        self.assertIn("s_shadowMapGenerators[i] = std::make_unique<CubeShadowMapGenerator>", allocation)
+        self.assertIn("isCSM && !settings.enabled && !settings.csm.enabled", allocation)
+        csm_generator = (ROOT / "Source" / "Rendering" / "Lighting" / "ShadowMapping" / "CascadedShadowMapsGenerator.cpp").read_text(encoding="utf-8")
+        self.assertIn("dirLight.feedBackContainers().resize( numSplits )", csm_generator)
+        for shadow_type in ("csm", "point", "spot"):
+            self.assertIn(f"shadowSettings.{shadow_type}.enabled", shadow_pass)
+
+        shader = (SHADERS / "FragmentAtoms" / "lightingCalc.frag").read_text(encoding="utf-8")
+        for kind in ("Directional", "Point", "Spot"):
+            self.assertRegex(shader, rf"shadowIndex >= 0 && receivesShadows \? getShadowMultiplier{kind}\(")
+        shadow_mapping = (SHADERS / "FragmentAtoms" / "shadowMapping.frag").read_text(encoding="utf-8")
+        self.assertRegex(shadow_mapping, r"if \(Split >= MAX_CSM_SPLITS_PER_LIGHT\)\s*\{\s*return 1\.f;")
+
+    def test_spotlight_angles_and_bounds_are_wired(self):
+        component = (ROOT / "Source" / "ECS" / "Components" / "SpotLightComponent.cpp").read_text(encoding="utf-8")
+        self.assertIn("_coneAngles.setInnerClamped(_coneAngles._inner)", component)
+        self.assertIn("_coneAngles.setOuterClamped(_coneAngles._outer)", component)
+        self.assertRegex(component, r"SpotLightComponent::loadFromXML[\s\S]*?SGNComponent::loadFromXML\(pt\);"
+                                    r"\s*_coneAngles\.normalize\(\);")
+        light = (ROOT / "Source" / "Rendering" / "Lighting" / "Light.cpp").read_text(encoding="utf-8")
+        self.assertIn("SpotConeBoundingSphere( slantHeight, cosOuter )", light)
+        self.assertIn("direction.normalize();", light)
+        self.assertRegex(light, r"void Light::range\([\s\S]*?staticShadowsDirty\( true \);"
+                                r"\s*dynamicShadowsDirty\( true \);")
+        self.assertIn("rangeField._dataSetter", light)
+        editor = (ROOT / "Source" / "Editor" / "Headers" / "Utils.inl").read_text(encoding="utf-8")
+        self.assertIn("ImGui::IsItemDeactivatedAfterEdit()", editor)
+        self.assertIn("RecordPropertyEdits(editState, ret.activatedItem, ret.deactivatedItem", editor)
+        self.assertIn("undo._onChangedCbk = field._onUndoRedo", editor)
+        shader = (SHADERS / "FragmentAtoms" / "lightingCalc.frag").read_text(encoding="utf-8")
+        self.assertIn("#define SpotConeIntensity(", shader)
+        self.assertIn("SpotConeIntensity(theta, cosInnerConeAngle, cosOuterConeAngle)", shader)
+
+    def test_lighting_shadow_fragment_variants(self):
+        for backend in ("opengl", "vulkan"):
+            for mode in ("SHADING_MODE_BLINN_PHONG", "SHADING_MODE_PBR", "SHADING_MODE_FLAT"):
+                with self.subTest(backend=backend, mode=mode):
+                    self.compile_shader("material.glsl", "Fragment", "frag", backend,
+                                        ["MAIN_DISPLAY_PASS", mode, "NO_SSAO"])
+            for shadow_type in ("CSM", "POINT", "SPOT"):
+                with self.subTest(backend=backend, disabled=shadow_type):
+                    self.compile_shader("material.glsl", "Fragment", "frag", backend,
+                                        ["MAIN_DISPLAY_PASS", "SHADING_MODE_PBR", "NO_SSAO",
+                                         f"DISABLE_SHADOW_MAPPING_{shadow_type}"])
 
     def test_scene_data_visible_to_compute(self):
         host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")

@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/CascadedShadowMapsGenerator.h"
 
@@ -382,6 +383,7 @@ namespace Divide
         auto& dirLight = static_cast<DirectionalLightComponent&>(light);
 
         const U8 numSplits = dirLight.csmSplitCount();
+        dirLight.feedBackContainers().resize( numSplits );
         applyFrustumSplits( dirLight, playerCamera, numSplits );
 
         RenderPassParams params = {};

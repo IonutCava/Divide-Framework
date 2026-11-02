@@ -1,8 +1,11 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/LightPool.h"
 
+#include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"
+#include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Managers/Headers/ProjectManager.h"
@@ -12,6 +15,7 @@
 #include "Platform/File/Headers/FileManagement.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
+#include "Rendering/Lighting/Headers/LightUploadState.h"
 
 #include "ECS/Components/Headers/SpotLightComponent.h"
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
@@ -234,24 +238,32 @@ namespace Divide
 
         Time::ScopedTimer timer( _shadowPassTimer );
 
-        std::array<I32, to_base( LightType::COUNT )> indexCounter{};
-        std::array<bool, to_base( LightType::COUNT )> shadowsGenerated{};
+        ShadowPassSlots<to_base( LightType::COUNT )> slots( Config::Lighting::MAX_SHADOW_CASTING_LIGHTS );
 
         ShadowMap::resetShadowMaps( );
 
         const Frustum& camFrustum = playerCamera.getFrustum();
-
-        U32 totalShadowLightCount = 0u;
+        const CameraSnapshot& camera = playerCamera.snapshot();
+        const auto& shadowSettings = _context.config().rendering.shadowMapping;
+        const bool cameraChanged = _directionalShadowCamera.update(
+            camera._viewMatrix, camera._projectionMatrix, camera._zPlanes.x, camera._zPlanes.y );
 
         constexpr U8 stageIndex = to_U8( RenderStage::SHADOW );
         LightList& sortedLights = _sortedLights[stageIndex];
 
-        GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
+        for ( Light* light : sortedLights )
+        {
+            light->shadowPropertyIndex( -1 );
+            if ( cameraChanged && light->getLightType() == LightType::DIRECTIONAL )
+            {
+                light->staticShadowsDirty( true );
+                light->dynamicShadowsDirty( true );
+            }
+        }
+
         for ( Light* light : sortedLights )
         {
             const LightType lType = light->getLightType();
-            computeMipMapsCommand._texture = ShadowMap::getShadowMap( lType )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
-            computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
 
             // Skip non-shadow casting lights (and free up resources if any are used by it)
             if ( !light->enabled() || !light->castsShadows() )
@@ -266,38 +278,30 @@ namespace Divide
                 continue;
             }
 
-            // We have a global shadow casting budget that we need to consider
-            if ( ++totalShadowLightCount >= Config::Lighting::MAX_SHADOW_CASTING_LIGHTS )
-            {
-                break;
-            }
-
-            // Make sure we do not go over our shadow casting budget and only consider visible and cache invalidated lights
-            I32& counter = indexCounter[to_base( lType )];
-            if ( counter == GetMaxLights( lType ) || !IsLightInViewFrustum( camFrustum, light ) )
-            {
-                continue;
-            }
-
-            if ( !isShadowCacheInvalidated( playerCamera.snapshot()._eye, light ) && ShadowMap::markShadowMapsUsed( *light ) )
+            // Remember scene changes even for lights that are not selected this frame.
+            const bool cacheInvalidated = isShadowCacheInvalidated( light );
+            const U32 typeIndex = to_U32( lType );
+            const U32 typeLimit = to_U32( GetMaxLights( lType ) );
+            const bool shadowTypeEnabled = lType == LightType::DIRECTIONAL ? shadowSettings.csm.enabled :
+                                           lType == LightType::POINT ? shadowSettings.point.enabled :
+                                           lType == LightType::SPOT && shadowSettings.spot.enabled;
+            if ( !_lightTypeState[typeIndex] || !shadowTypeEnabled || light->range() <= 0.f ||
+                 !slots.hasCapacity( typeIndex, typeLimit ) || !IsLightInViewFrustum( camFrustum, light ) )
             {
                 continue;
             }
 
-            // We have a valid shadow map update request at this point. Register our properties slot ...
-            const I32 shadowIndex = counter++;
+            const bool reuseCached = !cacheInvalidated && ShadowMap::tryReuseShadowMaps( *light );
+            if ( !reuseCached && !ShadowMap::generateShadowMaps( playerCamera, *light, bufferInOut, memCmdInOut ) )
+            {
+                continue;
+            }
+
+            const I32 shadowIndex = slots.reserve( typeIndex, typeLimit );
+            assert( shadowIndex >= 0 );
             light->shadowPropertyIndex( shadowIndex );
 
-            // ... and update the shadow map
-            if ( !ShadowMap::generateShadowMaps( playerCamera, *light, bufferInOut, memCmdInOut ) )
-            {
-                continue;
-            }
-
             const Light::ShadowProperties& propsSource = light->getShadowProperties();
-            SubRange& layerRange = computeMipMapsCommand._layerRange;
-            layerRange._offset = std::min( layerRange._offset, light->getShadowArrayOffset() );
-
             switch ( lType )
             {
                 case LightType::POINT:
@@ -305,7 +309,6 @@ namespace Divide
                     PointShadowProperties& propsTarget = _shadowBufferData._pointLights[shadowIndex];
                     propsTarget._details = propsSource._lightDetails;
                     propsTarget._position = propsSource._lightPosition[0];
-                    layerRange._count = std::max( layerRange._count, to_U16( light->getShadowArrayOffset() + 1u ) );
                 } break;
                 case LightType::SPOT:
                 {
@@ -313,7 +316,6 @@ namespace Divide
                     propsTarget._details = propsSource._lightDetails;
                     propsTarget._vpMatrix = propsSource._lightVP[0];
                     propsTarget._position = propsSource._lightPosition[0];
-                    layerRange._count = std::max( layerRange._count, to_U16( light->getShadowArrayOffset() + 1u ) );
                 } break;
                 case LightType::DIRECTIONAL:
                 {
@@ -322,15 +324,13 @@ namespace Divide
 
                     for ( U8 i = 0u; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i)
                     {
-                        std::memcpy( propsTarget._position[i]._v, propsSource._lightPosition[0]._v, sizeof(F32) * 4u);
+                        std::memcpy( propsTarget._position[i]._v, propsSource._lightPosition[i]._v, sizeof(F32) * 4u);
                     }
 
                     for ( U8 i = 0u; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i)
                     {
                         std::memcpy( propsTarget._vpMatrix[i].m, propsSource._lightVP[i].m, sizeof(F32) * 16u );
                     }
-
-                    layerRange._count = std::max( layerRange._count, to_U16( light->getShadowArrayOffset() + static_cast<DirectionalLightComponent*>(light)->csmSplitCount() ) );
                 } break;
 
                 default:
@@ -338,11 +338,17 @@ namespace Divide
                     DIVIDE_UNEXPECTED_CALL();
                     break;
             }
-            light->cleanShadowProperties();
 
-            shadowsGenerated[to_base( lType )] = true;
+            if ( !reuseCached )
+            {
+                light->cleanShadowProperties();
 
-            GFX::EnqueueCommand( bufferInOut, computeMipMapsCommand );
+                GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
+                computeMipMapsCommand._texture = ShadowMap::getShadowMap( lType )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
+                computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
+                computeMipMapsCommand._layerRange = { light->getShadowArrayOffset(), to_U16( ShadowMap::getLightLayerRequirements( *light ) ) };
+                GFX::EnqueueCommand( bufferInOut, computeMipMapsCommand );
+            }
         }
 
         ShadowMap::generateWorldAO( playerCamera, bufferInOut, memCmdInOut );
@@ -393,7 +399,7 @@ namespace Divide
 
             if ( _lightTypeState[typeIndex] && light->enabled() && light->range() > 0.f )
             {
-                if ( ++ret > Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME )
+                if ( !TryReserveLightUploadSlot( ret, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME ) )
                 {
                     break;
                 }
@@ -412,7 +418,8 @@ namespace Divide
                 // Omni and spot lights have a position. Directional lights have this set to (0,0,0)
                 temp._position.set( isDir ? VECTOR3_ZERO : (viewMatrix * float4( light->positionCache(), 1.0f )).xyz, light->range() );
                 temp._direction.set( isOmni ? VECTOR3_ZERO : (viewMatrix * float4( light->directionCache(), 0.0f )).xyz, isSpot ? std::cos( Angle::to_RADIANS( spot->coneCutoffAngle() ) ) : 0.f );
-                temp._options.xyz = { typeIndex, light->shadowPropertyIndex(), isSpot ? std::bit_cast<I32>( spot->coneSlantHeight() ) : 0 };
+                temp._options.xyz = { typeIndex, light->castsShadows() ? light->shadowPropertyIndex() : -1,
+                                      isSpot ? std::bit_cast<I32>( spot->coneSlantHeight() ) : 0 };
 
                 ++lightCount[typeIndex];
             }
@@ -492,7 +499,10 @@ namespace Divide
 
         {
             PROFILE_SCOPE( "LightPool::UploadLightDataToGPU", Profiler::Category::Graphics );
-            memCmdInOut._bufferLocks.push_back(s_lightBuffer->writeData( { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount }, &_sortedLightProperties[stageIndex] ) );
+            if ( ShouldUploadLightData( totalLightCount ) )
+            {
+                memCmdInOut._bufferLocks.push_back(s_lightBuffer->writeData( { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount }, &_sortedLightProperties[stageIndex] ) );
+            }
         }
 
         {
@@ -501,8 +511,22 @@ namespace Divide
         }
     }
 
-    [[nodiscard]] bool LightPool::isShadowCacheInvalidated( [[maybe_unused]] const float3& cameraPosition, Light* const light )
+    [[nodiscard]] bool LightPool::isShadowCacheInvalidated( Light* const light )
     {
+        const bool rangeChanged = light->_shadowRangeState.update( light->range() );
+        bool directionalSettingsChanged = false;
+        if ( light->getLightType() == LightType::DIRECTIONAL )
+        {
+            auto& directional = *static_cast<DirectionalLightComponent*>( light );
+            directionalSettingsChanged = directional._shadowDirectionalSettings.update(
+                directional.csmNearClipOffset(), directional.csmUseSceneAABBFit() );
+        }
+        if ( rangeChanged || directionalSettingsChanged )
+        {
+            light->staticShadowsDirty( true );
+            light->dynamicShadowsDirty( true );
+        }
+
         {
             SharedLock<SharedMutex> r_lock( _movedSceneVolumesLock );
             if ( _movedSceneVolumes.empty() )

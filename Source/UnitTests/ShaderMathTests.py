@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 import unittest
 
-from ShaderCompilationTests import SHADERS, cluster_config, expand_includes
+from ShaderCompilationTests import SHADERS, cluster_config, expand_includes, shadow_config
 
 
 VALIDATOR = os.environ.get("GLSLANG_VALIDATOR") or shutil.which("glslangValidator")
@@ -220,10 +220,28 @@ PERSPECTIVE = (60.0, 16.0 / 9.0, 0.5, 200.0)  # fov (degrees), aspect, near, far
 PERSPECTIVE_DISTANCES = [0.5, 1.0, 7.3, 50.0, 199.0, 200.0]
 ORTHO_PLANES = (1.0, 500.0)
 ORTHO_DISTANCES = [1.0, 3.5, 120.0, 500.0]
-# (outer cone angle in degrees, slant height); 90 degrees exercises the hemisphere fallback
-SPOT_CASES = [(10.0, 12.0), (30.0, 5.0), (45.0, 8.0), (60.0, 4.0), (85.0, 20.0), (90.0, 3.0)]
+# (outer cone angle in degrees, slant height)
+SPOT_CASES = [(10.0, 12.0), (30.0, 5.0), (45.0, 8.0), (60.0, 4.0), (85.0, 20.0),
+              (89.99, 10000.0), (90.0, 3.0), (120.0, 7.0), (180.0, 9.0)]
 SPOT_POSITION = (1.0, 2.0, 3.0)
 SPOT_DIRECTION = (0.0, 0.6, -1.6)  # deliberately not normalised
+SPOT_INNER = math.cos(math.radians(15.0))
+SPOT_OUTER = math.cos(math.radians(35.0))
+SPOT_INTENSITY_CASES = [
+    (1.0, SPOT_INNER, SPOT_OUTER),
+    (SPOT_INNER, SPOT_INNER, SPOT_OUTER),
+    (math.cos(math.radians(25.0)), SPOT_INNER, SPOT_OUTER),
+    (SPOT_OUTER, SPOT_INNER, SPOT_OUTER),
+    (math.cos(math.radians(40.0)), SPOT_INNER, SPOT_OUTER),
+    (0.49, 0.5, 0.5),
+    (0.5, 0.5, 0.5),
+    (0.51, 0.5, 0.5),
+    (-1.0, -1.0, -1.0),
+]
+CSM_SPLIT_COUNT = shadow_config()["MAX_CSM_SPLITS_PER_LIGHT"]
+CSM_SLICE_CASES = [(0, 0, 0), (CSM_SPLIT_COUNT - 2, CSM_SPLIT_COUNT - 2, CSM_SPLIT_COUNT - 2),
+                   (0, CSM_SPLIT_COUNT - 1, CSM_SPLIT_COUNT),
+                   (CSM_SPLIT_COUNT, CSM_SPLIT_COUNT - 1, CSM_SPLIT_COUNT)]
 VIEWPORT = (100.0, 50.0, 1600.0, 900.0)
 # (window x, window y, view distance)
 CLUSTER_FRAGMENTS = [
@@ -236,7 +254,9 @@ CLUSTER_FRAGMENTS = [
 DEPTH_OFFSET = 0
 ORTHO_OFFSET = DEPTH_OFFSET + 3 * len(PERSPECTIVE_DISTANCES)
 SPOT_OFFSET = ORTHO_OFFSET + 2 * len(ORTHO_DISTANCES)
-CLUSTER_OFFSET = SPOT_OFFSET + 4 * len(SPOT_CASES)
+SPOT_INTENSITY_OFFSET = SPOT_OFFSET + 4 * len(SPOT_CASES)
+CSM_SLICE_OFFSET = SPOT_INTENSITY_OFFSET + len(SPOT_INTENSITY_CASES)
+CLUSTER_OFFSET = CSM_SLICE_OFFSET + len(CSM_SLICE_CASES)
 CLUSTER_RESULT_COUNT = CLUSTER_OFFSET + len(CLUSTER_FRAGMENTS)
 
 
@@ -262,8 +282,12 @@ def light_scale_bias():
 def cluster_source():
     utility = (SHADERS / "Common" / "utility.cmn").read_text(encoding="utf-8")
     light_input = (SHADERS / "Common" / "lightInput.cmn").read_text(encoding="utf-8")
+    lighting_calc = (SHADERS / "FragmentAtoms" / "lightingCalc.frag").read_text(encoding="utf-8")
+    shadow_utils = (SHADERS / "FragmentAtoms" / "shadowUtils.frag").read_text(encoding="utf-8")
     depth_macros = "\n".join(extract(rf"^#define {name}\([^\n]*$", utility) for name in ("ToLinearDepth", "ViewDistanceFromDepth"))
     light = extract(r"^#define LIGHT_DIRECTIONAL.*?^vec4 getPositionAndRangeForLight\(.*?^\}$", light_input)
+    spot_intensity = extract(r"^#define SpotConeIntensity\([^\n]*$", lighting_calc)
+    resolve_csm_slice = extract(r"^#define ResolveCSMSlice\([^\n]*$", shadow_utils)
     cluster = "\n".join(extract(rf"^uint {name}\(.*?^\}}$", light_input) for name in ("GetClusterZIndex", "GetClusterIndex"))
     clusters_x, clusters_y, clusters_z = cluster_grid()
     fov, aspect, near, far = PERSPECTIVE
@@ -278,14 +302,18 @@ def cluster_source():
     return f"""
 #version 460
 #define Squared(X) ((X) * (X))
+#define Saturate(X) clamp((X), 0.f, 1.f)
 #define PER_PASS 1
 #define ACCESS_R readonly
 #define CLUSTERS_X {clusters_x}
 #define CLUSTERS_Y {clusters_y}
 #define CLUSTERS_Z {clusters_z}
+#define MAX_CSM_SPLITS_PER_LIGHT {CSM_SPLIT_COUNT}
 #define DESCRIPTOR_SET_RESOURCE_LAYOUT(SET, BINDING, LAYOUT) layout(set = SET, binding = BINDING, LAYOUT)
 {depth_macros}
 {light}
+{spot_intensity}
+{resolve_csm_slice}
 
 mat4 dvd_ProjectionMatrix;
 const vec4 dvd_ViewPort = vec4({floats(VIEWPORT)});
@@ -354,6 +382,19 @@ void main() {{
         for (int c = 0; c < 4; ++c) {{
             values[{SPOT_OFFSET} + 4 * i + c] = bounds[c];
         }}
+        const vec3 spotIntensityCases[{len(SPOT_INTENSITY_CASES)}] = vec3[](
+            {", ".join(f"vec3({floats(case)})" for case in SPOT_INTENSITY_CASES)});
+        for (int i = 0; i < {len(SPOT_INTENSITY_CASES)}; ++i) {{
+            const vec3 sampleValue = spotIntensityCases[i];
+            values[{SPOT_INTENSITY_OFFSET} + i] = SpotConeIntensity(sampleValue.x, sampleValue.y, sampleValue.z);
+        }}
+        const vec4 splitProperties[MAX_CSM_SPLITS_PER_LIGHT] = vec4[](
+            {", ".join(f"vec4(0.f, 0.f, 0.f, {10 * (i + 1)}.f)" if i < CSM_SPLIT_COUNT - 1 else "vec4(0.f, 0.f, 0.f, -1.f)" for i in range(CSM_SPLIT_COUNT))});
+        const ivec2 splitCases[{len(CSM_SLICE_CASES)}] = ivec2[](
+            {", ".join(f"ivec2({split}, {quad})" for split, quad, _ in CSM_SLICE_CASES)});
+        for (int i = 0; i < {len(CSM_SLICE_CASES)}; ++i) {{
+            values[{CSM_SLICE_OFFSET} + i] = float(ResolveCSMSlice(splitProperties, splitCases[i].x, splitCases[i].y));
+        }}
     }}
 
     dvd_ProjectionMatrix = perspective;
@@ -417,6 +458,11 @@ class ClusterMathTests(unittest.TestCase):
                 points.append([SPOT_POSITION[i] + height * (math.cos(theta) * direction[i] + math.sin(theta) * offset[i])
                                for i in range(3)])
             with self.subTest(angle=angle):
+                cosine = math.cos(theta)
+                expected_offset = (height / (2.0 * cosine) if cosine >= math.sqrt(0.5) else
+                                   height * cosine if cosine > 0.0 else 0.0)
+                for component in range(3):
+                    self.assert_relative(centre[component], SPOT_POSITION[component] + direction[component] * expected_offset, 2e-5)
                 for point in points:
                     distance = math.dist(point, centre)
                     self.assertLessEqual(distance, radius + 1e-4 * height)
@@ -426,6 +472,17 @@ class ClusterMathTests(unittest.TestCase):
                     self.assert_relative(radius, height * math.sin(theta), 1e-5)
                 elif math.cos(theta) >= math.sqrt(0.5) - 1e-6:
                     self.assert_relative(radius, height / (2.0 * math.cos(theta)), 1e-5)
+
+    def test_spot_intensity_and_hard_cones(self):
+        for index, (theta, inner, outer) in enumerate(SPOT_INTENSITY_CASES):
+            expected = max(0.0, min(1.0, (theta - outer) / (inner - outer))) if inner > outer else float(theta >= outer)
+            with self.subTest(theta=theta, inner=inner, outer=outer):
+                self.assert_relative(self.values[SPOT_INTENSITY_OFFSET + index], expected, 2e-5)
+
+    def test_csm_slice_fallback(self):
+        for index, (_, _, expected) in enumerate(CSM_SLICE_CASES):
+            with self.subTest(case=CSM_SLICE_CASES[index]):
+                self.assertEqual(self.values[CSM_SLICE_OFFSET + index], expected)
 
     def test_cluster_index(self):
         clusters_x, clusters_y, clusters_z = cluster_grid()

@@ -51,14 +51,49 @@ Cluster conventions shared by the builder (`lightBuildClusteredAABBs.glsl`) and 
 - Z slices are exponential in view distance: `slice = log(d) * dvd_LightScale + dvd_LightBias`, with scale/bias computed from the camera planes in `GFXDevice::renderFromCamera`. Lookup recovers `d` with `ViewDistanceFromDepth`, which handles perspective and orthographic projections.
 - Each cluster has one `MAX_LIGHTS_PER_CLUSTER` budget shared by point and spot lights; indices are written points first, then spots.
 - Spot lights are culled with the minimal sphere around their cone; the slant height travels as float bits in `_options.z` (`SpotConeSlantHeight`).
+- Each render stage uploads at most `MAX_ACTIVE_LIGHTS_PER_FRAME` eligible lights. A stage with no eligible lights skips the light-buffer write but still uploads scene data with zero light counts.
 
 `HiZConstruct.glsl` max-reduces each output texel's full source footprint; push data `isBaseLevel` enables the conservative one-texel dilation for the first level only. The scene UBO (`PER_FRAME` 8) is visible to compute because vegetation culling reads water data.
+
+### Shadow maps and spotlights
+
+The shadow pass assigns per-type property indices afresh after eligibility and
+successful generation or cache reuse. A cached layer range is reusable only
+while every reserved layer still belongs to that light and has the expected
+content-layer count. Directional lights reserve full `MAX_CSM_SPLITS_PER_LIGHT`
+blocks even when they render fewer splits, so mixed split counts cannot fragment
+the configured budget. The last CSM texture layer belongs to world AO and is
+never allocated to a light. The CSM resource remains available for world AO
+when directional shadows are disabled but other shadow types are enabled.
+
+Directional shadow caches depend on the player camera's clip planes, view and
+projection; compare the cheaper clip planes before the matrices. Range changes,
+including edits through a mutable `range()` reference, also invalidate the light's
+cached shadow. Directional near-clip offsets and scene-fit toggles are tracked
+as well, including direct property mutations. Each active cascade uploads its
+own split distance and matrix; fragments outside the active splits are
+unshadowed rather than indexing a nonexistent split.
+
+Spotlights default to inner/outer half-angles of 15/35 degrees. XML loads
+normalize legacy inverted angles; programmatic setters maintain their order,
+and editor edits clamp the changed field to its counterpart so undo/redo does
+not silently change both. Equal angles produce a hard cone. The CPU and GPU
+both bound the attenuation's spherical sector using the same slant height.
+Authored wide angles and the existing tangent-based falloff are preserved: the
+slant height can become very large near 90 degrees, and the fixed 90-degree
+spot shadow camera does not cover all illumination from wider cones.
 
 ### Vegetation culling data
 
 Vegetation instance buffers are partitioned by terrain chunk, with fixed-capacity slots per chunk and separate active instance counts. Compute culling must check the active count before indexing a chunk's slots. Tree culling stores a negative `data.z` sentinel for hidden instances and positive integer-valued LOD flags for visible ones; the tree vertex shader must test the sentinel before converting the value to `uint`. LOD 3 is reserved by the vertex shader for the culled fallback.
 
-Hi-Z culling queries select a mip level, so the Hi-Z sampler must permit nearest-mip sampling. Vegetation culling writes must also be made visible to subsequent vertex reads with a buffer dependency recorded after the compute dispatches. The current implementation does not yet satisfy either requirement: the Hi-Z sampler is configured with `TextureMipSampling::NONE`, and `Vegetation::prepareRender` queues the buffer dependency before the culling dispatches.
+Tree mesh draws use separate child `RenderingComponent` packages. Each child carries its terrain chunk ID in `dataFlag`, which must be supplied as `dvd_terrainChunkOffset` for every draw package; the tree shader uses it to select that chunk's fixed-capacity block. The uniform's GLSL initializer is not a fallback because shader preprocessing strips loose-uniform initializers.
+
+Hi-Z culling queries select a mip level, so the Hi-Z sampler must permit nearest-mip sampling. The current Hi-Z sampler is configured with `TextureMipSampling::NONE`, so mip-based queries currently sample mip 0. Vegetation culling records a buffer dependency for each written buffer after the compute dispatches and before the subsequent draw commands.
+
+### Custom-pass Hi-Z
+
+Custom passes build Hi-Z from their own depth target and camera. Main, reflection, and refraction use separate stage-level Hi-Z scratch targets; reflection and refraction passes share their stage target across reflectors rather than retaining per-reflector history. The render command stream rebuilds the target as each pass executes. Vegetation remains excluded from reflection and refraction by default; if that changes and vegetation needs prior-view Hi-Z per reflector, those passes will need distinct history targets.
 
 For stage-specific lighting failures, check stage buffer allocation, bindings, dispatch dimensions, and shader-header cluster/thread-group constants. See [shaders and descriptors](shader-descriptors.md).
 

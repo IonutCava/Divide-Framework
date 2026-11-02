@@ -2776,6 +2776,7 @@ namespace Divide
 
     void Editor::onRemoveComponent( const EditorComponent& comp ) const
     {
+        _undoManager->removeEntriesForOwner( comp.getGUID() );
         for ( auto& window : _dockedWindows )
         {
             window->onRemoveComponent( comp );

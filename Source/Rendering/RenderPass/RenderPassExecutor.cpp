@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/RenderPassExecutor.h"
 #include "Headers/RenderQueue.h"
@@ -1351,7 +1352,7 @@ namespace Divide
             assert( params._stagePass._passType == RenderPassType::PRE_PASS );
 
             // This also renders into our HiZ texture that we may want to use later in PostFX
-            occlusionPass( playerIdx, camSnapshot, visibleNodeCount, RenderTargetNames::SCREEN, params._targetHIZ, bufferInOut );
+            occlusionPass( playerIdx, camSnapshot, visibleNodeCount, params._target, params._targetHIZ, bufferInOut );
         }
 #   pragma endregion
 

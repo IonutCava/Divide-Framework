@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/Vegetation.h"
 
@@ -46,6 +47,19 @@ namespace Divide
         constexpr F32 g_distanceRingsBaseTrees = 2.5f;
         constexpr F32 g_slopeLimitGrass = 30.0f;
         constexpr F32 g_slopeLimitTrees = 10.0f;
+
+        RenderTargetID HiZTargetForStage( const RenderStage stage ) noexcept
+        {
+            switch ( stage )
+            {
+                case RenderStage::REFLECTION:
+                    return RenderTargetNames::REFLECT::UTILS.HI_Z;
+                case RenderStage::REFRACTION:
+                    return RenderTargetNames::REFRACT::UTILS.HI_Z;
+                default:
+                    return RenderTargetNames::UTILS.HI_Z;
+            }
+        }
     }
 
     Vegetation::Vegetation( const ResourceDescriptor<Vegetation>& descriptor )
@@ -637,14 +651,11 @@ namespace Divide
 
         // Culling lags one full frame
         STUBBED("Vegetation::prepareRender: This is NOT CORRECT for multiple reflectors!- Ionut");
+        const RenderTargetID hiZSourceTarget = HiZTargetForStage( renderStagePass._stage );
         if ( renderState().drawState( renderStagePass ) &&
              refreshData &&
              (instance->_instanceCountGrass > 0 || instance->_instanceCountTrees > 0) )
         {
-            const RenderTargetID hiZSourceTarget = renderStagePass._stage == RenderStage::REFLECTION
-                                                                           ? RenderTargetNames::REFLECT::UTILS.HI_Z
-                                                                           : RenderTargetNames::UTILS.HI_Z;
-
             const RenderTarget* hizTarget = sgn->context().gfx().renderTargetPool().getRenderTarget( hiZSourceTarget );
             const RTAttachment* hizAttachment = hizTarget->getAttachment( RTAttachmentType::COLOUR );
 
@@ -684,7 +695,6 @@ namespace Divide
 
                 GFX::DispatchShaderTaskCommand computeCmd = {};
 
-                auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut ); // GPU to GPU command needed BEFORE draw (so ignore postDrawMemCmd)
                 if ( instance->_instanceCountGrass > 0 )
                 {
                     computeCmd._workGroupSize.set( (instance->_instanceCountGrass + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
@@ -693,6 +703,19 @@ namespace Divide
                     GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _cullPipelineGrass;
                     GFX::EnqueueCommand( bufferInOut, cullConstantsCmd );
                     GFX::EnqueueCommand( bufferInOut, computeCmd );
+                }
+                if ( instance->_instanceCountTrees > 0 )
+                {
+                    computeCmd._workGroupSize.set( (instance->_instanceCountTrees + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
+                    // Cull trees
+                    GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _cullPipelineTrees;
+                    GFX::EnqueueCommand( bufferInOut, cullConstantsCmd );
+                    GFX::EnqueueCommand( bufferInOut, computeCmd );
+                }
+
+                auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut );
+                if ( instance->_instanceCountGrass > 0 )
+                {
                     memCmd->_bufferLocks.emplace_back( BufferLock
                     {
                         ._range = { 0u, U32_MAX },
@@ -702,12 +725,6 @@ namespace Divide
                 }
                 if ( instance->_instanceCountTrees > 0 )
                 {
-                    computeCmd._workGroupSize.set( (instance->_instanceCountTrees + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
-                    // Cull trees
-                    GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _cullPipelineTrees;
-                    GFX::EnqueueCommand( bufferInOut, cullConstantsCmd );
-                    GFX::EnqueueCommand( bufferInOut, computeCmd );
-
                     memCmd->_bufferLocks.emplace_back( BufferLock
                     {
                         ._range = { 0u, U32_MAX },
