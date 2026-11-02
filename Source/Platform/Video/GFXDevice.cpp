@@ -96,7 +96,28 @@ namespace Divide
 
         constexpr U32 GROUP_SIZE_AABB = 64u;
         constexpr U32 MAX_INVOCATIONS_BLUR_SHADER_LAYERED = 4u;
-        constexpr U32 DEPTH_REDUCE_LOCAL_SIZE = 32u;
+        // HiZ reduction has no shared memory, so 16x16 (256 invocations) keeps occupancy good without needing 1024-invocation groups.
+        constexpr U32 DEPTH_REDUCE_LOCAL_SIZE = 16u;
+
+        struct RequiredComputeWorkgroup
+        {
+            const char* _shader;
+            U32 _x, _y, _z;
+        };
+
+        /// Every fixed compute workgroup shape the engine dispatches. Literal shapes mirror the layout declared in the named shader/source.
+        constexpr std::array<RequiredComputeWorkgroup, 9> REQUIRED_COMPUTE_WORKGROUPS
+        { {
+            { "lightCull.glsl", Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS, Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS, Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS },
+            { "HiZConstruct.glsl", DEPTH_REDUCE_LOCAL_SIZE, DEPTH_REDUCE_LOCAL_SIZE, 1u },
+            { "HiZOcclusionCull.glsl", GROUP_SIZE_AABB, 1u, 1u },
+            { "instanceCullVegetation.glsl", 64u, 1u, 1u },               // Vegetation.cpp WORK_GROUP_SIZE
+            { "luminanceCalc.glsl (histogram)", 16u, 16u, 1u },           // PreRenderBatch.cpp GROUP_X/Y_THREADS
+            { "luminanceCalc.glsl (average)", 256u, 1u, 1u },             // PreRenderBatch.cpp GROUP_SIZE
+            { "irradianceCalc.glsl (irradiance)", 8u, 8u, 1u },
+            { "irradianceCalc.glsl (BRDF LUT)", 16u, 16u, 1u },
+            { "irradianceCalc.glsl (prefilter)", 8u, 8u, 1u },
+        } };
 
         FORCE_INLINE U32 getGroupCount( const U32 threadCount, U32 const localSize )
         {
@@ -411,13 +432,17 @@ namespace Divide
         DIVIDE_GPU_ASSERT( Config::MAX_CULL_DISTANCES <= s_deviceInformation._maxCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts" );
         DIVIDE_GPU_ASSERT( Config::MAX_CULL_DISTANCES + Config::MAX_CLIP_DISTANCES <= s_deviceInformation._maxClipAndCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts" );
 
-        DIVIDE_GPU_ASSERT( Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS < s_deviceInformation._maxWorkgroupSize[0] &&
-                           Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS < s_deviceInformation._maxWorkgroupSize[1] &&
-                           Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorkgroupSize[2] );
-
-        DIVIDE_GPU_ASSERT( to_U32( Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS ) *
-                           Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS *
-                           Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorkgroupInvocations );
+        for ( const RequiredComputeWorkgroup& group : REQUIRED_COMPUTE_WORKGROUPS )
+        {
+            if ( !SupportsComputeWorkgroup( s_deviceInformation, group._x, group._y, group._z ) )
+            {
+                Console::errorfn( LOCALE_STR( "ERROR_INSUFFICIENT_COMPUTE_WORKGROUP" ),
+                                  group._shader, group._x, group._y, group._z,
+                                  s_deviceInformation._maxWorkgroupSize[0], s_deviceInformation._maxWorkgroupSize[1], s_deviceInformation._maxWorkgroupSize[2],
+                                  s_deviceInformation._maxWorkgroupInvocations );
+                return ErrorCode::GFX_OLD_HARDWARE;
+            }
+        }
 
         _rtPool = std::make_unique<GFXRTPool>( *this );
 

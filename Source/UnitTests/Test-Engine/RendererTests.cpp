@@ -16,6 +16,44 @@
 
 namespace Divide
 {
+    TEST_CASE( "Compute workgroup support treats device limits as inclusive maxima", "[compute][device_limits]" )
+    {
+        DeviceInformation info{};
+        info._maxWorkgroupSize[0] = 256u;
+        info._maxWorkgroupSize[1] = 128u;
+        info._maxWorkgroupSize[2] = 64u;
+        info._maxWorkgroupInvocations = 256u;
+
+        CHECK( SupportsComputeWorkgroup( info, 1u, 1u, 1u ) );
+        CHECK( SupportsComputeWorkgroup( info, 256u, 1u, 1u ) );
+        CHECK( SupportsComputeWorkgroup( info, 16u, 16u, 1u ) );
+        CHECK( SupportsComputeWorkgroup( info, 2u, 2u, 64u ) );
+
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 0u, 1u, 1u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 1u, 0u, 1u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 1u, 1u, 0u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 257u, 1u, 1u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 1u, 129u, 1u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 1u, 1u, 65u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 32u, 32u, 1u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 16u, 8u, 4u ) );
+
+        // The product is computed in 64 bits so huge per-axis limits cannot wrap the invocation check.
+        info._maxWorkgroupSize[0] = info._maxWorkgroupSize[1] = info._maxWorkgroupSize[2] = U32_MAX;
+        info._maxWorkgroupInvocations = 1024u;
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 65536u, 65536u, 1u ) );
+
+        // Vulkan's guaranteed minimum limits.
+        DeviceInformation vkMinimum{};
+        vkMinimum._maxWorkgroupSize[0] = 128u;
+        vkMinimum._maxWorkgroupSize[1] = 128u;
+        vkMinimum._maxWorkgroupSize[2] = 64u;
+        vkMinimum._maxWorkgroupInvocations = 128u;
+        CHECK( SupportsComputeWorkgroup( vkMinimum, 8u, 8u, 1u ) );
+        CHECK( SupportsComputeWorkgroup( vkMinimum, 64u, 1u, 1u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( vkMinimum, 16u, 16u, 1u ) );
+    }
+
     TEST_CASE( "Instanced draws agree with material indirection requirements", "[instancing][indirection]" )
     {
         for ( const U32 instanceCount : { 0u, 1u, 2u, 64u } )

@@ -145,7 +145,9 @@ def engine_header(stage, backend, defines, cluster_light_limit=64):
         "#define ACCESS_RW",
         *(compute_access if stage == "comp" else graphics_access),
         "#define M_PI 3.14159265358979323846",
+        "#define M_PI_DIV_2 1.57079632679489661923",
         "#define INV_M_PI 0.31830988618379067153",
+        "#define TWO_M_PI 6.28318530717958647692",
         "#define M_EPSILON 1e-5f",
         "#define Squared(X) (X * X)",
         "#define Saturate(X) clamp(X, 0, 1)",
@@ -620,12 +622,57 @@ class ShaderCompilationTests(unittest.TestCase):
         hiz_defines = re.findall(r'compModule\._defines\.emplace_back\(\s*"([^"]+)"\s*\)', hiz_block)
         self.assertEqual({define.split()[0] for define in hiz_defines}, {"imageSizeIn", "imageSizeOut", "isBaseLevel"})
         self.assertRegex(host, r"_vec\[1\]\.x\s*=\s*i\s*==\s*0u")
-        hiz_defines.append("LOCAL_SIZE 32")
+        hiz_local_size = re.search(r"constexpr U32 DEPTH_REDUCE_LOCAL_SIZE = (\d+)u;", host).group(1)
+        self.assertLessEqual(int(hiz_local_size) ** 2, 256)
+        hiz_defines.append(f"LOCAL_SIZE {hiz_local_size}")
         for backend in ("opengl", "vulkan"):
             with self.subTest(backend=backend, shader="HiZConstruct"):
                 self.compile_shader("HiZConstruct.glsl", "Compute", "comp", backend, hiz_defines)
             with self.subTest(backend=backend, shader="HiZOcclusionCull"):
                 self.compile_shader("HiZOcclusionCull.glsl", "Compute", "comp", backend, ["WORK_GROUP_SIZE 64"])
+
+    def test_compute_workgroup_requirements_match_sources(self):
+        gfx = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
+        self.assertNotRegex(gfx, r"_THREADS\s*<\s*s_deviceInformation\._maxWorkgroup")
+        self.assertRegex(gfx, r"if \( !SupportsComputeWorkgroup\( s_deviceInformation, group\._x, group\._y, group\._z \) \)"
+                              r"[^}]*return ErrorCode::GFX_OLD_HARDWARE;")
+        table = re.search(r"REQUIRED_COMPUTE_WORKGROUPS\s*\{\s*\{(.*?)\}\s*\};", gfx, re.DOTALL).group(1)
+        literal = {name: tuple(int(v) for v in dims)
+                   for name, *dims in re.findall(r'\{ "([^"]+)", (\d+)u, (\d+)u, (\d+)u \}', table)}
+        declared = int(re.search(r"std::array<RequiredComputeWorkgroup, (\d+)>", gfx).group(1))
+        self.assertEqual(declared, len(re.findall(r'\{ "[^"]+",', table)))
+
+        for variant, label in (("Irradiance", "irradiance"), ("LUT", "BRDF LUT"), ("PreFilter", "prefilter")):
+            threads = int(re.search(r"#define THREADS (\d+)", section("irradianceCalc.glsl", f"Compute.{variant}")).group(1))
+            with self.subTest(shader="irradianceCalc", variant=variant):
+                self.assertEqual(literal[f"irradianceCalc.glsl ({label})"], (threads, threads, 1))
+        lut_threads = int(re.search(r"#define THREADS (\d+)", section("irradianceCalc.glsl", "Compute.LUT")).group(1))
+        probes = (ROOT / "Source" / "Scenes" / "SceneEnvironmentProbePool.cpp").read_text(encoding="utf-8")
+        self.assertIn(f"constexpr U32 LUT_THREADS = {lut_threads}u;", probes)
+        self.assertNotIn("s_LUTTextureSize / to_F32(8)", probes)
+        for variant in ("Compute.Irradiance", "Compute.LUT"):
+            with self.subTest(bounds=variant):
+                self.assertRegex(section("irradianceCalc.glsl", variant),
+                                 r"if \(any\(greaterThanEqual\([^;]*\)\)\) \{\s*return;")
+
+        vegetation = (ROOT / "Source" / "Environment" / "Vegetation" / "Vegetation.cpp").read_text(encoding="utf-8")
+        veg_size = int(re.search(r"constexpr U32 WORK_GROUP_SIZE = (\d+);", vegetation).group(1))
+        self.assertEqual(literal["instanceCullVegetation.glsl"], (veg_size, 1, 1))
+        prerender = (ROOT / "Source" / "Rendering" / "PostFX" / "PreRenderBatch.cpp").read_text(encoding="utf-8")
+        dims = dict(re.findall(r"constexpr U8\s+(GROUP_[XY]_THREADS)\s*=\s*(\d+)u;", prerender))
+        x, y = int(dims["GROUP_X_THREADS"]), int(dims["GROUP_Y_THREADS"])
+        self.assertEqual(literal["luminanceCalc.glsl (histogram)"], (x, y, 1))
+        self.assertEqual(literal["luminanceCalc.glsl (average)"], (x * y, 1, 1))
+        for name in ("lightCull.glsl", "HiZConstruct.glsl", "HiZOcclusionCull.glsl"):
+            self.assertIn(f'{{ "{name}",', table)
+
+    def test_irradiance_compute_variants(self):
+        common = ["imgSizeX PushData0[0].x", "imgSizeY PushData0[0].y", "layerIndex PushData0[0].z"]
+        prefilter = ["mipLevel uint(PushData0[1].x)", "roughness PushData0[1].y"]
+        for backend in ("opengl", "vulkan"):
+            for variant, extra in (("Compute.Irradiance", []), ("Compute.LUT", []), ("Compute.PreFilter", prefilter)):
+                with self.subTest(backend=backend, variant=variant):
+                    self.compile_shader("irradianceCalc.glsl", variant, "comp", backend, common + extra)
 
     def test_vegetation_cull_compute(self):
         host = (ROOT / "Source" / "Environment" / "Vegetation" / "Vegetation.cpp").read_text(encoding="utf-8")

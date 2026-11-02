@@ -57,6 +57,7 @@ Cluster conventions shared by the builder (`lightBuildClusteredAABBs.glsl`) and 
 
 `HiZConstruct.glsl` max-reduces each output texel's full source footprint; push data `isBaseLevel` enables the conservative one-texel dilation for the first level only. The scene UBO (`PER_FRAME` 8) is visible to compute because vegetation culling reads water data.
 
+`GFXDevice::initRenderingAPI` checks every fixed compute workgroup in `REQUIRED_COMPUTE_WORKGROUPS` with `SupportsComputeWorkgroup`. Device limits are inclusive maxima, both per axis and for total invocations. Unsupported devices fail with `ErrorCode::GFX_OLD_HARDWARE`. Vulkan guarantees only 128 invocations, while some groups use 256 or 512, so keep this table in sync with shader `local_size` values. Dispatches round up, so compute shaders that write images must bounds-check `gl_GlobalInvocationID` against the target size.
 ### Shadow maps and spotlights
 
 Light components pass their initial range to the `Light` constructor (point 20, spot 30, directional

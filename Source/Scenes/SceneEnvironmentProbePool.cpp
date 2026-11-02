@@ -347,8 +347,10 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 12u, ShaderStageVisibility::COMPUTE );
         Set(binding._data, targetView, ImageUsage::SHADER_WRITE);
 
-        const U32 groupsX = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
-        const U32 groupsY = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
+        // Must match THREADS in irradianceCalc.glsl --Compute.LUT.
+        constexpr U32 LUT_THREADS = 16u;
+        const U32 groupsX = (to_U32( s_LUTTextureSize ) + LUT_THREADS - 1u) / LUT_THREADS;
+        const U32 groupsY = groupsX;
         GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(bufferInOut)->_workGroupSize = { groupsX, groupsY, 1 };
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
