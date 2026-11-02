@@ -1,17 +1,19 @@
 #ifndef _WATER_DATA_CMN_
 #define _WATER_DATA_CMN_
 
+bool IsWithinWaterFootprint(in WaterBodyData data, in vec3 vertexW) {
+    return all(greaterThan(data.extents.xyz, vec3(0.f))) &&
+           all(lessThanEqual(abs(vertexW.xz - data.positionW.xz), data.extents.xz * 0.5f));
+}
+
 bool IsUnderWater(in vec3 vertexW) {
     for (int i = 0; i < GLOBAL_WATER_BODIES_COUNT; ++i)
     {
-        WaterBodyData data = dvd_waterEntities[0];
+        const WaterBodyData data = dvd_waterEntities[i];
         const vec3 extents = data.extents.xyz;
         const vec3 position = data.positionW.xyz;
-        
-        const float halfWidth  = (extents.x + position.x) * 0.5f;
-        const float halfLength = (extents.z + position.z) * 0.5f;
-        if (vertexW.x >= -halfWidth && vertexW.x <= halfWidth &&
-            vertexW.z >= -halfLength && vertexW.z <= halfLength)
+
+        if (IsWithinWaterFootprint(data, vertexW))
         {
             const float depth = position.y - extents.y;
             if (vertexW.y < position.y && vertexW.y > depth) {
@@ -30,24 +32,17 @@ vec2 GetWaterDetails(in vec3 vertexW, in float maxDepth) {
 
     for (int i = 0; i < GLOBAL_WATER_BODIES_COUNT; ++i)
     {
-        WaterBodyData data = dvd_waterEntities[i];
-
-        const vec3 extents = data.extents.xyz;
+        const WaterBodyData data = dvd_waterEntities[i];
         const vec3 position = data.positionW.xyz;
 
-        const float halfWidth = (extents.x + position.x) * 0.5f;
-        const float halfLength = (extents.z + position.z) * 0.5f;
-        if (vertexW.x >= -halfWidth  && vertexW.x <= halfWidth &&
-            vertexW.z >= -halfLength && vertexW.z <= halfLength)
+        if (IsWithinWaterFootprint(data, vertexW))
         {
-            const float depth = min(maxDepth, -extents.y);
-
             // Distance
             maxDistance = max(maxDistance, 1.0f - smoothstep(position.y - 0.05f, position.y + 0.05f, vertexW.y));
 
 
             // Current water depth in relation to the minimum possible depth
-            minDepth = min(minDepth, Saturate(1.0f - (position.y - vertexW.y) / (position.y - maxDepth)));
+            minDepth = min(minDepth, Saturate(1.0f - (position.y - vertexW.y) / max(position.y - maxDepth, M_EPSILON)));
         }
     }
 

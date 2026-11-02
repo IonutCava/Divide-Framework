@@ -266,6 +266,133 @@ layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
                 self.assertAlmostEqual(actual, expected, delta=max(1e-5, abs(expected) * 2e-5))
 
 
+class WorldGeometryMathTests(unittest.TestCase):
+    def test_octahedral_normal_round_trip_including_negative_pole(self):
+        utility = (SHADERS / "FragmentAtoms" / "utility.frag").read_text(encoding="utf-8")
+        pack = re.search(r"^vec2 packNormal\(.*?^\}", utility, re.MULTILINE | re.DOTALL)
+        unpack = re.search(r"^vec3 unpackNormal\(.*?^\}", utility, re.MULTILINE | re.DOTALL)
+        self.assertIsNotNone(pack)
+        self.assertIsNotNone(unpack)
+        normals = [
+            (1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1),
+            (1, 0, -1), (0, -1, -1), (1, -2, -3), (-1, 2, -3),
+        ]
+        inputs = ", ".join(f"normalize(vec3({x}.0, {y}.0, {z}.0))" for x, y, z in normals)
+        shader = f"""
+#version 460
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+{pack.group(0)}
+{unpack.group(0)}
+void main() {{
+    const vec3 inputs[{len(normals)}] = vec3[{len(normals)}]({inputs});
+    for (int i = 0; i < {len(normals)}; ++i) {{
+        const vec3 actual = unpackNormal(packNormal(inputs[i]));
+        values[3 * i] = actual.x;
+        values[3 * i + 1] = actual.y;
+        values[3 * i + 2] = actual.z;
+    }}
+}}
+"""
+        actual = execute(shader, len(normals) * 3)
+        for index, normal in enumerate(normals):
+            length = math.sqrt(sum(component * component for component in normal))
+            for component, value in enumerate(normal):
+                with self.subTest(normal=normal, component=component):
+                    self.assertAlmostEqual(actual[index * 3 + component], value / length, delta=2e-6)
+
+    def test_positioned_and_multiple_water_volumes(self):
+        water = (SHADERS / "Common" / "waterData.cmn").read_text(encoding="utf-8")
+        shader = f"""
+#version 460
+#define GLOBAL_WATER_BODIES_COUNT 2
+#define M_EPSILON 0.00001
+#define Saturate(X) clamp((X), 0.0, 1.0)
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+struct WaterBodyData {{ vec4 extents; vec4 positionW; }};
+WaterBodyData dvd_waterEntities[GLOBAL_WATER_BODIES_COUNT];
+{water}
+void main() {{
+    dvd_waterEntities[0] = WaterBodyData(vec4(20, 10, 40, 0), vec4(100, 10, -30, 0));
+    dvd_waterEntities[1] = WaterBodyData(vec4(8, 6, 12, 0), vec4(-50, 5, 60, 0));
+    const vec3 positions[8] = vec3[8](
+        vec3(100, 7, -30), vec3(110, 7, -10), vec3(110.01, 7, -30),
+        vec3(100, 10, -30), vec3(100, 0, -30), vec3(-50, 4, 60),
+        vec3(-46, 4, 66), vec3(0, -0.5, 0));
+    for (int i = 0; i < 8; ++i)
+        values[i] = IsUnderWater(positions[i]) ? 1.0 : 0.0;
+    const vec2 first = GetWaterDetails(positions[0], -20.0);
+    const vec2 second = GetWaterDetails(positions[5], -20.0);
+    const vec2 outside = GetWaterDetails(positions[7], -20.0);
+    values[8] = first.x; values[9] = first.y;
+    values[10] = second.x; values[11] = second.y;
+    values[12] = outside.x; values[13] = outside.y;
+    dvd_waterEntities[1] = WaterBodyData(vec4(0), vec4(0));
+    values[14] = IsUnderWater(vec3(0, -0.5, 0)) ? 1.0 : 0.0;
+    values[15] = GetWaterDetails(vec3(0, -0.5, 0), -20.0).x;
+    values[16] = GetWaterDetails(positions[0], 10.0).y;
+}}
+"""
+        actual = execute(shader, 17)
+        expected = (1, 1, 0, 0, 0, 1, 1, 0, 1, 1 - 3 / 30, 1, 1 - 1 / 25, 0, 1, 0, 0, 0)
+        for index, value in enumerate(expected):
+            with self.subTest(index=index):
+                self.assertTrue(math.isfinite(actual[index]))
+                self.assertAlmostEqual(actual[index], value, delta=2e-5)
+
+    def test_small_hiz_command_lists_are_processed(self):
+        source = section("HiZOcclusionCull.glsl", "Compute")
+        source = source[source.index("void CullItem("):]
+        source = re.sub(r"layout\(local_size_x = WORK_GROUP_SIZE\) in;", "", source)
+        source = source.replace("void main()", "void cullMain()")
+        source = source.replace("gl_GlobalInvocationID.x", "fakeID")
+        shader = f"""
+#version 460
+#define WORK_GROUP_SIZE 64
+#define atomicAdd(A, B) ((A) += uint(B))
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+struct Command {{ uint count, instanceCount, firstIndex, baseVertex, baseInstance; }};
+struct NodeIndirectionData {{ uint _transformIdx; }};
+struct NodeTransformData {{ vec4 sphere; }};
+Command dvd_drawCommands[64];
+NodeIndirectionData dvd_IndirectionData[64];
+NodeTransformData dvd_Transforms[64];
+uint dvd_numEntities, dvd_countCulledItems = 1u, fakeID;
+uint culledCount[4];
+bool dvd_CullNode(NodeTransformData node) {{ return true; }}
+vec4 dvd_BoundingSphere(NodeTransformData node) {{ return node.sphere; }}
+bool HiZCull(vec3 position, float radius) {{ return mod(position.x, 2.0) == 0.0; }}
+{source}
+void main() {{
+    const uint counts[5] = uint[5](0u, 1u, 3u, 63u, 64u);
+    for (int test = 0; test < 5; ++test) {{
+        dvd_numEntities = counts[test];
+        for (int i = 0; i < 4; ++i) culledCount[i] = 0u;
+        for (uint i = 0u; i < 64u; ++i) {{
+            dvd_drawCommands[i] = Command(1u, 1u, 0u, 0u, i + 1u);
+            dvd_IndirectionData[i]._transformIdx = i;
+            dvd_Transforms[i].sphere = vec4(float(i), 0, 0, 1);
+        }}
+        for (fakeID = 0u; fakeID < 64u; ++fakeID) cullMain();
+        uint errors = 0u;
+        for (uint i = 0u; i < 64u; ++i) {{
+            const uint expected = i < dvd_numEntities && (i % 2u) == 0u ? 0u : 1u;
+            if (dvd_drawCommands[i].instanceCount != expected) ++errors;
+        }}
+        values[3 * test] = float(culledCount[0]);
+        values[3 * test + 1] = float(culledCount[1]);
+        values[3 * test + 2] = float(errors);
+    }}
+}}
+"""
+        actual = execute(shader, 15)
+        for index, count in enumerate((0, 1, 3, 63, 64)):
+            with self.subTest(count=count):
+                self.assertEqual(actual[index * 3:index * 3 + 3], [(count + 1) // 2, 64 - count, 0])
+
+
 class PostFXMathTests(unittest.TestCase):
     def test_signed_and_color_framebuffer_previews(self):
         source = section("fbPreview.glsl", "Fragment")

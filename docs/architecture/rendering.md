@@ -98,6 +98,13 @@ Tree mesh draws use separate child `RenderingComponent` packages. Each child car
 Materials that require instanced indirection must mark their rendering component instanced even for a single instance. Instanced draws upload `INDIRECT_DATA_IDX` and use base instance zero; ordinary draws encode the node indirection index plus one in the base instance. Grass and tree shaders use a draw-local instance index: OpenGL's `gl_InstanceID` is already local, while Vulkan's `gl_InstanceIndex` includes the base instance. Vegetation buffers accept CPU writes, and empty chunks do not issue zero-length uploads. A terrain can omit tree meshes when it only needs grass.
 
 Hi-Z culling queries select a mip level and use nearest texel and nearest-mip sampling with a minimum LOD of zero. This preserves the max-reduced depths used for conservative visibility; the reduction itself reads single-mip views with `texelFetch`. Vegetation culling records a buffer dependency for each written buffer after the compute dispatches and before the subsequent draw commands.
+Nonempty indirect-command lists are culled even when they occupy less than one
+workgroup; padding lanes never address a draw command.
+
+Water positions are surface centers, with full X/Z dimensions and a positive
+depth. CPU camera tests and GPU vegetation/terrain queries use the same
+position-relative footprint. The scene buffer supports
+`GLOBAL_WATER_BODIES_COUNT` bodies; unused slots are cleared each update.
 
 ### Custom-pass Hi-Z
 
@@ -125,6 +132,8 @@ FXAA accepts levels 1-5. The host normalizes configured levels and both shader
 paths clamp their table indices. Half-resolution SSAO selects one of its four
 sampled depths deterministically, including ties, before copying that sample's
 normal.
+Octahedral normal encoding uses a nonzero sign when folding the negative
+hemisphere, including normals aligned with the negative Z axis.
 Bloom downsampling derives texel spacing from the bound source view. Its
 threshold uses a soft knee, or a hard threshold for a zero/negative knee, and
 every upsample pass rebinds its pipeline and radius data.

@@ -51,11 +51,6 @@ void CullItem(in uint idx)
 layout(local_size_x = WORK_GROUP_SIZE) in;
 void main()
 {
-    if (dvd_numEntities < WORK_GROUP_SIZE)
-    {
-        return;
-    }
-
     const uint ident = gl_GlobalInvocationID.x;
 
     if (ident >= dvd_numEntities)
@@ -90,4 +85,3 @@ void main()
         CullItem(ident);
     }
 }
-

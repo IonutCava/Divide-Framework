@@ -2482,7 +2482,6 @@ namespace Divide
         ShaderBuffer* cullBuffer = _gfxBuffers.crtBuffers()._cullCounter.get();
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Occlusion Cull";
 
-        // Not worth the overhead for a handful of items and the Pre-Z pass should handle overdraw just fine
         GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _hIZCullPipeline;
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );

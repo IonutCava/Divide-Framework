@@ -16,10 +16,12 @@ if __package__:
     from .ExposureBufferTests import ExposureBufferTests
     from .HiZSamplerTests import HiZSamplerTests
     from .PostFXTests import PostFXTests
+    from .SceneShaderTests import SceneShaderTests
 else:
     from ExposureBufferTests import ExposureBufferTests
     from HiZSamplerTests import HiZSamplerTests
     from PostFXTests import PostFXTests
+    from SceneShaderTests import SceneShaderTests
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -209,6 +211,8 @@ def engine_header(stage, backend, defines, cluster_light_limit=64):
     header.extend(f"#define {name} {index}" for index, name in enumerate(debug_names))
     header.extend(f"#define {name} {index}" for index, name in enumerate(texture_names))
     header.extend(f"#define {define}" for define in defines)
+    if stage == "geom":
+        header.extend(["#ifndef INPUT_PRIMITIVE_SIZE", "#define INPUT_PRIMITIVE_SIZE 1", "#endif"])
     header.extend([
         "#if defined(PRE_PASS) || defined(SHADOW_PASS)",
         "#define DEPTH_PASS",
@@ -480,6 +484,16 @@ class ShaderCompilationTests(unittest.TestCase):
         for backend in ("opengl", "vulkan"):
             with self.subTest(backend=backend):
                 self.compile_shader("lightImpostorShader.glsl", "Vertex", "vert", backend)
+                self.compile_shader("lightImpostorShader.glsl", "Geometry", "geom", backend)
+                self.compile_shader("lightImpostorShader.glsl", "Fragment", "frag", backend)
+
+        geometry = section("lightImpostorShader.glsl", "Geometry")
+        emitted_vertices = geometry.split("EmitVertex();")
+        self.assertEqual(len(emitted_vertices), 5)
+        for vertex in emitted_vertices[:-1]:
+            self.assertIn("lightColour = colourAndSize[0].xyz;", vertex)
+            self.assertIn("gl_Position =", vertex)
+            self.assertIn("_out._texCoord =", vertex)
 
     def test_particle_variants(self):
         variants = [
