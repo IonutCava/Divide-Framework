@@ -17,6 +17,24 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class SceneShaderTests(unittest.TestCase):
+    def test_prefiltered_probe_mips_are_not_regenerated(self):
+        source = (ROOT / "Source" / "Scenes" / "SceneEnvironmentProbePool.cpp").read_text(encoding="utf-8")
+        start = source.index("void SceneEnvironmentProbePool::PrefilterEnvMap(")
+        end = source.index("void SceneEnvironmentProbePool::ComputeIrradianceMap(", start)
+        prefilter = source[start:end]
+        self.assertNotIn("ComputeMipMapsCommand", prefilter)
+        self.assertIn("destinationImage._subRange._mipLevels = { to_U8(mipLevel), 1u }", prefilter)
+        self.assertIn("._sourceLayout = ImageUsage::SHADER_WRITE", prefilter)
+        self.assertIn("._targetLayout = ImageUsage::SHADER_READ", prefilter)
+        stages = source[source.index("void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal("):start]
+        self.assertLess(stages.index("case ComputationStages::MIP_MAP_SOURCE:"),
+                        stages.index("case ComputationStages::PREFILTER_MAP:"))
+        self.assertIn("computeMipMapsCommand._texture = sourceAtt->texture()", stages)
+        gl = (ROOT / "Source" / "Platform" / "Video" / "RenderBackend" / "OpenGL" / "GLWrapper.cpp").read_text(encoding="utf-8")
+        vk = (ROOT / "Source" / "Platform" / "Video" / "RenderBackend" / "Vulkan" / "Textures" / "vkSamplerObject.cpp").read_text(encoding="utf-8")
+        self.assertIn("gl46core::glEnable( gl46core::GL_TEXTURE_CUBE_MAP_SEAMLESS", gl)
+        self.assertIn("samplerInfo.flags = 0u", vk)
+
     def test_cpu_underwater_detection_checks_every_positioned_body(self):
         source = (ROOT / "Source" / "Scenes" / "Scene.cpp").read_text(encoding="utf-8")
         start = source.index("    bool Scene::checkCameraUnderwater( const Camera& camera )")

@@ -393,6 +393,187 @@ void main() {{
                 self.assertEqual(actual[index * 3:index * 3 + 3], [(count + 1) // 2, 64 - count, 0])
 
 
+class MaterialLightingMathTests(unittest.TestCase):
+    @staticmethod
+    def shader_function(source, name):
+        match = re.search(rf"^{re.escape(name)}\(.*?^\}}", source, re.MULTILINE | re.DOTALL)
+        if match is None:
+            raise ValueError(f"Shader function {name} not found")
+        return match.group(0)
+
+    def test_selected_alpha_is_shared_by_colour_and_depth_paths(self):
+        source = (SHADERS / "FragmentAtoms" / "materialData.frag").read_text(encoding="utf-8")
+        begin = source.index("#if defined(HAS_TRANSPARENCY)")
+        end = source.index("#endif //HAS_TRANSPARENCY", begin) + len("#endif //HAS_TRANSPARENCY")
+        alpha = source[begin:end]
+        shader = f"""
+#version 460
+#define HAS_TRANSPARENCY
+#define USE_UNIT0_TEXTURE
+#define USE_OPACITY_TEXTURE
+#define TEX_NONE 0u
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+struct NodeMaterialData {{ uint opacityOp; uint unitOp; bool opacityAlpha; bool albedoAlpha; vec4 base; }};
+#define dvd_TexOpOpacity(X) ((X).opacityOp)
+#define dvd_TexOpUnit0(X) ((X).unitOp)
+#define dvd_UseOpacityAlphaChannel(X) ((X).opacityAlpha)
+#define dvd_UseAlbedoTextureAlphaChannel(X) ((X).albedoAlpha)
+#define dvd_BaseColour(X) ((X).base)
+const int texDiffuse0 = 0, texOpacityMap = 1;
+vec4 sampleTexture(int id, vec3 uv) {{
+    return id == texOpacityMap ? vec4(0.2, 0.0, 0.0, 0.4) : vec4(0.0, 0.0, 0.0, 0.6);
+}}
+#define texture(S, UV) sampleTexture(S, UV)
+vec4 getTextureColour(NodeMaterialData data, vec3 uv) {{ return vec4(0.1, 0.2, 0.3, 0.3); }}
+{alpha}
+void main() {{
+    NodeMaterialData data = NodeMaterialData(1u, 1u, false, false, vec4(1, 1, 1, 0.8));
+    for (int i = 0; i < 5; ++i) {{
+        if (i == 1) data.opacityAlpha = true;
+        if (i == 2) {{ data.opacityOp = 0u; data.albedoAlpha = true; }}
+        if (i == 3) data.albedoAlpha = false;
+        if (i == 4) {{ data.albedoAlpha = true; data.unitOp = 0u; }}
+        values[2 * i] = getAlpha(data, vec3(0));
+        values[2 * i + 1] = getAlbedo(data, vec3(0)).a;
+    }}
+}}
+"""
+        actual = execute(shader, 10)
+        for index, expected in enumerate((0.2, 0.4, 0.6, 0.8, 0.8)):
+            with self.subTest(case=index):
+                self.assertAlmostEqual(actual[2 * index], expected, delta=1e-6)
+                self.assertAlmostEqual(actual[2 * index + 1], expected, delta=1e-6)
+
+    def test_phong_roughness_decreases_with_shininess(self):
+        source = (SHADERS / "FragmentAtoms" / "materialData.frag").read_text(encoding="utf-8")
+        function = self.shader_function(source, "float SpecularToRoughness")
+        shader = f"""
+#version 460
+#define MAX_SHININESS 255.0
+#define Saturate(X) clamp((X), 0.0, 1.0)
+#define Luminance(RGB) max(dot((RGB), vec3(0.299, 0.587, 0.114)), 0.0001)
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+{function}
+void main() {{
+    const float powers[5] = float[5](-1.0, 0.0, 63.75, 255.0, 300.0);
+    for (int i = 0; i < 5; ++i) {{
+        values[i] = SpecularToRoughness(vec3(1), powers[i]);
+        values[5 + i] = SpecularToRoughness(vec3(0.5), powers[i]);
+        values[10 + i] = SpecularToRoughness(vec3(0), powers[i]);
+    }}
+}}
+"""
+        actual = execute(shader, 15)
+        self.assertAlmostEqual(actual[0], 1.0, delta=1e-6)
+        self.assertAlmostEqual(actual[1], 1.0, delta=1e-6)
+        self.assertAlmostEqual(actual[3], 0.0, delta=1e-6)
+        self.assertAlmostEqual(actual[4], 0.0, delta=1e-6)
+        for offset in (0, 5, 10):
+            samples = actual[offset:offset + 5]
+            self.assertTrue(all(math.isfinite(x) and 0 <= x <= 1 for x in samples))
+            self.assertTrue(all(a >= b for a, b in zip(samples, samples[1:])))
+        self.assertGreater(actual[8], actual[3])
+        self.assertGreater(actual[13], actual[8])
+
+    def test_metal_roughness_direct_fresnel_uses_f0(self):
+        source = (SHADERS / "FragmentAtoms" / "pbr.frag").read_text(encoding="utf-8")
+        fresnel = self.shader_function(source, "vec3 SchlickGaussianFresnel")
+        brdf = self.shader_function(source, "vec3 GetBRDF")
+        shader = f"""
+#version 460
+#define SHADING_MODE_PBR_MR
+#define M_EPSILON 0.00001
+#define INV_M_PI 1.0
+#define Squared(X) ((X) * (X))
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+struct PBRMaterial {{ vec3 _diffuseColour; vec3 _F0; vec4 _specular; float _roughness; float _occlusion; }};
+float BurleyDiffuse(float a, float b, float c, float d, float e) {{ return 0.0; }}
+float GGXDistribution(float a, float b) {{ return 1.0; }}
+float NeumannVisibility(float a, float b) {{ return 1.0; }}
+{fresnel}
+{brdf}
+void main() {{
+    PBRMaterial material;
+    material._diffuseColour = vec3(0);
+    material._F0 = vec3(0.04, 0.3, 0.8);
+    material._specular = vec4(0.0);
+    material._roughness = 0.5;
+    material._occlusion = 1.0;
+    const vec3 result = GetBRDF(vec3(0, 0, 1), vec3(0, 0, 1), vec3(0, 0, 1),
+                                vec3(1), 1.0, 1.0, 1.0, material);
+    values[0] = result.x; values[1] = result.y; values[2] = result.z;
+}}
+"""
+        actual = execute(shader, 3)
+        gaussian = 2 ** (-5.55473 - 6.98316)
+        for index, f0 in enumerate((0.04, 0.3, 0.8)):
+            self.assertAlmostEqual(actual[index], f0 + (1 - f0) * gaussian, delta=1e-6)
+
+    def test_environment_uses_world_normals_and_preserves_diffuse_weight(self):
+        source = (SHADERS / "FragmentAtoms" / "IBL.frag").read_text(encoding="utf-8")
+        functions = "\n".join(self.shader_function(source, name) for name in (
+            "vec3 computeFresnelSchlickRoughness", "vec3 GetSpecularDominantDir",
+            "vec3 GetCubeReflectionDirection", "vec3 getIBLAmbient",
+            "vec4 getReflectionLookup", "vec3 ApplyIBL",
+        ))
+        shader = f"""
+#version 460
+#define Saturate(X) clamp((X), 0.0, 1.0)
+#define SKY_LIGHT_LAYER_IDX 0u
+#define REFLECTION_PROBE_MIP_COUNT 7.0
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+struct ProbeData {{ vec4 _positionW; vec4 _halfExtents; }};
+struct PBRMaterial {{ vec3 _diffuseColour; vec3 _F0; float _roughness; float _metallic; float _occlusion; }};
+ProbeData dvd_Probes[2];
+mat4 dvd_InverseViewMatrix = mat4(vec4(0, 0, -1, 0), vec4(0, 1, 0, 0),
+                                  vec4(1, 0, 0, 0), vec4(0, 0, 0, 1));
+const vec4 dvd_AmbientColour = vec4(0);
+const int texEnvIrradiance = 0, texEnvPrefiltered = 1, texBRDFLut = 2;
+vec4 irradianceDirection, reflectionDirection;
+float getWorldAO() {{ return 1.0; }}
+vec4 sampleTexture(int id, vec4 direction) {{ irradianceDirection = direction; return vec4(1); }}
+vec4 sampleTexture(int id, vec2 uv) {{ return vec4(0); }}
+vec4 sampleTextureLod(int id, vec4 direction, float lod) {{ reflectionDirection = direction; return vec4(0); }}
+#define texture(S, UV) sampleTexture(S, UV)
+#define textureLod(S, UV, LOD) sampleTextureLod(S, UV, LOD)
+{functions}
+void main() {{
+    PBRMaterial material;
+    material._diffuseColour = vec3(0.48);
+    material._F0 = vec3(0.04);
+    material._roughness = 0.5; material._metallic = 0.5; material._occlusion = 1.0;
+    const vec3 normal = vec3(0, 0, 1);
+    for (int i = 0; i < 2; ++i) {{
+        const vec3 view = i == 0 ? normal : normalize(vec3(1, 0, 1));
+        const vec3 result = ApplyIBL(material, view, normal, 1.0, vec3(0), 0u);
+        values[7 * i] = irradianceDirection.x;
+        values[7 * i + 1] = irradianceDirection.y;
+        values[7 * i + 2] = irradianceDirection.z;
+        values[7 * i + 3] = reflectionDirection.x;
+        values[7 * i + 4] = reflectionDirection.y;
+        values[7 * i + 5] = reflectionDirection.z;
+        values[7 * i + 6] = result.x;
+    }}
+    dvd_Probes[1] = ProbeData(vec4(0), vec4(1));
+    const vec3 boundary = GetCubeReflectionDirection(normal, normal, vec3(0, 1, 0), 1u, 0.0);
+    values[14] = boundary.x; values[15] = boundary.y; values[16] = boundary.z;
+}}
+"""
+        actual = execute(shader, 17)
+        root_half = math.sqrt(0.5)
+        expected = (1, 0, 0, 1, 0, 0, 0.48 * 0.96,
+                    1, 0, 0, root_half, 0, root_half, 0.48 * 0.96,
+                    1, 1, 0)
+        for index, value in enumerate(expected):
+            with self.subTest(index=index):
+                self.assertTrue(math.isfinite(actual[index]))
+                self.assertAlmostEqual(actual[index], value, delta=2e-6)
+
+
 class PostFXMathTests(unittest.TestCase):
     def test_signed_and_color_framebuffer_previews(self):
         source = section("fbPreview.glsl", "Fragment")

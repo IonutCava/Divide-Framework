@@ -1065,6 +1065,22 @@ int main() {
                                         ["MAIN_DISPLAY_PASS", "SHADING_MODE_PBR", "NO_SSAO",
                                          f"DISABLE_SHADOW_MAPPING_{shadow_type}"])
 
+    def test_material_alpha_and_environment_variants(self):
+        for backend in ("opengl", "vulkan"):
+            for shading in ("SHADING_MODE_PBR_MR", "SHADING_MODE_PBR_SG", "SHADING_MODE_BLINN_PHONG"):
+                for alpha_discard in (False, True):
+                    defines = ["MAIN_DISPLAY_PASS", shading, "NO_SSAO", "HAS_TRANSPARENCY",
+                               "USE_OPACITY_TEXTURE", "USE_UNIT0_TEXTURE"]
+                    if alpha_discard:
+                        defines.append("USE_ALPHA_DISCARD")
+                    with self.subTest(backend=backend, shading=shading, alpha_discard=alpha_discard):
+                        self.compile_shader("material.glsl", "Fragment", "frag", backend, defines)
+            for variant in ("Fragment.PrePass", "Fragment.Shadow", "Fragment.Shadow.VSM"):
+                with self.subTest(backend=backend, variant=variant):
+                    self.compile_shader("depthPass.glsl", variant, "frag", backend,
+                                        ["HAS_TRANSPARENCY", "USE_ALPHA_DISCARD",
+                                         "USE_OPACITY_TEXTURE", "USE_UNIT0_TEXTURE"])
+
     def test_scene_data_visible_to_compute(self):
         host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
         visibility = re.search(

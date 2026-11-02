@@ -106,6 +106,15 @@ depth. CPU camera tests and GPU vegetation/terrain queries use the same
 position-relative footprint. The scene buffer supports
 `GLOBAL_WATER_BODIES_COUNT` bodies; unused slots are cleared each update.
 
+Material colour and depth passes use the same selected alpha source. Phong
+shininess maps monotonically to perceptual roughness. Metallic-roughness direct
+lighting uses the material F0; diffuse IBL does not apply the metal fraction a
+second time. Irradiance samples the world-space surface normal, while specular
+samples use world-space reflection directions and local probe box projection.
+OpenGL enables seamless cubemap sampling and Vulkan samplers use the default
+seamless behavior. Source environment mips are generated before convolution;
+the explicitly prefiltered destination mips must not be regenerated afterward.
+
 ### Custom-pass Hi-Z
 
 Custom passes build Hi-Z from their own depth target and camera. Main, reflection, and refraction use separate stage-level Hi-Z scratch targets; reflection and refraction passes share their stage target across reflectors rather than retaining per-reflector history. The render command stream rebuilds the target as each pass executes. Vegetation remains excluded from reflection and refraction by default; if that changes and vegetation needs prior-view Hi-Z per reflector, those passes will need distinct history targets.

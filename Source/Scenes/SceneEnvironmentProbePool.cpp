@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/SceneEnvironmentProbePool.h"
 
@@ -566,12 +567,6 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandB
             ._targetLayout = ImageUsage::SHADER_READ
         });
     }
-
-    GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-    computeMipMapsCommand._layerRange = { layerID, 1 };
-    computeMipMapsCommand._texture = destinationAtt->texture();
-    computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
-    GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
