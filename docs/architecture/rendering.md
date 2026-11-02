@@ -120,6 +120,11 @@ floating-point sums to avoid 32-bit integer overflow at large resolutions.
 The averaging luminance image retains sampled and storage creation capabilities.
 Each averaging pass transitions it from `SHADER_READ` to `SHADER_READ_WRITE` and back;
 creation usage flags must not be confused with the current image layout.
+Post-AA quality level zero disables the filter; SMAA accepts levels 1-4 and
+FXAA accepts levels 1-5. The host normalizes configured levels and both shader
+paths clamp their table indices. Half-resolution SSAO selects one of its four
+sampled depths deterministically, including ties, before copying that sample's
+normal.
 Passes use `BeginRenderPassCommand` with ordinary pipeline/resource binding commands.
 
 - Screen-space effects using existing inputs generally belong in PostFX/pre-render operators.

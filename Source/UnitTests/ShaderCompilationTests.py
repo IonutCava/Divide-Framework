@@ -15,9 +15,11 @@ import unittest
 if __package__:
     from .ExposureBufferTests import ExposureBufferTests
     from .HiZSamplerTests import HiZSamplerTests
+    from .PostFXTests import PostFXTests
 else:
     from ExposureBufferTests import ExposureBufferTests
     from HiZSamplerTests import HiZSamplerTests
+    from PostFXTests import PostFXTests
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -154,6 +156,7 @@ def engine_header(stage, backend, defines, cluster_light_limit=64):
         "#define Squared(X) (X * X)",
         "#define Saturate(X) clamp(X, 0, 1)",
         "#define Mad(a, b, c) (a * b + c)",
+        "#define Round(X) floor((X) + .5f)",
         "#define MAX_CLIP_PLANES 4",
         "#define MAX_CULL_DISTANCES 1",
         "#define GLOBAL_WATER_BODIES_COUNT 1",
@@ -384,6 +387,22 @@ class ShaderCompilationTests(unittest.TestCase):
             for key, defines in variants:
                 with self.subTest(backend=backend, variant=key):
                     self.compile_shader("luminanceCalc.glsl", key, "comp", backend, group_defines + defines)
+
+    def test_smaa_and_ssao_variants(self):
+        for backend in ("opengl", "vulkan"):
+            with self.subTest(backend=backend, shader="SMAA.Weight"):
+                self.link_shaders(
+                    "SMAA.glsl",
+                    [("Vertex.Weight", "vert", []), ("Fragment.Weight", "frag", [])],
+                    backend,
+                    ["dvd_qualityMultiplier int(PushData0[0].x)"],
+                )
+            with self.subTest(backend=backend, shader="FXAA"):
+                self.compile_shader("FXAA.glsl", "Fragment", "frag", backend,
+                                    ["dvd_qualityMultiplier int(PushData0[0].x)"])
+            for variant in ("Fragment.SSAODownsample", "Fragment.SSAOUpsample", "Fragment.SSAOBlur"):
+                with self.subTest(backend=backend, shader=variant):
+                    self.compile_shader("SSAOPass.glsl", variant, "frag", backend)
 
     def test_light_impostor_descriptor_visibility(self):
         host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")

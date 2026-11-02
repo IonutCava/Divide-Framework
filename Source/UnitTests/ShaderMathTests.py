@@ -266,6 +266,127 @@ layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
                 self.assertAlmostEqual(actual, expected, delta=max(1e-5, abs(expected) * 2e-5))
 
 
+class PostFXMathTests(unittest.TestCase):
+    def test_ssao_upsample_always_selects_a_valid_sample(self):
+        source = section("SSAOPass.glsl", "Fragment.SSAOUpsample")
+        match = re.search(r"^float nearest_depth_ao\(\).*?^\}", source, re.MULTILINE | re.DOTALL)
+        self.assertIsNotNone(match)
+        shader = f"""
+#version 460
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+struct Varyings {{ vec2 _texCoord; }} VAR;
+const int texDepthMap = 0, texSSAONormalsDepth = 1, texSSAONearest = 2;
+float centerDepth;
+float depths[4];
+float occlusion[4];
+vec4 sampleAt(int textureId, ivec2 offset) {{
+    int index = offset.x * 2 + offset.y;
+    return vec4(textureId == texDepthMap ? centerDepth :
+                textureId == texSSAONormalsDepth ? depths[index] : occlusion[index]);
+}}
+#define textureOffset(tex, uv, offset) sampleAt(tex, offset)
+#define texture(tex, uv) sampleAt(tex, ivec2(0))
+{match.group(0)}
+void main() {{
+    occlusion[0] = 0.1; occlusion[1] = 0.2; occlusion[2] = 0.3; occlusion[3] = 0.4;
+    centerDepth = 1.0;
+    for (int i = 0; i < 4; ++i) depths[i] = 0.0;
+    values[0] = nearest_depth_ao();
+    depths[3] = 0.8;
+    values[1] = nearest_depth_ao();
+    depths[1] = 0.8;
+    values[2] = nearest_depth_ao();
+    centerDepth = 0.4;
+    depths[0] = 0.9; depths[1] = 0.3; depths[2] = 0.41; depths[3] = 0.8;
+    values[3] = nearest_depth_ao();
+}}
+"""
+        actual = execute(shader, 4)
+        for value, expected in zip(actual, (0.1, 0.4, 0.2, 0.3)):
+            self.assertAlmostEqual(value, expected, delta=1e-6)
+
+    def test_ssao_representative_depth_with_ties(self):
+        source = section("SSAOPass.glsl", "Fragment.SSAODownsample")
+        match = re.search(r"^int representativeDepthIndex\(.*?^\}", source, re.MULTILINE | re.DOTALL)
+        self.assertIsNotNone(match)
+        samples = [
+            (0.5, 0.5, 0.5, 0.5),
+            (0.0, 0.0, 1.0, 1.0),
+            (0.0, 0.5, 0.5, 1.0),
+            (0.1, 0.2, 0.3, 0.9),
+            (0.9, 0.1, 0.2, 0.3),
+            (0.25, 0.25, 0.25, 0.9),
+            (0.0, 0.25, 0.5, 0.75),
+        ]
+        inputs = ", ".join("vec4(" + ", ".join(f"{value:.8f}" for value in case) + ")" for case in samples)
+        shader = f"""
+#version 460
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+{match.group(0)}
+void main() {{
+    const vec4 cases[{len(samples)}] = vec4[{len(samples)}]({inputs});
+    for (int i = 0; i < {len(samples)}; ++i) values[i] = float(representativeDepthIndex(cases[i]));
+}}
+"""
+        actual = execute(shader, len(samples))
+        for index, case in enumerate(samples):
+            with self.subTest(samples=case):
+                center = sum(case) / 4
+                rejected = max(range(4), key=lambda i: abs(case[i] - center))
+                retained = [i for i in range(4) if i != rejected]
+                retained_center = sum(case[i] for i in retained) / 3
+                expected_distance = min(abs(case[i] - retained_center) for i in retained)
+                chosen = int(actual[index])
+                self.assertIn(chosen, retained)
+                self.assertAlmostEqual(abs(case[chosen] - retained_center), expected_distance, delta=1e-6)
+
+    def test_smaa_vertex_coordinates_and_quality_bounds(self):
+        source = section("SMAA.glsl", "Vertex.Weight")
+        source = source.replace('#include "nodeDataInput.cmn"', "")
+        source = re.sub(r"layout\(location = ATTRIB_FREE_START \+ \d+\) out ", "", source)
+        source = source.replace("void main(void)", "void calculateWeight()")
+        source = source.replace("gl_Position", "testPosition")
+        shader = f"""
+#version 460
+#define Mad(a, b, c) ((a) * (b) + (c))
+struct Varyings {{ vec2 _texCoord; }} VAR;
+vec4 dvd_ViewPort = vec4(0.0, 0.0, 1024.0, 768.0);
+int dvd_VertexIndex;
+int dvd_qualityMultiplier;
+vec4 testPosition;
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+{source}
+void main() {{
+    const int qualities[4] = int[4](-5, 0, 3, 8);
+    for (int q = 0; q < 4; ++q) {{
+        dvd_qualityMultiplier = qualities[q];
+        for (int v = 0; v < 3; ++v) {{
+            dvd_VertexIndex = v;
+            VAR._texCoord = vec2(123.0);
+            calculateWeight();
+            int base = (q * 3 + v) * 3;
+            values[base] = vPixCoord.x;
+            values[base + 1] = vPixCoord.y;
+            values[base + 2] = vOffset[2].x;
+        }}
+    }}
+}}
+"""
+        actual = execute(shader, 36)
+        for quality_index, steps in enumerate((4, 4, 32, 32)):
+            for vertex in range(3):
+                base = (quality_index * 3 + vertex) * 3
+                uv_x = 2 if vertex & 1 else 0
+                uv_y = 2 if vertex & 2 else 0
+                with self.subTest(quality=quality_index, vertex=vertex):
+                    self.assertAlmostEqual(actual[base], uv_x * 1024, delta=1e-5)
+                    self.assertAlmostEqual(actual[base + 1], uv_y * 768, delta=1e-5)
+                    self.assertAlmostEqual(actual[base + 2], uv_x - (0.25 + 2 * steps) / 1024, delta=1e-6)
+
+
 PERSPECTIVE = (60.0, 16.0 / 9.0, 0.5, 200.0)  # fov (degrees), aspect, near, far
 PERSPECTIVE_DISTANCES = [0.5, 1.0, 7.3, 50.0, 199.0, 200.0]
 ORTHO_PLANES = (1.0, 500.0)
