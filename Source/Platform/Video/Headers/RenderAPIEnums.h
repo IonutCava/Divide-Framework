@@ -69,23 +69,26 @@ namespace Names {
 
 static_assert(std::size(Names::renderAPI) == to_base(RenderAPI::COUNT) + 1);
 
+// Ordered by update frequency (least frequent first). The value is also the descriptor set index used by
+// set-based APIs (e.g. Vulkan): pipeline layouts are compatible for all sets up to the first differing one, so
+// keeping the per-program PER_DRAW set last means pipeline changes never disturb the shared PER_FRAME/PER_PASS/PER_BATCH bindings.
 enum class DescriptorSetUsage : U8 {
-    PER_DRAW = 0,
-    PER_BATCH,
+    PER_FRAME = 0,
     PER_PASS,
-    PER_FRAME,
+    PER_BATCH,
+    PER_DRAW,
     COUNT
 };
 
 namespace Names {
     static constexpr const char* descriptorSetUsage[] = {
-         "PER_DRAW", "PER_BATCH", "PER_PASS", "PER_FRAME", "NONE"
+         "PER_FRAME", "PER_PASS", "PER_BATCH", "PER_DRAW", "NONE"
     };
 };
 
 static_assert(std::size(Names::descriptorSetUsage) == to_base(DescriptorSetUsage::COUNT) + 1);
 
-static_assert(to_base(DescriptorSetUsage::PER_DRAW) == 0u, "PER_DRAW must be set to 0 to provide compatibility with the OpenGL renderer!");
+static_assert(to_base(DescriptorSetUsage::PER_DRAW) == to_base(DescriptorSetUsage::COUNT) - 1u, "PER_DRAW must be the last (most frequently updated) descriptor set!");
 
 enum class ReflectorType : U8
 {
@@ -123,7 +126,7 @@ enum class ImageUsage : U8
     UNDEFINED = 0,
     SHADER_READ, // Image read or sampled read
     SHADER_WRITE,
-    SHADER_READ_WRITE, //General usage
+    SHADER_READ_WRITE, //General usage. Initial state is READ! Transition to write first if needed
     CPU_READ,
     RT_COLOUR_ATTACHMENT,
     RT_DEPTH_ATTACHMENT,

@@ -1,0 +1,16 @@
+{
+  "name": "bzip2",
+  "version-semver": "1.0.8",
+  "port-version": 7,
+  "description": "bzip2 data compression library; byte-identical Debian source mirror",
+  "homepage": "https://sourceware.org/bzip2/",
+  "documentation": "https://sourceware.org/bzip2/docs.html",
+  "license": "bzip2-1.0.6",
+  "dependencies": [
+    { "name": "vcpkg-cmake", "host": true }
+  ],
+  "default-features": ["tool"],
+  "features": {
+    "tool": { "description": "Builds bzip2 executable" }
+  }
+}

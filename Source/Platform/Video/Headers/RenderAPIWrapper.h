@@ -142,6 +142,9 @@ struct DeviceInformation
     VersionInformation _versionInfo = { 4u, 6u };
     GPUVendor _vendor = GPUVendor::COUNT;
     GPURenderer _renderer = GPURenderer::COUNT;
+    /// True if the presentation surface (default framebuffer / swapchain) performs linear -> sRGB encoding on write.
+    /// If false, the final pass to the screen must encode to sRGB in the shader.
+    bool _screenSRGB = true;
 
     struct
     {

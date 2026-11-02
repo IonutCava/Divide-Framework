@@ -7,7 +7,7 @@
 			<enableRenderAPIBestPractices>true</enableRenderAPIBestPractices>
 			<enableRenderAPIDebugGrouping>true</enableRenderAPIDebugGrouping>
 			<assertOnRenderAPIError>false</assertOnRenderAPIError>
-			<useSPIRVForOpenGL>true</useSPIRVForOpenGL>
+			<useSPIRVForOpenGL>false</useSPIRVForOpenGL>
 		</renderer>
 		<cache>
 			<enabled>true</enabled>

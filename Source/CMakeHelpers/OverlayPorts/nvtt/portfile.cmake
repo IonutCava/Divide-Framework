@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 
 vcpkg_from_github(
@@ -17,6 +18,9 @@ vcpkg_from_github(
         fix-intrinsic-function.patch
         fix-release-flags.patch
 )
+
+vcpkg_replace_string("${SOURCE_PATH}/cmake/OptimalOptions.cmake"
+    " -march=native" "")
 
 vcpkg_check_features(
     OUT_FEATURE_OPTIONS FEATURE_OPTIONS

@@ -36,33 +36,34 @@ namespace Divide
     SamplerDescriptor Texture::s_defaultSampler;
     Handle<Texture> Texture::s_defaultTexture2D = INVALID_HANDLE<Texture>;
     Handle<Texture> Texture::s_defaultTexture2DArray = INVALID_HANDLE<Texture>;
+    std::array<Handle<Texture>, to_base( TextureType::COUNT ) * 4u> Texture::s_defaultTextures;
     bool Texture::s_useDDSCache = true;
 
-    void Texture::OnStartup( GFXDevice& gfx )
+    void Texture::OnStartup()
     {
-        ImageTools::OnStartup( gfx.renderAPI() != RenderAPI::OpenGL );
+        ImageTools::OnStartup( false );
 
-        TextureDescriptor textureDescriptor{};
-        textureDescriptor._dataType = GFXDataFormat::UNSIGNED_BYTE;
-        textureDescriptor._baseFormat = GFXImageFormat::RGBA;
-
+        s_defaultTextures.fill( INVALID_HANDLE<Texture> );
+        for ( U8 type = 0u; type < to_base( TextureType::COUNT ); ++type )
         {
-            s_defaultTexture2D = CreateResource( ResourceDescriptor<Texture>( "defaultEmptyTexture2D", textureDescriptor ) );
+            for ( U8 format = 0u; format < 4u; ++format )
+            {
+                if ( format == 3u && static_cast<TextureType>(type) == TextureType::TEXTURE_3D )
+                {
+                    // GLSL has no sampler3DShadow.
+                    continue;
+                }
+                const GFXDataFormat sampledDataType = format == 1u ? GFXDataFormat::SIGNED_INT
+                                                   : format == 2u ? GFXDataFormat::UNSIGNED_INT : GFXDataFormat::UNSIGNED_BYTE;
+                const TextureDescriptor descriptor = DefaultTextureDescriptor( static_cast<TextureType>(type), sampledDataType, format == 3u );
+                const size_t index = type * 4u + format;
+                s_defaultTextures[index] = CreateResource( ResourceDescriptor<Texture>(
+                    Util::StringFormat("defaultEmptyTexture_{}_{}", type, format).c_str(), descriptor ) );
+                Get(s_defaultTextures[index])->createDefaultData();
+            }
         }
-        {
-            textureDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
-            s_defaultTexture2DArray = CreateResource( ResourceDescriptor<Texture>( "defaultEmptyTexture2DArray", textureDescriptor ) );
-        }
-
-        Byte defaultTexData[1u * 1u * 4];
-        defaultTexData[0] = defaultTexData[1] = defaultTexData[2] = to_byte( 0u ); //RGB: black
-        defaultTexData[3] = to_byte( 1u ); //Alpha: 1
-
-        ImageTools::ImageData imgDataDefault = {};
-        DIVIDE_EXPECTED_CALL( imgDataDefault.loadFromMemory( {defaultTexData, 4}, vec3<U16>(1u), 1u, 4 ) );
-
-        Get(s_defaultTexture2D)->createWithData( imgDataDefault, {});
-        Get(s_defaultTexture2DArray)->createWithData( imgDataDefault, {});
+        s_defaultTexture2D = DefaultTexture( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, false );
+        s_defaultTexture2DArray = DefaultTexture( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, false );
 
         s_defaultSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
         s_defaultSampler._wrapV = TextureWrap::CLAMP_TO_EDGE;
@@ -75,8 +76,14 @@ namespace Divide
 
     void Texture::OnShutdown() noexcept
     {
-        DestroyResource(s_defaultTexture2D);
-        DestroyResource(s_defaultTexture2DArray);
+        for ( Handle<Texture>& texture : s_defaultTextures )
+        {
+            if ( texture != INVALID_HANDLE<Texture> )
+            {
+                DestroyResource(texture);
+            }
+        }
+        s_defaultTexture2D = s_defaultTexture2DArray = INVALID_HANDLE<Texture>;
         ImageTools::OnShutdown();
     }
 
@@ -93,6 +100,60 @@ namespace Divide
     Handle<Texture> Texture::DefaultTexture2DArray() noexcept
     {
         return s_defaultTexture2DArray;
+    }
+
+    Handle<Texture> Texture::DefaultTexture( const TextureType type, const GFXDataFormat sampledDataType, const bool depth ) noexcept
+    {
+        DIVIDE_ASSERT( type < TextureType::COUNT );
+        const U8 format = depth ? 3u : sampledDataType == GFXDataFormat::SIGNED_INT ? 1u
+                                    : sampledDataType == GFXDataFormat::UNSIGNED_INT ? 2u : 0u;
+        const Handle<Texture> texture = s_defaultTextures[to_base(type) * 4u + format];
+        DIVIDE_ASSERT( texture != INVALID_HANDLE<Texture> );
+        return texture;
+    }
+
+    TextureDescriptor Texture::DefaultTextureDescriptor( const TextureType type, const GFXDataFormat sampledDataType, const bool depth ) noexcept
+    {
+        DIVIDE_ASSERT( type < TextureType::COUNT );
+        DIVIDE_ASSERT( !depth || type != TextureType::TEXTURE_3D );
+        TextureDescriptor descriptor{};
+        descriptor._texType = type;
+        descriptor._layerCount = 1u;
+        descriptor._mipMappingState = MipMappingState::OFF;
+        if ( depth )
+        {
+            descriptor._dataType = GFXDataFormat::FLOAT_32;
+            descriptor._baseFormat = GFXImageFormat::RED;
+            descriptor._packing = GFXImagePacking::DEPTH;
+        }
+        else if ( sampledDataType == GFXDataFormat::SIGNED_INT || sampledDataType == GFXDataFormat::UNSIGNED_INT )
+        {
+            descriptor._dataType = sampledDataType;
+            descriptor._packing = GFXImagePacking::UNNORMALIZED;
+        }
+        return descriptor;
+    }
+
+    void Texture::createDefaultData()
+    {
+        const U16 faces = IsCubeTexture(_descriptor._texType) ? 6u : 1u;
+        const U8 bytesPerPixel = GetBytesPerPixel( _descriptor._dataType, _descriptor._baseFormat, _descriptor._packing );
+        vector<Byte> data(bytesPerPixel, to_byte(0u));
+        if ( _descriptor._packing == GFXImagePacking::NORMALIZED )
+        {
+            data[3u] = to_byte(1u);
+        }
+        else if ( _descriptor._packing == GFXImagePacking::UNNORMALIZED )
+        {
+            const U32 alpha = 1u;
+            std::memcpy( data.data() + 3u * sizeof(U32), &alpha, sizeof(alpha) );
+        }
+        ImageTools::ImageData image{};
+        DIVIDE_EXPECTED_CALL( image.loadFromMemory( data, vec3<U16>(1u), faces, numChannels() ) );
+        ImageUsage usage = prepareTextureData( vec3<U16>(1u), 1u, true );
+        loadDataInternal( image, {._alignment = 1u} );
+        usage = ImageUsage::SHADER_READ;
+        submitTextureData(usage);
     }
 
     const SamplerDescriptor Texture::DefaultSampler() noexcept
@@ -128,6 +189,11 @@ namespace Divide
        , GraphicsResource( context.gfx(), Type::TEXTURE, getGUID(), _ID( resourceName() ) )
        , _descriptor( descriptor._propertyDescriptor )
     {
+        if ( HasUsageFlagSet(_descriptor, ImageUsage::SHADER_READ_WRITE) )
+        {
+            AddImageUsageFlag(_descriptor, ImageUsage::SHADER_READ);
+        }
+
         DIVIDE_ASSERT( descriptor.enumValue() < to_base( TextureType::COUNT ) );
         DIVIDE_ASSERT(_descriptor._packing != GFXImagePacking::COUNT &&
                       _descriptor._baseFormat != GFXImageFormat::COUNT &&
@@ -382,16 +448,109 @@ namespace Divide
         return ImageUsage::UNDEFINED;
     }
 
+    bool Texture::IsValidUpdateRegion( const TextureType type, const vec3<U16>& dimensions, const U16 layers, const U16 mipCount,
+                                       const U16 targetMip, const vec3<U16>& offset, const vec3<U16>& range ) noexcept
+    {
+        if ( type >= TextureType::COUNT || targetMip == ALL_MIPS || targetMip >= mipCount || targetMip >= 16u ||
+             range.x == 0u || range.y == 0u || range.z == 0u )
+        {
+            return false;
+        }
+
+        const U32 width = std::max<U32>( 1u, dimensions.x >> targetMip );
+        const U32 height = Is1DTexture( type ) ? 1u : std::max<U32>( 1u, dimensions.y >> targetMip );
+        const U32 depth = Is3DTexture( type ) ? std::max<U32>( 1u, dimensions.z >> targetMip )
+                        : SupportsZOffsetTexture( type ) ? U32( layers ) * (IsCubeTexture( type ) ? 6u : 1u) : 1u;
+        return dimensions.x > 0u && dimensions.y > 0u && dimensions.z > 0u &&
+               U32( offset.x ) + range.x <= width &&
+               U32( offset.y ) + range.y <= height &&
+               U32( offset.z ) + range.z <= depth;
+    }
+
+    bool Texture::GetUpdateLayout( const TextureDescriptor& descriptor, const vec3<U16>& range,
+                                  const PixelAlignment& alignment, TextureUpdateLayout& layout ) noexcept
+    {
+        layout = {};
+        if ( range.x == 0u || range.y == 0u || range.z == 0u ||
+             (alignment._alignment != 1u && alignment._alignment != 2u &&
+              alignment._alignment != 4u && alignment._alignment != 8u) )
+        {
+            return false;
+        }
+
+        size_t rowBytes = 0u;
+        size_t rowCount = range.y;
+        size_t rowStride = 0u;
+        size_t sourceOffset = 0u;
+        if ( IsCompressed( descriptor._baseFormat ) )
+        {
+            // OpenGL's compressed sub-image calls consume tightly packed blocks, not pixel-store strides.
+            if ( Is1DTexture( descriptor._texType ) || alignment._rowLength != 0u ||
+                 alignment._skipPixels != 0u || alignment._skipRows != 0u )
+            {
+                return false;
+            }
+            const GFXImageFormat format = descriptor._baseFormat;
+            const size_t blockBytes = format == GFXImageFormat::BC1 || format == GFXImageFormat::BC1a ||
+                                      format == GFXImageFormat::BC4s || format == GFXImageFormat::BC4u ? 8u : 16u;
+            rowBytes = ((size_t( range.x ) + 3u) / 4u) * blockBytes;
+            rowCount = (rowCount + 3u) / 4u;
+            rowStride = rowBytes;
+        }
+        else
+        {
+            const size_t bytesPerPixel = GetBytesPerPixel( descriptor._dataType, descriptor._baseFormat, descriptor._packing );
+            const size_t rowLength = alignment._rowLength == 0u ? range.x : alignment._rowLength;
+            // Pixel-store parameters must also fit OpenGL's signed integer API.
+            constexpr size_t maxPixelStore = std::numeric_limits<I32>::max();
+            if ( bytesPerPixel == 0u || rowLength > maxPixelStore ||
+                 alignment._skipPixels > maxPixelStore || alignment._skipRows > maxPixelStore ||
+                 alignment._skipPixels + range.x > rowLength ||
+                 rowLength > (SIZE_MAX - (alignment._alignment - 1u)) / bytesPerPixel )
+            {
+                return false;
+            }
+            rowBytes = size_t( range.x ) * bytesPerPixel;
+            rowStride = (rowLength * bytesPerPixel + alignment._alignment - 1u) & ~(alignment._alignment - 1u);
+            const size_t pixelSkip = alignment._skipPixels * bytesPerPixel;
+            const size_t skipRows = descriptor._texType == TextureType::TEXTURE_1D ? 0u : alignment._skipRows;
+            if ( skipRows > (SIZE_MAX - pixelSkip) / rowStride )
+            {
+                return false;
+            }
+            sourceOffset = skipRows * rowStride + pixelSkip;
+        }
+
+        if ( rowCount > SIZE_MAX / rowStride )
+        {
+            return false;
+        }
+        const size_t sliceStride = rowCount * rowStride;
+        if ( size_t( range.z ) > (SIZE_MAX - sourceOffset) / sliceStride )
+        {
+            return false;
+        }
+        layout._rowBytes = rowBytes;
+        layout._rowStride = rowStride;
+        layout._sliceStride = sliceStride;
+        layout._sourceOffset = sourceOffset;
+        layout._rowCount = rowCount;
+        layout._stagingSize = rowBytes * rowCount * range.z;
+        layout._requiredSize = sourceOffset + sliceStride * (range.z - 1u) + rowStride * (rowCount - 1u) + rowBytes;
+        return true;
+    }
+
     void Texture::replaceData( const std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& range, const U16 targetMipLevel, const PixelAlignment& pixelUnpackAlignment )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( data.empty() )
+        if ( data.empty() || range.x == 0u || range.y == 0u || range.z == 0u )
         {
             return;
         }
 
-        if ( offset.x == 0u && offset.y == 0u && offset.z == 0u && (range.x > _width || range.y > _height || range.z > _depth) )
+        if ( targetMipLevel == ALL_MIPS && offset.x == 0u && offset.y == 0u && offset.z == 0u &&
+             (range.x > _width || range.y > _height || range.z > _depth) )
         {
             DIVIDE_ASSERT(targetMipLevel == ALL_MIPS, "Texture::replaceData: ALL_MIPS must be used when replacing the entire texture data!");
             _descriptor._layerCount = range.z;
@@ -399,13 +558,31 @@ namespace Divide
         }
         else
         {
-            DIVIDE_ASSERT( offset.width  + range.width  <= _width &&
-                           offset.height + range.height <= _height &&
-                           offset.depth  + range.depth  <= _depth);
+            TextureUpdateLayout layout;
+            const bool valid = _descriptor._allowRegionUpdates && _descriptor._msaaSamples == 0u &&
+                               IsValidUpdateRegion( _descriptor._texType, {_width, _height, _depth}, _layerCount, _mipCount, targetMipLevel, offset, range ) &&
+                               GetUpdateLayout( _descriptor, range, pixelUnpackAlignment, layout ) && data.size() >= layout._requiredSize;
+            DIVIDE_ASSERT( valid, "Texture::replaceData: invalid region or insufficient source data!" );
+            if ( !valid )
+            {
+                return;
+            }
+            if ( IsCompressed( _descriptor._baseFormat ) )
+            {
+                const U32 mipWidth = std::max<U32>( 1u, _width >> targetMipLevel );
+                const U32 mipHeight = std::max<U32>( 1u, _height >> targetMipLevel );
+                const bool blockAligned = offset.x % 4u == 0u && offset.y % 4u == 0u &&
+                                          (range.x % 4u == 0u || U32( offset.x ) + range.x == mipWidth) &&
+                                          (range.y % 4u == 0u || U32( offset.y ) + range.y == mipHeight);
+                DIVIDE_ASSERT( blockAligned, "Texture::replaceData: compressed regions must align to blocks or mip edges!" );
+                if ( !blockAligned )
+                {
+                    return;
+                }
+            }
 
-            DIVIDE_ASSERT(targetMipLevel != ALL_MIPS, "Texture::replaceData: ALL_MIPS is not a valid target mip level for partial texture updates!");
-
-            loadDataInternal( data, targetMipLevel, offset, range, pixelUnpackAlignment );
+            loadDataInternal( IsCompressed( _descriptor._baseFormat ) ? data.first( layout._stagingSize ) : data,
+                              targetMipLevel, offset, range, pixelUnpackAlignment );
         }
     }
 

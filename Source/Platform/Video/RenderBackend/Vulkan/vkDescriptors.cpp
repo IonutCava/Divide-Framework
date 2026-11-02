@@ -22,7 +22,11 @@ namespace Divide {
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+        // Layouts that only differ in their flags (e.g. push descriptor vs regular) or pNext are not interchangeable.
+        DIVIDE_GPU_ASSERT( info->pNext == nullptr, "DescriptorLayoutCache: pNext chains are not part of the cache key!" );
+
         DescriptorLayoutInfo layoutinfo{};
+        layoutinfo.flags = info->flags;
         layoutinfo.bindings.reserve(info->bindingCount);
         bool isSorted = true;
         I32 lastBinding = -1;
@@ -65,7 +69,7 @@ namespace Divide {
 
     bool DescriptorLayoutCache::DescriptorLayoutInfo::operator==(const DescriptorLayoutInfo& other) const 
     {
-        if (other.bindings.size() != bindings.size())
+        if (other.flags != flags || other.bindings.size() != bindings.size())
         {
             return false;
         }
@@ -87,7 +91,7 @@ namespace Divide {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         size_t h = 1337;
-        Util::Hash_combine(h, bindings.size());
+        Util::Hash_combine(h, flags, bindings.size());
 
         for (const VkDescriptorSetLayoutBinding& b : bindings)
         {

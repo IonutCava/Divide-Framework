@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -232,6 +232,7 @@ private:
     bool _supportsParallelShaderCompilation{false};
     bool _meshShadersSupported{false};
     GFX::MemoryBarrierCommand _uniformsMemCommand{};
+    PushConstantsStruct _lastPushConstants{};
     gl46core::GLuint _dummyVAO{ GL_NULL_HANDLE };
 
 private:

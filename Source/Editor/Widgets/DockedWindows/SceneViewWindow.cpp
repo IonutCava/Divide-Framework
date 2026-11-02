@@ -352,7 +352,7 @@ namespace Divide
         ImGui::SameLine(0.f, 25.0f);
         ImGui::Checkbox("Snap", &settings.useSnap);
 
-        const ImGuiInputTextFlags flags = Util::GetDefaultFlagsForSettings(readOnly, false);
+        const ImGuiInputTextFlags flags = Util::GetDefaultFlagsForSettings(readOnly, false, false);
         if (settings.useSnap)
         {
             ImGui::SameLine();

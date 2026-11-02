@@ -62,7 +62,7 @@ std::pair<JoystickElementType, U8> joystickElementByName(const string& elementNa
     assert(Util::CompareIgnoreCase(buttonElements[0], "BUTTON"));
     ret.second = to_U8(charToInt(buttonElements[1].c_str(), 0));
 
-    return ret;
+    return MOV(ret);
 }
 
 InputEvent::InputEvent(DisplayWindow* sourceWindow, const Input::InputDeviceType deviceType, const Input::InputEventType eventType, const U32 deviceIndex) noexcept

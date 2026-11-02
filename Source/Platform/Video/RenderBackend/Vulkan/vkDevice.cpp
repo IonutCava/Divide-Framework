@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/vkDevice.h"
 
@@ -21,11 +21,6 @@ namespace Divide
         bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
         bufferDeviceAddressFeatures.pNext = &descriptorBufferFeatures;
 
-        VkPhysicalDevicePushDescriptorProperties pushDescriptorProperties{};
-        pushDescriptorProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES;
-        pushDescriptorProperties.maxPushDescriptors = 32u;
-        pushDescriptorProperties.pNext = &bufferDeviceAddressFeatures;
-
         VkPhysicalDeviceVulkan14Features vk14features{};
         vk14features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
         vk14features.maintenance5 = VK_TRUE;
@@ -38,7 +33,7 @@ namespace Divide
         vk13features.dynamicRendering = VK_TRUE;
         vk13features.inlineUniformBlock = VK_TRUE;
         vk13features.maintenance4 = VK_TRUE;
-        vk13features.pNext = &pushDescriptorProperties;
+        vk13features.pNext = &bufferDeviceAddressFeatures;
 
         VkPhysicalDeviceVulkan12Features vk12features{};
         vk12features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
@@ -77,11 +72,9 @@ namespace Divide
         vk10features.shaderClipDistance = VK_TRUE;
         vk10features.shaderCullDistance = VK_TRUE;
 
-        const auto selectDevice = [&](const uint32_t minor)
-        {
-            auto selector = 
+        auto selector =
                 vkb::PhysicalDeviceSelector(instance)
-                        .set_minimum_version( 1, minor)
+                        .set_minimum_version( 1, Config::MINIMUM_VULKAN_MINOR_VERSION )
                         .set_surface( targetSurface )
                         .prefer_gpu_device_type( vkb::PreferredDeviceType::discrete )
                         .add_required_extension( VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME )
@@ -90,29 +83,37 @@ namespace Divide
                         .set_required_features( vk10features )
                         .set_required_features_11( vk11features )
                         .set_required_features_12( vk12features )
-                        .set_required_features_13( vk13features );
-            if (minor >= 4)
-            {
-                selector.set_required_features_14( vk14features );
-            }
+                        .set_required_features_13( vk13features )
+                        .set_required_features_14( vk14features );
 
-            vulkanMinorVersion(minor);
-            return selector.select();
-        };
-
-        vkb::Result<vkb::PhysicalDevice> physicalDeviceSelection = selectDevice( Config::DESIRED_VULKAN_MINOR_VERSION );
+        vulkanMinorVersion( Config::MINIMUM_VULKAN_MINOR_VERSION );
+        vkb::Result<vkb::PhysicalDevice> physicalDeviceSelection = selector.select();
         if ( !physicalDeviceSelection )
         {
             Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), physicalDeviceSelection.error().message().c_str() );
-            physicalDeviceSelection = selectDevice(Config::MINIMUM_VULKAN_MINOR_VERSION);
-            if (!physicalDeviceSelection)
-            {
-                Console::errorfn(LOCALE_STR("ERROR_VK_INIT"), physicalDeviceSelection.error().message().c_str());
-                return;
-            }
+            return;
         }
 
         _physicalDevice = physicalDeviceSelection.value();
+
+        {
+            // VK_EXT_descriptor_heap is not enabled/used yet (planned future descriptor model). Only log availability.
+            U32 extensionCount = 0u;
+            vkEnumerateDeviceExtensionProperties( _physicalDevice.physical_device, nullptr, &extensionCount, nullptr );
+            vector<VkExtensionProperties> availableExtensions( extensionCount );
+            vkEnumerateDeviceExtensionProperties( _physicalDevice.physical_device, nullptr, &extensionCount, availableExtensions.data() );
+
+            bool descriptorHeapSupported = false;
+            for ( const VkExtensionProperties& extension : availableExtensions )
+            {
+                if ( strcmp( extension.extensionName, "VK_EXT_descriptor_heap" ) == 0 )
+                {
+                    descriptorHeapSupported = true;
+                    break;
+                }
+            }
+            Console::printfn( LOCALE_STR( "VK_DESCRIPTOR_HEAP_INFO" ), descriptorHeapSupported ? "YES" : "NO" );
+        }
         _physicalDevice.enable_extensions_if_present(
             {
                 VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
@@ -124,28 +125,42 @@ namespace Divide
         //create the final Vulkan device
         vkb::DeviceBuilder deviceBuilder{ _physicalDevice };
 
+        VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extendedDynamicState3Features{};
+        extendedDynamicState3Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
+
+        VkPhysicalDeviceMaintenance7FeaturesKHR maintenance7Features{};
+        maintenance7Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR;
+
         for ( const auto& extension : _physicalDevice.get_extensions() )
         {
             if ( extension == VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME )
             {
-                supportsDynamicExtension3(true);
-
-
-                VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extendedDynamicState3Features{};
-                extendedDynamicState3Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
-                extendedDynamicState3Features.extendedDynamicState3ColorBlendEnable = VK_TRUE;
-                extendedDynamicState3Features.extendedDynamicState3ColorBlendEquation = VK_TRUE;
-                extendedDynamicState3Features.extendedDynamicState3ColorWriteMask = VK_TRUE;
-                deviceBuilder.add_pNext(&extendedDynamicState3Features);
+                VkPhysicalDeviceFeatures2 features{};
+                features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                features.pNext = &extendedDynamicState3Features;
+                vkGetPhysicalDeviceFeatures2( _physicalDevice.physical_device, &features );
+                if ( HasRequiredDynamicState3Features( extendedDynamicState3Features ) )
+                {
+                    extendedDynamicState3Features = {};
+                    extendedDynamicState3Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
+                    extendedDynamicState3Features.extendedDynamicState3ColorBlendEnable = VK_TRUE;
+                    extendedDynamicState3Features.extendedDynamicState3ColorBlendEquation = VK_TRUE;
+                    extendedDynamicState3Features.extendedDynamicState3ColorWriteMask = VK_TRUE;
+                    supportsDynamicExtension3(true);
+                    deviceBuilder.add_pNext(&extendedDynamicState3Features);
+                }
             }
             else if ( extension == VK_KHR_MAINTENANCE_7_EXTENSION_NAME )
             {
-                suppportesMaintenance7(true);
-
-                VkPhysicalDeviceMaintenance7FeaturesKHR maintenance7Features{};
-                maintenance7Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR;
-                maintenance7Features.maintenance7 = VK_TRUE;
-                deviceBuilder.add_pNext(&maintenance7Features);
+                VkPhysicalDeviceFeatures2 features{};
+                features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                features.pNext = &maintenance7Features;
+                vkGetPhysicalDeviceFeatures2( _physicalDevice.physical_device, &features );
+                if ( maintenance7Features.maintenance7 )
+                {
+                    supportsMaintenance7(true);
+                    deviceBuilder.add_pNext(&maintenance7Features);
+                }
             }
             else if ( extension == VK_EXT_MESH_SHADER_EXTENSION_NAME )
             {
@@ -222,12 +237,10 @@ namespace Divide
         constexpr const char* QueueName[] = { "Graphics", "Compute", "Transfer" };
         constexpr vkb::QueueType VKBQueueType[] = {vkb::QueueType::graphics, vkb::QueueType::compute, vkb::QueueType::transfer};
 
-        VKQueue ret{};
-
         if ( getDevice() == nullptr )
         {
             Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), "VKDevice::getQueueInternal error: no valid device found!");
-            return ret;
+            return {};
         }
 
         if ( type != QueueType::COMPUTE && type != QueueType::TRANSFER )
@@ -244,19 +257,23 @@ namespace Divide
             if ( dedicated )
             {
                 Console::warnfn( LOCALE_STR( "WARN_VK_DEDICATED_QUEUE" ), QueueName[to_base(type)], index.error().message().c_str() );
+                return getQueueInternal(type, false);
             }
-            else
-            {
-                Console::errorfn( LOCALE_STR( "ERROR_VK_DEDICATED_QUEUE" ), QueueName[to_base( type )], index.error().message().c_str() );
-            }
-
-            return dedicated ? getQueueInternal(type, false) : ret;
+            
+            Console::errorfn( LOCALE_STR( "ERROR_VK_DEDICATED_QUEUE" ), QueueName[to_base( type )], index.error().message().c_str() );
+            return {};
         }
 
-        ret._index = index.value();
-        ret._type = type;
-        ret._pool = createCommandPool( ret._index, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT );
-        vkGetDeviceQueue( _device.device, ret._index, 0u, &ret._queue );
+        const auto indexVal = index.value();
+        VKQueue ret
+        {
+            ._queue = VK_NULL_HANDLE,
+            ._pool = createCommandPool(indexVal, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT),
+            ._index = indexVal,
+            ._type = type
+        };
+        
+        vkGetDeviceQueue( _device.device, indexVal, 0u, &ret._queue );
 
         return ret;
     }

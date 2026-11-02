@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -909,11 +909,28 @@ namespace Assert
 #define ___DETAIL_DIVIDE_ASSERT(...) EXP(GET_3RD_ARG(__VA_ARGS__, DIVIDE_ASSERT_2_ARGS, DIVIDE_ASSERT_1_ARGS, ))
 #define DIVIDE_ASSERT(...) EXP(___DETAIL_DIVIDE_ASSERT(__VA_ARGS__)(__VA_ARGS__))
 
-#define DIVIDE_UNEXPECTED_CALL_MSG(X) DIVIDE_ASSERT(false, X)
+#define DIVIDE_UNEXPECTED_CALL_MSG(MSG) DIVIDE_ASSERT(false, MSG)
 #define DIVIDE_UNEXPECTED_CALL() DIVIDE_UNEXPECTED_CALL_MSG("UNEXPECTED CALL")
 
 #define DIVIDE_EXPECTED_CALL( X ) if ( !(X) ) [[unlikely]] { DIVIDE_UNEXPECTED_CALL_MSG("Expected call failed: " #X); }
 #define DIVIDE_EXPECTED_CALL_MSG( X, MSG ) if ( !(X) ) [[unlikely]] { DIVIDE_UNEXPECTED_CALL_MSG( MSG ); }
+
+#define DIVIDE_EXPECTED_GPU_CALL_MSG( X, MSG )                                     \
+    do {                                                                           \
+        if constexpr (Divide::Config::ENABLE_GPU_VALIDATION) {                     \
+            if ( !static_cast<bool>(X) ) [[unlikely]] {                             \
+                DIVIDE_UNEXPECTED_CALL_MSG(MSG);                                   \
+            }                                                                      \
+        } else {                                                                   \
+            static_cast<void>(static_cast<bool>(X));                               \
+        }                                                                          \
+    } while(0)
+
+#define DIVIDE_EXPECTED_GPU_CALL( X ) DIVIDE_EXPECTED_GPU_CALL_MSG( X, "Expected GPU call failed: " #X )
+
+#define DIVIDE_UNEXPECTED_GPU_CALL_MSG( MSG ) DIVIDE_EXPECTED_GPU_CALL_MSG( false, MSG )
+
+#define DIVIDE_UNEXPECTED_GPU_CALL( ) DIVIDE_UNEXPECTED_GPU_CALL_MSG( "UNEXPECTED GPU CALL" )
 
 #define DIVIDE_GPU_ASSERT(...) do { if constexpr (Divide::Config::ENABLE_GPU_VALIDATION) { DIVIDE_ASSERT(__VA_ARGS__); } } while(0)
 

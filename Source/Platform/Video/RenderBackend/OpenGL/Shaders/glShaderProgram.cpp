@@ -263,17 +263,20 @@ ShaderResult glShaderProgram::bind()
 
 void glShaderProgram::uploadPushConstants(const PushConstantsStruct& pushConstants)
 {
-    if (pushConstants.set())
+    DIVIDE_GPU_ASSERT(pushConstants.dataFlags() != PushConstantsStruct::DataFlags::COUNT);
+    if (pushConstants.dataFlags() == PushConstantsStruct::DataFlags::NONE)
     {
-        for ( glShaderEntry& shader : _shaderStage)
-        {
-            if (!shader._shader->valid())
-            {
-                continue;
-            }
+        return;
+    }
 
-            shader._shader->uploadPushConstants(pushConstants);
+    for ( glShaderEntry& shader : _shaderStage)
+    {
+        if (!shader._shader->valid())
+        {
+            continue;
         }
+
+        shader._shader->uploadPushConstants(pushConstants);
     }
 }
 };

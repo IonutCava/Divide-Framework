@@ -52,6 +52,7 @@ namespace Divide
         SHADER_STORAGE_BUFFER_STATIC,
         UNIFORM_BUFFER_DYNAMIC,
         SHADER_STORAGE_BUFFER_DYNAMIC,
+        INDIRECT_BUFFER, ///< Draw/dispatch indirect argument buffer. Not visible to shaders.
         COUNT
     };
 

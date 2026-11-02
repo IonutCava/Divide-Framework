@@ -144,17 +144,19 @@ set(NRI_TARGETS
     NRI_D3D12
     NRI_VK
     NRI_Validation
+    NRI_Shared
     NRI_Shaders
 )
 
 foreach(nri_target IN LISTS NRI_TARGETS)
     if(TARGET ${nri_target})
         set_target_properties(${nri_target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-        if(CLANG_COMPILER)
+        if(CLANG_COMPILER OR CLANG_MSVC_FRONTEND)
             target_compile_options(${nri_target} PRIVATE
-                -Wno-missing-field-initializers
-                -Wno-nullability-completeness
+                $<$<BOOL:${CLANG_MSVC_FRONTEND}>:/clang:-Wno-missing-field-initializers>
+                $<$<BOOL:${CLANG_MSVC_FRONTEND}>:/clang:-Wno-nullability-completeness>
+                $<$<NOT:$<BOOL:${CLANG_MSVC_FRONTEND}>>:-Wno-missing-field-initializers>
+                $<$<NOT:$<BOOL:${CLANG_MSVC_FRONTEND}>>:-Wno-nullability-completeness>
             )
         endif()
     endif()

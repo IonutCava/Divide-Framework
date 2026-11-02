@@ -71,6 +71,7 @@ public:
     struct DescriptorLayoutInfo
     {
         vector<VkDescriptorSetLayoutBinding> bindings;
+        VkDescriptorSetLayoutCreateFlags flags{ 0u };
         size_t GetHash() const;
 
         bool operator==(const DescriptorLayoutInfo& other) const;

@@ -82,7 +82,7 @@ Handle<CommandBuffer> CommandBufferPool::allocateBufferLocked( const char* name,
         return allocateBufferLocked(name, reservedCmdCount, true);
     }
 
-    return ret;
+    return MOV(ret);
 }
 
 void CommandBufferPool::deallocateBuffer( Handle<CommandBuffer>& handle )

@@ -198,6 +198,7 @@ struct VKPerWindowState
     {
         RenderStateBlock _block{};
         RTBlendStates _blendStates{};
+        bool _frontFaceInverted{ false };
         bool _isSet{ false };
 
     } _activeState;

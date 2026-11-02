@@ -1,0 +1,112 @@
+# Copyright (c) 2026 DIVIDE-Studio
+name: 'Cached vcpkg Setup'
+description: 'Bootstrap pinned vcpkg and restore ABI-checked dependency binaries'
+
+inputs:
+  source-directory:
+    description: 'Source checkout relative to the trusted workspace'
+    required: false
+    default: '.'
+  compiler:
+    description: 'Compiler family (gcc, clang, or msvc)'
+    required: true
+  target-architecture:
+    description: 'Target architecture, distinct from the runner architecture'
+    required: false
+    default: 'x64'
+
+runs:
+  using: composite
+  steps:
+    - name: Initialize pinned vcpkg
+      shell: bash
+      working-directory: ${{ inputs.source-directory }}
+      run: git submodule update --init -- vcpkg
+
+    - name: Identify toolchain and cache directory
+      id: identity
+      shell: python
+      env:
+        COMPILER: ${{ inputs.compiler }}
+        SOURCE_DIRECTORY: ${{ inputs.source-directory }}
+      run: |
+        import hashlib
+        import os
+        from pathlib import Path
+        import shutil
+        import subprocess
+
+        compiler = os.environ["COMPILER"]
+        windows = os.environ["RUNNER_OS"] == "Windows"
+        executable = {"gcc": "g++", "clang": "clang-cl" if windows else "clang++", "msvc": "cl"}[compiler]
+        compiler_path = shutil.which(executable)
+        if compiler_path is None:
+            raise RuntimeError(f"Required compiler not found: {executable}")
+        identity = [str(Path(compiler_path).resolve())]
+        if windows:
+            for name in (executable, "cl", "link"):
+                path = shutil.which(name)
+                if path is None:
+                    raise RuntimeError(f"Required toolchain executable not found: {name}")
+                identity.append(hashlib.sha256(Path(path).read_bytes()).hexdigest())
+            identity.extend(os.environ.get(name, "") for name in ("VCToolsVersion", "WindowsSDKVersion"))
+        else:
+            identity.append(subprocess.check_output([compiler_path, "--version"], text=True))
+            if os.environ["RUNNER_OS"] == "Linux":
+                identity.append(Path("/etc/os-release").read_text())
+            else:
+                identity.append(subprocess.check_output(["xcrun", "--show-sdk-version"], text=True))
+        for tool in ("cmake", "ninja"):
+            identity.append(subprocess.check_output([tool, "--version"], text=True))
+        digest = hashlib.sha256("\n".join(identity).encode()).hexdigest()
+        source = Path(os.environ["GITHUB_WORKSPACE"]) / os.environ["SOURCE_DIRECTORY"]
+        revision = subprocess.check_output(["git", "-C", str(source / "vcpkg"), "rev-parse", "HEAD"], text=True).strip()
+        cache = (Path(os.environ["RUNNER_TEMP"]) / "divide-vcpkg-binaries").as_posix()
+        Path(cache).mkdir(parents=True, exist_ok=True)
+        print(f"Compiler: {compiler_path}\nvcpkg revision: {revision}\nBinary cache: {cache}")
+        with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+            output.write(f"toolchain={digest}\nrevision={revision}\npath={cache}\n")
+        with open(os.environ["GITHUB_ENV"], "a") as environment:
+            environment.write(f"VCPKG_BINARY_SOURCES=clear;files,{cache},readwrite\n")
+
+    - name: Restore vcpkg binary archives
+      id: cache
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ steps.identity.outputs.path }}
+        key: vcpkg-files-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target-architecture }}-${{ inputs.compiler }}-${{ steps.identity.outputs.toolchain }}-${{ steps.identity.outputs.revision }}-${{ hashFiles(format('{0}/vcpkg.json', inputs.source-directory), format('{0}/vcpkg-configuration.json', inputs.source-directory), format('{0}/Source/CMakeHelpers/OverlayPorts/**', inputs.source-directory), '.github/actions/vcpkg-setup/action.yml') }}-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: |
+          vcpkg-files-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target-architecture }}-${{ inputs.compiler }}-${{ steps.identity.outputs.toolchain }}-${{ steps.identity.outputs.revision }}-${{ hashFiles(format('{0}/vcpkg.json', inputs.source-directory), format('{0}/vcpkg-configuration.json', inputs.source-directory), format('{0}/Source/CMakeHelpers/OverlayPorts/**', inputs.source-directory), '.github/actions/vcpkg-setup/action.yml') }}-
+
+    - name: Bootstrap vcpkg (Unix)
+      if: runner.os != 'Windows'
+      shell: bash
+      working-directory: ${{ inputs.source-directory }}
+      run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
+    - name: Bootstrap vcpkg (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      working-directory: ${{ inputs.source-directory }}
+      run: |
+        & .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+        if ($LASTEXITCODE -ne 0) { throw "vcpkg bootstrap failed: $LASTEXITCODE" }
+
+    - name: Report dependency cache
+      shell: python
+      env:
+        CACHE_PATH: ${{ steps.identity.outputs.path }}
+        CACHE_KEY: ${{ steps.cache.outputs.cache-primary-key }}
+      run: |
+        import os
+        from pathlib import Path
+
+        archives = list(Path(os.environ["CACHE_PATH"]).rglob("*.zip"))
+        state = "warm" if archives else "cold"
+        message = f"vcpkg dependency cache: {state}; binary archives available: {len(archives)}"
+        print(message)
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+            summary.write(message + "\n\n")
+        with open(os.environ["GITHUB_ENV"], "a") as environment:
+            environment.write(f"DIVIDE_VCPKG_BINARY_CACHE={os.environ['CACHE_PATH']}\n")
+            environment.write(f"DIVIDE_VCPKG_CACHE_KEY={os.environ['CACHE_KEY']}\n")

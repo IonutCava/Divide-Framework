@@ -1,5 +1,11 @@
+# Copyright (c) 2026 DIVIDE-Studio
 name: 'macOS Build Setup'
 description: 'Common build setup steps for macOS builds'
+
+inputs:
+  architecture:
+    description: 'Target architecture (x86_64 or arm64)'
+    required: true
 
 runs:
   using: "composite"
@@ -7,8 +13,11 @@ runs:
     - uses: ./.github/actions/common-config
       id: common-config
       
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
+        ref: ${{ github.event.inputs.ci_sha || github.sha }}
+        path: ci-source
+        persist-credentials: false
         submodules: true
         fetch-depth: 0
 
@@ -26,10 +35,24 @@ runs:
         echo "NINJA_PATH=${NINJA_PATH}" >> $GITHUB_ENV
         echo "PATH=$(dirname ${NINJA_PATH}):$PATH" >> $GITHUB_ENV
 
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
+    - name: Install extra required packages
+      shell: bash
+      run: |
+        if ! command -v nasm >/dev/null 2>&1; then
+          brew install nasm
+        fi
+
+    - name: Setup cached vcpkg
+      uses: ./.github/actions/vcpkg-setup
       with:
-        vcpkgJsonGlob: 'vcpkg.json'
+        compiler: clang
+        source-directory: ci-source
+        target-architecture: ${{ inputs.architecture }}
+      env:
+        # Ensure Objective-C compiler is available for Meson when building dependencies
+        # This is critical for cross-compilation scenarios (e.g., ARM64 host → x86_64 target)
+        OBJC: clang
+        OBJCFLAGS: -fPIC -g
 
     - name: List workspace
       shell: bash

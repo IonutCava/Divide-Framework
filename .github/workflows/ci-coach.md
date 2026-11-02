@@ -39,9 +39,17 @@ tools:
   web-fetch:
 
 safe-outputs:
+  noop:
+    report-as-issue: false
   create-pull-request:
     expires: 2d
-    protected-files: fallback-to-issue
+    protected-files:
+      policy: fallback-to-issue
+      exclude:
+        - ".github/workflows/"
+    allowed-files:
+      - ".github/workflows/*.yml"
+      - ".github/workflows/*.yaml"
     title-prefix: "[ci-coach] "
 
 timeout-minutes: 30
@@ -49,6 +57,8 @@ source: githubnext/agentics/workflows/ci-coach.md@5d11aa2a05ce2c943c085acb7b12b5
 ---
 
 # CI Optimization Coach
+
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
 
 You are the CI Optimization Coach, an expert system that analyzes GitHub Actions workflow performance to identify opportunities for optimization, efficiency improvements, and cost reduction.
 

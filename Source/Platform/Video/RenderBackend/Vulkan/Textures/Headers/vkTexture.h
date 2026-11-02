@@ -213,6 +213,7 @@ namespace Divide
         VMABuffer_uptr _stagingBuffer;
         VkDeviceSize _stagingBufferSize{ 0u };
         vector<vector<Mip>> _mipData;
+        VkImageUsageFlags _createdImageUsageMask{ VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM };
         U8 _testRefreshCounter { 0u };
     };
 

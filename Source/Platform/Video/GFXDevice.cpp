@@ -245,7 +245,7 @@ namespace Divide
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 14,  DescriptorSetBindingType::UNIFORM_BUFFER_STATIC,        ShaderStageVisibility::ALL );                  // Generic UBO (for uniforms)
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 15,  DescriptorSetBindingType::UNIFORM_BUFFER_STATIC,        ShaderStageVisibility::ALL );                  // Generic UBO (for uniforms)
 
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 0,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::NONE );                  // CMD_BUFFER
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 0,  DescriptorSetBindingType::INDIRECT_BUFFER,               ShaderStageVisibility::NONE );                  // CMD_BUFFER (indirect draw arguments)
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 1,  DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::ALL );                   // CAM_BLOCK;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 2,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::COMPUTE );               // GPU_COMMANDS;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 3,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::ALL );                   // NODE_TRANSFORM_DATA;
@@ -566,7 +566,7 @@ namespace Divide
 
         IMPrimitive::InitStaticData();
         ShaderProgram::InitStaticData();
-        Texture::OnStartup( *this );
+        Texture::OnStartup();
         RenderPassExecutor::OnStartup( *this );
 
         resizeGPUBlocks( TargetBufferSizeCam, Config::MAX_FRAMES_IN_FLIGHT + 1u );
@@ -684,9 +684,11 @@ namespace Divide
             samplerBackBuffer._anisotropyLevel = 0u;
 
             // This could've been RGB, but Vulkan doesn't seem to support VK_FORMAT_R8G8B8_UNORM in this situation, so ... well ... whatever.
-            // This will contained the final tonemaped image, so unless we desire HDR output, RGBA8 here is fine as anything else will require
-            // changes to the swapchain images!
+            // This will contain the final tonemapped (linear) image plus UI overlays. Storing it as sRGB spends the 8 bits perceptually
+            // (hardware encodes on write and decodes on read) which avoids banding in dark gradients. Blending still happens in linear space.
+            // Unless we desire HDR output, RGBA8 here is fine as anything else will require changes to the swapchain images!
             TextureDescriptor backBufferDescriptor{};
+            backBufferDescriptor._packing = GFXImagePacking::NORMALIZED_SRGB;
             backBufferDescriptor._mipMappingState = MipMappingState::OFF;
             AddImageUsageFlag( backBufferDescriptor, ImageUsage::SHADER_READ );
             InternalRTAttachmentDescriptors attachments
@@ -814,7 +816,11 @@ namespace Divide
         reflectionSampler._magFilter = TextureFilter::LINEAR;
         reflectionSampler._mipSampling = TextureMipSampling::NONE;
         {
+            // Reflections/refractions hold lit (HDR, linear) scene colour that gets composited back into the HDR scene, so use a float format
+            // to avoid clamping highlights to 1.0 and banding in dark areas.
             TextureDescriptor environmentDescriptorPlanar{};
+            environmentDescriptorPlanar._dataType = GFXDataFormat::FLOAT_16;
+            environmentDescriptorPlanar._packing = GFXImagePacking::UNNORMALIZED;
             environmentDescriptorPlanar._mipMappingState = MipMappingState::MANUAL;
 
             TextureDescriptor depthDescriptorPlanar{};
@@ -863,6 +869,8 @@ namespace Divide
         {
             TextureDescriptor environmentDescriptorCube{};
             environmentDescriptorCube._texType = TextureType::TEXTURE_CUBE_ARRAY;
+            environmentDescriptorCube._dataType = GFXDataFormat::FLOAT_16;
+            environmentDescriptorCube._packing = GFXImagePacking::UNNORMALIZED;
             environmentDescriptorCube._mipMappingState = MipMappingState::OFF;
 
             TextureDescriptor depthDescriptorCube{};
@@ -1451,7 +1459,8 @@ namespace Divide
             const auto& screenAtt = renderTargetPool().getRenderTarget( RenderTargetNames::BACK_BUFFER )->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO );
             const auto& texData = Get(screenAtt->texture())->getView();
 
-            drawTextureInViewport( texData, screenAtt->_descriptor._sampler, context().mainWindow().renderingViewport(), false, false, false, *buffer );
+            // The back buffer holds linear values (sRGB storage is decoded on read). If the screen can't encode to sRGB, do it in the shader.
+            drawTextureInViewport( texData, screenAtt->_descriptor._sampler, context().mainWindow().renderingViewport(), !GetDeviceInformation()._screenSRGB, false, false, *buffer );
 
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>( *buffer );
             flushCommandBuffer( MOV(bufferHandle) );
@@ -2146,16 +2155,10 @@ namespace Divide
 
         thread_local DescriptorSetEntries setEntries{};
 
-        constexpr DescriptorSetUsage prioritySorted[to_base( DescriptorSetUsage::COUNT )]
+        // DescriptorSetUsage is already sorted by update frequency (PER_FRAME first, PER_DRAW last)
+        for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
         {
-            DescriptorSetUsage::PER_FRAME,
-            DescriptorSetUsage::PER_PASS,
-            DescriptorSetUsage::PER_BATCH,
-            DescriptorSetUsage::PER_DRAW
-        };
-
-        for ( const DescriptorSetUsage usage : prioritySorted )
-        {
+            const DescriptorSetUsage usage = static_cast<DescriptorSetUsage>(i);
             GFXDescriptorSet& set = _descriptorSets[to_base( usage )];
             DescriptorSetEntry& entry = setEntries[to_base(usage)];
             entry._set = &set.impl();
@@ -2270,6 +2273,12 @@ namespace Divide
                     PROFILE_SCOPE( "SET_CLIP_PLANES", Profiler::Category::Graphics );
 
                     setClipPlanes( cmd->As<GFX::SetClipPlanesCommand>()->_clippingPlanes );
+                } break;
+                case GFX::CommandType::SEND_PUSH_CONSTANTS:
+                {
+                    PROFILE_SCOPE("SEND_PUSH_CONSTANTS", Profiler::Category::Graphics);
+
+                    cmd->As<GFX::SendPushConstantsCommand>()->_fastData.computeFlags();
                 } break;
                 case GFX::CommandType::BIND_SHADER_RESOURCES:
                 {
@@ -3129,14 +3138,12 @@ namespace Divide
     RenderTarget_uptr GFXDevice::newRenderTarget( const RenderTargetDescriptor& descriptor )
     {
         RenderTarget_uptr ret = _api->newRenderTarget(descriptor);
-
-        if ( ret != nullptr )
+        if ( nullptr != ret && ret->create() )
         {
-            const bool valid = ret->create();
-            DIVIDE_GPU_ASSERT( valid );
-            return ret;
+            return MOV(ret);
         }
 
+        DIVIDE_UNEXPECTED_GPU_CALL_MSG("Failed to create render target!");
         return nullptr;
     }
 

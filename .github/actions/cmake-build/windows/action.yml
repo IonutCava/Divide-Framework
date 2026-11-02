@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 name: 'Windows CMake Build'
 description: 'Run CMake build and test steps for Windows'
 
@@ -30,41 +31,69 @@ runs:
   steps:
     - name: Configure (preset override)
       if: ${{ inputs.configure-preset != '' }}
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: ${{ inputs.configure-preset }}
+      shell: pwsh
+      working-directory: ${{ github.workspace }}/ci-source
+      env:
+        PRESET: ${{ inputs.configure-preset }}
+      run: |
+        cmake --preset $env:PRESET
+        if ($LASTEXITCODE -ne 0) { throw "Configure failed: $LASTEXITCODE" }
 
     - name: Configure (default)
       if: ${{ inputs.configure-preset == '' }}
-      uses: lukka/run-cmake@v10
+      shell: pwsh
+      working-directory: ${{ github.workspace }}/ci-source
+      env:
+        PRESET: windows-${{ inputs.compiler }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+      run: |
+        cmake --preset $env:PRESET
+        if ($LASTEXITCODE -ne 0) { throw "Configure failed: $LASTEXITCODE" }
+
+    - name: Save dependency binaries before compiling the engine
+      uses: actions/cache/save@v5
       with:
-        configurePreset: windows-${{ inputs.compiler }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+        path: ${{ env.DIVIDE_VCPKG_BINARY_CACHE }}
+        key: ${{ env.DIVIDE_VCPKG_CACHE_KEY }}
 
     - name: Build (preset override)
       if: ${{ inputs.build-preset != '' }}
-      uses: lukka/run-cmake@v10
-      with:
-        buildPreset: ${{ inputs.build-preset }}
+      shell: pwsh
+      working-directory: ${{ github.workspace }}/ci-source
+      env:
+        PRESET: ${{ inputs.build-preset }}
+      run: |
+        cmake --build --preset $env:PRESET
+        if ($LASTEXITCODE -ne 0) { throw "Build failed: $LASTEXITCODE" }
 
     - name: Build ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
       if: ${{ inputs.build-preset == '' }}
-      uses: lukka/run-cmake@v10
-      with:
-        buildPreset: windows-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+      shell: pwsh
+      working-directory: ${{ github.workspace }}/ci-source
+      env:
+        PRESET: windows-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+      run: |
+        cmake --build --preset $env:PRESET
+        if ($LASTEXITCODE -ne 0) { throw "Build failed: $LASTEXITCODE" }
 
     - name: Test (preset override)
       if: ${{ inputs.run-tests == 'true' && inputs.test-preset != '' }}
-      continue-on-error: true
-      uses: lukka/run-cmake@v10
-      with:
-        testPreset: ${{ inputs.test-preset }}
+      shell: pwsh
+      working-directory: ${{ github.workspace }}/ci-source
+      env:
+        PRESET: ${{ inputs.test-preset }}
+      run: |
+        ctest --preset $env:PRESET
+        if ($LASTEXITCODE -ne 0) { throw "Tests failed: $LASTEXITCODE" }
 
     - name: Test ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
       if: ${{ inputs.run-tests == 'true' && inputs.test-preset == '' }}
-      continue-on-error: true
-      uses: lukka/run-cmake@v10
-      with:
-        testPreset: test-windows-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+      shell: pwsh
+      working-directory: ${{ github.workspace }}/ci-source
+      env:
+        PRESET: test-windows-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+      run: |
+        ctest --preset $env:PRESET
+        if ($LASTEXITCODE -ne 0) { throw "Tests failed: $LASTEXITCODE" }
     
     - name: Record build timing
       shell: pwsh

@@ -216,7 +216,7 @@ namespace Divide
                 entry._descriptorHash = descriptorHash;
                 entry._refCount = 1u;
 
-                return handleOut;
+                return MOV(handleOut);
             }
 
             ++handleOut._index;
@@ -353,7 +353,7 @@ namespace Divide
                     ++entry._refCount;
 
                     Console::printfn( LOCALE_STR( "RESOURCE_CACHE_GET_RES_INC" ), entry._ptr->resourceName(), entry._refCount );
-                    return ret;
+                    return MOV(ret);
                 }
             }
             ++ret._index;
@@ -396,7 +396,7 @@ namespace Divide
             if ( ret != INVALID_HANDLE<T> )
             {
                 wasInCache = true;
-                return ret;
+                return MOV(ret);
             }
         }
 
@@ -406,7 +406,7 @@ namespace Divide
         if ( ret != INVALID_HANDLE<T> )
         {
             wasInCache = true;
-            return ret;
+            return MOV(ret);
         }
 
         // Cache miss. Allocate new resource
@@ -601,7 +601,7 @@ namespace Divide
         if ( wasInCache )
         {
             taskCounter.fetch_sub( 1u );
-            return ret;
+            return MOV(ret);
         }
 
         Console::printfn( LOCALE_STR( "RESOURCE_CACHE_GET_RES" ), descriptor.resourceName().c_str(), loadingHash );
@@ -644,7 +644,7 @@ namespace Divide
                 );
         }
 
-        return ret;
+        return MOV(ret);
     }
 
 } //namespace Divide

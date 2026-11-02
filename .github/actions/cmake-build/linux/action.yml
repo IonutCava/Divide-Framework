@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 name: 'Linux CMake Build'
 description: 'Run CMake build and test steps'
 
@@ -38,38 +39,67 @@ runs:
       uses: lukka/run-cmake@v10
       with:
         configurePreset: ${{ inputs.configure-preset }}
+        cmakeListsTxtPath: ${{ github.workspace }}/ci-source/CMakeLists.txt
 
     - name: Configure (default)
       if: ${{ inputs.configure-preset == '' }}
       uses: lukka/run-cmake@v10
       with:
         configurePreset: linux-${{ inputs.compiler }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+        cmakeListsTxtPath: ${{ github.workspace }}/ci-source/CMakeLists.txt
+
+    - name: Save dependency binaries before compiling the engine
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ env.DIVIDE_VCPKG_BINARY_CACHE }}
+        key: ${{ env.DIVIDE_VCPKG_CACHE_KEY }}
 
     - name: Build (preset override)
       if: ${{ inputs.build-preset != '' }}
       uses: lukka/run-cmake@v10
       with:
         buildPreset: ${{ inputs.build-preset }}
+        cmakeListsTxtPath: ${{ github.workspace }}/ci-source/CMakeLists.txt
 
     - name: Build ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
       if: ${{ inputs.build-preset == '' }}
       uses: lukka/run-cmake@v10
       with:
         buildPreset: linux-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+        cmakeListsTxtPath: ${{ github.workspace }}/ci-source/CMakeLists.txt
 
     - name: Test (preset override)
       if: ${{ inputs.test-preset != '' && inputs.run-tests != 'false' }}
-      continue-on-error: true
       uses: lukka/run-cmake@v10
       with:
         testPreset: ${{ inputs.test-preset }}
+        cmakeListsTxtPath: ${{ github.workspace }}/ci-source/CMakeLists.txt
 
     - name: Test ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
       if: ${{ inputs.test-preset == '' && inputs.run-tests != 'false' }}
-      continue-on-error: true
       uses: lukka/run-cmake@v10
       with:
         testPreset: test-linux-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+        cmakeListsTxtPath: ${{ github.workspace }}/ci-source/CMakeLists.txt
+
+    - name: Diagnose test executable startup failures
+      if: ${{ failure() }}
+      shell: bash
+      working-directory: ci-source
+      run: |
+        if ! command -v gdb; then
+          sudo apt-get update -qq
+          sudo apt-get install -y gdb
+        fi
+        while IFS= read -r executable; do
+          echo "::group::Startup diagnostics: $executable"
+          timeout 90s gdb --batch \
+            -ex 'set pagination off' \
+            -ex run -ex 'thread apply all bt' \
+            -ex 'x/12i $pc-16' -ex 'info registers' \
+            --args "$executable" --list-tests
+          echo "::endgroup::"
+        done < <(find out/build -type f -executable -name 'Divide-Test-*')
 
     - name: Record build end time and metrics
       shell: bash

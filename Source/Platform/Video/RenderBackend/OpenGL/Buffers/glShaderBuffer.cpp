@@ -63,12 +63,7 @@ namespace Divide
         DIVIDE_GPU_ASSERT( to_size( range._length ) <= _maxSize && "glShaderBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform" );
         DIVIDE_GPU_ASSERT( range._startOffset == Util::GetAlignmentCorrected( range._startOffset, _alignmentRequirement ) );
 
-        if ( bindIndex == ShaderProgram::k_commandBufferID )
-        {
-            result = GL_API::GetStateTracker().setActiveBuffer( gl46core::GL_DRAW_INDIRECT_BUFFER, bufferImpl()->getBufferHandle() );
-            GL_API::GetStateTracker()._drawIndirectBufferOffset = bufferImpl()->getDataOffset() + (readIndex * _alignedBufferSize);
-        }
-        else if ( range._length > 0 ) [[likely]]
+        if ( range._length > 0 ) [[likely]]
         {
             const size_t offset = bufferImpl()->getDataOffset() + range._startOffset + (readIndex * _alignedBufferSize);
             // If we bind the entire buffer, offset == 0u and range == 0u is a hack to bind the entire thing instead of a subrange
@@ -79,6 +74,18 @@ namespace Divide
                                                                           offset,
                                                                           bindRange );
         }
+
+        return result != GLStateTracker::BindResult::FAILED;
+    }
+
+    bool glShaderBuffer::bindAsIndirectBuffer( const U16 readIndex )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        DIVIDE_GPU_ASSERT( getUsage() == BufferUsageType::COMMAND_BUFFER );
+
+        const GLStateTracker::BindResult result = GL_API::GetStateTracker().setActiveBuffer( gl46core::GL_DRAW_INDIRECT_BUFFER, bufferImpl()->getBufferHandle() );
+        GL_API::GetStateTracker()._drawIndirectBufferOffset = bufferImpl()->getDataOffset() + (readIndex * _alignedBufferSize);
 
         return result != GLStateTracker::BindResult::FAILED;
     }

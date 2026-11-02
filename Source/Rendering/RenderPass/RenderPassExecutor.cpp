@@ -770,8 +770,8 @@ namespace Divide
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_BATCH;
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::NONE ); //Command buffer only
-            Set( binding._data, _cmdBuffer.get(), { startOffset, Config::MAX_VISIBLE_NODES});
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::NONE ); //Indirect draw arguments only
+            SetIndirectBuffer( binding._data, _cmdBuffer.get(), { startOffset, Config::MAX_VISIBLE_NODES});
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::COMPUTE );

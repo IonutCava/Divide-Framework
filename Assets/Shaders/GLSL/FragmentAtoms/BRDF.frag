@@ -48,7 +48,7 @@ vec4 getPixelColour(in vec4 albedo, in NodeMaterialData materialData, in vec3 no
             vec3( 0.00f, 0.75f, 0.25f )  // PARENT_SELECTED
         );
 
-        const float NdotV2 = max(dot(VAR._normalWV, viewVec), 0.f);
+        const float NdotV2 = max(dot(normalWV, viewVec), 0.f);
         radianceOut = mix( selection_colors[VAR._SelectionFlag - 1u], radianceOut, smoothstep(0.25f, 0.45f, NdotV2));
     }
     else

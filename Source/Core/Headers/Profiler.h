@@ -35,29 +35,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Platform/Headers/PlatformDefines.h"
 
-#define USE_OPTICK ENABLE_OPTICK_PROFILER
+#include <cstdint>
 
+#if USE_OPTICK
 DISABLE_NON_MSVC_WARNING_PUSH("ignored-attributes")
 #include <optick.h>
 DISABLE_NON_MSVC_WARNING_POP()
-
-#if ENABLE_OPTICK_PROFILER
-
-#define NO_DESTROY_OPTICK NO_DESTROY
-
-#else //ENABLE_OPTICK_PROFILER
-
-#define NO_DESTROY_OPTICK
-
-namespace Optick
-{
-    struct Category
-    {
-        using Type = uint64_t;
-    };
-};
-
-#endif //ENABLE_OPTICK_PROFILER
+#endif //USE_OPTICK
 
 namespace Divide
 {
@@ -75,7 +59,7 @@ void OnThreadStop();
 
 namespace Category
 {
-#if ENABLE_OPTICK_PROFILER
+#if USE_OPTICK
     constexpr Optick::Category::Type Graphics  = Optick::Category::Rendering;
     constexpr Optick::Category::Type Sound     = Optick::Category::Audio;
     constexpr Optick::Category::Type Physics   = Optick::Category::Physics;
@@ -85,17 +69,17 @@ namespace Category
     constexpr Optick::Category::Type Scene     = Optick::Category::Scene;
     constexpr Optick::Category::Type Threading = Optick::Category::Wait;
     constexpr Optick::Category::Type IO        = Optick::Category::IO;
-#else //ENABLE_OPTICK_PROFILER
-    constexpr Optick::Category::Type Graphics  =  0u;
-    constexpr Optick::Category::Type Sound     =  1u;
-    constexpr Optick::Category::Type Physics   =  2u;
-    constexpr Optick::Category::Type GameLogic =  3u;
-    constexpr Optick::Category::Type GUI       =  4u;
-    constexpr Optick::Category::Type Streaming =  5u;
-    constexpr Optick::Category::Type Scene     =  6u;
-    constexpr Optick::Category::Type Threading =  7u;
-    constexpr Optick::Category::Type IO        =  8u;
-#endif
+#else //USE_OPTICK
+    constexpr std::uint64_t Graphics  =  0u;
+    constexpr std::uint64_t Sound     =  1u;
+    constexpr std::uint64_t Physics   =  2u;
+    constexpr std::uint64_t GameLogic =  3u;
+    constexpr std::uint64_t GUI       =  4u;
+    constexpr std::uint64_t Streaming =  5u;
+    constexpr std::uint64_t Scene     =  6u;
+    constexpr std::uint64_t Threading =  7u;
+    constexpr std::uint64_t IO        =  8u;
+#endif //USE_OPTICK
 };
 
 enum class State : U8
@@ -113,13 +97,11 @@ bool OnProfilerStateChanged( const Profiler::State state );
 
 // static_assert(true, "") added at the end to force require a semicolon after the macros
 
+#if USE_OPTICK
 #define PROFILE_SCOPE(NAME, CATEGORY) OPTICK_EVENT(NAME, CATEGORY); static_assert(true, "")
 #define PROFILE_SCOPE_AUTO(CATEGORY) OPTICK_EVENT(OPTICK_FUNC, CATEGORY); static_assert(true, "")
 #define PROFILE_TAG(NAME, ...) OPTICK_TAG( NAME, __VA_ARGS__ ); static_assert(true, "")
-#define PROFILE_FRAME(NAME) NO_DESTROY_OPTICK OPTICK_FRAME( NAME ); static_assert(true, "")
-
-
-#if 1
+#define PROFILE_FRAME(NAME) NO_DESTROY OPTICK_FRAME( NAME ); static_assert(true, "")
 
 #define PROFILE_VK_INIT(DEVICES, PHYSICAL_DEVICES, CMD_QUEUES, CMD_QUEUES_FAMILY, NUM_CMD_QUEUS, FUNCTIONS) OPTICK_GPU_INIT_VULKAN(DEVICES, PHYSICAL_DEVICES, CMD_QUEUES, CMD_QUEUES_FAMILY, NUM_CMD_QUEUS, FUNCTIONS); static_assert(true, "")
 #define PROFILE_VK_PRESENT(SWAP_CHAIN) OPTICK_GPU_FLIP(SWAP_CHAIN); static_assert(true, "")
@@ -132,13 +114,18 @@ bool OnProfilerStateChanged( const Profiler::State state );
 
 #else
 
+#define PROFILE_SCOPE(NAME, CATEGORY) static_assert(true, "")
+#define PROFILE_SCOPE_AUTO(CATEGORY) static_assert(true, "")
+#define PROFILE_TAG(NAME, ...) static_assert(true, "")
+#define PROFILE_FRAME(NAME) static_assert(true, "")
+
 #define PROFILE_VK_INIT(DEVICES, PHYSICAL_DEVICES, CMD_QUEUES, CMD_QUEUES_FAMILY, NUM_CMD_QUEUS, FUNCTIONS) static_assert(true, "")
 #define PROFILE_VK_PRESENT(SWAP_CHAIN) static_assert(true, "")
 
-#define PROFILE_VK_EVENT_AUTO()  PROFILE_SCOPE_AUTO(Profiler::Category::Graphics ); static_assert(true, "")
-#define PROFILE_VK_EVENT(NAME)  PROFILE_SCOPE(NAME, Profiler::Category::Graphics ); static_assert(true, "")
-#define PROFILE_VK_EVENT_AND_CONTEX(NAME, BUFFER) PROFILE_VK_EVENT(NAME); static_assert(true, "")
-#define PROFILE_VK_EVENT_AUTO_AND_CONTEXT(BUFFER) PROFILE_VK_EVENT_AUTO(); static_assert(true, "")
+#define PROFILE_VK_EVENT_AUTO() static_assert(true, "")
+#define PROFILE_VK_EVENT(NAME) static_assert(true, "")
+#define PROFILE_VK_EVENT_AND_CONTEX(NAME, BUFFER) static_assert(true, "")
+#define PROFILE_VK_EVENT_AUTO_AND_CONTEXT(BUFFER) static_assert(true, "")
 
 #endif
 

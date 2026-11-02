@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -43,6 +43,13 @@ class VKDevice final : NonCopyable, NonMovable
         VKDevice( vkb::Instance& instance, VkSurfaceKHR targetSurface);
         ~VKDevice();
 
+        [[nodiscard]] static constexpr bool HasRequiredDynamicState3Features( const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT& features ) noexcept
+        {
+            return features.extendedDynamicState3ColorBlendEnable &&
+                   features.extendedDynamicState3ColorBlendEquation &&
+                   features.extendedDynamicState3ColorWriteMask;
+        }
+
         [[nodiscard]] VkDevice getVKDevice() const noexcept;
         [[nodiscard]] VkPhysicalDevice getVKPhysicalDevice() const noexcept;
 
@@ -57,7 +64,7 @@ class VKDevice final : NonCopyable, NonMovable
         [[nodiscard]] VKQueue getQueue( QueueType type ) const noexcept;
 
         PROPERTY_R_IW(size_t, vulkanMinorVersion, 0u);
-        PROPERTY_R_IW(bool, suppportesMaintenance7, false);
+        PROPERTY_R_IW(bool, supportsMaintenance7, false);
         PROPERTY_R_IW(bool, supportsDynamicExtension3, false);
         PROPERTY_R_IW(bool, supportsDescriptorBuffers, false);
         PROPERTY_R_IW(bool, supportsMeshShaders, false);

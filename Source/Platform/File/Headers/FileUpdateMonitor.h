@@ -46,7 +46,7 @@ enum class FileUpdateEvent : U8
     COUNT
 };
 
-using FileUpdateCbk = DELEGATE<void, std::string_view /*file*/, FileUpdateEvent>;
+using FileUpdateCbk = DELEGATE<void, std::string_view /*dir*/, std::string_view /*file*/, FileUpdateEvent>;
 
 class UpdateListener final : public FW::FileWatchListener
 {

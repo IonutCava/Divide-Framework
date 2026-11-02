@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -48,6 +48,14 @@ class platformInitRunListener : public Catch::EventListenerBase
     static bool PLATFORM_INIT;
 
     static void PlatformInit();
+
+    struct LocalizationScope
+    {
+        LocalizationScope();
+        ~LocalizationScope();
+        LocalizationScope(const LocalizationScope&) = delete;
+        LocalizationScope& operator=(const LocalizationScope&) = delete;
+    };
 
     void testRunStarting( Catch::TestRunInfo const& ) override;
     void testRunEnded( Catch::TestRunStats const& ) override;

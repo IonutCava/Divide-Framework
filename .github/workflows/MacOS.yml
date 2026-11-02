@@ -1,32 +1,25 @@
-# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
-# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
+# Copyright (c) 2026 DIVIDE-Studio
 name: macOS Builds
 
 on:
-  schedule:
-    - cron: "0 0 * * *"
-  pull_request:
-    branches: [ "master" ]
   workflow_dispatch:
+    inputs:
+      ci_sha:
+        description: 'Commit selected by the daily scheduler'
+        required: true
+        type: string
+      ci_target:
+        description: 'master or pr-N'
+        required: true
+        type: string
 
-run-name: MacOS Build - ${{ github.ref_name }} - GitHub
+run-name: MacOS Build - ${{ inputs.ci_target }} - ${{ inputs.ci_sha }}
+
+permissions:
+  contents: read
 
 jobs:
-  check_date:
-    runs-on: ubuntu-latest
-    outputs:
-       should_run: ${{ steps.check.outputs.should_run }}
-    steps:
-       - uses: actions/checkout@v4  
-         with:
-          fetch-depth: 1
-          submodules: false
-       - id: check
-         uses: ./.github/actions/check-date
-
   info_job:
-    needs: check_date
-    if: ${{ needs.check_date.outputs.should_run != 'false' }}
 
     name: macOS - Print Info
     runs-on: macos-latest
@@ -43,7 +36,7 @@ jobs:
   build_job_x86_64:
     needs: info_job
     name: macOS x86_64 - Clang ${{ matrix.build-type }} ${{ matrix.configuration }}
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     strategy:
       fail-fast: true
       matrix:
@@ -51,9 +44,14 @@ jobs:
         configuration: [debug, release]
 
     steps:
-      - uses: actions/checkout@v4
-  
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
       - uses: ./.github/actions/build-setup/macos
+        with:
+          architecture: x86_64
 
       - uses: ./.github/actions/cmake-build/macos
         with:
@@ -64,7 +62,7 @@ jobs:
   build_job_arm64:
     needs: info_job
     name: macOS arm64 - Clang ${{ matrix.build-type }} ${{ matrix.configuration }}
-    runs-on: macos-latest
+    runs-on: macos-15
     strategy:
       fail-fast: true
       matrix:
@@ -72,9 +70,14 @@ jobs:
         configuration: [debug, release]
 
     steps:
-      - uses: actions/checkout@v4
-  
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
       - uses: ./.github/actions/build-setup/macos
+        with:
+          architecture: arm64
 
       - uses: ./.github/actions/cmake-build/macos
         with:
@@ -85,8 +88,26 @@ jobs:
   output_job:
     needs: [info_job, build_job_x86_64, build_job_arm64]
     if: always()
-    runs-on: macos-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      statuses: write
     steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report commit status
+        uses: actions/github-script@v7
+        env:
+          CI_SHA: ${{ inputs.ci_sha }}
+          CI_TARGET: ${{ inputs.ci_target }}
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        with:
+          script: |
+            const report = require('./.github/scripts/report-ci.cjs');
+            await report({ github, context, core, platform: 'macos' });
       - name: Retrieve results
         id: results
         run: |
@@ -106,6 +127,8 @@ jobs:
             echo "status=arm64 build failed, x86_64 build: $x86_64_status" >> $GITHUB_OUTPUT
           elif [[ "$x86_64_status" == "cancelled" || "$arm64_status" == "cancelled" ]]; then
             echo "status=One or more builds cancelled" >> $GITHUB_OUTPUT
+          elif [[ "$info_status" == "skipped" || "$x86_64_status" == "skipped" || "$arm64_status" == "skipped" ]]; then
+            echo "status=Required validation unexpectedly skipped" >> $GITHUB_OUTPUT
           else
             echo "status=Success" >> $GITHUB_OUTPUT
           fi
@@ -117,3 +140,9 @@ jobs:
           echo "Clang Version: ${{ needs.info_job.outputs.clang_version }}" >> $GITHUB_STEP_SUMMARY
           echo "x86_64 Builds: ${{ needs.build_job_x86_64.result }}" >> $GITHUB_STEP_SUMMARY
           echo "arm64 Builds: ${{ needs.build_job_arm64.result }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail workflow on incomplete validation
+        if: ${{ steps.results.outputs.status != 'Success' }}
+        run: |
+          echo "Required validation did not succeed: ${{ steps.results.outputs.status }}"
+          exit 1

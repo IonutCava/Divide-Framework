@@ -1,10 +1,7 @@
+# Copyright (c) 2026 DIVIDE-Studio
 name: Linux Builds
 
 on:
-  schedule:
-    - cron: "0 0 * * *"
-  pull_request:
-    branches: [ "master" ]
   workflow_dispatch:
     inputs:
       runner_type:
@@ -15,27 +12,24 @@ on:
         options:
         - GitHub
         - self-hosted
+      ci_sha:
+        description: 'Commit selected by the daily scheduler'
+        required: true
+        type: string
+      ci_target:
+        description: 'master or pr-N'
+        required: true
+        type: string
 
-run-name: Linux Build - ${{ github.ref_name }} - ${{ github.event.inputs.runner_type || 'GitHub' }}
+run-name: Linux Build - ${{ inputs.ci_target }} - ${{ inputs.ci_sha }}
+
+permissions:
+  contents: read
 
 jobs:
-  check_date:
-   runs-on: ubuntu-latest
-   outputs:
-      should_run: ${{ steps.check.outputs.should_run }}
-   steps:
-      - uses: actions/checkout@v4 
-        with:
-         fetch-depth: 1
-         submodules: false
-      - id: check
-        uses: ./.github/actions/check-date
-
   info_job:
-    needs: check_date
-    if: ${{ needs.check_date.outputs.should_run != 'false' }}
     name: Ubuntu latest - Print Info
-    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-24.04' }}
 
     steps:
     - name: Print GCC version
@@ -47,13 +41,13 @@ jobs:
   build_gcc:
     needs: info_job
     name: Ubuntu latest - gcc ${{ matrix.build-type }} ${{ matrix.configuration }}
-    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-24.04' }}
     strategy:
       fail-fast: true
       matrix:
         build-type: [editor, game]
         configuration: [debug, release, profile]
-    timeout-minutes: 180
+    timeout-minutes: 240
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -67,14 +61,18 @@ jobs:
           android: true
           dotnet: true
           haskell: true
-          large-packages: true
+          large-packages: false
           docker-images: true
           swap-storage: true
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
       - uses: ./.github/actions/build-setup/linux
         with:
+          compiler: gcc
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
 
       - uses: ./.github/actions/cmake-build/linux
@@ -86,13 +84,13 @@ jobs:
   build_clang:
     needs: info_job
     name: Ubuntu latest - clang ${{ matrix.build-type }} ${{ matrix.configuration }}
-    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-24.04' }}
     strategy:
       fail-fast: true
       matrix:
         build-type: [editor, game]
         configuration: [debug, release]
-    timeout-minutes: 180
+    timeout-minutes: 240
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -105,10 +103,14 @@ jobs:
           docker-images: true
           swap-storage: true
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
       - uses: ./.github/actions/build-setup/linux
         with:
+          compiler: clang
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
 
       - uses: ./.github/actions/cmake-build/linux
@@ -118,10 +120,10 @@ jobs:
           configuration: ${{ matrix.configuration }}
 
   build_clang_asan_ubsan:
-    needs: info_job
+    needs: [info_job, build_gcc, build_clang]
     name: Ubuntu - clang ASAN+UBSAN (debug/editor)
-    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
-    timeout-minutes: 90
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-24.04' }}
+    timeout-minutes: 240
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -134,10 +136,14 @@ jobs:
           docker-images: true
           swap-storage: true
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
       - uses: ./.github/actions/build-setup/linux
         with:
+          compiler: clang
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
 
       - uses: ./.github/actions/cmake-build/linux
@@ -150,10 +156,10 @@ jobs:
           test-preset: test-linux-clang-debug-editor-asan-ubsan
 
   build_gcc_asan_ubsan:
-    needs: info_job
+    needs: [info_job, build_gcc, build_clang]
     name: Ubuntu - gcc ASAN+UBSAN (debug/editor)
-    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
-    timeout-minutes: 90
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-24.04' }}
+    timeout-minutes: 240
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -161,7 +167,7 @@ jobs:
           # this might remove tools that are actually needed,
           # if set to "true" but frees about 6 GB
           tool-cache: false
-          
+
           # all of these default to true, but feel free to set to
           # "false" if necessary for your workflow
           android: true
@@ -170,11 +176,15 @@ jobs:
           large-packages: true
           docker-images: true
           swap-storage: true
-        
-      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
       - uses: ./.github/actions/build-setup/linux
         with:
+          compiler: gcc
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
 
       - uses: ./.github/actions/cmake-build/linux
@@ -187,20 +197,49 @@ jobs:
           test-preset: test-linux-gcc-debug-editor-asan-ubsan
 
   output_job:
-    needs: [build_gcc, build_clang, build_clang_asan_ubsan, build_gcc_asan_ubsan]
+    needs: [info_job, build_gcc, build_clang, build_clang_asan_ubsan, build_gcc_asan_ubsan]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      statuses: write
     steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Report commit status
+        uses: actions/github-script@v7
+        env:
+          CI_SHA: ${{ inputs.ci_sha }}
+          CI_TARGET: ${{ inputs.ci_target }}
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        with:
+          script: |
+            const report = require('./.github/scripts/report-ci.cjs');
+            await report({ github, context, core, platform: 'linux' });
       - name: Retrieve results
         id: results
         run: |
-          if [[ "${{ needs.build_gcc.result }}" == "failure" || "${{ needs.build_clang.result }}" == "failure" || "${{ needs.build_clang_asan_ubsan.result }}" == "failure" || "${{ needs.build_gcc_asan_ubsan.result }}" == "failure" ]]; then
+          results="${{ needs.info_job.result }} ${{ needs.build_gcc.result }} ${{ needs.build_clang.result }} ${{ needs.build_clang_asan_ubsan.result }} ${{ needs.build_gcc_asan_ubsan.result }}"
+          if [[ "$results" == *failure* ]]; then
             echo "status=Build failed" >> $GITHUB_OUTPUT
-          elif [[ "${{ needs.build_gcc.result }}" == "cancelled" || "${{ needs.build_clang.result }}" == "cancelled" || "${{ needs.build_clang_asan_ubsan.result }}" == "cancelled" || "${{ needs.build_gcc_asan_ubsan.result }}" == "cancelled" ]]; then
+          elif [[ "$results" == *cancelled* ]]; then
             echo "status=Builds cancelled" >> $GITHUB_OUTPUT
+          elif [[ "$results" == *skipped* ]]; then
+            echo "status=Required validation unexpectedly skipped" >> $GITHUB_OUTPUT
           else
             echo "status=Success" >> $GITHUB_OUTPUT
           fi
 
       - name: Report Status
-        run: echo "${{ steps.results.outputs.status }}"
+        run: |
+          echo "${{ steps.results.outputs.status }}"
+          echo "${{ steps.results.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail workflow on cancelled/failed dependency jobs
+        if: ${{ steps.results.outputs.status != 'Success' }}
+        run: |
+          echo "One or more required jobs did not complete successfully: ${{ steps.results.outputs.status }}"
+          exit 1

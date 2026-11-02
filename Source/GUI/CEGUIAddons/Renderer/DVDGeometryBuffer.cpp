@@ -83,11 +83,6 @@ void DVDGeometryBuffer::draw() const
     clipRect.sizeX = to_I32( _clipRect.getWidth() );
     clipRect.sizeY = to_I32( _clipRect.getHeight() );
 
-    if ( _owner->flipClippingHeight() )
-    {
-        clipRect.offsetY = to_I32(_clipRect.top());
-    }    
-
     // apply the transformations we need to use.
     if (!_matrixValid)
     {

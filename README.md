@@ -1,3 +1,4 @@
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
 [![Windows Builds](https://github.com/IonutCava/Divide-Framework/actions/workflows/Windows.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Windows.yml)
 [![Linux Builds](https://github.com/IonutCava/Divide-Framework/actions/workflows/Linux.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Linux.yml)
 [![MacOS Builds](https://github.com/IonutCava/Divide-Framework/actions/workflows/MacOS.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/MacOS.yml)
@@ -19,7 +20,7 @@ This code started during my first days in university. The first iteration looked
 Next to no programming experience and it shows in the parts of code that survived since then (all the SceneNode and Resource stuff). Started with a lot of OOP and "Clean Code" with C++98 and currently developed using as much DoD as possible (basic structs and enums, inheritance mostly for interfaces or restrictions {NonCopyable, NonMovable, etc}) but with C++23 for ease of use (constexpr and concepts over templates, threading and filesystem builtin, lambdas over function pointers etc).
 
 It got me through learning old-school OpenGL (1.x, 2.x), core GL (3.x, 4.x) and some AZDO techniques (indirect rendering, bindless textures, persistently mapped buffers, etc).
-Currently using it to learn Vulkan 1.3 (why would I learn about framebuffers, subpasses and renderpasses now? Maybe for mobile, but I don't see myself doing that now, and if I did, I'd learn that as required).
+Currently using it to learn Vulkan 1.4 (the minimum supported Vulkan version; why would I learn about framebuffers, subpasses and renderpasses now? Maybe for mobile, but I don't see myself doing that now, and if I did, I'd learn that as required).
 
 The reason it's published on GitHub are:
 * so I can store the code somewhere central and keep track of changes.
@@ -31,8 +32,22 @@ If you plan to use any parts of this code in a commercial product, a couple of t
 * Please let me know as I'm curious to see where and why and also, I'd highly appreciate it.
   
 ## How to build & run
+### Minimum CPU requirements:
+- x86: SSE4.2
+- ARM: NEON
+
+Presets request AVX2 by default on x86. For older CPUs, configure with
+`-DDIVIDE_VECTOR_EXTENSION_SET=SSE42` (or `AVX` for an AVX-only target).
+Unsupported requested levels fail configuration before dependency installation.
+Jolt uses the selected dependency ISA; ARM uses NEON.
+The engine's macOS x86_64 presets default to AVX on Intel hosts. On Apple Silicon,
+the CMake Rosetta detector automatically overrides the engine request with
+SSE4.2 and reports the override, including during dependency-free preflight.
+Jolt follows the same AVX/Intel and SSE4.2/Rosetta selection.
+
 ### All:
 - Clone with recursive submodules (e.g. git clone --recurse-submodules). Needed for vcpkg.
+- Install CMake >= 3.29.2, Ninja, and a C++23-capable compiler.
 ### Visual Studio Code:
 - Open the root folder in VSCode (with CMake and C++ extensions installed).
 - Under CMake Project Status view, select the desired Configure preset followed by the desired Build preset.
@@ -58,7 +73,7 @@ If you plan to use any parts of this code in a commercial product, a couple of t
 
 * Experimental Vulkan renderer
 
-* C++17/20
+* C++23
 
 * Windows only (but with functional Linux platform code).
 
@@ -148,11 +163,10 @@ I did try to comply with all of them, but I may have missed something.
 * simpleini: https://github.com/brofield/simpleini
 * GLM: https://github.com/g-truc/glm
 * skarupke hash maps: https://github.com/skarupke
-* Catch2: https://github.com/catchorg/Catch2
+* Catch2 (internal test builds only): https://github.com/catchorg/Catch2
 * various 3rd party parser libs:
     * freetype: https://freetype.org
     * freeimage: https://freeimage.sourceforge.io
     * libjpeg: https://libjpeg.sourceforge.net
     * libpng:http://www.libpng.org
-    * libtiff: http://www.libtiff.org
     * zlib: https://zlib.net
