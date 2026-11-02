@@ -153,6 +153,8 @@ unused IFC/Blender triangulation and 3MF export dependencies are removed.
 DevIL remains the DDS loader, with optional image-codec features disabled.
 NVTT remains available for DDS cache compression until a replacement
 covers that functionality as well.
+The NVTT overlay removes upstream `-march=native`: cached dependency archives
+must use the target toolchain's baseline, not the cache producer's CPU ISA.
 
 Boost.Asio uses monotonic `steady_timer` deadlines, without its optional
 deadline-timer and coroutine/spawn features. Scene registration uses a local

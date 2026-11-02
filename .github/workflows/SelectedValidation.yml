@@ -1,5 +1,6 @@
 # Copyright (c) 2026 DIVIDE-Studio
 name: Selected Platform Validation
+# NVTT portability validation uses the same three selected targets.
 
 on:
   push:

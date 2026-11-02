@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 
 vcpkg_from_github(
@@ -16,6 +17,7 @@ vcpkg_from_github(
         skip-building-libsquish.patch
         fix-intrinsic-function.patch
         fix-release-flags.patch
+        portable-architecture.patch
 )
 
 vcpkg_check_features(
