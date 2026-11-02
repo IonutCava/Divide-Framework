@@ -124,6 +124,9 @@ already positioned in world space, so their normal/tangent basis uses the
 instance orientation rather than the parent node transform. Grass and tree
 velocity currently projects the current instance geometry through the previous
 camera; per-instance deformation, LOD and prior animation are not buffered.
+Terrain's normal-debug geometry derives height gradients using the heightmap
+texel spacing, vertical amplitude and the terrain/node transforms. Terrain
+shading itself uses geometric screen-space derivatives for its tangent frame.
 
 ### Custom-pass Hi-Z
 

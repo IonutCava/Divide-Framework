@@ -3,12 +3,7 @@
 
 // Copyright (c) 2026 DIVIDE-Studio
 
-vec3 TransformNormal(in vec3 normal, in vec4 rotation, in vec3 scale)
-{
-    const vec3 scaleSign = mix(vec3(-1.f), vec3(1.f), greaterThanEqual(scale, vec3(0.f)));
-    const vec3 safeScale = scaleSign * max(abs(scale), vec3(1e-8f));
-    return normalize(QuaternionRotate(rotation, normal / safeScale));
-}
+#include "normalTransform.cmn"
 
 #if defined(COMPUTE_TBN)
 mat3 computeTBN(in vec4 rotation, in vec3 scale)

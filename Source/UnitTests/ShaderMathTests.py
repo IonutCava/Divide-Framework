@@ -267,8 +267,72 @@ layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
 
 
 class WorldGeometryMathTests(unittest.TestCase):
+    def test_terrain_debug_normal_uses_height_and_world_scale(self):
+        terrain = (SHADERS / "Common" / "terrainUtils.cmn").read_text(encoding="utf-8")
+        normal_transform = (SHADERS / "Common" / "normalTransform.cmn").read_text(encoding="utf-8")
+        utility = (SHADERS / "Common" / "utility.cmn").read_text(encoding="utf-8")
+        get_normal = extract(r"^vec3 getNormal\(.*?^\}$", terrain)
+        transform_normal = extract(r"^vec3 TransformNormal\(.*?^\}$", normal_transform)
+        rotation_macro = extract(r"^#define QuaternionRotate\([^\n]*$", utility)
+        shader = f"""
+#version 460
+#define UV_DIV 8.f
+#define WORLD_SCALE_Y 10.f
+{rotation_macro}
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+struct TransformData {{ vec4 _rotation; vec4 _scale; }};
+mat4 dvd_terrainWorld;
+const int texHeight = 0;
+bool flatHeight;
+vec4 sampleHeight(in int samplerID, in vec3 uv, in ivec2 offset) {{
+    if (flatHeight) return vec4(0.3f);
+    if (offset.x < 0) return vec4(0.2f);
+    if (offset.x > 0) return vec4(0.4f);
+    if (offset.y < 0) return vec4(0.1f);
+    return vec4(0.3f);
+}}
+#define textureOffset(T, UV, OFFSET) sampleHeight(T, UV, OFFSET)
+#define textureSize(T, LOD) ivec3(8, 4, 1)
+{transform_normal}
+{get_normal}
+void main() {{
+    dvd_terrainWorld = mat4(vec4(2.f, 0.f, 0.f, 0.f), vec4(0.f, 1.f, 0.f, 0.f),
+                            vec4(0.f, 0.f, 3.f, 0.f), vec4(0.f, 0.f, 0.f, 1.f));
+    TransformData node;
+    node._rotation = vec4(0.f, 0.f, 0.7071067811865476f, 0.7071067811865476f);
+    const vec3 scales[3] = vec3[](vec3(1.5f, 2.f, 0.5f), vec3(-1.5f, 2.f, 0.5f),
+                                  vec3(1.5f, 2.f, 0.5f));
+    for (int i = 0; i < 3; ++i) {{
+        node._scale = vec4(scales[i], 1.f);
+        flatHeight = i == 2;
+        const vec3 normal = getNormal(vec2(0.5f), node);
+        for (int component = 0; component < 3; ++component)
+            values[i * 3 + component] = normal[component];
+    }}
+}}
+"""
+        actual = execute(shader, 9)
+
+        def unit(vector):
+            length = math.sqrt(sum(component * component for component in vector))
+            return [component / length for component in vector]
+
+        for index, local_scale in enumerate(((3, 2, 1.5), (-3, 2, 1.5))):
+            local = (-8, 8, -4)
+            scaled = [local[i] / local_scale[i] for i in range(3)]
+            expected = unit((-scaled[1], scaled[0], scaled[2]))
+            with self.subTest(scale=local_scale):
+                for value, reference in zip(actual[index * 3:index * 3 + 3], expected):
+                    self.assertAlmostEqual(value, reference, delta=2e-6)
+        for value, reference in zip(actual[6:], (-1, 0, 0)):
+            self.assertAlmostEqual(value, reference, delta=1e-6)
+
     def test_normal_and_tangent_transforms_match_scaled_geometry(self):
         source = (SHADERS / "VertexAtoms" / "lightingDefaults.vert").read_text(encoding="utf-8")
+        normal_transform = (SHADERS / "Common" / "normalTransform.cmn").read_text(encoding="utf-8")
+        source = source.replace('#include "normalTransform.cmn"',
+                                extract(r"^vec3 TransformNormal\(.*?^\}$", normal_transform))
         utility = (SHADERS / "Common" / "utility.cmn").read_text(encoding="utf-8")
         rotation_macro = extract(r"^#define QuaternionRotate\([^\n]*$", utility)
         scales = [(1, 1, 1), (2, 3, 0.5), (-2, 3, 0.5), (2, -3, 0.5), (-2, -3, 0.5)]

@@ -1,5 +1,7 @@
 --Vertex
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 #define NO_CLIP_CULL_IN
 #define NO_CLIP_CULL_OUT
 
@@ -439,11 +441,13 @@ void main(void)
 
 #if defined(TOGGLE_NORMALS)
     const float sizeFactor = 0.75f;
+    const TransformData nodeTransform = dvd_Transforms[TRANSFORM_IDX]._transform;
     for (int i = 0; i < count; ++i) {
         // In world space
-        const vec3 N = getNormal(_in[i]._texCoord);
-        const vec3 B = cross(vec3(0.0f, 0.0f, 1.0f), N);
-        const vec3 T = cross(N, B);
+        const vec3 N = getNormal(_in[i]._texCoord, nodeTransform);
+        const vec3 axis = abs(N.y) < 0.999f ? WORLD_Y_AXIS : WORLD_Z_AXIS;
+        const vec3 T = normalize(cross(axis, N));
+        const vec3 B = cross(N, T);
 
         vec3 P = gl_in[i].gl_Position.xyz;
         PerVertex(i, edge_dist, dvd_ViewProjectionMatrix );
