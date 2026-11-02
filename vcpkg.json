@@ -28,7 +28,6 @@
     "vk-bootstrap",
     "assimp",
     "mimalloc",
-    "imguizmo",
     "meshoptimizer",
     "spirv-reflect",
     "chaiscript",
@@ -84,10 +83,6 @@
     },
     {
       "name": "date",
-      "platform": "osx"
-    },
-    {
-      "name": "sse2neon",
       "platform": "osx"
     },
     {

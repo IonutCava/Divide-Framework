@@ -19,3 +19,5 @@ To update one, re-copy the listed files from the new upstream commit and update 
 | SimpleIni (`.`) | https://github.com/brofield/simpleini | `877f7357d1fa4232f1f3352e5028f99899210b27` (`v4.26`) | MIT (`LICENCE.txt`) | `SimpleIni.h` |
 | concurrentqueue | https://github.com/cameron314/concurrentqueue | `9afb99746f0f5fc94ac8aef737053ae0481ba8d1` (`v1.0.5`) | BSD-2-Clause or BSL-1.0 (`concurrentqueue/LICENSE.md`) | `concurrentqueue/moodycamel/{concurrentqueue,blockingconcurrentqueue,lightweightsemaphore}.h` and internal debug header |
 | CTRE (`.`) | https://github.com/hanickadot/compile-time-regular-expressions | `4ab18abfd88ccfc867734bf5d31b13285854577e` (`v3.11.0`) | Apache-2.0 (`CTRE-LICENSE`) | Complete upstream `include/` tree |
+| ImGuizmo | https://github.com/CedricGuillemet/ImGuizmo | `b796ac3b861afc6e91ca74e4611effd9c9527367` (`1.10`) | MIT (`ImGuizmo/LICENSE`) | `ImGuizmo.cpp`, `ImGuizmo.h` |
+| sse2neon | https://github.com/DLTcollab/sse2neon | `92f6de174717aef09033ad21568d5bb9e5470404` (`v1.9.1`) | MIT (`sse2neon/LICENSE`) | `sse2neon.h` |

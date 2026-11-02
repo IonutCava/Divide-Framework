@@ -49,6 +49,7 @@ set(simple_file_watcher_SOURCE_DIR   "${DIVIDE_VENDORED_DIR}/SimpleFileWatcher")
 set(fcpp_SOURCE_DIR                  "${DIVIDE_VENDORED_DIR}/fcpp")
 set(imgui_club_SOURCE_DIR            "${DIVIDE_VENDORED_DIR}/imgui_club")
 set(icon_font_cpp_headers_SOURCE_DIR "${DIVIDE_VENDORED_DIR}/IconFontCppHeaders")
+set(imguizmo_SOURCE_DIR              "${DIVIDE_VENDORED_DIR}/ImGuizmo")
 
 if(NOT WINDOWS_OS_BUILD)
     set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_OLD})
@@ -72,6 +73,7 @@ include_directories(
     ${fcpp_SOURCE_DIR}
     ${imgui_club_SOURCE_DIR}
     ${icon_font_cpp_headers_SOURCE_DIR}
+    ${imguizmo_SOURCE_DIR}
     #${SDL3_mixer_SOURCE_DIR}/include
     ${nri_SOURCE_DIR}/include
 )
@@ -101,6 +103,8 @@ set( FCPP_SRC_FILES ${fcpp_SOURCE_DIR}/cpp1.c
                     #${fcpp_SOURCE_DIR}/usecpp.c
 )
 
+set( IMGUIZMO_SRC_FILES ${imguizmo_SOURCE_DIR}/ImGuizmo.cpp )
+
 if (NOT MSVC_COMPILER)
     set_source_files_properties( ${FCPP_SRC_FILES} PROPERTIES COMPILE_FLAGS "-Wno-switch-default -Wno-date-time -Wno-pedantic -Wno-format -Wno-implicit-void-ptr-cast -Wno-c++-keyword" )
 endif()
@@ -109,4 +113,5 @@ set( THIRD_PARTY_FETCH_SRC_FILES ${TILEABLE_VOLUME_NOISE_SRC_FILES}
                                  ${CURL_NOISE_SRC_FILES}
                                  ${SIMPLE_FILE_WATCHER_SRC_FILES}
                                  ${FCPP_SRC_FILES}
+                                 ${IMGUIZMO_SRC_FILES}
 )

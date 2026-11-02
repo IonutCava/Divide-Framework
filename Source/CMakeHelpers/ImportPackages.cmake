@@ -54,16 +54,11 @@ find_package(SDL3_image CONFIG REQUIRED)
 find_package(SDL3_mixer CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(imguizmo CONFIG REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 find_package(Jolt CONFIG REQUIRED)
 
 if(MAC_OS_BUILD)
     find_package(date CONFIG REQUIRED)
-    if (NEON_OPT)
-        find_path(SSE2NEON_INCLUDE_DIRS "sse2neon/sse2neon.h")
-        include_directories( SYSTEM ${SSE2NEON_INCLUDE_DIRS})
-    endif()
 endif()
 
 if(LINUX_OS_BUILD)
@@ -163,7 +158,6 @@ set(EXTERNAL_LIBS
     EASTL
     OpenAL::OpenAL
     imgui::imgui
-    imguizmo::imguizmo
     assimp::assimp
     unofficial::spirv-reflect
     meshoptimizer::meshoptimizer
