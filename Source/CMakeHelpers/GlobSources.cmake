@@ -845,10 +845,12 @@ set( TEST_ENGINE_SOURCE UnitTests/unitTestCommon.h
                         UnitTests/Test-Engine/LightingTests.cpp
                         UnitTests/Test-Engine/MathMatrixTests.cpp
                         UnitTests/Test-Engine/MathVectorTests.cpp
+                        UnitTests/Test-Engine/NodeEditorTests.cpp
                         UnitTests/Test-Engine/RendererTests.cpp
                         UnitTests/Test-Engine/ShaderCompilerTests.cpp
                         UnitTests/Test-Engine/ScriptingTests.cpp
                         UnitTests/Test-Engine/UndoManagerTests.cpp
+                        UnitTests/Test-Engine/SunTests.cpp
 )
 
 set( TEST_PLATFORM_SOURCE UnitTests/unitTestCommon.h

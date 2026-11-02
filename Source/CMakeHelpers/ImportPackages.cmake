@@ -32,7 +32,6 @@ find_package(PkgConfig REQUIRED)
 find_package(Stb REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(fmt CONFIG REQUIRED)
-find_package(concurrentqueue CONFIG REQUIRED)
 find_package(DevIL REQUIRED)
 find_package(EASTL CONFIG REQUIRED)
 find_package(glbinding CONFIG REQUIRED)
@@ -41,12 +40,10 @@ find_package(meshoptimizer CONFIG REQUIRED)
 find_package(OpenAL CONFIG REQUIRED)
 find_package(expat CONFIG REQUIRED)
 find_package(recastnavigation CONFIG REQUIRED)
-find_package(unofficial-imgui-node-editor CONFIG REQUIRED)
 find_package(Vulkan)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(vk-bootstrap CONFIG REQUIRED)
 find_package(glslang CONFIG REQUIRED)
-find_package(ctre CONFIG REQUIRED)
 if(BUILD_TESTING_INTERNAL)
     find_package(Catch2 CONFIG REQUIRED)
 endif()
@@ -56,18 +53,8 @@ find_package(SDL3_image CONFIG REQUIRED)
 find_package(SDL3_mixer CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(imguizmo CONFIG REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
-find_package(SimpleIni CONFIG REQUIRED)
 find_package(Jolt CONFIG REQUIRED)
-
-if(MAC_OS_BUILD)
-    find_package(date CONFIG REQUIRED)
-    if (NEON_OPT)
-        find_path(SSE2NEON_INCLUDE_DIRS "sse2neon/sse2neon.h")
-        include_directories( SYSTEM ${SSE2NEON_INCLUDE_DIRS})
-    endif()
-endif()
 
 if(LINUX_OS_BUILD)
     include(CMakeHelpers/PlatformHelpers/FindWayland.cmake)
@@ -75,7 +62,6 @@ endif()
 
 
 find_path(expat_INCLUDE_DIR "expat.h")
-find_path(CHAISCRIPT_INCLUDE_DIRS "chaiscript/chaiscript.hpp")
 
 set(NVTT_LIBRARIES "")
 
@@ -145,7 +131,6 @@ include_directories(
     ${Boost_INCLUDE_DIR}
     ${expat_INCLUDE_DIR}
     ${Vulkan_INCLUDE_DIR}/vma
-    ${CHAISCRIPT_INCLUDE_DIRS}
 )
 
 include_directories(
@@ -166,16 +151,13 @@ set(EXTERNAL_LIBS
     EASTL
     OpenAL::OpenAL
     imgui::imgui
-    imguizmo::imguizmo
     assimp::assimp
-    ctre::ctre
     unofficial::spirv-reflect
     meshoptimizer::meshoptimizer
     glbinding::glbinding glbinding::glbinding-aux
     vk-bootstrap::vk-bootstrap
     expat::expat
     Vulkan::Vulkan
-    concurrentqueue::concurrentqueue
     GPUOpen::VulkanMemoryAllocator
     RecastNavigation::Detour
     RecastNavigation::Recast
@@ -187,7 +169,6 @@ set(EXTERNAL_LIBS
     glslang::glslang-default-resource-limits
     glslang::SPIRV
     #glslang::SPVRemapper
-    SimpleIni::SimpleIni
     Jolt::Jolt
 )
 
@@ -195,10 +176,6 @@ if(ENABLE_OPTICK_PROFILER)
     list(APPEND EXTERNAL_LIBS OptickCore)
 endif()
 
-if(MAC_OS_BUILD)
-    set(EXTERNAL_LIBS ${EXTERNAL_LIBS} date::date date::date-tz)
-    add_compile_definitions(USE_HINNANT_DATE)
-endif()
 if(WAYLAND_FOUND)
     set(EXTERNAL_LIBS ${EXTERNAL_LIBS} ${WAYLAND_LIBRARIES})
     include_directories(${WAYLAND_INCLUDE_DIR})
