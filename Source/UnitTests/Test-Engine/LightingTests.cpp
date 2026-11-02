@@ -23,7 +23,7 @@ namespace Divide
     TEST_CASE("Cluster light budgets always resolve to a valid limit", "[lighting][clusters]")
     {
         using namespace Config::Lighting::ClusteredForward;
-        constexpr I32 maxLimit = static_cast<I32>( MAX_LIGHTS_PER_CLUSTER );
+        constexpr I32 maxLimit = to_I32( MAX_LIGHTS_PER_CLUSTER );
 
         STATIC_CHECK( ResolveLightsPerCluster( -1 ) == maxLimit );
         STATIC_CHECK( ResolveLightsPerCluster( 0 ) == 1 );
@@ -145,7 +145,7 @@ namespace Divide
             {
                 for (std::size_t i = offset; i < offset + count; ++i)
                 {
-                    layers[i] = { owner, 0u, static_cast<unsigned>(contentCount) };
+                    layers[i] = { owner, 0u, to_U32(contentCount) };
                 }
             }
             return offset;
@@ -167,7 +167,7 @@ namespace Divide
         constexpr std::array<std::uint32_t, 3> limits{ 2u, 4u, 6u };
         for (std::size_t type = 0u; type < 3u; ++type)
         {
-            for (std::int32_t index = 0; index < static_cast<std::int32_t>(limits[type]); ++index)
+            for (std::int32_t index = 0; index < to_I32(limits[type]); ++index)
             {
                 REQUIRE(full.hasCapacity(type, limits[type]));
                 CHECK(full.reserve(type, limits[type]) == index);
@@ -355,7 +355,7 @@ namespace Divide
             CHECK(sphere._radius >= 0.f);
             for (unsigned sample = 0u; sample <= 20u; ++sample)
             {
-                const float theta = radians * static_cast<float>(sample) / 20.f;
+                const float theta = radians * to_F32(sample) / 20.f;
                 for (const float distance : { 0.f, 1.f, slant })
                 {
                     const float x = distance * std::sin(theta);

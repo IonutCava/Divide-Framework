@@ -172,7 +172,7 @@ namespace Lighting {
         [[nodiscard]] constexpr I32 ResolveLightsPerCluster( const I32 configuredLimit ) noexcept
         {
             static_assert( MAX_LIGHTS_PER_CLUSTER >= 1u );
-            constexpr I32 maxLimit = static_cast<I32>( MAX_LIGHTS_PER_CLUSTER );
+            constexpr I32 maxLimit = to_I32( MAX_LIGHTS_PER_CLUSTER );
             if ( configuredLimit < 0 || configuredLimit > maxLimit )
             {
                 return maxLimit;

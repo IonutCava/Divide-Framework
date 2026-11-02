@@ -39,6 +39,7 @@
 - Preserve CMake variables/presets; expose new feature flags through `CMakePresets.json`.
 - For platform changes, inspect `Source/Platform/` and platform cache variables in `CMakePresets.json`, such as `WINDOWS_OS_BUILD` and `MAC_OS_BUILD`.
 - Editing `Source/EngineIncludes_pch.h` or `Source/CEGUIIncludes_pch.h` can trigger a full rebuild.
+- In code that includes engine headers, use the engine's numeric conversion helpers (`to_U32`, `to_I32`, `to_U64`, `to_F32`, `to_size`, ...) from `Source/Platform/Headers/PlatformDataTypes.h` instead of `static_cast` to numeric types; they validate conversions at runtime. Sources that deliberately avoid engine headers (for example `Source/UnitTests/ShaderMathRunner.cpp` and `Source/Rendering/Lighting/Headers/ShadowPassState.h`) keep standard casts.
 
 ## Build and agent/CI validation
 
