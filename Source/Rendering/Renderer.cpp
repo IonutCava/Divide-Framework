@@ -161,6 +161,12 @@ void Renderer::prepareLighting(const RenderStage stage,
 
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+    if ( !DIVIDE_ASSERT( Config::Lighting::ClusteredForward::IsValidClusterDepthRange( cameraSnapshot._zPlanes.min, cameraSnapshot._zPlanes.max ),
+                         "Renderer::prepareLighting: clustered lighting requires finite camera planes with 0 < zNear < zFar" ) )
+    {
+        return;
+    }
+
     GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Renderer Cull Lights";
     {
         PerRenderStageData& data = _lightDataPerStage[to_base(stage)];

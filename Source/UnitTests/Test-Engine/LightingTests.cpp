@@ -16,6 +16,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <utility>
 
 namespace Divide
 {
@@ -40,6 +41,42 @@ namespace Divide
         }
         CHECK( ResolveLightsPerCluster( maxLimit + 1 ) == maxLimit );
         CHECK( ResolveLightsPerCluster( std::numeric_limits<I32>::max() ) == maxLimit );
+    }
+
+    TEST_CASE("Clustered lighting only accepts positive, ordered, finite depth planes", "[lighting][clusters]")
+    {
+        using namespace Config::Lighting::ClusteredForward;
+        constexpr F32 inf = std::numeric_limits<F32>::infinity();
+        constexpr F32 nan = std::numeric_limits<F32>::quiet_NaN();
+
+        STATIC_CHECK( IsValidClusterDepthRange( 0.1f, 1000.f ) );
+        STATIC_CHECK( IsValidClusterDepthRange( std::numeric_limits<F32>::min(), F32_MAX ) );
+
+        STATIC_CHECK_FALSE( IsValidClusterDepthRange( 0.f, 1000.f ) );
+        STATIC_CHECK_FALSE( IsValidClusterDepthRange( -0.f, 1000.f ) );
+        STATIC_CHECK_FALSE( IsValidClusterDepthRange( -100.f, 100.f ) );
+        STATIC_CHECK_FALSE( IsValidClusterDepthRange( -10.f, -1.f ) );
+        STATIC_CHECK_FALSE( IsValidClusterDepthRange( 10.f, 10.f ) );
+        STATIC_CHECK_FALSE( IsValidClusterDepthRange( 10.f, 1.f ) );
+        CHECK_FALSE( IsValidClusterDepthRange( 0.1f, inf ) );
+        CHECK_FALSE( IsValidClusterDepthRange( nan, 1000.f ) );
+        CHECK_FALSE( IsValidClusterDepthRange( 0.1f, nan ) );
+        CHECK_FALSE( IsValidClusterDepthRange( -inf, 1000.f ) );
+
+        // Every accepted range produces finite, monotonically increasing exponential slice boundaries.
+        for ( const auto [zNear, zFar] : std::array<std::pair<F32, F32>, 4>{ { { 0.01f, 10.f }, { 0.1f, 1000.f }, { 1.f, 1.0001f }, { 0.5f, 50000.f } } } )
+        {
+            REQUIRE( IsValidClusterDepthRange( zNear, zFar ) );
+            F32 previous = zNear;
+            for ( U8 slice = 1u; slice <= CLUSTERS_Z; ++slice )
+            {
+                const F32 boundary = zNear * std::pow( zFar / zNear, to_F32( slice ) / CLUSTERS_Z );
+                CHECK( std::isfinite( boundary ) );
+                CHECK( boundary >= previous );
+                previous = boundary;
+            }
+            CHECK( previous == Catch::Approx( zFar ).epsilon( 1e-4 ) );
+        }
     }
 
     TEST_CASE("Light uploads never reserve past the configured capacity", "[lighting][lights]")

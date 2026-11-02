@@ -2019,9 +2019,9 @@ namespace Divide
             data.dvd_ProjectionMatrix.set( cameraSnapshot._projectionMatrix );
             data.dvd_camProperties.xyz.set( zNear, zFar, cameraSnapshot._fov );
 
-            // Exponential depth slices (ref: http://www.aortiz.me/2018/12/21/CG.html). Cluster lookup converts depth to
-            // view distance for both perspective and orthographic projections, so the same distribution applies to both.
-            if ( zNear > 0.f && zFar > zNear )
+            // Exponential depth slices (ref: http://www.aortiz.me/2018/12/21/CG.html). Clustered passes require valid planes
+            // (enforced in Renderer::prepareLighting); other cameras, such as shadow passes, never sample the light grid.
+            if ( Config::Lighting::ClusteredForward::IsValidClusterDepthRange( zNear, zFar ) )
             {
                 constexpr F32 CLUSTERS_Z = to_F32( Config::Lighting::ClusteredForward::CLUSTERS_Z );
                 const F32 zLogRatio = std::log( zFar / zNear );

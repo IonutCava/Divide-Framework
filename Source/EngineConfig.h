@@ -180,6 +180,12 @@ namespace Lighting {
             return configuredLimit == 0 ? 1 : configuredLimit;
         }
 
+        /// Clustered lighting uses exponential depth slices, so cameras must provide finite planes with 0 < zNear < zFar.
+        [[nodiscard]] constexpr bool IsValidClusterDepthRange( const F32 zNear, const F32 zFar ) noexcept
+        {
+            return zNear > 0.f && zFar > zNear && zFar <= F32_MAX;
+        }
+
         /// Controls compute shader dispatch. e.g. Dispatch Z count = CLUSTERS_Z / CLUSTERS_Z_THREADS
         constexpr U8 CLUSTERS_X = 16u;
         constexpr U8 CLUSTERS_Y = 8u;

@@ -517,6 +517,19 @@ class ShaderCompilationTests(unittest.TestCase):
         cluster_index = re.search(r"^uint GetClusterIndex\(.*?^\}$", light_input, re.DOTALL | re.MULTILINE).group(0)
         self.assertNotIn("TARGET_VULKAN", cluster_index)
 
+    def test_clustered_lighting_requires_positive_depth_planes(self):
+        config = (ROOT / "Source" / "EngineConfig.h").read_text(encoding="utf-8")
+        self.assertRegex(config, r"constexpr bool IsValidClusterDepthRange\( const F32 zNear, const F32 zFar \) noexcept"
+                                 r"\s*\{\s*return zNear > 0\.f && zFar > zNear && zFar <= F32_MAX;")
+        renderer = (ROOT / "Source" / "Rendering" / "Renderer.cpp").read_text(encoding="utf-8")
+        prepare = re.search(r"void Renderer::prepareLighting\(.*?^\}$", renderer, re.DOTALL | re.MULTILINE).group(0)
+        guard = prepare.index("IsValidClusterDepthRange( cameraSnapshot._zPlanes.min, cameraSnapshot._zPlanes.max )")
+        self.assertRegex(prepare[guard:], r"^[^;]*\)\s*\)\s*\{\s*return;\s*\}")
+        self.assertLess(guard, prepare.index("Renderer Cull Lights"))
+        self.assertLess(guard, prepare.index("_lightBuildClusteredAABBsPipelineCmd"))
+        gfx = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
+        self.assertIn("if ( Config::Lighting::ClusteredForward::IsValidClusterDepthRange( zNear, zFar ) )", gfx)
+
     def test_cluster_light_budget_limits(self):
         body = section("lightCull.glsl", "Compute")
         for backend in ("opengl", "vulkan"):
