@@ -127,10 +127,20 @@ camera; per-instance deformation, LOD and prior animation are not buffered.
 Terrain's normal-debug geometry derives height gradients using the heightmap
 texel spacing, vertical amplitude and the terrain/node transforms. Terrain
 shading itself uses geometric screen-space derivatives for its tangent frame.
-Particle sorting and bounds calculation complete before their callers return;
-particle drawing still needs correct non-indexed geometry, instancing and
-per-draw buffer-ring capture. Particle bounds currently contain centres only
-and are treated as node-local even though simulation positions are world-space.
+Particle geometry without indices uses an equivalent sequential index buffer,
+and each emitter has its own material template using instanced indirection.
+Each initial render preparation sorts and uploads the current live particles
+before building draw commands.
+Particle bounds enclose the world-space centres and billboard extents, including
+under singular node transforms. Particle emitters require nonzero capacity and
+position, acceleration, colour and misc arrays; empty geometry skips geometry
+buffer allocation and drawing. Explicit geometry indices must reference a
+vertex or use the `U32_MAX` primitive-restart marker with primitive restart
+enabled. Simulation uses the elapsed update time, and
+each source tracks fractional emission separately for each particle-data
+instance without accumulating whole-particle backlog while full. Queued
+particle draws still need per-draw
+buffer-ring capture and GPU-safe slot reuse for multiple cameras or passes.
 
 ### Custom-pass Hi-Z
 

@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -34,6 +34,10 @@
 #define DVD_PARTICLE_SOURCE_H_
 
 #include "ParticleGenerator.h"
+#include "Platform/Threading/Headers/SharedMutex.h"
+
+#include <map>
+#include <memory>
 
 namespace Divide {
 
@@ -49,9 +53,15 @@ class ParticleSource {
         _particleGenerators.push_back(generator);
     }
 
-    void updateEmitRate(const F32 emitRate) noexcept { _emitRate = emitRate; }
+    void updateEmitRate(const F32 emitRate) noexcept {
+        LockGuard<Mutex> lock(_emissionLock);
+        _emitRate = emitRate;
+    }
 
-    [[nodiscard]] F32 emitRate() const noexcept { return _emitRate; }
+    [[nodiscard]] F32 emitRate() const noexcept {
+        LockGuard<Mutex> lock(_emissionLock);
+        return _emitRate;
+    }
 
     void updateTransform(const float3& position, const quatf& orientation) noexcept {
         for (const auto& generator : _particleGenerators) {
@@ -63,6 +73,10 @@ class ParticleSource {
     F32 _emitRate;
     GFXDevice& _context;
     vector<std::shared_ptr<ParticleGenerator> > _particleGenerators;
+
+   private:
+    mutable Mutex _emissionLock;
+    std::map<std::weak_ptr<ParticleData>, D64, std::owner_less<std::weak_ptr<ParticleData>>> _emissionRemainders;
 };
 }
 
