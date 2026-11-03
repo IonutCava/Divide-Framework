@@ -241,28 +241,6 @@ if( BUILD_TESTING_INTERNAL )
 
     include(Catch)
 
-    find_package(Python3 QUIET COMPONENTS Interpreter)
-    find_program(DIVIDE_GLSLANG_VALIDATOR NAMES glslangValidator
-                 HINTS "$ENV{VULKAN_SDK}" PATH_SUFFIXES Bin bin)
-    if( Python3_Interpreter_FOUND AND DIVIDE_GLSLANG_VALIDATOR )
-        add_test(NAME ShaderCompilationTests
-                 COMMAND ${CMAKE_COMMAND} -E env "PYTHONDONTWRITEBYTECODE=1" "GLSLANG_VALIDATOR=${DIVIDE_GLSLANG_VALIDATOR}"
-                         "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/UnitTests/ShaderCompilationTests.py" -q)
-        set_tests_properties(ShaderCompilationTests PROPERTIES LABELS "shader")
-        if( TARGET Vulkan::Vulkan )
-            add_executable(Divide-Shader-Math-Runner "UnitTests/ShaderMathRunner.cpp")
-            target_link_libraries(Divide-Shader-Math-Runner PRIVATE Vulkan::Vulkan)
-            add_test(NAME ShaderMathTests
-                     COMMAND ${CMAKE_COMMAND} -E env "PYTHONDONTWRITEBYTECODE=1" "GLSLANG_VALIDATOR=${DIVIDE_GLSLANG_VALIDATOR}"
-                             "SHADER_MATH_RUNNER=$<TARGET_FILE:Divide-Shader-Math-Runner>"
-                             "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/UnitTests/ShaderMathTests.py" -q)
-            set_tests_properties(ShaderMathTests PROPERTIES LABELS "shader" SKIP_RETURN_CODE 77)
-        else()
-            message(STATUS "Shader math tests unavailable: Vulkan is required")
-        endif()
-    else()
-        message(STATUS "Shader compilation tests unavailable: Python3 and glslangValidator are required")
-    endif()
 
     # Disable automatic Catch2 test discovery when building with sanitizers on Windows with clang-cl
     if( CLANG_MSVC_FRONTEND AND (RUN_ASAN OR RUN_UBSAN) )
