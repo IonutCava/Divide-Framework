@@ -58,8 +58,9 @@
 - Internal Catch2 tests live in `Source/UnitTests`; `BUILD_TESTING_INTERNAL` and `RUN_TESTING_INTERNAL` control them.
 - Consult `.github/workflows/Windows.yml`, `.github/workflows/Linux.yml`, `.github/workflows/MacOS.yml`, and their referenced actions for CI build configuration.
 - Start with the smallest relevant build/test selection; expand when results require it.
-- Unit tests are for engine code only. Do not add or retain automated tests for
-  CMake helpers, build-timing tools, CI orchestration, or the build environment.
+- Unit tests are for engine code only. Use the existing Catch2 C++ test framework in `Source/UnitTests`.
+  Do not add or retain Python-based or other external-tool-driven automated test harnesses.
+  Do not add or retain automated tests for CMake helpers, build-timing tools, CI orchestration, or the build environment.
 - Distinguish checks actually run from checks not run or blocked. Local success does not establish success on other platforms or in CI.
 - Documentation-only changes require no build unless they affect an executable example or have a dedicated documentation check.
 
