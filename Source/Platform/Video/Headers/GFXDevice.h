@@ -209,11 +209,12 @@ struct RenderTargetNames
     static PerPassUtils   UTILS;
     static RenderTargetID BACK_BUFFER;
     static RenderTargetID SCREEN;
-    static RenderTargetID SCREEN_PREV;
+    static std::array<RenderTargetID, Config::MAX_LOCAL_PLAYER_COUNT> SCREEN_PREV;
     static RenderTargetID NORMALS_RESOLVED;
     static RenderTargetID SSAO_RESULT;
     static RenderTargetID BLOOM_RESULT;
     static RenderTargetID SSR_RESULT;
+    static std::array<RenderTargetID, Config::MAX_LOCAL_PLAYER_COUNT> PREVIOUS_DEPTH;
     static RenderTargetID OIT;
 
     // No CUBE OIT for cube reflections and refractions (yet) -Ionut
@@ -310,6 +311,9 @@ public:  // GPU interface
 
     const GFXShaderData::CamData& cameraData() const noexcept;
     const GFXShaderData::PrevFrameData& previousFrameData( PlayerIndex player ) const noexcept;
+    [[nodiscard]] bool previousDepthHistoryValid( PlayerIndex player ) const noexcept;
+    void invalidatePreviousDepthHistory( PlayerIndex player ) noexcept;
+    void storePreviousDepthHistory( PlayerIndex player, RenderTargetID source, GFX::CommandBuffer& bufferInOut );
 
     /// Returns true if the viewport was changed
     bool setViewport(const Rect<I32>& viewport);
@@ -478,7 +482,7 @@ protected:
                        GFX::CommandBuffer& bufferInOut);
 
     // Returns the HiZ texture that can be sent directly to occlusionCull
-    std::pair<Handle<Texture>, SamplerDescriptor> constructHIZ(RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut);
+    std::pair<Handle<Texture>, SamplerDescriptor> constructHIZ(RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut, bool dilateBaseLevel = true);
 
     [[nodiscard]] RenderAPIWrapper& getAPIImpl() { return *_api; }
     [[nodiscard]] const RenderAPIWrapper& getAPIImpl() const { return *_api; }
@@ -561,6 +565,7 @@ private:
 
     vec2<U16> _renderingResolution;
     GFXShaderData _gpuBlock;
+    std::array<bool, Config::MAX_LOCAL_PLAYER_COUNT> _previousDepthHistoryValid{};
 
     mutable Mutex _debugViewLock;
     vector<DebugView_ptr> _debugViews;

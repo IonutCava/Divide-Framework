@@ -169,11 +169,12 @@ namespace Divide
 
     RenderTargetID RenderTargetNames::BACK_BUFFER = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SCREEN = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::SCREEN_PREV = INVALID_RENDER_TARGET_ID;
+    std::array<RenderTargetID, Config::MAX_LOCAL_PLAYER_COUNT> RenderTargetNames::SCREEN_PREV = create_array<Config::MAX_LOCAL_PLAYER_COUNT, RenderTargetID>( INVALID_RENDER_TARGET_ID );
     RenderTargetID RenderTargetNames::NORMALS_RESOLVED = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SSAO_RESULT = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::BLOOM_RESULT = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SSR_RESULT = INVALID_RENDER_TARGET_ID;
+    std::array<RenderTargetID, Config::MAX_LOCAL_PLAYER_COUNT> RenderTargetNames::PREVIOUS_DEPTH = create_array<Config::MAX_LOCAL_PLAYER_COUNT, RenderTargetID>( INVALID_RENDER_TARGET_ID );
     RenderTargetID RenderTargetNames::OIT = INVALID_RENDER_TARGET_ID;
 
     std::array<RenderTargetID, Config::MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW>  RenderTargetNames::REFLECT::PLANAR     = create_array<Config::MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW, RenderTargetID>(INVALID_RENDER_TARGET_ID);
@@ -688,10 +689,13 @@ namespace Divide
             AddImageUsageFlag( screenAttachment._texDescriptor, ImageUsage::SHADER_READ);
             screenAttachment._sampler = defaultSamplerMips;
             screenDesc._msaaSamples = 0u;
-            screenDesc._name = "Screen Prev";
             screenDesc._attachments = { screenAttachment };
 
-            RenderTargetNames::SCREEN_PREV = _rtPool->allocateRT( screenDesc )._targetID;
+            for ( U8 player = 0u; player < Config::MAX_LOCAL_PLAYER_COUNT; ++player )
+            {
+                screenDesc._name = Util::StringFormat( "Screen Prev {}", player );
+                RenderTargetNames::SCREEN_PREV[player] = _rtPool->allocateRT( screenDesc )._targetID;
+            }
 
             screenDesc._name = "Screen Blur";
             RenderTargetNames::UTILS.BLUR  = _rtPool->allocateRT( screenDesc )._targetID;
@@ -831,6 +835,22 @@ namespace Divide
             hizRTDesc._name = "HiZ";
             hizRTDesc._resolution = renderResolution;
             RenderTargetNames::UTILS.HI_Z = _rtPool->allocateRT( hizRTDesc )._targetID;
+
+            // Hi-Z's base level is dilated for culling, so temporal effects need the original depth separately.
+            TextureDescriptor previousDepthDescriptor = hiZDescriptor;
+            previousDepthDescriptor._mipMappingState = MipMappingState::OFF;
+
+            RenderTargetDescriptor previousDepthRTDesc = {};
+            previousDepthRTDesc._attachments =
+            {
+                InternalRTAttachmentDescriptor{ previousDepthDescriptor, hiZSampler, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
+            };
+            previousDepthRTDesc._resolution = renderResolution;
+            for ( U8 player = 0u; player < Config::MAX_LOCAL_PLAYER_COUNT; ++player )
+            {
+                previousDepthRTDesc._name = Util::StringFormat( "Previous Depth {}", player );
+                RenderTargetNames::PREVIOUS_DEPTH[player] = _rtPool->allocateRT( previousDepthRTDesc )._targetID;
+            }
 
             hizRTDesc._resolution.set( reflectRes, reflectRes );
             hizRTDesc._name = "HiZ_Reflect";
@@ -1904,10 +1924,18 @@ namespace Divide
         // Update render targets with the new resolution
         _rtPool->getRenderTarget( RenderTargetNames::BACK_BUFFER )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SCREEN )->resize( w, h );
-        _rtPool->getRenderTarget( RenderTargetNames::SCREEN_PREV )->resize( w, h );
+        for ( const RenderTargetID previousScreen : RenderTargetNames::SCREEN_PREV )
+        {
+            _rtPool->getRenderTarget( previousScreen )->resize( w, h );
+        }
         _rtPool->getRenderTarget( RenderTargetNames::SSAO_RESULT )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SSR_RESULT )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::UTILS.HI_Z )->resize( w, h );
+        for ( const RenderTargetID historyTarget : RenderTargetNames::PREVIOUS_DEPTH )
+        {
+            _rtPool->getRenderTarget( historyTarget )->resize( w, h );
+        }
+        _previousDepthHistoryValid.fill( false );
         _rtPool->getRenderTarget( RenderTargetNames::UTILS.BLUR )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::OIT )->resize( w, h );
 
@@ -2194,6 +2222,23 @@ namespace Divide
     {
         return _gpuBlock._prevFrameData[index];
     }
+
+    bool GFXDevice::previousDepthHistoryValid( const PlayerIndex player ) const noexcept
+    {
+        return _previousDepthHistoryValid[player];
+    }
+
+    void GFXDevice::invalidatePreviousDepthHistory( const PlayerIndex player ) noexcept
+    {
+        _previousDepthHistoryValid[player] = false;
+    }
+
+    void GFXDevice::storePreviousDepthHistory( const PlayerIndex player, const RenderTargetID source, GFX::CommandBuffer& bufferInOut )
+    {
+        DIVIDE_ASSERT( source != INVALID_RENDER_TARGET_ID );
+        (void)constructHIZ( source, RenderTargetNames::PREVIOUS_DEPTH[player], bufferInOut, false );
+        _previousDepthHistoryValid[player] = true;
+    }
 #pragma endregion
 
 #pragma region Command buffers, occlusion culling, etc
@@ -2443,7 +2488,7 @@ namespace Divide
     /// Transform our depth buffer to a HierarchicalZ buffer (for occlusion queries and screen space reflections)
     /// Based on RasterGrid implementation: http://rastergrid.com/blog/2010/10/hierarchical-z-map-based-occlusion-culling/
     /// Modified with nVidia sample code: https://github.com/nvpro-samples/gl_occlusion_culling
-    std::pair<Handle<Texture>, SamplerDescriptor> GFXDevice::constructHIZ( RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut )
+    std::pair<Handle<Texture>, SamplerDescriptor> GFXDevice::constructHIZ( RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut, const bool dilateBaseLevel )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -2452,9 +2497,9 @@ namespace Divide
         const RTAttachment* SrcAtt = _rtPool->getRenderTarget( depthBuffer )->getAttachment( RTAttachmentType::DEPTH );
         const RTAttachment* HiZAtt = _rtPool->getRenderTarget( HiZTarget )->getAttachment( RTAttachmentType::COLOUR );
         ResourcePtr<Texture> HiZTex = Get(HiZAtt->texture());
-        DIVIDE_ASSERT( HiZTex->descriptor()._mipMappingState == MipMappingState::MANUAL );
+        DIVIDE_ASSERT( HiZTex->descriptor()._mipMappingState == (dilateBaseLevel ? MipMappingState::MANUAL : MipMappingState::OFF) );
 
-        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( cmdBufferInOut )->_scopeName = "Construct Hi-Z";
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( cmdBufferInOut )->_scopeName = dilateBaseLevel ? "Construct Hi-Z" : "Capture Previous Depth";
         GFX::EnqueueCommand<GFX::BindPipelineCommand>( cmdBufferInOut )->_pipeline = _hIZPipeline;
 
         U32 twidth = HiZTex->width();
@@ -2462,6 +2507,7 @@ namespace Divide
         // Level 0 reads the depth buffer, so start from its real size; each later level reads the previous HiZ mip.
         U32 owidth = Get( SrcAtt->texture() )->width();
         U32 oheight = Get( SrcAtt->texture() )->height();
+        DIVIDE_ASSERT( dilateBaseLevel || (HiZTex->mipCount() == 1u && owidth == twidth && oheight == theight) );
 
         for ( U16 i = 0u; i < HiZTex->mipCount(); ++i )
         {
@@ -2494,7 +2540,7 @@ namespace Divide
 
             PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( cmdBufferInOut )->_fastData;
             pushConstants.data[0]._vec[0].set( owidth, oheight, twidth, theight );
-            pushConstants.data[0]._vec[1].x = i == 0u ? 1.f : 0.f;
+            pushConstants.data[0]._vec[1].x = i == 0u && dilateBaseLevel ? 1.f : 0.f;
 
             GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( cmdBufferInOut )->_workGroupSize =
             {

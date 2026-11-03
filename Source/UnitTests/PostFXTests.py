@@ -31,7 +31,7 @@ class PostFXTests(unittest.TestCase):
         self.assertIn("PreviousFrameUV(prevClip, prevUV)", shader)
         self.assertIn("textureLod(texScreen, prevUV", shader)
         self.assertNotIn('_ID( "previousViewMatrix" )', host)
-        self.assertNotIn('_ID( "previousProjectionMatrix" )', host)
+        self.assertIn('_ID( "previousProjectionMatrix" )', host)
 
     def test_oit_normal_composition_uses_independent_alpha_blending(self):
         source = (ROOT / "Source" / "Rendering" / "RenderPass" / "RenderPassExecutor.cpp").read_text(encoding="utf-8")

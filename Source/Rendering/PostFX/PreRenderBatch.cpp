@@ -530,8 +530,8 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
 
     const RenderTargetHandle prevScreenHandle
     {
-        _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV),
-        RenderTargetNames::SCREEN_PREV
+        _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV[idx]),
+        RenderTargetNames::SCREEN_PREV[idx]
     };
 
     GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: Execute PrePass operators";
@@ -724,13 +724,12 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     }
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
-    RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV);
+    RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV[idx]);
     Handle<Texture> prevScreenTex = prevScreenRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO )->texture();
 
-    static bool firstPass = true;
-    if ( firstPass )
+    if ( !_previousScreenInitialized[idx] )
     {
-        firstPass = false;
+        _previousScreenInitialized[idx] = true;
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_textureLayoutChanges.emplace_back(TextureLayoutChange
         {
@@ -743,7 +742,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     // Copy our screen target PRE tonemap to feed back to PostFX operators in the next frame
     GFX::BlitRenderTargetCommand blitScreenColourCmd = {};
     blitScreenColourCmd._source = getInput(true)._targetID;
-    blitScreenColourCmd._destination = RenderTargetNames::SCREEN_PREV;
+    blitScreenColourCmd._destination = RenderTargetNames::SCREEN_PREV[idx];
     blitScreenColourCmd._params.emplace_back(RTBlitEntry
     {
         ._input = 
@@ -887,6 +886,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 }
 
 void PreRenderBatch::reshape(const U16 width, const U16 height) {
+    _previousScreenInitialized.fill( false );
     for (OperatorBatch& batch : _operators)
     {
         for (auto& op : batch)

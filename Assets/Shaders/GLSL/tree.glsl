@@ -54,15 +54,16 @@ void main(void){
 
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
 
-#if defined(HAS_VELOCITY)
-    VAR._prevVertexWVP = dvd_PrevViewProjectionMatrix * VAR._vertexW;
-#endif //HAS_VELOCITY
-
 #if !defined(SHADOW_PASS)
     computeLightVectors(data.orientationQuad, vec3(scale));
     setClipPlanes();
 #endif
 
     //Compute the final vert position
-    gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
+    const vec4 clipPosition = dvd_ProjectionMatrix * VAR._vertexWV;
+    gl_Position = clipPosition;
+#if defined(HAS_VELOCITY)
+    // STUBBED: TODO: Implement vegetation velocity support with previous instance and deformation state.
+    VAR._prevVertexWVP = clipPosition;
+#endif //HAS_VELOCITY
 }

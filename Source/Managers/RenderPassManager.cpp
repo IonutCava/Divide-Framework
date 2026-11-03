@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/RenderPassManager.h"
 
@@ -176,6 +177,11 @@ void RenderPassManager::render(const RenderParams& params)
     ProjectManager* projectManager = parent().projectManager().get();
 
     const Camera* cam = Attorney::ProjectManagerRenderPass::playerCamera(projectManager);
+    const I64 cameraGUID = cam->getGUID();
+    if ( _previousCameraGUID[params._playerPass] != cameraGUID )
+    {
+        _context.invalidatePreviousDepthHistory( params._playerPass );
+    }
 
     LightPool& activeLightPool = Attorney::ProjectManagerRenderPass::lightPool(projectManager);
 
@@ -304,6 +310,7 @@ void RenderPassManager::render(const RenderParams& params)
     }
 
     _context.setCameraSnapshot(params._playerPass, cam->snapshot());
+    _previousCameraGUID[params._playerPass] = cameraGUID;
 }
 
 RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage, const vector<RenderStage>& dependencies)

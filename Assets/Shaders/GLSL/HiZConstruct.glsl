@@ -1,11 +1,13 @@
 -- Compute
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 //ref: https://github.com/nvpro-samples/gl_occlusion_culling
 
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 12, r32f) uniform ACCESS_W image2D outImage;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D inImage;
 
-// Push data: imageSizeIn (source level size), imageSizeOut (destination level size), isBaseLevel (source is the depth buffer).
+// Push data: source and destination sizes; isBaseLevel enables conservative Hi-Z dilation.
 layout(local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) in;
 void main() {
     const ivec2 sizeIn = ivec2(imageSizeIn);

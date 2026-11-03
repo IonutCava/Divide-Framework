@@ -1374,7 +1374,16 @@ namespace Divide
         params._stagePass._passType = RenderPassType::MAIN_PASS;
         if ( _stage == RenderStage::DISPLAY )
         {
+            if ( !doPrePass )
+            {
+                _context.invalidatePreviousDepthHistory( playerIdx );
+            }
             _context.getRenderer().postFX().prePass( playerIdx, camSnapshot, bufferInOut );
+            if ( doPrePass )
+            {
+                // Preserve current depth after temporal effects have consumed the previous frame.
+                _context.storePreviousDepthHistory( playerIdx, params._target, bufferInOut );
+            }
         }
         if ( doMainPass ) [[likely]]
         {

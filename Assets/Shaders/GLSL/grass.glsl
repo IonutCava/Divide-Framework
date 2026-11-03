@@ -72,11 +72,6 @@ void main() {
         VAR._vertexW.xz += viewDirection * displacement;
     }
 
-#if defined(HAS_VELOCITY)
-    // Per-instance deformation history is not buffered.
-    VAR._prevVertexWVP = dvd_PrevViewProjectionMatrix * VAR._vertexW;
-#endif //HAS_VELOCITY
-
 #if !defined(SHADOW_PASS)
     setClipPlanes();
 #endif //!SHADOW_PASS
@@ -84,7 +79,12 @@ void main() {
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
     computeLightVectors(data.orientationQuad, vec3(scale));
 
-    gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
+    const vec4 clipPosition = dvd_ProjectionMatrix * VAR._vertexWV;
+    gl_Position = clipPosition;
+#if defined(HAS_VELOCITY)
+    // STUBBED: TODO: Implement vegetation velocity support with previous instance and deformation state.
+    VAR._prevVertexWVP = clipPosition;
+#endif //HAS_VELOCITY
 }
 
 -- Fragment.Colour

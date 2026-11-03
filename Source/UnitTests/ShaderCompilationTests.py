@@ -956,7 +956,10 @@ int main() {
             self.assertNotIn("dvd_InstanceIndex", source)
             self.assertIn("Data(VEGETATION_INSTANCE_INDEX)", source)
             self.assertIn("VAR._SelectionFlag = dvd_SelectionFlag(nodeData);", source)
-            self.assertIn("VAR._prevVertexWVP = dvd_PrevViewProjectionMatrix * VAR._vertexW;", source)
+            self.assertIn("const vec4 clipPosition = dvd_ProjectionMatrix * VAR._vertexWV;", source)
+            self.assertIn("gl_Position = clipPosition;", source)
+            self.assertIn("VAR._prevVertexWVP = clipPosition;", source)
+            self.assertIn("STUBBED: TODO: Implement vegetation velocity support", source)
             self.assertIn("computeLightVectors(data.orientationQuad, vec3(scale));", source)
             if shader == "grass.glsl":
                 self.assertIn("_instanceID = VEGETATION_INSTANCE_INDEX;", source)
@@ -972,6 +975,11 @@ int main() {
     def test_vegetation_uploads_allow_empty_and_grass_only_chunks(self):
         vegetation = (ROOT / "Source" / "Environment" / "Vegetation" / "Vegetation.cpp").read_text(encoding="utf-8")
         self.assertIn("bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;", vegetation)
+        self.assertIn("if ( IsZPrePass( renderStagePass ) )", vegetation)
+        self.assertIn(
+            'STUBBED("Vegetation::prepareRender: Vegetation motion vectors are intentionally zeroed',
+            vegetation,
+        )
         self.assertRegex(
             vegetation,
             r"if\s*\(\s*context\(\)\.config\(\)\.debug\.renderFilter\.treeInstances\s*&&\s*"

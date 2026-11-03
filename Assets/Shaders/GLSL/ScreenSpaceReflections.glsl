@@ -10,6 +10,7 @@
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texScreen;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texDepth;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texNormal;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 3) uniform sampler2D texPreviousDepth;
 
 // A projection matrix that maps to pixel coordinates (not [-1, +1] normalized device coordinates)
 #define projToPixel PushData0
@@ -17,7 +18,9 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texNormal;
 
 uniform mat4 invProjectionMatrix;
 uniform mat4 invViewMatrix;
+uniform mat4 previousProjectionMatrix;
 uniform mat4 previousViewProjectionMatrix;
+uniform uint previousDepthValid = 0u;
 uniform vec2 _zPlanes;
 uniform vec2 screenDimensions;
 uniform uint maxScreenMips = 5u;
@@ -34,6 +37,22 @@ uniform float eyeFadeEnd = 1.f;
 
 
 layout(location = 0) out vec4 _colourOut;
+
+bool PreviousFrameDepthMatches(in vec2 uv, in float expectedDepth) {
+    if (previousDepthValid == 0u) {
+        return false;
+    }
+
+    const float previousDepth = textureLod(texPreviousDepth, uv, 0.f).r;
+    if (previousDepth >= INV_Z_TEST_SIGMA) {
+        return false;
+    }
+
+    const float expectedViewDepth = ViewDistanceFromDepth(expectedDepth, previousProjectionMatrix);
+    const float storedViewDepth = ViewDistanceFromDepth(previousDepth, previousProjectionMatrix);
+    const float depthTolerance = max(0.05f, expectedViewDepth * 0.01f);
+    return expectedViewDepth > 0.f && abs(storedViewDepth - expectedViewDepth) <= depthTolerance;
+}
 
 #define DistanceSquared(A, B) dot((A-B),(A-B))
 
@@ -259,9 +278,14 @@ void main() {
                 vec3 hitPoint = vec3(0.f);
                 float iterations = 0;
                 if (FindSSRHit(vsPos, vsReflect, jitter * jitterAmount, hitPixel, hitPoint, iterations)) {
-                    const vec4 prevClip = previousViewProjectionMatrix * (invViewMatrix * vec4(hitPoint, 1.f));
+                    const ivec2 depthSize = textureSize(texDepth, 0);
+                    const ivec2 hitTexel = clamp(ivec2(hitPixel * vec2(depthSize)), ivec2(0), depthSize - 1);
+                    const float hitDepth = texelFetch(texDepth, hitTexel, 0).r;
+                    const vec2 hitUV = (vec2(hitTexel) + 0.5f) / vec2(depthSize);
+                    const vec4 hitWorld = invViewMatrix * vec4(ViewSpacePos(hitUV, hitDepth, invProjectionMatrix), 1.f);
+                    const vec4 prevClip = previousViewProjectionMatrix * hitWorld;
                     vec2 prevUV;
-                    if (PreviousFrameUV(prevClip, prevUV)) {
+                    if (hitDepth < INV_Z_TEST_SIGMA && PreviousFrameUV(prevClip, prevUV) && PreviousFrameDepthMatches(prevUV, prevClip.z / prevClip.w)) {
                         // The material pass applies this confidence to the unweighted colour.
                         reflBlend = ComputeBlendFactorForIntersection(iterations, hitPixel, hitPoint, vsPos, vsReflect);
                         const vec3 ssr = textureLod(texScreen, prevUV, roughness * maxScreenMips).rgb;

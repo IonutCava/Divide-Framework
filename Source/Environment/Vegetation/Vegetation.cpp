@@ -621,6 +621,11 @@ namespace Divide
             return;
         }
 
+        if ( IsZPrePass( renderStagePass ) )
+        {
+            STUBBED("Vegetation::prepareRender: Vegetation motion vectors are intentionally zeroed until previous instance and deformation state is implemented.");
+        }
+
         _buffer->commitData(postDrawMemCmd);
         
         rComp.setIndexBufferElementOffset(_buffer->firstIndexOffsetCount());
