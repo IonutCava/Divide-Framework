@@ -14,15 +14,19 @@ import unittest
 
 if __package__:
     from .ExposureBufferTests import ExposureBufferTests
+    from .FrameLifecycleTests import FrameLifecycleTests
     from .HiZSamplerTests import HiZSamplerTests
     from .ParticleTests import ParticleTests
     from .PostFXTests import PostFXTests
+    from .ShaderPreprocessorTests import ShaderPreprocessorTests
     from .SceneShaderTests import SceneShaderTests
 else:
     from ExposureBufferTests import ExposureBufferTests
+    from FrameLifecycleTests import FrameLifecycleTests
     from HiZSamplerTests import HiZSamplerTests
     from ParticleTests import ParticleTests
     from PostFXTests import PostFXTests
+    from ShaderPreprocessorTests import ShaderPreprocessorTests
     from SceneShaderTests import SceneShaderTests
 
 

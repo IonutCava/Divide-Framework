@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -89,7 +89,7 @@ protected:
     [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
                   void onRenderThreadLoopStart() override;
                   void onRenderThreadLoopEnd() override;
-                  void prepareFlushWindow( DisplayWindow& window ) override;
+    [[nodiscard]] bool prepareFlushWindow( DisplayWindow& window ) override;
                   void flushWindow( DisplayWindow& window ) override;
     [[nodiscard]] bool frameStarted() override;
     [[nodiscard]] bool frameEnded() override;
@@ -112,7 +112,7 @@ protected:
 private:
     void initStatePerWindow( VKPerWindowState& windowState );
     void destroyStatePerWindow( VKPerWindowState& windowState );
-    void recreateSwapChain( VKPerWindowState& windowState );
+    [[nodiscard]] bool recreateSwapChain( VKPerWindowState& windowState );
 
     bool setViewportInternal( const Rect<I32>& newViewport, VkCommandBuffer cmdBuffer ) noexcept;
     bool setScissorInternal( const Rect<I32>& newScissor, VkCommandBuffer cmdBuffer ) noexcept;

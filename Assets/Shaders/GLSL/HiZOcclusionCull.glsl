@@ -1,5 +1,7 @@
 --Compute
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "HiZCullingAlgorithm.cmn"
 #include "nodeDataDefinition.cmn"
 
@@ -55,8 +57,10 @@ void main()
 
     if (ident >= dvd_numEntities)
     {
-        // Padding lane of the rounded-up dispatch: there is no command here, so only bump the padding statistic.
-        atomicAdd(culledCount[1], 1);
+        if (dvd_countCulledItems == 1u)
+        {
+            atomicAdd(culledCount[1], 1);
+        }
         return;
     }
 
@@ -67,7 +71,10 @@ void main()
     // their own culling routines
     if (DVD_BASE_INSTANCE == 0u)
     {
-        atomicAdd(culledCount[2], 1);
+        if (dvd_countCulledItems == 1u)
+        {
+            atomicAdd(culledCount[2], 1);
+        }
         return;
     }
 
@@ -75,7 +82,10 @@ void main()
     // Skip occlusion cull if the flag is set
     if (!dvd_CullNode(transformData))
     {
-        atomicAdd(culledCount[3], 1);
+        if (dvd_countCulledItems == 1u)
+        {
+            atomicAdd(culledCount[3], 1);
+        }
         return;
     }
 

@@ -572,8 +572,10 @@ struct ShaderBuffer {
     std::size_t _alignmentRequirement = 16u;
     U16 slot = 0;
     U16 queueIndex() const { return slot; }
+    U16 queueLength() const { return 4; }
     BufferUsageType getUsage() const { return usage; }
     void readBytes(BufferRange<> range, std::pair<bufferPtr, std::size_t> outData);
+    void readBytes(BufferRange<> range, std::pair<bufferPtr, std::size_t> outData, U16 queueIndex);
     virtual void readBytesInternal(BufferRange<> range, std::pair<bufferPtr, std::size_t> outData) = 0;
 };
 @SHARED_READBACK@
@@ -614,6 +616,8 @@ template<typename T> void Check(T& buffer) {
     buffer.readBytes({0u, 0u}, {output.data(), output.size()});
     assert(buffer.impl.calls == calls && assertionFailures == ++failures);
     buffer.readBytes({1u, 16u}, {output.data(), output.size()});
+    assert(buffer.impl.calls == calls && assertionFailures == ++failures);
+    buffer.readBytes({0u, 16u}, {output.data(), output.size()}, 4u);
     assert(buffer.impl.calls == calls && assertionFailures == ++failures);
     buffer._params._hostVisible = false;
     buffer.readBytes({0u, 16u}, {output.data(), output.size()});

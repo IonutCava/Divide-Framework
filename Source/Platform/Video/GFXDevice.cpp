@@ -1416,17 +1416,23 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        _api->prepareFlushWindow( window );
-        const vec2<U16> windowDimensions = window.getDrawableSize();
-        setViewport( { 0, 0, windowDimensions.width, windowDimensions.height } );
-        setScissor( { 0, 0, windowDimensions.width, windowDimensions.height } );
+        const bool canFlush = _api->prepareFlushWindow( window );
+        if ( canFlush )
+        {
+            const vec2<U16> windowDimensions = window.getDrawableSize();
+            setViewport( { 0, 0, windowDimensions.width, windowDimensions.height } );
+            setScissor( { 0, 0, windowDimensions.width, windowDimensions.height } );
+        }
 
         {
             LockGuard<Mutex> w_lock( _queuedCommandbufferLock );
             GFX::CommandBufferQueue& queue = window.getCurrentCommandBufferQueue();
-            for ( const GFX::CommandBufferQueue::Entry& entry : queue._commandBuffers )
+            if ( canFlush )
             {
-                flushCommandBufferInternal( entry._buffer );
+                for ( const GFX::CommandBufferQueue::Entry& entry : queue._commandBuffers )
+                {
+                    flushCommandBufferInternal( entry._buffer );
+                }
             }
             ResetCommandBufferQueue(queue);
         }
@@ -2239,7 +2245,8 @@ namespace Divide
                     PROFILE_SCOPE( "READ_BUFFER_DATA", Profiler::Category::Graphics );
 
                     const GFX::ReadBufferDataCommand& crtCmd = *cmd->As<GFX::ReadBufferDataCommand>();
-                    crtCmd._buffer->readData( { crtCmd._offsetElementCount, crtCmd._elementCount }, crtCmd._target );
+                    const U16 queueIndex = crtCmd._queueIndex == U16_MAX ? crtCmd._buffer->queueIndex() : crtCmd._queueIndex;
+                    crtCmd._buffer->readData( { crtCmd._offsetElementCount, crtCmd._elementCount }, crtCmd._target, queueIndex );
                 } break;
                 case GFX::CommandType::CLEAR_BUFFER_DATA:
                 {
@@ -2249,7 +2256,8 @@ namespace Divide
                     if ( crtCmd._buffer != nullptr )
                     {
                         GFX::MemoryBarrierCommand memCmd{};
-                        memCmd._bufferLocks.push_back( crtCmd._buffer->clearData( { crtCmd._offsetElementCount, crtCmd._elementCount } ) );
+                        const U16 queueIndex = crtCmd._queueIndex == U16_MAX ? crtCmd._buffer->queueIndex() : crtCmd._queueIndex;
+                        memCmd._bufferLocks.push_back( crtCmd._buffer->clearData( { crtCmd._offsetElementCount, crtCmd._elementCount }, queueIndex ) );
                         _api->flushCommand( &memCmd );
                     }
                 } break;
@@ -2488,7 +2496,10 @@ namespace Divide
 
         ResourcePtr<Texture> hizTex = Get(hizBuffer);
 
+        LockGuard<Mutex> counterLock(_cullCounterLock);
         ShaderBuffer* cullBuffer = _gfxBuffers.crtBuffers()._cullCounter.get();
+        const U16 counterQueueIndex = cullBuffer->queueIndex();
+        const bool collectStats = queryPerformanceStats() && countCulledNodes;
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Occlusion Cull";
 
         GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _hIZCullPipeline;
@@ -2505,7 +2516,7 @@ namespace Divide
             Set( binding._data, cullBuffer, { 0u, 1u });
         }
 
-        passData._uniforms->set( _ID( "dvd_countCulledItems" ), PushConstantType::UINT, countCulledNodes ? 1u : 0u );
+        passData._uniforms->set( _ID( "dvd_countCulledItems" ), PushConstantType::UINT, collectStats ? 1u : 0u );
         passData._uniforms->set( _ID( "dvd_numEntities" ), PushConstantType::UINT, cmdCount );
         passData._uniforms->set( _ID( "dvd_viewSize" ), PushConstantType::VEC2, float2( hizTex->width(), hizTex->height() ) );
         passData._uniforms->set( _ID( "dvd_frustumPlanes" ), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
@@ -2530,13 +2541,14 @@ namespace Divide
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
-        if ( queryPerformanceStats() && countCulledNodes )
+        if ( collectStats )
         {
             GFX::ReadBufferDataCommand readAtomicCounter;
             readAtomicCounter._buffer = cullBuffer;
             readAtomicCounter._target = { &_lastCullCount, 4 * sizeof( U32 ) };
             readAtomicCounter._offsetElementCount = 0;
             readAtomicCounter._elementCount = 1;
+            readAtomicCounter._queueIndex = counterQueueIndex;
             GFX::EnqueueCommand( bufferInOut, readAtomicCounter );
 
             cullBuffer->incQueue();
@@ -2545,6 +2557,7 @@ namespace Divide
             clearAtomicCounter._buffer = cullBuffer;
             clearAtomicCounter._offsetElementCount = 0;
             clearAtomicCounter._elementCount = 1;
+            clearAtomicCounter._queueIndex = cullBuffer->queueIndex();
             GFX::EnqueueCommand( bufferInOut, clearAtomicCounter );
         }
     }

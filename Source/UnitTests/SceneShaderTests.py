@@ -17,6 +17,111 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class SceneShaderTests(unittest.TestCase):
+    def test_shader_buffer_reads_and_clears_the_captured_ring_slot(self):
+        source = (ROOT / "Source" / "Platform" / "Video" / "Buffers" / "ShaderBuffer" /
+                  "ShaderBuffer.cpp").read_text(encoding="utf-8")
+        begin = source.index("BufferLock ShaderBuffer::clearData(")
+        end = source.index("\n} //namespace Divide", begin)
+        functions = source[begin:end]
+        run_cpp(self, f"""
+#include <algorithm>
+#include <cassert>
+#include <cstdint>
+#include <cstring>
+#include <utility>
+#define PROFILE_SCOPE_AUTO(...)
+#define DIVIDE_ASSERT(condition, ...) (condition)
+using U16 = std::uint16_t;
+using U32 = std::uint32_t;
+using bufferPtr = void*;
+std::size_t to_size(U16 value) {{ return value; }}
+template<typename T = std::size_t> struct ElementRange {{ T _startOffset, _length; }};
+template<typename T = std::size_t> struct BufferRange {{ T _startOffset, _length; }};
+struct BufferLock {{ std::size_t offset, length; }};
+enum class BufferUsageType {{ UNBOUND_BUFFER }};
+enum class BufferUpdateFrequency {{ ONCE, OCCASIONAL }};
+namespace Util {{
+    std::size_t GetAlignmentCorrected(std::size_t value, std::size_t alignment) {{
+        return (value + alignment - 1) / alignment * alignment;
+    }}
+}}
+struct ShaderBuffer {{
+    struct {{ std::size_t _elementSize = 4; bool _hostVisible = true; }} _params;
+    std::size_t _alignedBufferSize = 16, _alignmentRequirement = 4;
+    U16 current = 0;
+    unsigned writes = 0;
+    unsigned char storage[64]{{}};
+    U16 queueIndex() const {{ return current; }}
+    U16 queueLength() const {{ return 4; }}
+    BufferUsageType getUsage() const {{ return BufferUsageType::UNBOUND_BUFFER; }}
+    BufferUpdateFrequency getUpdateFrequency() const {{ return BufferUpdateFrequency::OCCASIONAL; }}
+    void readBytesInternal(BufferRange<> range, std::pair<bufferPtr, std::size_t> target) {{
+        std::memcpy(target.first, storage + range._startOffset, range._length);
+    }}
+    BufferLock writeBytesInternal(BufferRange<> range, bufferPtr data) {{
+        ++writes;
+        if (data) std::memcpy(storage + range._startOffset, data, range._length);
+        else std::memset(storage + range._startOffset, 0, range._length);
+        return {{range._startOffset, range._length}};
+    }}
+    BufferLock clearData(ElementRange<>);
+    BufferLock clearData(ElementRange<>, U16);
+    BufferLock clearBytes(BufferRange<>);
+    BufferLock clearBytes(BufferRange<>, U16);
+    BufferLock writeData(ElementRange<>, bufferPtr);
+    BufferLock writeBytes(BufferRange<>, bufferPtr);
+    BufferLock writeBytes(BufferRange<>, bufferPtr, U16);
+    void readData(ElementRange<>, std::pair<bufferPtr, std::size_t>);
+    void readData(ElementRange<>, std::pair<bufferPtr, std::size_t>, U16);
+    void readBytes(BufferRange<>, std::pair<bufferPtr, std::size_t>);
+    void readBytes(BufferRange<>, std::pair<bufferPtr, std::size_t>, U16);
+}};
+{functions}
+int main() {{
+    ShaderBuffer buffer;
+    for (U16 i = 0; i < 4; ++i) {{
+        buffer.current = i;
+        U32 value = 100 + i;
+        const auto written = buffer.writeData({{0, 1}}, &value);
+        assert(written.offset == 16 * i && written.length == 4);
+    }}
+    U32 result = 0;
+    buffer.readData({{0, 1}}, {{&result, sizeof(result)}}, 0);
+    assert(result == 100 && buffer.current == 3);
+    const auto cleared = buffer.clearData({{0, 1}}, 1);
+    assert(cleared.offset == 16 && buffer.current == 3);
+    buffer.readData({{0, 1}}, {{&result, sizeof(result)}}, 1);
+    assert(result == 0);
+    buffer.readData({{0, 1}}, {{&result, sizeof(result)}});
+    assert(result == 103);
+    buffer.clearData({{0, 1}});
+    buffer.readData({{0, 1}}, {{&result, sizeof(result)}}, 2);
+    assert(result == 102);
+    const unsigned validWrites = buffer.writes;
+    U32 value = 999;
+    assert(buffer.writeBytes({{0, 4}}, &value, 4).length == 0);
+    assert(buffer.writeBytes({{12, 8}}, &value, 0).length == 0);
+    assert(buffer.writeBytes({{static_cast<std::size_t>(-1), 4}}, &value, 0).length == 0);
+    assert(buffer.writeBytes({{1, 4}}, &value, 0).length == 0);
+    assert(buffer.writeBytes({{0, 0}}, &value, 0).length == 0);
+    assert(buffer.writes == validWrites);
+    buffer.readData({{0, 1}}, {{&result, sizeof(result)}}, 2);
+    assert(result == 102);
+    const auto explicitWrite = buffer.writeBytes({{4, 4}}, &value, 2);
+    assert(explicitWrite.offset == 36 && explicitWrite.length == 4 && buffer.current == 3);
+    buffer.readData({{1, 1}}, {{&result, sizeof(result)}}, 2);
+    assert(result == 999);
+}}
+""")
+        host = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
+        begin = host.index("    void GFXDevice::occlusionCull(")
+        end = host.index("\n#pragma endregion", begin)
+        cull = host[begin:end]
+        self.assertIn("LockGuard<Mutex> counterLock(_cullCounterLock);", cull)
+        self.assertIn("readAtomicCounter._queueIndex = counterQueueIndex;", cull)
+        self.assertIn("clearAtomicCounter._queueIndex = cullBuffer->queueIndex();", cull)
+        self.assertIn("const bool collectStats = queryPerformanceStats() && countCulledNodes;", cull)
+
     def test_cull_counter_initializes_every_reused_ring_slot(self):
         source = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
         begin = source.index("                ShaderBuffer& counter = *_gfxBuffers._perFrameBuffers[i]._cullCounter;")

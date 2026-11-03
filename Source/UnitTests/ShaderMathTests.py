@@ -529,6 +529,54 @@ void main() {{
             with self.subTest(count=count):
                 self.assertEqual(actual[index * 3:index * 3 + 3], [(count + 1) // 2, 64 - count, 0])
 
+    def test_hiz_disabled_statistics_never_write_counters(self):
+        source = section("HiZOcclusionCull.glsl", "Compute")
+        source = source[source.index("void CullItem("):]
+        source = re.sub(r"layout\(local_size_x = WORK_GROUP_SIZE\) in;", "", source)
+        source = source.replace("void main()", "void cullMain()")
+        source = source.replace("gl_GlobalInvocationID.x", "fakeID")
+        shader = f"""
+#version 460
+#define WORK_GROUP_SIZE 8
+#define atomicAdd(A, B) ((A) += uint(B))
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0, std430) buffer Results {{ float values[]; }};
+struct Command {{ uint count, instanceCount, firstIndex, baseVertex, baseInstance; }};
+struct NodeIndirectionData {{ uint _transformIdx; }};
+struct NodeTransformData {{ vec4 sphere; uint enabled; }};
+Command dvd_drawCommands[4];
+NodeIndirectionData dvd_IndirectionData[4];
+NodeTransformData dvd_Transforms[4];
+uint dvd_numEntities, dvd_countCulledItems, fakeID;
+uint culledCount[4];
+bool dvd_CullNode(NodeTransformData node) {{ return node.enabled != 0u; }}
+vec4 dvd_BoundingSphere(NodeTransformData node) {{ return node.sphere; }}
+bool HiZCull(vec3 position, float radius) {{ return position.x == 2.0; }}
+{source}
+void main() {{
+    for (uint flag = 0u; flag < 2u; ++flag) {{
+        dvd_countCulledItems = flag;
+        dvd_numEntities = 4u;
+        for (uint i = 0u; i < 4u; ++i) {{
+            culledCount[i] = 10u * (i + 1u);
+            dvd_drawCommands[i] = Command(1u, 1u, 0u, 0u, i + 1u);
+            dvd_IndirectionData[i]._transformIdx = i;
+            dvd_Transforms[i] = NodeTransformData(vec4(float(i), 0, 0, 1), 1u);
+        }}
+        dvd_drawCommands[0].baseInstance = 0u;
+        dvd_Transforms[1].enabled = 0u;
+        for (fakeID = 0u; fakeID < 8u; ++fakeID) cullMain();
+        for (uint i = 0u; i < 4u; ++i) {{
+            values[flag * 8u + i] = float(culledCount[i]);
+            values[flag * 8u + 4u + i] = float(dvd_drawCommands[i].instanceCount);
+        }}
+    }}
+}}
+"""
+        actual = execute(shader, 16)
+        self.assertEqual(actual[:8], [10, 20, 30, 40, 1, 1, 0, 1])
+        self.assertEqual(actual[8:], [11, 24, 31, 41, 1, 1, 0, 1])
+
 
 class MaterialLightingMathTests(unittest.TestCase):
     @staticmethod

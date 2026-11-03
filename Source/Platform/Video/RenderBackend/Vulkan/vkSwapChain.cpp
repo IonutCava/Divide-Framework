@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/vkSwapChain.h"
 #include "Headers/vkDevice.h"
@@ -26,22 +26,24 @@ namespace Divide {
     
     void VKSwapChain::destroy() 
     {
-        vkb::destroy_swapchain(_swapChain);
-
+        _activeFrame = nullptr;
         _swapChain.destroy_image_views(_swapchainImageViews);
-        _swapchainImages.clear();
-        _swapchainImageViews.clear();
-        _swapchainImagePresented.clear();
 
         if ( _swapChain.swapchain != VK_NULL_HANDLE )
         {
             const VkDevice device = _device.getVKDevice();
+            const VkCommandPool pool = _device.getQueue(QueueType::GRAPHICS)._pool;
             for (FrameData& frameData : _frames)
             {
+                if ( frameData._commandBuffer != VK_NULL_HANDLE )
+                {
+                    vkFreeCommandBuffers(device, pool, 1u, &frameData._commandBuffer);
+                }
                 vkDestroySemaphore(device, frameData._presentSemaphore, nullptr);
                 vkDestroyFence(device, frameData._renderFence._handle, nullptr);
             }
             _frames.clear();
+            vkb::destroy_swapchain(_swapChain);
             _swapChain.swapchain = VK_NULL_HANDLE;
 
             for (VkSemaphore& semaphore : _renderSemaphores)
@@ -53,6 +55,9 @@ namespace Divide {
             }
             _renderSemaphores.clear();
         }
+        _swapchainImages.clear();
+        _swapchainImageViews.clear();
+        _swapchainImagePresented.clear();
     }
 
     ErrorCode VKSwapChain::create(const bool vSync, const bool adaptiveSync, VkSurfaceKHR targetSurface)
@@ -91,6 +96,7 @@ namespace Divide {
         if ( !vkbSwapchain )
         {
             Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), vkbSwapchain.error().message().c_str() );
+            destroy();
             return ErrorCode::VK_OLD_HARDWARE;
         }
 
@@ -136,6 +142,11 @@ namespace Divide {
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+        if ( _frames.empty() || _swapChain.swapchain == VK_NULL_HANDLE )
+        {
+            return VK_ERROR_OUT_OF_DATE_KHR;
+        }
+
         _activeFrame = &_frames[GFXDevice::FrameCount() % _frames.size()];
 
         //wait until the GPU has finished rendering the last frame.
@@ -143,11 +154,6 @@ namespace Divide {
             PROFILE_SCOPE( "Wait for fences", Profiler::Category::Graphics);
             VK_CHECK( vkWaitForFences( _device.getVKDevice(), 1, &_activeFrame->_renderFence._handle, VK_TRUE, U64_MAX ) );
         }
-        {
-            PROFILE_SCOPE( "Reset fences", Profiler::Category::Graphics );
-            VK_CHECK( vkResetFences( _device.getVKDevice(), 1, &_activeFrame->_renderFence._handle ) );
-        }
-
         //request image from the swapchain, one second timeout
         VkResult ret = VK_ERROR_UNKNOWN;
         {
@@ -155,7 +161,7 @@ namespace Divide {
             ret = vkAcquireNextImageKHR(_device.getVKDevice(), _swapChain.swapchain, U64_MAX, _activeFrame->_presentSemaphore, nullptr, &_swapchainImageIndex);
         }
 
-        if ( ret == VK_SUCCESS )
+        if ( ret == VK_SUCCESS || ret == VK_SUBOPTIMAL_KHR )
         {
             _currentImageRenderedThisFrame = false;
             PROFILE_SCOPE( "Begin Command Buffer", Profiler::Category::Graphics );
@@ -206,6 +212,8 @@ namespace Divide {
         submit.commandBufferCount = 1;
         submit.pCommandBuffers = &_activeFrame->_commandBuffer;
 
+        // Reset only when submitting, so an abandoned frame leaves a signaled fence.
+        VK_CHECK( vkResetFences( _device.getVKDevice(), 1, &_activeFrame->_renderFence._handle ) );
         // submit command buffer to the queue and execute it. _renderFence will now block until the graphic commands finish execution
         _device.submitToQueue(QueueType::GRAPHICS, submit, _activeFrame->_renderFence._handle);
         PROFILE_VK_PRESENT( &_swapChain.swapchain );

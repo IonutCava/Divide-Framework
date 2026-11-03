@@ -565,6 +565,7 @@ private:
     vector<DebugView_ptr> _debugViews;
 
     Mutex _queuedCommandbufferLock;
+    Mutex _cullCounterLock;
 
     struct GFXBuffers
     {

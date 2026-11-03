@@ -59,6 +59,7 @@ class VKDevice final : NonCopyable, NonMovable
         [[nodiscard]] VkCommandPool   createCommandPool(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT) const;
                       void            submitToQueue(QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence) const;
         [[nodiscard]] VkResult        queuePresent(QueueType queue, const VkPresentInfoKHR& presentInfo) const;
+        [[nodiscard]] VkResult        waitIdle() const;
 
         [[nodiscard]] U32     getPresentQueueIndex() const noexcept;
         [[nodiscard]] VKQueue getQueue( QueueType type ) const noexcept;
@@ -71,6 +72,7 @@ class VKDevice final : NonCopyable, NonMovable
 
     private:
         [[nodiscard]] VKQueue getQueueInternal( QueueType type, bool dedicated) const noexcept;
+        [[nodiscard]] Mutex& queueLock( QueueType type ) const noexcept;
 
     private:
         vkb::Device _device{}; // Vulkan device for commands

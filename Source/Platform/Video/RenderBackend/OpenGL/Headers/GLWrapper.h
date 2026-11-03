@@ -90,7 +90,7 @@ private:
     [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
                   void onRenderThreadLoopStart( ) override;
                   void onRenderThreadLoopEnd() override;
-                  void prepareFlushWindow( DisplayWindow& window ) override;
+    [[nodiscard]] bool prepareFlushWindow( DisplayWindow& window ) override;
                   void flushWindow( DisplayWindow& window) override;
     [[nodiscard]] bool frameStarted() override;
     [[nodiscard]] bool frameEnded() override;

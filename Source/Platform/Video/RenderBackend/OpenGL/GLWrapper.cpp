@@ -670,9 +670,10 @@ namespace Divide
     {
     }
 
-    void GL_API::prepareFlushWindow( [[maybe_unused]] DisplayWindow& window )
+    bool GL_API::prepareFlushWindow( DisplayWindow& window )
     {
         GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ));
+        return true;
     }
 
     void GL_API::flushWindow( DisplayWindow& window )

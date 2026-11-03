@@ -750,29 +750,47 @@ namespace Divide
 
         GetStateTracker()._activeWindow = &windowState;
 
+        if ( windowState._frameInProgress )
+        {
+            return true;
+        }
+        if ( windowState._skipEndFrame )
+        {
+            return false;
+        }
+
         const vec2<U16> windowDimensions = window.getDrawableSize();
         VkExtent2D surfaceExtent = windowState._swapChain->surfaceExtent();
 
-        if ( windowDimensions.width != surfaceExtent.width || windowDimensions.height != surfaceExtent.height )
+        if ( windowState._needsRecreate ||
+             windowDimensions.width != surfaceExtent.width || windowDimensions.height != surfaceExtent.height )
         {
-            recreateSwapChain( windowState );
+            if ( !recreateSwapChain( windowState ) )
+            {
+                windowState._needsRecreate = true;
+                windowState._skipEndFrame = true;
+                return false;
+            }
+            windowState._needsRecreate = false;
             surfaceExtent = windowState._swapChain->surfaceExtent();
         }
 
         const VkResult result = windowState._swapChain->beginFrame();
-        if ( result != VK_SUCCESS )
+        if ( result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR )
         {
-            if ( result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR )
+            if ( result != VK_ERROR_OUT_OF_DATE_KHR )
             {
                 Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( result ).c_str() );
                 DIVIDE_UNEXPECTED_CALL();
             }
 
-            recreateSwapChain( windowState );
+            windowState._needsRecreate = !recreateSwapChain( windowState );
             windowState._skipEndFrame = true;
             return false;
         }
 
+        windowState._frameInProgress = true;
+        windowState._recreateAfterPresent = result == VK_SUBOPTIMAL_KHR;
         return true;
     }
 
@@ -784,8 +802,10 @@ namespace Divide
     {
     }
 
-    void VK_API::prepareFlushWindow( [[maybe_unused]] DisplayWindow& window )
+    bool VK_API::prepareFlushWindow( DisplayWindow& window )
     {
+        const VKPerWindowState& windowState = _perWindowState[window.getGUID()];
+        return windowState._frameInProgress && !windowState._skipEndFrame;
     }
 
     void VK_API::flushWindow( DisplayWindow& window )
@@ -805,6 +825,11 @@ namespace Divide
             return;
         }
 
+        if ( !DIVIDE_ASSERT( windowState._frameInProgress, "VK_API::flushWindow: no acquired frame" ) )
+        {
+            return;
+        }
+
         FlushBufferTransferRequests( GetCurrentCommandBuffer() );
 
         windowState._activeState = {};
@@ -816,7 +841,10 @@ namespace Divide
             s_submitSemaphores._pendingSubmitSemaphores.reset_lose_memory();
         }
 
-        const VkResult result = windowState._swapChain->endFrame( s_submitSemaphores._pendingSubmitSemaphores );
+        const VkResult result = windowState._swapChain->endFrame( s_localPendingSems );
+        windowState._frameInProgress = false;
+        const bool recreateAfterPresent = windowState._recreateAfterPresent;
+        windowState._recreateAfterPresent = false;
 
         for (VkSemaphore semaphore : s_localPendingSems)
         {
@@ -828,17 +856,15 @@ namespace Divide
 
         s_localPendingSems.reset_lose_memory();
 
-        if ( result != VK_SUCCESS )
+        if ( result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR ||
+             (result == VK_SUCCESS && recreateAfterPresent) )
         {
-            if ( result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR )
-            {
-                recreateSwapChain( windowState );
-            }
-            else
-            {
-                Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( result ).c_str() );
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            windowState._needsRecreate = !recreateSwapChain( windowState );
+        }
+        else if ( result != VK_SUCCESS )
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( result ).c_str() );
+            DIVIDE_UNEXPECTED_CALL();
         }
     }
 
@@ -893,7 +919,7 @@ namespace Divide
         return true;
     }
 
-    void VK_API::recreateSwapChain( VKPerWindowState& windowState )
+    bool VK_API::recreateSwapChain( VKPerWindowState& windowState )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -904,15 +930,17 @@ namespace Divide
         }
         if ( windowState._window->minimized() )
         {
-            return;
+            return false;
         }
 
-        if (windowState._window->getGUID() == _context.context().mainWindow().getGUID() )
+        PROFILE_SCOPE( "Wait for idle", Profiler::Category::Graphics);
+        const VkResult idleResult = _device->waitIdle();
+        if ( idleResult != VK_SUCCESS )
         {
-            PROFILE_SCOPE( "Wait for idle", Profiler::Category::Graphics);
-            s_deviceDeleteQueue.flush( _device->getVKDevice(), true );
-            vkDeviceWaitIdle( _device->getVKDevice() );
+            Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( idleResult ).c_str() );
+            return false;
         }
+
         const ErrorCode err = windowState._swapChain->create( windowState._window->flags() & to_base(WindowFlags::VSYNC),
                                                               _context.context().config().runtime.adaptiveSync,
                                                               windowState._surface );
@@ -935,8 +963,7 @@ namespace Divide
             }
         }
 
-        // Clear ALL sync objects as they are all invalid after recreating the swapchain. vkDeviceWaitIdle should resolve potential sync issues.
-        LockManager::CleanExpiredSyncObjects( RenderAPI::Vulkan, U64_MAX);
+        return err == ErrorCode::NO_ERR;
     }
 
     void VK_API::initStatePerWindow( VKPerWindowState& windowState)
@@ -949,7 +976,7 @@ namespace Divide
         }
 
         windowState._swapChain = std::make_unique<VKSwapChain>( *this, *_device, *windowState._window );
-        recreateSwapChain( windowState );
+        windowState._needsRecreate = !recreateSwapChain( windowState );
     }
 
     void VK_API::destroyStatePerWindow( VKPerWindowState& windowState )
@@ -1479,7 +1506,7 @@ namespace Divide
         {
             if ( _device->getVKDevice() != VK_NULL_HANDLE )
             {
-                vkDeviceWaitIdle( _device->getVKDevice() );
+                VK_CHECK( _device->waitIdle() );
                 s_transientDeleteQueue.flush( _device->getVKDevice(), true );
                 s_deviceDeleteQueue.flush( _device->getVKDevice(), true );
                 for ( auto& pool : s_stateTracker._descriptorAllocators )

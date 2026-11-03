@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -51,7 +51,7 @@ class NVIDIA_RENDER_INTERFACE_API final : public RenderAPIWrapper {
       [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
                     void onRenderThreadLoopStart() override;
                     void onRenderThreadLoopEnd() override;
-                    void prepareFlushWindow( DisplayWindow& window ) override;
+      [[nodiscard]] bool prepareFlushWindow( DisplayWindow& window ) override;
                     void flushWindow( DisplayWindow& window ) override;
       [[nodiscard]] bool frameStarted() override;
       [[nodiscard]] bool frameEnded() override;
