@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -157,7 +157,7 @@ namespace Divide
 
         std::array<RenderPassData, to_base(RenderStage::COUNT)> _renderPassData{};
         std::array<std::atomic_bool, to_base( RenderStage::COUNT )> _renderPassCompleted{};
-
+        std::array<I64, Config::MAX_LOCAL_PLAYER_COUNT> _previousCameraGUID = create_array<Config::MAX_LOCAL_PLAYER_COUNT, I64>( -1 );
 
         std::array<RenderPassExecutor_uptr, to_base( RenderStage::COUNT )> _executors;
         std::array<Time::ProfileTimer*, to_base( RenderStage::COUNT )> _processCommandBufferTimer = create_array<to_base( RenderStage::COUNT ), Time::ProfileTimer*>( nullptr );

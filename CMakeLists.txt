@@ -255,7 +255,6 @@ if( MSVC_COMPILER OR CLANG_MSVC_FRONTEND )
 
     set(MSVC_DEBUG_COMPILE_OPTIONS
         $<$<CONFIG:Debug>:/Od>
-        $<$<CONFIG:Debug>:/Zi>
     )
 
     set(MSVC_DEBUG_LINK_OPTIONS
@@ -266,7 +265,6 @@ if( MSVC_COMPILER OR CLANG_MSVC_FRONTEND )
 
     set(MSVC_RELWITHDEBINFO_COMPILE_OPTIONS
         $<$<CONFIG:RelWithDebInfo>:/Ox>
-        $<$<CONFIG:RelWithDebInfo>:/Zi>
     )
 
     set(MSVC_RELWITHDEBINFO_LINK_OPTIONS

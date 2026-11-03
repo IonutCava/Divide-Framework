@@ -160,10 +160,9 @@ float SpecularToMetalness(in vec3 specular, in float power) {
 }
 
 float SpecularToRoughness(in vec3 specular, in float power) {
-    const float roughnessFactor = 1.f - sqrt(power / MAX_SHININESS);
-    const float luminance = Luminance(specular);
-    // Specular intensity directly impacts roughness regardless of shininess
-    return 1.f - Saturate(pow(roughnessFactor, 2) * luminance);
+    const float roughnessFactor = 1.f - sqrt(Saturate(power / MAX_SHININESS));
+    const float luminance = Saturate(Luminance(specular));
+    return mix(1.f, roughnessFactor * roughnessFactor, luminance);
 }
 
 float getRoughness(in NodeMaterialData matData, in vec2 uv, in float normalVariation) {
@@ -268,7 +267,6 @@ vec4 getTextureColour(in NodeMaterialData data, in vec3 uv) {
 
 #if defined(HAS_TRANSPARENCY)
 
-#if defined(USE_ALPHA_DISCARD)
 float getAlpha(in NodeMaterialData data, in vec3 uv) 
 {
 #if defined(USE_OPACITY_TEXTURE)
@@ -285,21 +283,11 @@ float getAlpha(in NodeMaterialData data, in vec3 uv)
 #endif //USE_UNIT0_TEXTURE
     return dvd_BaseColour(data).a;
 }
-#endif //USE_ALPHA_DISCARD
 
 vec4 getAlbedo(in NodeMaterialData data, in vec3 uv)
 {
     vec4 albedo = getTextureColour(data, uv);
-#if defined(USE_OPACITY_TEXTURE)
-    if (dvd_TexOpOpacity(data) != TEX_NONE)
-    {
-        albedo.a = dvd_UseOpacityAlphaChannel(data) ? texture(texOpacityMap, uv).a : texture(texOpacityMap, uv).r;
-    }
-#endif //USE_OPACITY_TEXTURE
-    if (!dvd_UseAlbedoTextureAlphaChannel(data))
-    {
-        albedo.a = dvd_BaseColour(data).a;
-    }
+    albedo.a = getAlpha(data, uv);
     return albedo;
 }
 #else //HAS_TRANSPARENCY

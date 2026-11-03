@@ -57,10 +57,8 @@ void main()
     // dst' =  (accumulation.rgb / accumulation.a) * (1 - revealage) + dst
     // [dst has already been modulated by the transmission colors and coverage and the blend mode inverts revealage for us] 
     _colourOut = vec4(averageColor, revealage);
-    if ( revealage < 0.5f)
-    {
-        _normalsOut.rg = texelFetch( normalsTexture, C, SampleID ).rg;
-    }
+    _normalsOut = revealage < 0.5f
+        ? vec4(texelFetch(normalsTexture, C, SampleID).rgb, 1.f)
+        : vec4(0.f);
 }
-
 

@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/Renderer.h"
 
@@ -7,6 +8,7 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Rendering/PostFX/Headers/PostFX.h"
+#include "Rendering/Lighting/Headers/ClusteredLighting.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
 
 #include "Managers/Headers/ProjectManager.h"
@@ -160,6 +162,12 @@ void Renderer::prepareLighting(const RenderStage stage,
 
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+    if ( !DIVIDE_ASSERT( ClusteredLighting::IsValidClusterDepthRange( cameraSnapshot._zPlanes.min, cameraSnapshot._zPlanes.max ),
+                         "Renderer::prepareLighting: clustered lighting requires finite camera planes with 0 < zNear < zFar" ) )
+    {
+        return;
+    }
+
     GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Renderer Cull Lights";
     {
         PerRenderStageData& data = _lightDataPerStage[to_base(stage)];
@@ -169,19 +177,19 @@ void Renderer::prepareLighting(const RenderStage stage,
 
             const size_t stageIndex = to_size( stage );
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 8u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 8u, ShaderStageVisibility::COMPUTE_AND_FRAGMENT );
                 Set(binding._data, LightPool::SceneBuffer(), {stageIndex, 1u});
             }
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 9u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 9u, ShaderStageVisibility::VERTEX_FRAGMENT_COMPUTE );
                 Set(binding._data, LightPool::LightBuffer(), {stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME } );
             }
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 10u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 10u, ShaderStageVisibility::COMPUTE_AND_FRAGMENT );
                 Set(binding._data, data._lightIndexBuffer.get() );
             }
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 11u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 11u, ShaderStageVisibility::COMPUTE_AND_FRAGMENT );
                 Set(binding._data, data._lightGridBuffer.get() );
             }
             {
@@ -219,20 +227,14 @@ void Renderer::prepareLighting(const RenderStage stage,
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
         }
 
-        bool needRebuild = data._invalidated || g_rebuildLightGridEachFrame;
-        if (!needRebuild )
-        {
-            PerRenderStageData::GridBuildData tempData;
-            tempData._invProjectionMatrix = cameraSnapshot._invProjectionMatrix;
-            tempData._viewport = viewport;
-            tempData._zPlanes = cameraSnapshot._zPlanes;
+        // Always capture the current inputs so a forced rebuild never dispatches with stale (or never-initialised) grid data.
+        PerRenderStageData::GridBuildData tempData;
+        tempData._invProjectionMatrix = cameraSnapshot._invProjectionMatrix;
+        tempData._viewport = viewport;
+        tempData._zPlanes = cameraSnapshot._zPlanes;
 
-             needRebuild = data._gridData != tempData;
-             if (needRebuild)
-             {
-                 data._gridData = tempData;
-             }
-        }
+        const bool needRebuild = data._invalidated || g_rebuildLightGridEachFrame || data._gridData != tempData;
+        data._gridData = tempData;
 
         if ( needRebuild )
         {

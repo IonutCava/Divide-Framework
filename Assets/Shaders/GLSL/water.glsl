@@ -81,7 +81,7 @@ void main()
             return;
         case DEBUG_REFLECTIONS:
 #if defined(SKIP_REFLECT_REFRACT)
-            writeScreenColour(vec4(0.f, 0.f, 0.f ,1.f), vec3( 0.f ), vec3( 0.f ), );
+            writeScreenColour(vec4(0.f, 0.f, 0.f, 1.f), vec3( 0.f ), normalWV );
 #else //SKIP_REFLECT_REFRACT
             writeScreenColour(texture(texReflect, waterUV), vec3( 0.f ), normalWV );
 #endif //SKIP_REFLECT_REFRACT
@@ -93,7 +93,7 @@ void main()
     // ref: https://www.rastertek.com/terdx10tut16.html
     const vec3 texColour = (_underwater == 1 ? refractionColour : mix(refractionColour,
 #if defined(SKIP_REFLECT_REFRACT)
-                                                                      vec4(0.f, 0.f, 0.f, 1.f)
+                                                                      vec3(0.f),
 #else
                                                                       texture(texReflect, waterUV).rgb,
 #endif

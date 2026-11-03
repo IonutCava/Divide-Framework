@@ -52,9 +52,33 @@ Textures use immutable `glTextureStorage*` storage and DSA mip/layer uploads; th
 
 `VKWrapper.cpp` creates a global VMA allocator after device creation; both buffers and images reuse it.
 
-- `vkBufferImpl` generally prefers device-local memory. Frequently updated/host-visible buffers request mapped VMA host access for direct writes.
-- Non-mappable buffers use staging allocations and explicit transfer commands. Inspect mapping assumptions, staging lifetime, copies, and synchronization separately.
+- `vkBufferImpl` generally prefers device-local memory. Frequently updated buffers request persistent mapping; initial uploads temporarily map host-visible allocations when host access was requested. Initial and post-creation writes flush non-coherent mapped ranges before GPU use.
+- Non-mappable buffers and initial allocations without VMA host-access flags use staging allocations and explicit transfer commands. Initial and later staged writes flush the staging range before the transfer. Inspect mapping assumptions, staging lifetime, copies, and synchronization separately.
 - `vkTexture` derives image usage flags from engine `ImageUsage`, usually uses dedicated device-preferred VMA allocations, uploads through staging, explicitly transitions layouts, and can generate mipmaps on the GPU.
+
+CPU-readable buffers (`_hostVisible`, required by `ShaderBuffer::readBytes`) request `HOST_ACCESS_RANDOM | MAPPED`. VMA therefore places them in host-visible, preferably cached memory and keeps them persistently mapped. `vkBufferImpl::readBytes` invalidates non-coherent ranges before copying. If a mapping is missing, it maps temporarily. It rejects non-host-visible memory instead of mapping it. Reads are bounded to the selected logical ring slot before the slot offset is applied. GPU writers must record a `GPU_WRITE_TO_CPU_READ` lock, which becomes a shader-write to host-read barrier; the barrier alone does not wait for GPU completion. `READ_BUFFER_DATA` requests are queued for deferred host reads: OpenGL inserts a fence and polls it with a zero timeout, while Vulkan associates the request with the active frame fence and reads it after that fence has been waited during frame reuse. Neither backend blocks the render thread for an individual readback.
+
+The occlusion counter initializes every ring slot, serializes slot selection
+when recording, and captures the intended slots for reads and clears. All
+counter writes are disabled when statistics are not requested. A slot remains
+reserved until its asynchronous readback completes, preventing wraparound from
+overwriting an in-flight result. If no counter slot is available, only that
+frame's optional statistics are skipped; culling and rendering continue. The
+reported count can therefore lag by a few frames, and older completions cannot
+replace a newer result.
+
+Vulkan resets the frame fence only when submitting, not before image
+acquisition. If acquisition fails, the window's queued commands are discarded
+instead of being replayed into an unrecorded command buffer. Resuming a parent
+window after a nested window reuses its already-acquired frame, or preserves
+its skipped state until that window is flushed. Submissions wait on the
+transfer semaphores claimed for that submission. A suboptimal acquisition
+still consumes and presents the acquired image before recreation.
+Swapchain recreation waits for device idle for every window, with queue
+operations synchronized by Vulkan queue handle. Image views and frame command
+buffers are released during teardown, and a failed recreation is retried
+before another acquisition. A queue-submission failure after fence reset is
+not yet recovered: it can leave an unsignaled fence.
 
 Changes to writable/readable images must audit usage flags, transitions, staging lifetime, and consumers together.
 `vkTexture::GetAspectFlags` follows depth/stencil packing, not attachment usage:
@@ -69,6 +93,7 @@ OpenGL is the reference. Client code does not branch on the API for Y: projectio
 - Vulkan offscreen targets use an unflipped viewport and pass-through scissor; texel row 0 is clip-space bottom, matching GL sampling, `texelFetch(gl_FragCoord)`, copies, and readbacks. Dynamic front face is inverted to compensate.
 - Only the Vulkan swapchain uses a negative-height viewport and top-left scissor conversion (`IsSwapChainTargetActive()` in `VKWrapper.cpp`); its front face is not inverted.
 - Shaders drawing to the screen must not rely on `gl_FragCoord.y`.
+- Both APIs use zero-to-one depth: OpenGL enables `GL_ZERO_TO_ONE` via `glClipControl`, Vulkan's viewport depth range is 0..1, and camera projection builders default to `zeroToOneDepth=true`. Depth reconstruction must not apply `0.5*z+0.5` remapping.
 - Future backends should flip only at presentation and adjust winding internally.
 
 ## Colour-space convention

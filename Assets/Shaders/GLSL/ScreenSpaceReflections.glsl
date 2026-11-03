@@ -1,5 +1,7 @@
 --Fragment
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 #define DEBUG_NAN_VALUES
 
 #include "utility.frag"
@@ -8,6 +10,7 @@
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texScreen;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texDepth;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texNormal;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 3) uniform sampler2D texPreviousDepth;
 
 // A projection matrix that maps to pixel coordinates (not [-1, +1] normalized device coordinates)
 #define projToPixel PushData0
@@ -15,9 +18,9 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texNormal;
 
 uniform mat4 invProjectionMatrix;
 uniform mat4 invViewMatrix;
-uniform mat4 previousViewMatrix;
 uniform mat4 previousProjectionMatrix;
 uniform mat4 previousViewProjectionMatrix;
+uniform uint previousDepthValid = 0u;
 uniform vec2 _zPlanes;
 uniform vec2 screenDimensions;
 uniform uint maxScreenMips = 5u;
@@ -35,11 +38,26 @@ uniform float eyeFadeEnd = 1.f;
 
 layout(location = 0) out vec4 _colourOut;
 
+bool PreviousFrameDepthMatches(in vec2 uv, in float expectedDepth) {
+    if (previousDepthValid == 0u) {
+        return false;
+    }
+
+    const float previousDepth = textureLod(texPreviousDepth, uv, 0.f).r;
+    if (previousDepth >= INV_Z_TEST_SIGMA) {
+        return false;
+    }
+
+    const float expectedViewDepth = ViewDistanceFromDepth(expectedDepth, previousProjectionMatrix);
+    const float storedViewDepth = ViewDistanceFromDepth(previousDepth, previousProjectionMatrix);
+    const float depthTolerance = max(0.05f, expectedViewDepth * 0.01f);
+    return expectedViewDepth > 0.f && abs(storedViewDepth - expectedViewDepth) <= depthTolerance;
+}
+
 #define DistanceSquared(A, B) dot((A-B),(A-B))
 
-float Linear01Depth(in float z) {
-    const float temp = _zPlanes.y / _zPlanes.x;
-    return 1.f / ((1.f - temp) * z + temp);
+bool IntersectsDepthSlab(in float z0, in float z1, in float sceneZ) {
+    return max(z0, z1) >= sceneZ - zThickness && min(z0, z1) <= sceneZ;
 }
 
 //ref: http://casual-effects.blogspot.com/2014/08/screen-space-ray-tracing.html
@@ -55,10 +73,14 @@ bool FindSSRHit(in vec3 csOrig,       // Camera-space ray origin, which must be 
     const float rayLength = ((csOrig.z + csDir.z * maxDistance) > -_zPlanes.x)
                                      ? (-_zPlanes.x - csOrig.z) / csDir.z
                                      : maxDistance;
+    hitPixel = vec2(0.f);
+    hitPoint = csOrig;
+    iterations = 0.f;
+    if (rayLength <= 0.f) {
+        return false;
+    }
 
     const vec3 csEndPoint = csOrig + csDir * rayLength;
-    //if(csEndPoint.z > csOrig.z)
-    // return false;
 
     // Project into homogeneous clip space
     const vec4 H0 = projToPixel * vec4(csOrig, 1.f);
@@ -98,61 +120,87 @@ bool FindSSRHit(in vec3 csOrig,       // Camera-space ray origin, which must be 
     const float strideScaler = 1.f - min(1.f, -csOrig.z / strideZCutoff);
     const float pixelStride = 1.f + strideScaler * stride;
 
-    // Scale derivatives by the desired pixel stride and then
-    // offset the starting values by the jitter fraction
+    // Scale derivatives by the desired pixel stride, keeping at least one
+    // segment of short rays after applying the jitter.
     dP *= pixelStride; dQ *= pixelStride; dk *= pixelStride;
-    P0 += dP * jitter; Q0 += dQ * jitter; k0 += dk * jitter;
+    const float jitterSteps = clamp(jitter, 0.f, max(0.f, abs(delta.x) / pixelStride - 1.f));
+    P0 += dP * jitterSteps; Q0 += dQ * jitterSteps; k0 += dk * jitterSteps;
 
     // Adjust end condition for iteration direction
     const float end = P1.x * stepDir;
 
-    float i, zA = csOrig.z, zB = csOrig.z;
-    vec4 pqk = vec4(P0, Q0.z, k0);
-    vec4 dPQK = vec4(dP, dQ.z, dk);
-    bool intersect = false;
-    for (i = 0; i < maxSteps && intersect == false && pqk.x * stepDir <= end; i++) 	{
-        pqk += dPQK;
-
-        zA = zB;
-        zB = (dPQK.z * 0.5f + pqk.z) / (dPQK.w * 0.5f + pqk.w);
-
-        hitPixel = permute ? pqk.yx : pqk.xy;
-        hitPixel = hitPixel / screenDimensions;
-        const float currentZ = Linear01Depth(texture(texDepth, hitPixel).r) * -_zPlanes.y;
-        intersect = zA >= currentZ - zThickness && zB <= currentZ;
+    const vec2 pixelStart = permute ? P0.yx : P0.xy;
+    const vec2 pixelStep = permute ? dP.yx : dP.xy;
+    const vec2 startUV = pixelStart / screenDimensions;
+    if (!IsInScreenRect(startUV)) {
+        return false;
     }
-
-    // Binary search refinement
-    float addDQ = 0.f;
-    if (pixelStride > 1.f && intersect) {
-        pqk -= dPQK;
-        dPQK /= pixelStride;
-        float originalStride = pixelStride * 0.5;
-        float strideTemp = originalStride;
-        zA = pqk.z / pqk.w;
-        zB = zA;
-        for (float j = 0; j < binarySearchIterations; j++) {
-            pqk += dPQK * strideTemp;
-            addDQ += strideTemp;
-
-            zA = zB;
-            zB = (dPQK.z * 0.5f + pqk.z) / (dPQK.w * 0.5f + pqk.w);
-
-            hitPixel = permute ? pqk.yx : pqk.xy;
-            hitPixel = hitPixel / screenDimensions;
-            const float currentZ = Linear01Depth(texture(texDepth, hitPixel).r) * -_zPlanes.y;
-            bool intersect2 = zA >= currentZ - zThickness && zB <= currentZ;
-
-            originalStride *= 0.5f;
-            strideTemp = intersect2 ? -originalStride : originalStride;
+    float progressLimit = (end - P0.x * stepDir) / pixelStride;
+    for (int axis = 0; axis < 2; ++axis) {
+        if (pixelStep[axis] > 0.f) {
+            progressLimit = min(progressLimit, (screenDimensions[axis] - pixelStart[axis]) / pixelStep[axis]);
+        } else if (pixelStep[axis] < 0.f) {
+            progressLimit = min(progressLimit, -pixelStart[axis] / pixelStep[axis]);
         }
     }
 
-    // Advance Q based on the number of steps
-    Q0.xy += dQ.xy * (i - 1) + (dQ.xy / pixelStride) * addDQ;
+    vec4 pqk = vec4(P0, Q0.z, k0);
+    const vec4 dPQK = vec4(dP, dQ.z, dk);
+    float progress = 0.f;
+    vec4 lower = pqk;
+    float lowerProgress = 0.f;
+    float upperSceneZ = 0.f;
+    bool intersect = false;
+    for (float i = 0.f; i < maxSteps && !intersect; ++i) {
+        const float stepFraction = min(1.f, progressLimit - progress);
+        if (stepFraction <= 0.f) {
+            break;
+        }
+
+        const vec4 next = pqk + dPQK * stepFraction;
+        const vec2 nextPixel = clamp((permute ? next.yx : next.xy) / screenDimensions, 0.f, 1.f);
+        const float sceneDepth = texture(texDepth, nextPixel).r;
+        upperSceneZ = -ViewDistanceFromDepth(sceneDepth, projectionMatrix);
+        intersect = sceneDepth < INV_Z_TEST_SIGMA &&
+                    IntersectsDepthSlab(pqk.z / pqk.w, next.z / next.w, upperSceneZ);
+        lower = pqk;
+        lowerProgress = progress;
+        pqk = next;
+        progress += stepFraction;
+        iterations += 1.f;
+    }
+
+    // Binary search refinement
+    if (pixelStride > 1.f && intersect) {
+        vec4 upper = pqk;
+        float upperProgress = progress;
+        for (float j = 0.f; j < binarySearchIterations; ++j) {
+            const vec4 midpoint = (lower + upper) * 0.5f;
+            const float midpointProgress = (lowerProgress + upperProgress) * 0.5f;
+            const vec2 midpointPixel = clamp((permute ? midpoint.yx : midpoint.xy) / screenDimensions, 0.f, 1.f);
+            const float midpointDepth = texture(texDepth, midpointPixel).r;
+            const float midpointSceneZ = -ViewDistanceFromDepth(midpointDepth, projectionMatrix);
+            if (midpointDepth < INV_Z_TEST_SIGMA &&
+                IntersectsDepthSlab(lower.z / lower.w, midpoint.z / midpoint.w, midpointSceneZ)) {
+                upper = midpoint;
+                upperProgress = midpointProgress;
+                upperSceneZ = midpointSceneZ;
+            } else if (IntersectsDepthSlab(midpoint.z / midpoint.w, upper.z / upper.w, upperSceneZ)) {
+                lower = midpoint;
+                lowerProgress = midpointProgress;
+            } else {
+                intersect = false;
+                break;
+            }
+        }
+        pqk = upper;
+        progress = upperProgress;
+    }
+
+    hitPixel = (permute ? pqk.yx : pqk.xy) / screenDimensions;
+    Q0.xy += dQ.xy * progress;
     Q0.z = pqk.z;
     hitPoint = Q0 / pqk.w;
-    iterations = i;
     
     return intersect;
 }
@@ -168,15 +216,21 @@ float ComputeBlendFactorForIntersection(in float iterationCount,
         alpha *= 1.f - pow(iterationCount / maxSteps, 8.f);
     }
     {// Fade ray hits that approach the screen edge
-        const float screenFade = screenEdgeFadeStart;
+        const float screenFade = clamp(screenEdgeFadeStart, 0.f, 1.f);
 
         const vec2 hitPixelNDC = 2.f * hitPixel - 1.f;
         const float maxDimension = min(1.f, max(abs(hitPixelNDC.x), abs(hitPixelNDC.y)));
-        alpha *= 1.f - (max(0.f, maxDimension - screenFade) / (1.f - screenFade));
+        alpha *= screenFade < 1.f
+            ? 1.f - (max(0.f, maxDimension - screenFade) / (1.f - screenFade))
+            : (maxDimension < 1.f ? 1.f : 0.f);
     }
     {// Fade ray hits base on how much they face the camera
-        const float eyeDirection = clamp(vsRayDirection.z, eyeFadeStart, eyeFadeEnd);
-        alpha *= 1.f - ((eyeDirection - eyeFadeStart) / (eyeFadeEnd - eyeFadeStart));
+        if (eyeFadeEnd > eyeFadeStart) {
+            const float eyeDirection = clamp(vsRayDirection.z, eyeFadeStart, eyeFadeEnd);
+            alpha *= 1.f - ((eyeDirection - eyeFadeStart) / (eyeFadeEnd - eyeFadeStart));
+        } else {
+            alpha *= vsRayDirection.z < eyeFadeStart ? 1.f : 0.f;
+        }
     }
     {// Fade ray hits based on distance from ray origin
         alpha *= 1.f - Saturate(distance(vsRayOrigin, hitPoint) / maxDistance);
@@ -184,6 +238,20 @@ float ComputeBlendFactorForIntersection(in float iterationCount,
 
     //return Saturate(alpha);
     return alpha;
+}
+
+bool PreviousFrameUV(in vec4 clip, out vec2 uv) {
+    uv = vec2(0.f);
+    if (!(clip.w > 0.f)) {
+        return false;
+    }
+    const vec3 ndc = clip.xyz / clip.w;
+    uv = 0.5f * ndc.xy + 0.5f;
+    return IsInFrustum(vec3(uv, ndc.z));
+}
+
+vec3 CameraIncidentDirection(in vec3 viewPosition) {
+    return projectionMatrix[3][3] == 0.f ? normalize(viewPosition) : vec3(0.f, 0.f, -1.f);
 }
 
 void main() {
@@ -201,10 +269,8 @@ void main() {
             if (roughness < INV_Z_TEST_SIGMA) {
                 const vec3 vsNormal = normalize(unpackNormal(dataIn.rg));
                 const vec3 vsPos = ViewSpacePos(VAR._texCoord, depth, invProjectionMatrix);
-                const vec3 vsRayDir = normalize(vsPos);
+                const vec3 vsRayDir = CameraIncidentDirection(vsPos);
                 const vec3 vsReflect = reflect(vsRayDir, vsNormal);
-                const vec3 worldReflect = (invViewMatrix * vec4(vsReflect.xyz, 0)).xyz;
-
                 const vec2 uv2 = VAR._texCoord * screenDimensions;
                 const float jitter = mod((uv2.x + uv2.y) * 0.25f, 1.f);
 
@@ -212,34 +278,31 @@ void main() {
                 vec3 hitPoint = vec3(0.f);
                 float iterations = 0;
                 if (FindSSRHit(vsPos, vsReflect, jitter * jitterAmount, hitPixel, hitPoint, iterations)) {
-                    // Sample reflection in previous frame with temporal reprojection
-#if 0
-                    vec4 prevHit = invViewMatrix * vec4(hitPoint.xyz, 1);
-                    prevHit = previousViewMatrix * prevHit;
-                    prevHit = previousProjectionMatrix * prevHit;
-                    prevHit.xyz /= prevHit.w;
-#else
-                    const vec3 prevHit = Homogenize( previousViewProjectionMatrix * (invViewMatrix * vec4(hitPoint, 1.f)));
-#endif
-                    // Blend between reprojected SSR sample and IBL
-                    reflBlend = ComputeBlendFactorForIntersection(iterations, hitPixel, hitPoint, vsPos, vsReflect);
-                    const vec3 ssr = textureLod(texScreen, 0.5f * prevHit.xy + 0.5f, roughness * maxScreenMips).rgb;
-                    ambientReflected = mix(ambientReflected, ssr, reflBlend);
+                    const ivec2 depthSize = textureSize(texDepth, 0);
+                    const ivec2 hitTexel = clamp(ivec2(hitPixel * vec2(depthSize)), ivec2(0), depthSize - 1);
+                    const float hitDepth = texelFetch(texDepth, hitTexel, 0).r;
+                    const vec2 hitUV = (vec2(hitTexel) + 0.5f) / vec2(depthSize);
+                    const vec4 hitWorld = invViewMatrix * vec4(ViewSpacePos(hitUV, hitDepth, invProjectionMatrix), 1.f);
+                    const vec4 prevClip = previousViewProjectionMatrix * hitWorld;
+                    vec2 prevUV;
+                    if (hitDepth < INV_Z_TEST_SIGMA && PreviousFrameUV(prevClip, prevUV) && PreviousFrameDepthMatches(prevUV, prevClip.z / prevClip.w)) {
+                        // The material pass applies this confidence to the unweighted colour.
+                        reflBlend = ComputeBlendFactorForIntersection(iterations, hitPixel, hitPoint, vsPos, vsReflect);
+                        const vec3 ssr = textureLod(texScreen, prevUV, roughness * maxScreenMips).rgb;
+                        ambientReflected = ssr;
 #if defined(DEBUG_NAN_VALUES)
-                    if (dvd_MaterialDebugFlag == DEBUG_SSR)
-                    {
-                       if (isnan(prevHit.r) || isnan(prevHit.g)) {
-                            ambientReflected = vec3(1.f, 0.f, 1.f);
-                            reflBlend = 0.f;
-                        } else if (isnan(reflBlend)) {
-                            ambientReflected = vec3(0.f, 0.f, 1.f);
-                            reflBlend = 0.f;
-                        } else if(isnan(ssr.r) || isnan(ssr.g) || isnan(ssr.b)) {
-                            ambientReflected = vec3(1.f, 0.f, 0.f);
-                            reflBlend = 0.f;
+                        if (dvd_MaterialDebugFlag == DEBUG_SSR)
+                        {
+                            if (isnan(reflBlend)) {
+                                ambientReflected = vec3(0.f, 0.f, 1.f);
+                                reflBlend = 0.f;
+                            } else if(isnan(ssr.r) || isnan(ssr.g) || isnan(ssr.b)) {
+                                ambientReflected = vec3(1.f, 0.f, 0.f);
+                                reflBlend = 0.f;
+                            }
                         }
-                    }
 #endif //DEBUG_NAN_VALUES
+                    }
                 }
             }
         }

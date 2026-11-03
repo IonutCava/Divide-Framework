@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/SceneGraphNode.h"
 #include "Headers/SceneGraph.h"
@@ -824,7 +825,7 @@ void SceneGraphNode::prepareRender( RenderingComponent& rComp,
 
             if (!boneEntry)
             {
-                boneEntry = &AddBinding( set, 13u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                boneEntry = &AddBinding( set, 13u, ShaderStageVisibility::VERTEX );
             }
 
             Set(boneEntry->_data, boneBuffer, {0u, boneBuffer->getPrimitiveCount()});

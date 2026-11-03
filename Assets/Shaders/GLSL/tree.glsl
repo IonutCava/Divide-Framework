@@ -1,5 +1,8 @@
 --Vertex
 
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #include "vbInputData.vert"
 #include "vegetationData.cmn"
 #include "lightingDefaults.vert"
@@ -25,21 +28,25 @@ void computeFoliageMovementTree(inout vec4 vertex, in float heightExtent) {
 void main(void){
 
     const NodeTransformData nodeData = fetchInputData();
+    VAR._SelectionFlag = dvd_SelectionFlag(nodeData);
 
-    const VegetationData data = TreeData(dvd_InstanceIndex);
+    const VegetationData data = TreeData(VEGETATION_INSTANCE_INDEX);
 
     float scale = data.positionAndScale.w;
-    VAR._LoDLevel = data.data.z;
+    const bool isCulled = data.data.z < 0.f;
+    VAR._LoDLevel = isCulled ? 3u : uint(data.data.z);
 
 #if defined(HAS_CULLING_OUT)
-    gl_CullDistance[0] = -0.01f * when_gt(VAR._LoDLevel, 2.1f);
+    gl_CullDistance[0] = isCulled ? -0.01f : 0.01f;
 #else
-    scale -= scale * when_gt(VAR._LoDLevel, 2.1f);
+    if (isCulled) {
+        scale = 0.f;
+    }
 #endif
 
 
     dvd_Vertex.xyz = rotate_vertex_position(dvd_Vertex.xyz * scale, data.orientationQuad);
-    if (VAR._LoDLevel < 1.1f && dvd_Vertex.y * scale > 0.85f) {
+    if (VAR._LoDLevel < 2u && dvd_Vertex.y * scale > 0.85f) {
         //computeFoliageMovementTree(dvd_Vertex, dvd_Vertex.y * 0.5f);
     }
 
@@ -48,10 +55,15 @@ void main(void){
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
 
 #if !defined(SHADOW_PASS)
-    computeLightVectors(nodeData);
+    computeLightVectors(data.orientationQuad, vec3(scale));
     setClipPlanes();
 #endif
 
     //Compute the final vert position
-    gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
+    const vec4 clipPosition = dvd_ProjectionMatrix * VAR._vertexWV;
+    gl_Position = clipPosition;
+#if defined(HAS_VELOCITY)
+    // STUBBED: TODO: Implement vegetation velocity support with previous instance and deformation state.
+    VAR._prevVertexWVP = dvd_PrevViewProjectionMatrix * VAR._vertexW;
+#endif //HAS_VELOCITY
 }

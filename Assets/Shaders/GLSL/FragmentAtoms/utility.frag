@@ -48,13 +48,13 @@ vec3 ToSRGBAccurate(in vec3 linearCol) {
 
 float computeDepth(in vec4 posWV, in mat4 projMatrix, in vec2 zPlanes) {
     const vec4 clip_space_pos = projMatrix * posWV;
-    return (((zPlanes.y - zPlanes.x) * (clip_space_pos.z / clip_space_pos.w)) + zPlanes.x + zPlanes.y) * 0.5f;
+    return zPlanes.x + (zPlanes.y - zPlanes.x) * (clip_space_pos.z / clip_space_pos.w);
 }
 
 #define IsInScreenRect(COORDS) all(bvec4(COORDS.x >= 0.f, COORDS.x <= 1.f, COORDS.y >= 0.f, COORDS.y <= 1.f))
 #define IsInFrustum(COORDS)  (COORDS.z >= 0.f && COORDS.z <= 1.f && IsInScreenRect(COORDS.xy))
 
-#define packVec2(X, Y) uintBitsToFloat(packHalf2x16(vec2(x, y)))
+#define packVec2(X, Y) uintBitsToFloat(packHalf2x16(vec2((X), (Y))))
 vec2 unpackVec2(in uint pckd)  { return unpackHalf2x16(pckd); }
 vec2 unpackVec2(in float pckd) { return unpackHalf2x16(floatBitsToUint(pckd)); }
 
@@ -62,7 +62,9 @@ vec2 unpackVec2(in float pckd) { return unpackHalf2x16(floatBitsToUint(pckd)); }
 //https://www.shadertoy.com/view/Mtfyzl#
 vec2 packNormal(in vec3 n) {
     n /= (abs(n.x) + abs(n.y) + abs(n.z));
-    n.xy = (n.z >= 0.f) ? n.xy : (1.f - abs(n.yx)) * sign(n.xy);
+    // Use sign-not-zero at the fold boundary; GLSL sign(0) would collapse exact zero components.
+    const vec2 signNotZero = vec2(n.x >= 0.f ? 1.f : -1.f, n.y >= 0.f ? 1.f : -1.f);
+    n.xy = (n.z >= 0.f) ? n.xy : (1.f - abs(n.yx)) * signNotZero;
     n.xy = 0.5f * n.xy + 0.5f;
     return n.xy;
 }

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -51,6 +51,13 @@ class PostAAPreRenderOperator final : public PreRenderOperator {
 
     PROPERTY_RW(U8, postAAQualityLevel, 2u);
     PROPERTY_RW(bool, useSMAA, false);
+
+    static constexpr U8 MAX_SMAA_QUALITY_LEVEL = 4u;
+    static constexpr U8 MAX_FXAA_QUALITY_LEVEL = 5u;
+    [[nodiscard]] static constexpr U8 MaxQualityLevel(const bool useSMAA) noexcept
+    {
+        return useSMAA ? MAX_SMAA_QUALITY_LEVEL : MAX_FXAA_QUALITY_LEVEL;
+    }
 
     [[nodiscard]] bool ready() const noexcept override;
 

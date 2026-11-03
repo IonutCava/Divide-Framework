@@ -433,6 +433,7 @@ bool Terrain::load( PlatformContext& context )
         ShaderModuleDescriptor geomModule = {};
         geomModule._moduleType = ShaderType::GEOMETRY;
         geomModule._sourceFile = "terrainTess.glsl";
+        geomModule._defines.emplace_back("INPUT_PRIMITIVE_SIZE 3");
 
         ShaderModuleDescriptor fragModule = {};
         fragModule._moduleType = ShaderType::FRAGMENT;

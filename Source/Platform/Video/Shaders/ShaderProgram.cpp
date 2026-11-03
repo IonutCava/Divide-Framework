@@ -22,6 +22,9 @@
 #include "Platform/File/Headers/FileUpdateMonitor.h"
 #include "Platform/File/Headers/FileWatcherManager.h"
 
+#include <cstdarg>
+#include <cstdio>
+
 extern "C"
 {
     #include <cppdef.h>
@@ -117,21 +120,23 @@ namespace Divide
             static char* Input( char* buffer, const int size, void* userData ) noexcept
             {
                 WorkData* work = static_cast<WorkData*>(userData);
-                int i = 0;
-                for ( char ch = work->_input[work->_fGetsPos];
-                      work->_fGetsPos < work->_input.size() && i < size - 1; ch = work->_input[++work->_fGetsPos] )
+                if ( size <= 1 || work->_fGetsPos >= work->_input.size() )
                 {
-                    buffer[i++] = ch;
-
-                    if ( ch == '\n' || i == size )
-                    {
-                        buffer[i] = '\0';
-                        work->_fGetsPos++;
-                        return buffer;
-                    }
+                    return nullptr;
                 }
 
-                return nullptr;
+                int i = 0;
+                while ( work->_fGetsPos < work->_input.size() && i < size - 1 )
+                {
+                    const char ch = work->_input[work->_fGetsPos++];
+                    buffer[i++] = ch;
+                    if ( ch == '\n' )
+                    {
+                        break;
+                    }
+                }
+                buffer[i] = '\0';
+                return buffer;
             }
 
             FORCE_INLINE void Output( const int ch, void* userData )
@@ -153,9 +158,20 @@ namespace Divide
                 WorkData* work = static_cast<WorkData*>(userData);
 
                 string message;
-                const size_t length = to_size(vsnprintf( nullptr, 0, format, args ) + 1);
-                message.resize( length );
-                vsnprintf( message.data(), length, format, args );
+                va_list argsCopy;
+                va_copy( argsCopy, args );
+                const int length = vsnprintf( nullptr, 0, format, argsCopy );
+                va_end( argsCopy );
+                if ( length >= 0 )
+                {
+                    message.resize( to_size(length) + 1u );
+                    vsnprintf( message.data(), message.size(), format, args );
+                    message.resize( to_size(length) );
+                }
+                else
+                {
+                    message = "Unable to format GLSL preprocessor diagnostic";
+                }
                 
                 if ( work->_firstError )
                 {
@@ -258,6 +274,7 @@ namespace Divide
         U64 s_newestShaderAtomWriteTime = 0u; ///< Used to detect modified shader atoms to validate/invalidate shader cache
         bool s_useShaderCache = true;
         RenderAPI s_renderAPI = RenderAPI::COUNT;
+        std::atomic<U64> s_generatedHeaderHash{ 0u }; ///< Fingerprint of InitGLSW's generated header; keys the shader cache
 
         U8 s_textureSlot = 0u;
         U8 s_imageSlot   = 0u;
@@ -265,6 +282,7 @@ namespace Divide
         U8 s_computeBufferSlot =  0u;
 
         constexpr U8 s_uniformsStartOffset = 14u;
+        constexpr std::string_view s_compiledShaderCacheVersion = "target-env-v2";
 
         void RefreshBindingSlots()
         {
@@ -286,17 +304,18 @@ namespace Divide
 
         [[nodiscard]] ResourcePath ShaderParentCacheLocation()
         {
-            return ShaderBuildCacheLocation() / ShaderAPILocation();
+            return ShaderBuildCacheLocation() / ShaderAPILocation() /
+                   ResourcePath{ Util::StringFormat( "header-{:016x}", s_generatedHeaderHash.load() ) };
         }
 
         [[nodiscard]] ResourcePath SpvCacheLocation()
         {
-            return ShaderParentCacheLocation() / Paths::Shaders::g_cacheLocationSpv;
+            return ShaderParentCacheLocation() / Paths::Shaders::g_cacheLocationSpv / s_compiledShaderCacheVersion;
         }
 
         [[nodiscard]] ResourcePath ReflCacheLocation()
         {
-            return ShaderParentCacheLocation() / Paths::Shaders::g_cacheLocationRefl;
+            return ShaderParentCacheLocation() / Paths::Shaders::g_cacheLocationRefl / s_compiledShaderCacheVersion;
         }
 
         [[nodiscard]] ResourcePath TxtCacheLocation()
@@ -409,9 +428,14 @@ namespace Divide
 
     static bool InitGLSW( const RenderAPI renderingAPI, const Configuration& config)
     {
-        const auto AppendToShaderHeader = []( const ShaderType type, const string& entry )
+        // Fingerprint every generated header line so that config-derived values (cluster budget, probe resolution,
+        // binding maps, etc.) become part of the shader cache identity.
+        U64 generatedHeaderHash = val_64_const;
+        const auto AppendToShaderHeader = [&generatedHeaderHash]( const ShaderType type, const string& entry )
         {
-            glswAddDirectiveToken( type != ShaderType::COUNT ? Names::shaderTypes[to_U8( type )] : "", entry.c_str() );
+            const char* stageName = type != ShaderType::COUNT ? Names::shaderTypes[to_U8( type )] : "";
+            generatedHeaderHash = _ID( entry.c_str(), _ID( stageName, generatedHeaderHash ) );
+            glswAddDirectiveToken( stageName, entry.c_str() );
         };
 
         const auto AppendResourceBindingSlots = [&AppendToShaderHeader]( const bool targetOpenGL )
@@ -536,8 +560,8 @@ namespace Divide
         // Add version as the first shader statement, followed by copyright notice
         AppendToShaderHeader( ShaderType::COUNT, "#version 460" );
         AppendToShaderHeader( ShaderType::COUNT, "___PROGRAM_NAME___" );
-        AppendToShaderHeader( ShaderType::COUNT, "/*Copyright (c) 2018 DIVIDE-Studio*/" );
-        AppendToShaderHeader( ShaderType::COUNT, "/*Copyright (c) 2009 Ionut Cava*/" );
+        AppendToShaderHeader( ShaderType::COUNT, "/*Copyright (c) 2026 DIVIDE-Studio*/" );
+        AppendToShaderHeader( ShaderType::COUNT, "/*Copyright (c) 2009-2026 Ionut Cava*/" );
 
         if ( renderingAPI == RenderAPI::OpenGL )
         {
@@ -780,6 +804,8 @@ namespace Divide
 
         AppendToShaderHeader( ShaderType::COUNT, "___CUSTOM_UNIFORMS___" );
         AppendToShaderHeader( ShaderType::COUNT, "___PUSH_CONSTANTS_DEFINE___" );
+
+        s_generatedHeaderHash.store( generatedHeaderHash );
 
         // Check initialization status for GLSL and glsl-optimizer
         return glswState == 1;
@@ -2110,9 +2136,13 @@ namespace Divide
             glslCodeOut.append( sourceCodeStr );
         }
 
+        // GLSW may fail for various reasons (not a valid effect stage, invalid name, etc).
+        if ( glslCodeOut.empty() )
+        {
+            return;
+        }
+
         string headerDescription;
-        // GLSW may fail for various reasons (not a valid effect stage, invalid name, etc)
-        if ( !glslCodeOut.empty() )
         {
 
             string header;
@@ -2147,7 +2177,8 @@ namespace Divide
 
             if (!Preprocessor::PreProcessMacros( loadDataInOut._shaderName, glslCodeOut ))
             {
-                NOP();
+                glslCodeOut.clear();
+                return;
             }
 
             Reflection::PreProcessUniforms( glslCodeOut, loadDataInOut._uniforms );

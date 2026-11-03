@@ -22,11 +22,21 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 `ShaderProgram` loads/reparses GLSL, loads/builds GLSL cache, loads/builds SPIR-V, loads/builds reflection, and hands shared results to the backend.
 OpenGL still consumes GLSL; Vulkan consumes SPIR-V. Reflection is shared, not duplicated per backend.
-Hot reload deliberately invalidates caches and reparses source. Clustered-lighting constants are injected into the generated shader header.
+Hot reload deliberately invalidates caches and reparses source. Configuration-derived constants (clustered-lighting budget, reflection-probe size/mips, binding maps, etc.) are injected into the generated shader header by `InitGLSW`. Every generated line passes through one helper that folds the stage name and line into an FNV-1a (`_ID`) fingerprint. GLSL, SPIR-V, and reflection caches live under `header-<fingerprint>`, so any generated-header change invalidates them. New generated lines must use `AppendToShaderHeader`, not `glswAddDirectiveToken` directly.
 The newest shader-atom timestamp is read and updated under `g_cacheLock`,
 including file-watcher updates racing asset-loader cache reads.
 
 Changes must cover source parsing, generated declarations, cache invalidation, SPIR-V generation, reflection compatibility, and both backend consumers.
+
+### GLSL authoring and preprocessing
+
+- Effect files are GLSW collections; `ShaderModuleDescriptor` selects a `file.Stage.variant` section, and module/global defines select material, pass, and debug variants.
+- `PreprocessIncludes` runs **before** `PreProcessMacros`, so every `#include` must resolve even inside a disabled `#if`.
+- A missing GLSW section or failed macro preprocessing aborts source loading before uniform extraction, shader compilation, or cache writes.
+- Loose uniforms are collected into generated `std140` blocks at `PER_DRAW` slots `s_uniformsStartOffset` (+1 for a second distinct block; at most two per program).
+- Prefer GLSL expression defines over helper functions so preprocessed shaders stay as inline as practical. Parenthesize macro arguments, keep bodies expression-only, and do not pass side-effecting or expensive expressions to macros that evaluate an argument more than once.
+- `GLSLToSPIRV` targets Vulkan 1.4 / SPIR-V 1.6 for Vulkan and the OpenGL 4.5 environment / SPIR-V 1.0 for OpenGL (`debug.renderer.useSPIRVForOpenGL` ingests the latter directly). Compiled-binary and reflection cache paths include `s_compiledShaderCacheVersion`; bump it whenever compiler targets change.
+- `Source/UnitTests/ShaderCompilationTests.py` compiles representative generated-header variants for both APIs and checks cross-stage links. `ShaderMathTests.py` executes selected shader macros numerically on a Vulkan compute device (skipping when none is available). Neither replaces the engine preprocessor or image-based rendering checks.
 
 ## Descriptor ownership and invariants
 
@@ -41,6 +51,7 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
 - `DescriptorSetUsage` is ordered by update frequency; `PER_DRAW` must remain last. Vulkan uses the enum value directly; OpenGL maps `(usage, slot)` to flat bindings.
 - Changing enum order requires bumping `BYTE_BUFFER_VERSION`: cached reflection stores usage indices.
 - Every Vulkan pipeline layout uses real shared layouts for sets 0-2, even if unused by a program, and an identical `VK_SHADER_STAGE_ALL` 128-byte push-constant range. This preserves shared-set/push-constant compatibility across pipeline changes.
+- The `PER_PASS` light buffer at slot 9 is visible to vertex, fragment, and compute stages: debug light impostors read it in their vertex shader. Slots 8, 10, and 11 are fragment/compute only. The legacy `COMPUTE_AND_DRAW` name means fragment and compute, not all draw stages; use the explicit visibility names for new bindings.
 - Partial push-constant commands merge only `dataFlags()`-selected slots into
   the Vulkan replay cache; omitted slots retain their last explicit values.
 - Command coalescing accepts complementary or equal overlapping push slots,

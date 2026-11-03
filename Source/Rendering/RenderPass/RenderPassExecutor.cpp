@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/RenderPassExecutor.h"
 #include "Headers/RenderQueue.h"
@@ -312,6 +313,15 @@ namespace Divide
             state0.blendOp( BlendOperation::ADD );
             state0.blendSrc( BlendProperty::INV_SRC_ALPHA );
             state0.blendDest( BlendProperty::ONE );
+
+            BlendingSettings& normalState = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::NORMALS )];
+            normalState.enabled( true );
+            normalState.blendOp( BlendOperation::ADD );
+            normalState.blendSrc( BlendProperty::SRC_ALPHA );
+            normalState.blendDest( BlendProperty::INV_SRC_ALPHA );
+            normalState.blendOpAlpha( BlendOperation::ADD );
+            normalState.blendSrcAlpha( BlendProperty::ZERO );
+            normalState.blendDestAlpha( BlendProperty::ONE );
 
             pipelineDescriptor._shaderProgramHandle = OITCompositionShader;
             s_OITCompositionPipeline = context.newPipeline( pipelineDescriptor );
@@ -1351,7 +1361,7 @@ namespace Divide
             assert( params._stagePass._passType == RenderPassType::PRE_PASS );
 
             // This also renders into our HiZ texture that we may want to use later in PostFX
-            occlusionPass( playerIdx, camSnapshot, visibleNodeCount, RenderTargetNames::SCREEN, params._targetHIZ, bufferInOut );
+            occlusionPass( playerIdx, camSnapshot, visibleNodeCount, params._target, params._targetHIZ, bufferInOut );
         }
 #   pragma endregion
 
@@ -1364,7 +1374,16 @@ namespace Divide
         params._stagePass._passType = RenderPassType::MAIN_PASS;
         if ( _stage == RenderStage::DISPLAY )
         {
+            if ( !doPrePass )
+            {
+                _context.invalidatePreviousDepthHistory( playerIdx );
+            }
             _context.getRenderer().postFX().prePass( playerIdx, camSnapshot, bufferInOut );
+            if ( doPrePass )
+            {
+                // Preserve current depth after temporal effects have consumed the previous frame.
+                _context.storePreviousDepthHistory( playerIdx, params._target, bufferInOut );
+            }
         }
         if ( doMainPass ) [[likely]]
         {

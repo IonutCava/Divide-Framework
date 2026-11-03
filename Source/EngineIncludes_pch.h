@@ -57,6 +57,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif //ENABLE_MIMALLOC
 
 #include "Platform/Headers/PlatformDefinesOS.h"
+#include "Platform/Headers/PlatformDataTypes.h"
 
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -87,6 +88,9 @@ DISABLE_GCC_WARNING_POP()
 
 #include <stack>
 #include <span>
+#include <array>
+#include <functional>
+#include <utility>
 
 #include <fmt/printf.h>
 

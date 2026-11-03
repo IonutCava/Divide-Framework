@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
+Copyright (c) 2018-2026 DIVIDE-Studio
 Copyright (c) 2009 Ionut Cava
 
 This file is part of DIVIDE Framework.
@@ -202,12 +202,14 @@ DEFINE_COMMAND_BEGIN(ReadBufferDataCommand, CommandType::READ_BUFFER_DATA);
     std::pair<bufferPtr, size_t> _target { nullptr, 0u };
     U32           _offsetElementCount{ 0 };
     U32           _elementCount{ 0 };
+    U16           _queueIndex{ U16_MAX };
 DEFINE_COMMAND_END(ReadBufferDataCommand);
 
 DEFINE_COMMAND_BEGIN(ClearBufferDataCommand, CommandType::CLEAR_BUFFER_DATA);
     ShaderBuffer* _buffer{ nullptr };
     U32           _offsetElementCount{ 0 };
     U32           _elementCount{ 0 };
+    U16           _queueIndex{ U16_MAX };
 DEFINE_COMMAND_END(ClearBufferDataCommand);
 
 }; //namespace GFX

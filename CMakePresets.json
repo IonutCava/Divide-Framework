@@ -33,6 +33,7 @@
       },
       "cacheVariables": {
         "WINDOWS_OS_BUILD": true,
+        "CMAKE_MSVC_DEBUG_INFORMATION_FORMAT": "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>",
         "CMAKE_MAKE_PROGRAM": "ninja.exe",
         "VCPKG_INSTALL_OPTIONS": "--allow-unsupported"
       },

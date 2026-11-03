@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -43,7 +43,7 @@ namespace Divide {
 
     struct Fence
     {
-        VkFence _handle;
+        VkFence _handle{VK_NULL_HANDLE};
         U8 _tag{U8_MAX};
     };
 
@@ -64,6 +64,7 @@ namespace Divide {
 
         [[nodiscard]] VkResult beginFrame();
         [[nodiscard]] VkResult endFrame( const VKSubmitSempahore::Container& semaphores );
+        [[nodiscard]] VkFence activeFrameFence() const noexcept;
 
         [[nodiscard]] vkb::Swapchain& getSwapChain() noexcept;
         [[nodiscard]] VkImage         getCurrentImage() const noexcept;

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -34,6 +34,7 @@
 #define DVD_LIGHT_COMPONENT_H_
 
 #include "Graphs/Headers/SceneGraphNode.h"
+#include "ShadowPassState.h"
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 
@@ -115,7 +116,11 @@ public:
     /// Turn the light on/off
     PROPERTY_RW(bool, enabled);
     /// Light range used for attenuation computation. Range = radius (not diameter!)
-    PROPERTY_RW(F32, range, 10.f);
+  protected:
+    F32 _range = 10.f;
+  public:
+    void range(F32 value) noexcept;
+    [[nodiscard]] F32 range() const noexcept { return _range; }
     /// Light intensity in "lumens" (not really). Just a colour multiplier for now. ToDo: fix that -Ionut
     PROPERTY_RW(F32, intensity, 1.f);
     /// Index used to look up shadow properties in shaders
@@ -139,6 +144,7 @@ public:
    protected:
     LightPool& _parentPool;
     ShadowProperties _shadowProperties;
+    ShadowRangeState _shadowRangeState;
     UColour4  _colour;
     LightType _type{LightType::COUNT};
 };

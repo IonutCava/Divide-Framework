@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -37,6 +37,18 @@ namespace Divide {
     static constexpr U8 TRANSFORM_IDX = 0u;
     static constexpr U8 MATERIAL_IDX = 1u;
     static constexpr U8 TEXTURES_IDX = 2u;
+
+    [[nodiscard]] constexpr bool RequiresInstancedIndirection( const bool alreadyInstanced,
+                                                               const bool materialInstanced,
+                                                               const U32 instanceCount ) noexcept
+    {
+        return alreadyInstanced || materialInstanced || instanceCount > 1u;
+    }
+
+    [[nodiscard]] constexpr U32 IndirectionBaseInstance( const bool instanced, const U32 indirectionIndex ) noexcept
+    {
+        return instanced ? 0u : indirectionIndex + 1u;
+    }
 
     static_assert(sizeof(quatf) == sizeof(float4) && sizeof(float4) == 4 * sizeof(F32));
 

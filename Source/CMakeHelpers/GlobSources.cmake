@@ -272,6 +272,7 @@ set( ECS_SOURCE ECS/Components/AnimationComponent.cpp
 
 set( EDITOR_SOURCE_HEADERS Editor/Headers/Editor.h
                            Editor/Headers/Editor.inl
+                           Editor/Headers/PropertyEditState.h
                            Editor/Headers/Sample.h
                            Editor/Headers/UndoManager.h
                            Editor/Headers/Utils.h
@@ -724,9 +725,13 @@ set( RENDERING_SOURCE_HEADERS Rendering/Camera/Headers/Camera.h
                               Rendering/Camera/Headers/Frustum.h
                               Rendering/Headers/ClipRegion.h
                               Rendering/Headers/Renderer.h
+                              Rendering/Lighting/Headers/ClusteredLighting.h
                               Rendering/Lighting/Headers/Light.h
                               Rendering/Lighting/Headers/Light.inl
                               Rendering/Lighting/Headers/LightPool.h
+                              Rendering/Lighting/Headers/LightUploadState.h
+                              Rendering/Lighting/Headers/ShadowPassState.h
+                              Rendering/Lighting/Headers/SpotLightGeometry.h
                               Rendering/Lighting/ShadowMapping/Headers/CascadedShadowMapsGenerator.h
                               Rendering/Lighting/ShadowMapping/Headers/CubeShadowMapGenerator.h
                               Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h
@@ -838,11 +843,15 @@ set( UTILITY_SOURCE Utility/Colours.cpp
 set( TEST_ENGINE_SOURCE UnitTests/unitTestCommon.h
                         UnitTests/unitTestCommon.cpp
                         UnitTests/Test-Engine/ByteBufferTests.cpp
+                        UnitTests/Test-Engine/CullCounterReadbackTests.cpp
+                        UnitTests/Test-Engine/LightingTests.cpp
                         UnitTests/Test-Engine/MathMatrixTests.cpp
                         UnitTests/Test-Engine/MathVectorTests.cpp
                         UnitTests/Test-Engine/NodeEditorTests.cpp
                         UnitTests/Test-Engine/RendererTests.cpp
+                        UnitTests/Test-Engine/ShaderCompilerTests.cpp
                         UnitTests/Test-Engine/ScriptingTests.cpp
+                        UnitTests/Test-Engine/UndoManagerTests.cpp
                         UnitTests/Test-Engine/SunTests.cpp
 )
 

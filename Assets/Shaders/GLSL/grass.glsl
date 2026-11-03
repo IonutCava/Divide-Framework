@@ -1,5 +1,8 @@
 --Vertex
 
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #define COMPUTE_TBN
 #include "vbInputData.vert"
 #include "vegetationData.cmn"
@@ -31,7 +34,7 @@ void largetScaleMotion(inout vec4 vertexW, in vec4 vertex, in float heightExtent
 }
 
 void main() {
-    VegetationData data = GrassData(dvd_InstanceIndex);
+    VegetationData data = GrassData(VEGETATION_INSTANCE_INDEX);
     if (data.data.z < 0.f) {
         //gl_CullDistance[0] = -1.0f;
         gl_Position = vec4(2.f, 2.f, 2.f, 1.f);
@@ -39,7 +42,8 @@ void main() {
     }
 
     const NodeTransformData nodeData = fetchInputData();
-    _instanceID = dvd_InstanceIndex;
+    VAR._SelectionFlag = dvd_SelectionFlag(nodeData);
+    _instanceID = VEGETATION_INSTANCE_INDEX;
     float scale = data.positionAndScale.w * Saturate(data.data.z);
 
     _alphaFactor = Saturate(data.data.z);
@@ -50,7 +54,6 @@ void main() {
     const float timeGrass = dvd_windDetails.w * MSToSeconds(dvd_GameTimeMS) * 0.5f;
     const bool animate = VAR._LoDLevel < 2u && dvd_Vertex.y > 0.5f;
 
-    const float height = dvd_Vertex.y;
     dvd_Vertex.xyz *= scale;
     dvd_Vertex.y -= (1.f - scale) * 0.25f;
     dvd_Vertex.xyz = QuaternionRotate(data.orientationQuad, dvd_Vertex.xyz);
@@ -74,11 +77,14 @@ void main() {
 #endif //!SHADOW_PASS
 
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
-    dvd_Normal = normalize(QuaternionRotate(data.orientationQuad, dvd_Normal));
+    computeLightVectors(data.orientationQuad, vec3(scale));
 
-    computeLightVectors(nodeData);
-
-    gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
+    const vec4 clipPosition = dvd_ProjectionMatrix * VAR._vertexWV;
+    gl_Position = clipPosition;
+#if defined(HAS_VELOCITY)
+    // STUBBED: TODO: Implement vegetation velocity support with previous instance and deformation state.
+    VAR._prevVertexWVP = dvd_PrevViewProjectionMatrix * VAR._vertexW;
+#endif //HAS_VELOCITY
 }
 
 -- Fragment.Colour

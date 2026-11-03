@@ -1,3 +1,6 @@
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #ifndef _SHADOW_MAPPING_FRAG_
 #define _SHADOW_MAPPING_FRAG_
 
@@ -50,6 +53,10 @@ float getShadowMultiplierDirectional(in int shadowIndex, in float TanAcosNdotL)
     const CSMShadowProperties properties = dvd_CSMShadowTransforms[shadowIndex];
 
     const int Split = getCSMSlice(properties.dvd_shadowLightPosition);
+    if (Split >= MAX_CSM_SPLITS_PER_LIGHT)
+    {
+        return 1.f;
+    }
     vec4 sc = properties.dvd_shadowLightVP[Split] * VAR._vertexW;
     vec3 shadowCoord = Homogenize(sc);
     

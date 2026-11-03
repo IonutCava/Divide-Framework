@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -123,6 +123,7 @@ class SceneNode : public CachedResource
     [[nodiscard]] inline const SceneNodeRenderState& renderState() const noexcept { return _renderState; }
 
     [[nodiscard]] inline const BoundingBox& getBounds() const noexcept { return _boundingBox; }
+    [[nodiscard]] virtual bool boundsInWorldSpace() const noexcept { return false; }
 
     [[nodiscard]] inline U32 requiredComponentMask() const noexcept { return _requiredComponentMask; }
 
@@ -162,7 +163,7 @@ class SceneNode : public CachedResource
     /// The various states needed for rendering
     SceneNodeRenderState _renderState;
 
-    /// The initial bounding box as it was at object's creation (i.e. no transforms applied)
+    /// Bounds are local unless boundsInWorldSpace() is overridden.
     BoundingBox _boundingBox{};
     bool _boundsChanged = false;
 
@@ -268,4 +269,3 @@ class SceneNodePlayer
 };  // namespace Divide
 
 #endif //DVD_SCENE_NODE_H_
-
