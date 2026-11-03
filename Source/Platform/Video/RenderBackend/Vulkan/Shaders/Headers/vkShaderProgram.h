@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -92,6 +92,8 @@ namespace Divide {
         [[nodiscard]] bool loadInternal(hashMap<U64, PerFileShaderData>& fileData, bool overwrite) override;
 
     private:
+       void clearShaderStages();
+
        vkShaders _shaderStage;
     };
 

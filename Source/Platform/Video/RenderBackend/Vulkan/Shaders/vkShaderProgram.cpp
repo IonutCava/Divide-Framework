@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/vkShaderProgram.h"
 
@@ -107,13 +107,10 @@ namespace Divide {
 
     vkShaderProgram::~vkShaderProgram()
     {
-        if (!unload())
-        {
-            NOP();
-        }
+        clearShaderStages();
     }
 
-    bool vkShaderProgram::unload() 
+    void vkShaderProgram::clearShaderStages()
     {
         for ( vkShaderEntry& shader : _shaderStage )
         {
@@ -121,7 +118,11 @@ namespace Divide {
         }
 
         _shaderStage.clear();
+    }
 
+    bool vkShaderProgram::unload()
+    {
+        clearShaderStages();
         return ShaderProgram::unload();
     }
 

@@ -289,7 +289,7 @@ public:  // GPU interface
     void debugDrawSphere(const I64 ID, IM::SphereDescriptor descriptor) noexcept;
     void debugDrawCone(const I64 ID, IM::ConeDescriptor descriptor) noexcept;
     void debugDrawFrustum(const I64 ID, IM::FrustumDescriptor descriptor) noexcept;
-    void validateAndUploadDescriptorSets();
+    [[nodiscard]] bool validateAndUploadDescriptorSets();
     /// Generate a cubemap from the given position
     /// It renders the entire scene graph (with culling) as default
     /// use the callback param to override the draw function

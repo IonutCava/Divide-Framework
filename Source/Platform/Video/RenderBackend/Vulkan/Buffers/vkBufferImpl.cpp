@@ -378,9 +378,10 @@ namespace Divide
             VMABuffer_uptr ret = std::make_unique<VMABuffer>( params );
 
             VmaAllocationCreateInfo vmaallocInfo = {};
-            // Let the VMA library know that this data should be writable by CPU only
             vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-            vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+            vmaallocInfo.flags = (isCopySource ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT
+                                              : VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT) |
+                                 VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
             // Allocate staging buffer
             const VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo( isCopySource ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT, size );

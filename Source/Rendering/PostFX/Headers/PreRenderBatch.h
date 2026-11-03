@@ -208,8 +208,6 @@ class PreRenderBatch {
 
     RenderTargetHandle _sceneEdges{};
     RenderTargetHandle _linearDepthRT{};
-    std::array<bool, Config::MAX_LOCAL_PLAYER_COUNT> _previousScreenInitialized{};
-
     F32 _adaptiveExposureValue{1.f};
     mutable bool _adaptiveExposureValueNeedsUpdate{false};
 };

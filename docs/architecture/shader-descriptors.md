@@ -22,6 +22,10 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 `ShaderProgram` loads/reparses GLSL, loads/builds GLSL cache, loads/builds SPIR-V, loads/builds reflection, and hands shared results to the backend.
 OpenGL still consumes GLSL; Vulkan consumes SPIR-V. Reflection is shared, not duplicated per backend.
+The resource pool calls `unload()` before destroying a loaded shader program.
+Vulkan's destructor only releases any remaining module-parent references, so it
+also cleans up partially loaded programs without unregistering a loaded program
+twice.
 Hot reload deliberately invalidates caches and reparses source. Configuration-derived constants (clustered-lighting budget, reflection-probe size/mips, binding maps, etc.) are injected into the generated shader header by `InitGLSW`. Every generated line passes through one helper that folds the stage name and line into an FNV-1a (`_ID`) fingerprint. GLSL, SPIR-V, and reflection caches live under `header-<fingerprint>`, so any generated-header change invalidates them. New generated lines must use `AppendToShaderHeader`, not `glswAddDirectiveToken` directly.
 The newest shader-atom timestamp is read and updated under `g_cacheLock`,
 including file-watcher updates racing asset-loader cache reads.
@@ -76,6 +80,9 @@ The local-array, flag-aware cache, and push-descriptor limit notes were checked 
 `VK_API::bindShaderResources` caches resolved shared-set contents. New descriptor sets are allocated/written when resources change; otherwise only dynamic offsets change.
 Bound sets/offsets are tracked per bind point (graphics/compute) and command buffer. `PER_DRAW` is re-pushed when contents or pipeline layout change.
 `frameStarted` invalidates cached sets as descriptor pools flip.
+Vulkan descriptor-pool and descriptor-set allocation failures are logged and
+propagated; the affected draw or dispatch is skipped rather than binding an
+invalid or stale set. A later submission retries dirty descriptor state.
 
 Both OpenGL and Vulkan resolve null and omitted active combined image samplers through `ShaderProgram::resolveSampledImages`. Shared-set bindings remain persistent; missing per-draw slots cannot inherit stale textures.
 When an OpenGL shader bind fails, ordinary descriptor updates still run without

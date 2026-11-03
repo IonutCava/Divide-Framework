@@ -144,6 +144,15 @@ namespace
         else
         {
             Console::errorfn( "{}", outputError.c_str() );
+
+            const bool isValidationError = ( messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT ) != 0u;
+            if ( isValidationError )
+            {
+                const char* messageId = pCallbackData->pMessageIdName != nullptr ? pCallbackData->pMessageIdName : "UNKNOWN_VALIDATION_MESSAGE";
+                Console::errorfn( "[ VK_VALIDATION_BREAKPOINT ] {}", messageId );
+                DebugBreak(true);
+            }
+
             DIVIDE_GPU_ASSERT( VK_API::GetStateTracker()._assertOnAPIError && !(*VK_API::GetStateTracker()._assertOnAPIError), outputError.c_str() );
         }
 
@@ -542,6 +551,12 @@ namespace Divide
     {
         LockGuard<Mutex> w_lock( _submitLock );
 
+        auto& submitStatus = VK_API::GetStateTracker()._immediateSubmitStatus;
+        if ( submitStatus.failed() )
+        {
+            return;
+        }
+
         const VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo( VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT );
 
         VkFence fence = _bufferFences[_bufferIndex];
@@ -573,7 +588,7 @@ namespace Divide
 
         {
             LockGuard<Mutex> submitLock(VK_API::s_submitSemaphores._lock);
-            // copy current pending semaphores (do not remove; frame will still consume them later)
+            // Transfer the pending waits to this submission.
             waitSems = VK_API::s_submitSemaphores._pendingSubmitSemaphores;
             VK_API::s_submitSemaphores._pendingSubmitSemaphores.reset_lose_memory();
         }
@@ -604,7 +619,15 @@ namespace Divide
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = &submitSemaphore;
 
-        _context.submitToQueue( _type, submitInfo, fence );
+        const VkResult submitResult = _context.submitToQueue( _type, submitInfo, fence );
+        if ( !submitStatus.record( submitResult ) )
+        {
+            VK_API::RegisterCustomAPIDelete( [submitSemaphore]( VkDevice device )
+            {
+                vkDestroySemaphore( device, submitSemaphore, nullptr );
+            }, true );
+            return;
+        }
 
         VK_API::PushPendingSubmitSemaphore(submitSemaphore);
 
@@ -625,6 +648,7 @@ namespace Divide
     void VKStateTracker::init( const Configuration& config, VKDevice* device, VKPerWindowState* mainWindow )
     {
         DIVIDE_GPU_ASSERT(device != nullptr && mainWindow != nullptr);
+        _immediateSubmitStatus.reset();
         setDefaultState();
 
         _activeWindow = mainWindow;
@@ -804,6 +828,11 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+        if ( s_stateTracker._immediateSubmitStatus.failed() )
+        {
+            return false;
+        }
+
         VKPerWindowState& windowState = _perWindowState[window.getGUID()];
         if ( windowState._window == nullptr )
         {
@@ -841,13 +870,19 @@ namespace Divide
         const VkResult result = windowState._swapChain->beginFrame();
         if ( result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR )
         {
-            if ( result != VK_ERROR_OUT_OF_DATE_KHR )
+            if ( result == VK_ERROR_OUT_OF_DATE_KHR )
+            {
+                windowState._needsRecreate = !recreateSwapChain( windowState );
+            }
+            else
             {
                 Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( result ).c_str() );
-                DIVIDE_UNEXPECTED_CALL();
+                if ( result != VK_ERROR_DEVICE_LOST )
+                {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
             }
 
-            windowState._needsRecreate = !recreateSwapChain( windowState );
             windowState._skipEndFrame = true;
             return false;
         }
@@ -869,7 +904,7 @@ namespace Divide
     bool VK_API::prepareFlushWindow( DisplayWindow& window )
     {
         const VKPerWindowState& windowState = _perWindowState[window.getGUID()];
-        return windowState._frameInProgress && !windowState._skipEndFrame;
+        return !s_stateTracker._immediateSubmitStatus.failed() && windowState._frameInProgress && !windowState._skipEndFrame;
     }
 
     void VK_API::flushWindow( DisplayWindow& window )
@@ -882,6 +917,12 @@ namespace Divide
         SCOPE_EXIT{
             GetStateTracker()._activeWindow = nullptr;
         };
+
+        if ( s_stateTracker._immediateSubmitStatus.failed() )
+        {
+            windowState._frameInProgress = false;
+            return;
+        }
 
         if ( windowState._skipEndFrame )
         {
@@ -928,13 +969,22 @@ namespace Divide
         else if ( result != VK_SUCCESS )
         {
             Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( result ).c_str() );
-            DIVIDE_UNEXPECTED_CALL();
+            if ( result != VK_ERROR_DEVICE_LOST )
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
         }
     }
 
     bool VK_API::frameStarted()
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        if ( s_stateTracker._immediateSubmitStatus.failed() )
+        {
+            Console::errorfn( "Vulkan immediate submission failed; stopping the renderer." );
+            return false;
+        }
 
         for ( U8 i = 0u; i < to_base(DescriptorSetUsage::COUNT); ++i )
         {
@@ -1329,13 +1379,14 @@ namespace Divide
 
             if ( toolCount > 0u )
             {
-                std::vector<VkPhysicalDeviceToolPropertiesEXT> tools;
-                tools.resize( toolCount );
+                const VkPhysicalDeviceToolProperties toolTemplate{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES };
+                std::vector<VkPhysicalDeviceToolProperties> tools( toolCount, toolTemplate );
                 VK_CHECK( vkGetPhysicalDeviceToolProperties( physicalDevice, &toolCount, tools.data() ) );
+                tools.resize( toolCount );
 
                 Console::printfn( LOCALE_STR( "VK_TOOL_INFO" ), toolCount );
     
-                for ( VkPhysicalDeviceToolPropertiesEXT& tool : tools )
+                for ( const VkPhysicalDeviceToolProperties& tool : tools )
                 {
                     Console::printfn( "\t{} {}\n", tool.name, tool.version );
                 }
@@ -1604,6 +1655,14 @@ namespace Divide
                 if ( idleResult == VK_SUCCESS )
                 {
                     discardBufferReadbacks();
+                }
+                {
+                    LockGuard<Mutex> w_lock( s_submitSemaphores._lock );
+                    for ( const VkSemaphore semaphore : s_submitSemaphores._pendingSubmitSemaphores )
+                    {
+                        vkDestroySemaphore( _device->getVKDevice(), semaphore, nullptr );
+                    }
+                    s_submitSemaphores._pendingSubmitSemaphores.reset_lose_memory();
                 }
                 s_transientDeleteQueue.flush( _device->getVKDevice(), true );
                 s_deviceDeleteQueue.flush( _device->getVKDevice(), true );
@@ -2036,9 +2095,20 @@ namespace Divide
 
             PROFILE_SCOPE( "Build and update set", Profiler::Category::Graphics );
 
+            DescriptorAllocator& allocator = s_stateTracker._descriptorAllocators[usageIdx];
+            if ( allocator._handle.ownerPool == nullptr )
+            {
+                allocator._handle = allocator._allocatorPool->GetAllocator();
+            }
+            DescriptorBuilder builder = DescriptorBuilder::Begin( _descriptorLayoutCache.get(), &allocator._handle );
+            VkDescriptorSet newSet = VK_NULL_HANDLE;
+            if ( !builder.buildSetFromLayout( newSet, _descriptorSetLayouts[usageIdx], _device->getVKDevice() ) )
+            {
+                cache._pendingUpdate = true;
+                return false;
+            }
+            cache._set = newSet;
             cache._slots = desiredSlots;
-            DescriptorBuilder builder = DescriptorBuilder::Begin( _descriptorLayoutCache.get(), &s_stateTracker._descriptorAllocators[usageIdx]._handle );
-            builder.buildSetFromLayout( cache._set, _descriptorSetLayouts[usageIdx], _device->getVKDevice() );
 
             for ( U8 slotIdx = 0u; slotIdx < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slotIdx )
             {

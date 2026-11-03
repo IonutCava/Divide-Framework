@@ -33,6 +33,7 @@ namespace Divide
         vk13features.dynamicRendering = VK_TRUE;
         vk13features.inlineUniformBlock = VK_TRUE;
         vk13features.maintenance4 = VK_TRUE;
+        vk13features.shaderDemoteToHelperInvocation = VK_TRUE;
         vk13features.pNext = &bufferDeviceAddressFeatures;
 
         VkPhysicalDeviceVulkan12Features vk12features{};
@@ -310,14 +311,30 @@ namespace Divide
         return cmdPool;
     }
 
-    void VKDevice::submitToQueue( const QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence ) const
+    VkResult VKDevice::submitToQueue( const QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // Submit command buffer to the queue and execute it.
         // "fence" will now block until the graphic commands finish execution
-        LockGuard<Mutex> w_lock( queueLock( queue ) );
-        VK_CHECK( vkQueueSubmit( _queues[to_base( queue )]._queue, 1, &submitInfo, fence ) );
+        VkResult submitResult = VK_SUCCESS;
+        {
+            LockGuard<Mutex> w_lock( queueLock( queue ) );
+            submitResult = vkQueueSubmit( _queues[to_base( queue )]._queue, 1, &submitInfo, fence );
+        }
+        if ( submitResult != VK_SUCCESS )
+        {
+            Console::errorfn( "vkQueueSubmit failed [queue={}, fence={}, waitSemaphores={}, commandBuffers={}, signalSemaphores={}]: {} ({})",
+                              to_base( queue ),
+                              static_cast<const void*>( fence ),
+                              submitInfo.waitSemaphoreCount,
+                              submitInfo.commandBufferCount,
+                              submitInfo.signalSemaphoreCount,
+                              VKErrorString( submitResult ).c_str(),
+                              static_cast<int>( submitResult ) );
+        }
+
+        return submitResult;
     }
 
     VkResult VKDevice::queuePresent( const QueueType queue, const VkPresentInfoKHR& presentInfo ) const
