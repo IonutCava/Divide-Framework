@@ -8,6 +8,7 @@
 
 #include "UnitTests/unitTestCommon.h"
 #include "EngineConfig.h"
+#include "Rendering/Lighting/Headers/ClusteredLighting.h"
 #include "Rendering/Lighting/Headers/LightUploadState.h"
 #include "Rendering/Lighting/Headers/ShadowPassState.h"
 #include "Rendering/Lighting/Headers/SpotLightGeometry.h"
@@ -22,6 +23,7 @@ namespace Divide
 {
     TEST_CASE("Cluster light budgets always resolve to a valid limit", "[lighting][clusters]")
     {
+        using namespace ClusteredLighting;
         using namespace Config::Lighting::ClusteredForward;
         constexpr I32 maxLimit = to_I32( MAX_LIGHTS_PER_CLUSTER );
 
@@ -45,6 +47,7 @@ namespace Divide
 
     TEST_CASE("Clustered lighting only accepts positive, ordered, finite depth planes", "[lighting][clusters]")
     {
+        using namespace ClusteredLighting;
         using namespace Config::Lighting::ClusteredForward;
         constexpr F32 inf = std::numeric_limits<F32>::infinity();
         constexpr F32 nan = std::numeric_limits<F32>::quiet_NaN();

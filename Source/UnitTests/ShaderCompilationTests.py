@@ -625,8 +625,11 @@ class ShaderCompilationTests(unittest.TestCase):
 
     def test_clustered_lighting_requires_positive_depth_planes(self):
         config = (ROOT / "Source" / "EngineConfig.h").read_text(encoding="utf-8")
-        self.assertRegex(config, r"constexpr bool IsValidClusterDepthRange\( const F32 zNear, const F32 zFar \) noexcept"
-                                 r"\s*\{\s*return zNear > 0\.f && zFar > zNear && zFar <= F32_MAX;")
+        for helper in ("ResolveLightsPerCluster", "IsValidClusterDepthRange"):
+            self.assertNotIn(helper, config)
+        clustered = (ROOT / "Source" / "Rendering" / "Lighting" / "Headers" / "ClusteredLighting.h").read_text(encoding="utf-8")
+        self.assertRegex(clustered, r"constexpr bool IsValidClusterDepthRange\( const F32 zNear, const F32 zFar \) noexcept"
+                                    r"\s*\{\s*return zNear > 0\.f && zFar > zNear && zFar <= F32_MAX;")
         renderer = (ROOT / "Source" / "Rendering" / "Renderer.cpp").read_text(encoding="utf-8")
         prepare = re.search(r"void Renderer::prepareLighting\(.*?^\}$", renderer, re.DOTALL | re.MULTILINE).group(0)
         guard = prepare.index("IsValidClusterDepthRange( cameraSnapshot._zPlanes.min, cameraSnapshot._zPlanes.max )")
@@ -634,7 +637,7 @@ class ShaderCompilationTests(unittest.TestCase):
         self.assertLess(guard, prepare.index("Renderer Cull Lights"))
         self.assertLess(guard, prepare.index("_lightBuildClusteredAABBsPipelineCmd"))
         gfx = (ROOT / "Source" / "Platform" / "Video" / "GFXDevice.cpp").read_text(encoding="utf-8")
-        self.assertIn("if ( Config::Lighting::ClusteredForward::IsValidClusterDepthRange( zNear, zFar ) )", gfx)
+        self.assertIn("if ( ClusteredLighting::IsValidClusterDepthRange( zNear, zFar ) )", gfx)
 
     def test_light_constructors_apply_requested_range(self):
         light = (ROOT / "Source" / "Rendering" / "Lighting" / "Light.cpp").read_text(encoding="utf-8")
@@ -670,7 +673,7 @@ class ShaderCompilationTests(unittest.TestCase):
         self.assertGreater(gfx.index("hardwareState = initDescriptorSets();", end), end)
         self.assertIn("return ShaderProgram::SubmitSetLayouts(*this);", gfx)
         self.assertIn("configuredLightsPerCluster = config.rendering.numLightsPerCluster", init)
-        self.assertIn("ResolveLightsPerCluster( configuredLightsPerCluster )", init)
+        self.assertIn("ClusteredLighting::ResolveLightsPerCluster( configuredLightsPerCluster )", init)
         self.assertRegex(
             init,
             r'if\s*\(\s*configuredLightsPerCluster\s*==\s*0\s*\)\s*\{\s*'

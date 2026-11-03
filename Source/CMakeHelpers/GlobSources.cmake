@@ -725,6 +725,7 @@ set( RENDERING_SOURCE_HEADERS Rendering/Camera/Headers/Camera.h
                               Rendering/Camera/Headers/Frustum.h
                               Rendering/Headers/ClipRegion.h
                               Rendering/Headers/Renderer.h
+                              Rendering/Lighting/Headers/ClusteredLighting.h
                               Rendering/Lighting/Headers/Light.h
                               Rendering/Lighting/Headers/Light.inl
                               Rendering/Lighting/Headers/LightPool.h

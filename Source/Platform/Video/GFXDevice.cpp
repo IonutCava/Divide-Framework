@@ -21,6 +21,7 @@
 
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Headers/Renderer.h"
+#include "Rendering/Lighting/Headers/ClusteredLighting.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
 
 #include "Geometry/Material/Headers/Material.h"
@@ -448,7 +449,7 @@ namespace Divide
         _rtPool = std::make_unique<GFXRTPool>( *this );
 
         const I32 configuredLightsPerCluster = config.rendering.numLightsPerCluster;
-        const I32 numLightsPerCluster = Config::Lighting::ClusteredForward::ResolveLightsPerCluster( configuredLightsPerCluster );
+        const I32 numLightsPerCluster = ClusteredLighting::ResolveLightsPerCluster( configuredLightsPerCluster );
         if ( configuredLightsPerCluster == 0 )
         {
             Console::warnfn( LOCALE_STR( "WARN_ZERO_LIGHTS_PER_CLUSTER" ), numLightsPerCluster );
@@ -2097,7 +2098,7 @@ namespace Divide
 
             // Exponential depth slices (ref: http://www.aortiz.me/2018/12/21/CG.html). Clustered passes require valid planes
             // (enforced in Renderer::prepareLighting); other cameras, such as shadow passes, never sample the light grid.
-            if ( Config::Lighting::ClusteredForward::IsValidClusterDepthRange( zNear, zFar ) )
+            if ( ClusteredLighting::IsValidClusterDepthRange( zNear, zFar ) )
             {
                 constexpr F32 CLUSTERS_Z = to_F32( Config::Lighting::ClusteredForward::CLUSTERS_Z );
                 const F32 zLogRatio = std::log( zFar / zNear );

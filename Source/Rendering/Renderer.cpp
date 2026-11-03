@@ -8,6 +8,7 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Rendering/PostFX/Headers/PostFX.h"
+#include "Rendering/Lighting/Headers/ClusteredLighting.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
 
 #include "Managers/Headers/ProjectManager.h"
@@ -161,7 +162,7 @@ void Renderer::prepareLighting(const RenderStage stage,
 
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    if ( !DIVIDE_ASSERT( Config::Lighting::ClusteredForward::IsValidClusterDepthRange( cameraSnapshot._zPlanes.min, cameraSnapshot._zPlanes.max ),
+    if ( !DIVIDE_ASSERT( ClusteredLighting::IsValidClusterDepthRange( cameraSnapshot._zPlanes.min, cameraSnapshot._zPlanes.max ),
                          "Renderer::prepareLighting: clustered lighting requires finite camera planes with 0 < zNear < zFar" ) )
     {
         return;
