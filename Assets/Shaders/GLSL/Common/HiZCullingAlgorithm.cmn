@@ -64,7 +64,7 @@ bool PixelCull( in vec3 clip_min, in vec3 clip_max )
 
 uint GetCullBits( in vec4 pos )
 {
-    return uint( pos.x < -pos.w )
+    return (uint( pos.x < -pos.w ) * 0x01)
         | (uint( pos.x >  pos.w ) * 0x02)
         | (uint( pos.y < -pos.w ) * 0x04)
         | (uint( pos.y >  pos.w ) * 0x08)
