@@ -83,7 +83,7 @@ void main() {
     gl_Position = clipPosition;
 #if defined(HAS_VELOCITY)
     // STUBBED: TODO: Implement vegetation velocity support with previous instance and deformation state.
-    VAR._prevVertexWVP = clipPosition;
+    VAR._prevVertexWVP = dvd_PrevViewProjectionMatrix * VAR._vertexW;
 #endif //HAS_VELOCITY
 }
 
