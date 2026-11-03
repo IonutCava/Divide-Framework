@@ -66,6 +66,17 @@ namespace Divide {
         [[nodiscard]] VkResult endFrame( const VKSubmitSempahore::Container& semaphores );
         [[nodiscard]] VkFence activeFrameFence() const noexcept;
 
+        [[nodiscard]] static constexpr size_t FrameSlotCount() noexcept
+        {
+            static_assert( Config::MAX_FRAMES_IN_FLIGHT > 0u );
+            return Config::MAX_FRAMES_IN_FLIGHT;
+        }
+
+        [[nodiscard]] static constexpr size_t FrameSlotIndex( const U64 frameNumber ) noexcept
+        {
+            return to_size( frameNumber % FrameSlotCount() );
+        }
+
         [[nodiscard]] vkb::Swapchain& getSwapChain() noexcept;
         [[nodiscard]] VkImage         getCurrentImage() const noexcept;
         [[nodiscard]] VkImageView     getCurrentImageView() const noexcept;

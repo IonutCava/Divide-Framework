@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2018-2026 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -143,6 +143,26 @@ struct DynamicBinding
 
 using DynamicBindings = fixed_vector<DynamicBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET>;
 
+class VKImmediateSubmitStatus
+{
+public:
+    [[nodiscard]] bool record( const VkResult result ) noexcept
+    {
+        if ( result != VK_SUCCESS )
+        {
+            _failed.store( true, std::memory_order_release );
+            return false;
+        }
+        return true;
+    }
+
+    [[nodiscard]] bool failed() const noexcept { return _failed.load( std::memory_order_acquire ); }
+    void reset() noexcept { _failed.store( false, std::memory_order_release ); }
+
+private:
+    std::atomic_bool _failed{ false };
+};
+
 struct VKImmediateCmdContext
 {
     static constexpr U8 BUFFER_COUNT = 4u;
@@ -216,6 +236,7 @@ struct VKStateTracker
     VKImmediateCmdContext* IMCmdContext( QueueType type ) const;
 
     VKDevice* _device{ nullptr };
+    VKImmediateSubmitStatus _immediateSubmitStatus{};
     VKPerWindowState* _activeWindow{ nullptr };
 
 
@@ -376,16 +397,18 @@ inline std::string VKErrorString(VkResult errorCode)
     }
 }
 #ifndef VK_CHECK
-#define VK_CHECK(x)                                                                            \
-    do                                                                                         \
-    {                                                                                          \
-        VkResult err = x;                                                                      \
-        if (err)                                                                               \
-        {                                                                                      \
-            Console::errorfn(LOCALE_STR("ERROR_GENERIC_VK"), VKErrorString(err).c_str());\
-            DIVIDE_UNEXPECTED_CALL();                                                          \
-        }                                                                                      \
-    } while (0)
+#define VK_CHECK(x)                                                                                           \
+    do                                                                                                        \
+    {                                                                                                         \
+        const VkResult err = (x);                                                                            \
+        if ( err != VK_SUCCESS )                                                                              \
+        {                                                                                                     \
+            const std::string vkErrorString = VKErrorString( err );                                          \
+            const std::string vkFailureMsg = vkErrorString + " (" + std::to_string( static_cast<int>( err ) ) + ")"; \
+            Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), vkFailureMsg.c_str() );                    \
+            DIVIDE_UNEXPECTED_CALL_MSG( vkFailureMsg.c_str() );                                               \
+        }                                                                                                     \
+    } while ( 0 )
 #endif //VK_CHECK
 
 #ifndef VK_PROFILE

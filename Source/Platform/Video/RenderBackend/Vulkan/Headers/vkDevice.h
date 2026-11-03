@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2018-2026 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -57,7 +57,7 @@ class VKDevice final : NonCopyable, NonMovable
         [[nodiscard]] const vkb::PhysicalDevice& getPhysicalDevice() const noexcept;
 
         [[nodiscard]] VkCommandPool   createCommandPool(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT) const;
-                      void            submitToQueue(QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence) const;
+        [[nodiscard]] VkResult        submitToQueue(QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence) const;
         [[nodiscard]] VkResult        queuePresent(QueueType queue, const VkPresentInfoKHR& presentInfo) const;
         [[nodiscard]] VkResult        waitIdle() const;
 

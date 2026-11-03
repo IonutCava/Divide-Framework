@@ -62,6 +62,7 @@
   Do not add or retain Python-based or other external-tool-driven automated test harnesses.
   Do not add or retain automated tests for CMake helpers, build-timing tools, CI orchestration, or the build environment.
 - Distinguish checks actually run from checks not run or blocked. Local success does not establish success on other platforms or in CI.
+- On runtime failures (asserts, crashes, GPU/device-loss, startup issues), inspect `Logs/errors.log` and `Logs/console.log` before concluding root cause. If files are locked while debugging, stop the process and re-read them immediately after exit.
 - Documentation-only changes require no build unless they affect an executable example or have a dedicated documentation check.
 
 ### Canonical validation and dependency provisioning

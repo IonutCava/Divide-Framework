@@ -33,6 +33,8 @@ Commit `7b09ed5` raises the minimum supported version to Vulkan 1.4: device sele
 
 Do not assume optional dynamic-state/mesh support just from extension presence. Audit feature chains and capability/fallback decisions.
 Descriptor-buffer and push-descriptor support are required assumptions; descriptor layout/cache rules are in [shaders and descriptors](shader-descriptors.md).
+`VK_API::initRenderingAPI` initializes the `sType` of every reported
+`VkPhysicalDeviceToolProperties` before querying attached Vulkan tools.
 
 ## OpenGL memory
 
@@ -54,7 +56,7 @@ Textures use immutable `glTextureStorage*` storage and DSA mip/layer uploads; th
 
 - `vkBufferImpl` generally prefers device-local memory. Frequently updated buffers request persistent mapping; initial uploads temporarily map host-visible allocations when host access was requested. Initial and post-creation writes flush non-coherent mapped ranges before GPU use.
 - Non-mappable buffers and initial allocations without VMA host-access flags use staging allocations and explicit transfer commands. Initial and later staged writes flush the staging range before the transfer. Inspect mapping assumptions, staging lifetime, copies, and synchronization separately.
-- `vkTexture` derives image usage flags from engine `ImageUsage`, usually uses dedicated device-preferred VMA allocations, uploads through staging, explicitly transitions layouts, and can generate mipmaps on the GPU.
+- `vkTexture` derives image usage flags from engine `ImageUsage`, requests device-preferred VMA allocations without forcing dedicated memory, uploads through staging, explicitly transitions layouts, and can generate mipmaps on the GPU. VMA may suballocate small images or choose dedicated memory when appropriate or required.
 
 CPU-readable buffers (`_hostVisible`, required by `ShaderBuffer::readBytes`) request `HOST_ACCESS_RANDOM | MAPPED`. VMA therefore places them in host-visible, preferably cached memory and keeps them persistently mapped. `vkBufferImpl::readBytes` invalidates non-coherent ranges before copying. If a mapping is missing, it maps temporarily. It rejects non-host-visible memory instead of mapping it. Reads are bounded to the selected logical ring slot before the slot offset is applied. GPU writers must record a `GPU_WRITE_TO_CPU_READ` lock, which becomes a shader-write to host-read barrier; the barrier alone does not wait for GPU completion. `READ_BUFFER_DATA` requests are queued for deferred host reads: OpenGL inserts a fence and polls it with a zero timeout, while Vulkan associates the request with the active frame fence and reads it after that fence has been waited during frame reuse. Neither backend blocks the render thread for an individual readback.
 
@@ -74,13 +76,42 @@ window after a nested window reuses its already-acquired frame, or preserves
 its skipped state until that window is flushed. Submissions wait on the
 transfer semaphores claimed for that submission. A suboptimal acquisition
 still consumes and presents the acquired image before recreation.
+Each window has exactly `Config::MAX_FRAMES_IN_FLIGHT` command-buffer and fence
+slots, independent of swapchain image count; render-finished semaphores remain
+per image. Waiting on the main window's recycled slot before scene preparation
+bounds in-flight uses of the per-node buffer ring.
 Swapchain recreation waits for device idle for every window, with queue
 operations synchronized by Vulkan queue handle. Image views and frame command
 buffers are released during teardown, and a failed recreation is retried
 before another acquisition. A queue-submission failure after fence reset is
 not yet recovered: it can leave an unsignaled fence.
+An immediate upload submission failure is logged and latches the Vulkan backend
+into a stopping state instead of publishing its unsignaled completion semaphore
+or waiting on its fence. Pending semaphores are destroyed during device teardown
+after the idle attempt; a new backend initialization resets the latch.
 
 Changes to writable/readable images must audit usage flags, transitions, staging lifetime, and consumers together.
+Sampleable Vulkan render-target images are cleared on the graphics queue before
+entering shader-read layout, and their attachment trackers reflect that initial
+state. The clear covers every mip and layer (zero colour, depth one and stencil
+zero), so resources such as the previous-screen image can be sampled before
+their first render-target blit. The first attachment write explicitly transitions
+the image to attachment use. This adds initialization work when the resource is
+created or resized; it is not a per-frame clear.
+`vkRenderTarget::begin` resets the dynamic-rendering attachment information on
+every pass: a pass with automatic MSAA resolve disabled must not inherit the
+previous pass's resolve mode or image view. Resolve-image usage trackers change
+when their layout barriers are recorded. An enabled resolve target transitions
+to shader-read after a pass and back to attachment use before a later resolve,
+regardless of whether the multisampled attachment contents are retained.
+Transitions requested from or to shader-read use the same layouts for resolve
+images as other textures; being a resolve image does not imply its current layout.
+The previous-screen blit relies on render-target transitions instead of a
+separate one-time barrier that bypasses the attachment tracker.
+`VK_KHR_unified_image_layouts`, when enabled with its feature, guarantees that
+`GENERAL` is efficient where supported, but it does not eliminate synchronization
+or the special initialization and presentation transitions. The engine does not
+currently enable it; do not assume the same guarantee on unsupported devices.
 `vkTexture::GetAspectFlags` follows depth/stencil packing, not attachment usage:
 sampled-only depth fallbacks must upload and create views with a depth aspect.
 For arrays, cubemaps, mip generation, and partial updates, inspect backend `loadDataInternal(...)` overloads; shared decode/import is in [asset pipeline](asset-pipeline.md).

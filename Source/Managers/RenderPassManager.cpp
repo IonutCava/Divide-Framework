@@ -175,6 +175,7 @@ void RenderPassManager::render(const RenderParams& params)
     GFXDevice& gfx = _context;
     PlatformContext& context = parent().platformContext();
     ProjectManager* projectManager = parent().projectManager().get();
+    RenderPassExecutor::PrepareGPUBuffers( gfx, projectManager->activePlayerCount() );
 
     const Camera* cam = Attorney::ProjectManagerRenderPass::playerCamera(projectManager);
     const I64 cameraGUID = cam->getGUID();
@@ -269,7 +270,6 @@ void RenderPassManager::render(const RenderParams& params)
         postFXCmdBuffer->batch();
     }
 
-    RenderPassExecutor::PrepareGPUBuffers(gfx);
     TaskPool& pool = context.taskPool(TaskPoolType::RENDERER);
     Task* renderTask = CreateTask( TASK_NOP );
     startRenderTasks(params, pool, renderTask);

@@ -69,47 +69,40 @@ namespace Divide
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-            RenderPassExecutor::BufferUpdateRange crtRange, prevRange;
+            RenderPassExecutor::BufferUpdateRange uploadRange;
             {
-                SharedLock<SharedMutex> w_lock( executorBuffer._rangeLock );
-                crtRange = executorBuffer._updateRange;
-                prevRange = executorBuffer._prevUpdateRange;
+                LockGuard<SharedMutex> w_lock( executorBuffer._rangeLock );
+                const size_t slotCount = executorBuffer._gpuBuffer->queueLength();
+                uploadRange = RenderPassExecutor::TakeBufferUpdateRange(
+                    executorBuffer._updateRange,
+                    std::span{ executorBuffer._slotUpdateRanges }.first( slotCount ),
+                    executorBuffer._gpuBuffer->queueIndex() );
             }
 
-            if (crtRange.range() > 0u)
+            if ( uploadRange.range() > 0u )
             {
-                if (executorBuffer._gpuBuffer->getPrimitiveSize() < executorBuffer._gpuBuffer->alignmentRequirement())
-                {
-                    // We need this due to alignment concerns
-                    if (crtRange._firstIDX % 2u != 0)
-                    {
-                        crtRange._firstIDX -= 1u;
-                    }
-                    if (crtRange._lastIDX % 2u == 0)
-                    {
-                        crtRange._lastIDX += 1u;
-                    }
-                }
+                uploadRange.alignStart( executorBuffer._gpuBuffer->getPrimitiveSize(),
+                                        executorBuffer._gpuBuffer->alignmentRequirement() );
 
-                executorBuffer._gpuBuffer->incQueue();
-                if (prevRange.range() > 0)
-                {
-                    crtRange._firstIDX = std::min(crtRange._firstIDX, prevRange._firstIDX);
-                    crtRange._lastIDX = std::max(crtRange._lastIDX, prevRange._lastIDX);
-                }
-
-                bufferPtr data = &executorBuffer._data._gpuData[crtRange._firstIDX];
-                memCmdInOut._bufferLocks.push_back(executorBuffer._gpuBuffer->writeData({ crtRange._firstIDX, crtRange.range() }, data));
-            }
-
-            {
-                LockGuard<SharedMutex> w_lock(executorBuffer._rangeLock);
-                executorBuffer._updateRange.reset();
-                executorBuffer._prevUpdateRange = crtRange;
+                bufferPtr data = &executorBuffer._data._gpuData[uploadRange._firstIDX];
+                memCmdInOut._bufferLocks.push_back( executorBuffer._gpuBuffer->writeData( { uploadRange._firstIDX, uploadRange.range() }, data ) );
             }
 
             LockGuard<Mutex> w_lock(executorBuffer._nodeProcessedLock);
             executorBuffer._nodeProcessedThisFrame.clear();
+        }
+
+        template<typename DataContainer>
+        void MarkFullBufferUpload( ExecutorBuffer<DataContainer>& executorBuffer )
+        {
+            LockGuard<SharedMutex> w_lock( executorBuffer._rangeLock );
+            std::ranges::fill( executorBuffer._slotUpdateRanges, RenderPassExecutor::BufferUpdateRange{} );
+            executorBuffer._updateRange.reset();
+            if ( !executorBuffer._data._gpuData.empty() )
+            {
+                executorBuffer._updateRange._firstIDX = 0u;
+                executorBuffer._updateRange._lastIDX = to_U32( executorBuffer._data._gpuData.size() - 1u );
+            }
         }
 
         template<typename DataContainer>
@@ -133,6 +126,7 @@ namespace Divide
             {
                 LockGuard<SharedMutex> w_lock(executorBuffer._rangeLock);
                 executorBuffer._updateRange.reset();
+                std::ranges::fill( executorBuffer._slotUpdateRanges, RenderPassExecutor::BufferUpdateRange{} );
             }
             {
                 LockGuard<Mutex> w_lock(executorBuffer._nodeProcessedLock);
@@ -164,6 +158,44 @@ namespace Divide
         _lastIDX = 0u;
     }
 
+    void RenderPassExecutor::BufferUpdateRange::alignStart( const size_t elementSize, const size_t alignment ) noexcept
+    {
+        if ( !DIVIDE_ASSERT( alignment > 0u && range() > 0u, "Invalid per-node buffer alignment or range" ) )
+        {
+            return;
+        }
+        while ( (to_size( _firstIDX ) * elementSize) % alignment != 0u )
+        {
+            --_firstIDX;
+        }
+    }
+
+    RenderPassExecutor::BufferUpdateRange RenderPassExecutor::TakeBufferUpdateRange( BufferUpdateRange& pending,
+                                                                                    const std::span<BufferUpdateRange> slots,
+                                                                                    const size_t slotIndex ) noexcept
+    {
+        DIVIDE_ASSERT( slotIndex < slots.size() );
+        if ( pending.range() > 0u )
+        {
+            for ( BufferUpdateRange& slot : slots )
+            {
+                slot._firstIDX = std::min( slot._firstIDX, pending._firstIDX );
+                slot._lastIDX = std::max( slot._lastIDX, pending._lastIDX );
+            }
+            pending.reset();
+        }
+
+        BufferUpdateRange result = slots[slotIndex];
+        slots[slotIndex].reset();
+        return result;
+    }
+
+    U16 RenderPassExecutor::BufferQueueLengthForPlayers( const U8 playerCount ) noexcept
+    {
+        DIVIDE_ASSERT( playerCount <= Config::MAX_LOCAL_PLAYER_COUNT );
+        return to_U16( (Config::MAX_FRAMES_IN_FLIGHT + 1u) * std::max( playerCount, U8_ONE ) );
+    }
+
     RenderPassExecutor::RenderPassExecutor( RenderPassManager& parent, GFXDevice& context, const RenderStage stage )
         : _parent( parent )
         , _context( context )
@@ -191,7 +223,8 @@ namespace Divide
         s_transformBuffer._data._freeList.resize(Config::MAX_VISIBLE_NODES, true);
         s_materialBuffer._data._gpuData.resize(Config::MAX_CONCURRENT_MATERIALS);
         s_materialBuffer._data._freeList.resize(Config::MAX_CONCURRENT_MATERIALS);
-        ResizeGPUBuffers(gfx, Config::MAX_VISIBLE_NODES, Config::MAX_VISIBLE_NODES, Config::MAX_CONCURRENT_MATERIALS);
+        ResizeGPUBuffers(gfx, Config::MAX_VISIBLE_NODES, Config::MAX_VISIBLE_NODES, Config::MAX_CONCURRENT_MATERIALS,
+                         BufferQueueLengthForPlayers( 1u ));
     }
 
     void RenderPassExecutor::OnShutdown( [[maybe_unused]] GFXDevice& gfx )
@@ -207,19 +240,25 @@ namespace Divide
         Material::OnShutdown();
     }
 
-    void RenderPassExecutor::PrepareGPUBuffers(GFXDevice& context)
+    void RenderPassExecutor::PrepareGPUBuffers(GFXDevice& context, const U8 playerCount)
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
-        if (s_resizeBufferQueued)
+        const U16 requiredRingLength = BufferQueueLengthForPlayers( playerCount );
+        const U16 ringLength = std::max( requiredRingLength, s_indirectionBuffer._gpuBuffer->queueLength() );
+        if (s_resizeBufferQueued || ringLength != s_indirectionBuffer._gpuBuffer->queueLength())
         {
             const size_t indirectionCount = s_indirectionBuffer._data._gpuData.size();
             const size_t transformCount = s_transformBuffer._data._gpuData.size();
             const size_t materialCount = s_materialBuffer._data._gpuData.size();
 
-            ResizeGPUBuffers(context, indirectionCount, transformCount, materialCount);
+            ResizeGPUBuffers(context, indirectionCount, transformCount, materialCount, ringLength);
             s_resizeBufferQueued = false;
         }
+
+        s_materialBuffer._gpuBuffer->incQueue();
+        s_transformBuffer._gpuBuffer->incQueue();
+        s_indirectionBuffer._gpuBuffer->incQueue();
     }
 
     void RenderPassExecutor::FlushBuffersToGPU(GFX::MemoryBarrierCommand& memCmdInOut)
@@ -247,47 +286,53 @@ namespace Divide
         }
     }
 
-    void RenderPassExecutor::ResizeGPUBuffers(GFXDevice& context, const size_t indirectionCount, const size_t transformCount, const size_t materialCount)
+    void RenderPassExecutor::ResizeGPUBuffers(GFXDevice& context, const size_t indirectionCount, const size_t transformCount, const size_t materialCount, const U16 ringLength)
     {
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
         bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
-        bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
+        bufferDescriptor._ringBufferLength = ringLength;
 
-        if (s_materialBuffer._gpuBuffer == nullptr || s_materialBuffer._gpuBuffer->getPrimitiveCount() != to_U32(materialCount))
+        if (s_materialBuffer._gpuBuffer == nullptr || s_materialBuffer._gpuBuffer->getPrimitiveCount() != to_U32(materialCount) ||
+            s_materialBuffer._gpuBuffer->queueLength() != ringLength)
         {
             bufferDescriptor._elementCount = to_U32(materialCount);
             bufferDescriptor._elementSize = sizeof(NodeMaterialData);
             bufferDescriptor._name = "NODE_MATERIAL_DATA";
             if (!s_materialBuffer._data._gpuData.empty())
             {
-                bufferDescriptor._initialData = { s_materialBuffer._data._gpuData.data(), s_materialBuffer._data._gpuData.size() };
+                bufferDescriptor._initialData = { s_materialBuffer._data._gpuData.data(), s_materialBuffer._data._gpuData.size() * sizeof(NodeMaterialData) };
             }
 
             s_materialBuffer._gpuBuffer = context.newShaderBuffer(bufferDescriptor);
+            MarkFullBufferUpload( s_materialBuffer );
         }
-        if (s_transformBuffer._gpuBuffer == nullptr || s_transformBuffer._gpuBuffer->getPrimitiveCount() != to_U32(transformCount))
+        if (s_transformBuffer._gpuBuffer == nullptr || s_transformBuffer._gpuBuffer->getPrimitiveCount() != to_U32(transformCount) ||
+            s_transformBuffer._gpuBuffer->queueLength() != ringLength)
         {
             bufferDescriptor._elementCount = to_U32(transformCount);
             bufferDescriptor._elementSize = sizeof(NodeTransformData);
             bufferDescriptor._name = "NODE_TRANSFORM_DATA";
             if (!s_transformBuffer._data._gpuData.empty())
             {
-                bufferDescriptor._initialData = { s_transformBuffer._data._gpuData.data(), s_transformBuffer._data._gpuData.size() };
+                bufferDescriptor._initialData = { s_transformBuffer._data._gpuData.data(), s_transformBuffer._data._gpuData.size() * sizeof(NodeTransformData) };
             }
 
             s_transformBuffer._gpuBuffer = context.newShaderBuffer(bufferDescriptor);
+            MarkFullBufferUpload( s_transformBuffer );
         }
-        if (s_indirectionBuffer._gpuBuffer == nullptr || s_indirectionBuffer._gpuBuffer->getPrimitiveCount() != to_U32(indirectionCount))
+        if (s_indirectionBuffer._gpuBuffer == nullptr || s_indirectionBuffer._gpuBuffer->getPrimitiveCount() != to_U32(indirectionCount) ||
+            s_indirectionBuffer._gpuBuffer->queueLength() != ringLength)
         {
             bufferDescriptor._elementCount = to_U32(indirectionCount);
             bufferDescriptor._elementSize = sizeof(NodeIndirectionData);
             bufferDescriptor._name = "NODE_INDIRECTION_DATA";
             if (!s_indirectionBuffer._data._gpuData.empty())
             {
-                bufferDescriptor._initialData = { s_indirectionBuffer._data._gpuData.data(), s_indirectionBuffer._data._gpuData.size() };
+                bufferDescriptor._initialData = { s_indirectionBuffer._data._gpuData.data(), s_indirectionBuffer._data._gpuData.size() * sizeof(NodeIndirectionData) };
             }
             s_indirectionBuffer._gpuBuffer = context.newShaderBuffer(bufferDescriptor);
+            MarkFullBufferUpload( s_indirectionBuffer );
         }
     }
 

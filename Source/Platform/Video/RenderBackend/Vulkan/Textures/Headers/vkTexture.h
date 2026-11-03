@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -161,6 +161,14 @@ namespace Divide
             VkImageView _view{VK_NULL_HANDLE};
         };
 
+        struct InitialClearPlan
+        {
+            VkImageSubresourceRange _range{};
+            VkClearColorValue _colour{};
+            VkClearDepthStencilValue _depthStencil{ 1.f, 0u };
+            bool _isDepthStencil{ false };
+        };
+
         vkTexture( PlatformContext& context, const ResourceDescriptor<Texture>& descriptor );
         virtual ~vkTexture() override;
 
@@ -174,11 +182,21 @@ namespace Divide
         PROPERTY_R_IW( VkFormat, vkFormat, VK_FORMAT_MAX_ENUM );
         PROPERTY_R_IW( VkSampleCountFlagBits, sampleFlagBits, VK_SAMPLE_COUNT_1_BIT );
 
+        [[nodiscard]] static constexpr VmaAllocationCreateInfo ImageAllocationInfo() noexcept
+        {
+            VmaAllocationCreateInfo info{};
+            info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+            info.priority = 1.f;
+            return info;
+        }
+
         [[nodiscard]] ImageReadbackData readData(U16 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept override;
         [[nodiscard]] ImageReadbackData readData( VkCommandBuffer cmdBuffer, U16 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept;
         [[nodiscard]] VkImageView getImageView( const CachedImageView::Descriptor& descriptor ) const;
 
         [[nodiscard]] static VkImageAspectFlags GetAspectFlags( const TextureDescriptor& descriptor ) noexcept;
+        [[nodiscard]] static ImageUsage InitialUsage( const TextureDescriptor& descriptor ) noexcept;
+        [[nodiscard]] static InitialClearPlan MakeInitialClearPlan( const TextureDescriptor& descriptor ) noexcept;
 
         static void Copy( VkCommandBuffer cmdBuffer, const vkTexture* source, const U8 sourceSamples, const vkTexture* destination, const U8 destinationSamples, CopyTexParams params );
 

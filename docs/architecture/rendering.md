@@ -40,6 +40,13 @@ Before changing ordering, audit render-target producers/consumers, depth and clu
 Dirty ranges permit partial uploads. Preparation is partitioned with `g_nodesPerPrepareDrawPartition`; see [threading](threading.md) before changing parallel preparation or locking.
 Start here for CPU render scalability, draw-call buildup, or stale per-node data.
 
+Per-node buffer slots are selected before recording the skylight or any stage
+commands; descriptors capture that selection, and uploads target the same slot
+after preparation finishes. Each ring slot accumulates all changes since its
+previous use. New or resized buffers mark every slot for a full upload, including
+on OpenGL, and initial-data sizes are bytes. The ring grows with the local player
+count so queued player passes and in-flight frames do not reuse the same slot.
+
 The camera block's previous view-projection is the selected player's previous
 projection multiplied by its previous view. It is refreshed when switching
 players even if that player's cached matrices did not change.

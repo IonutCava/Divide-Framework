@@ -2243,7 +2243,7 @@ namespace Divide
 #pragma endregion
 
 #pragma region Command buffers, occlusion culling, etc
-    void GFXDevice::validateAndUploadDescriptorSets()
+    bool GFXDevice::validateAndUploadDescriptorSets()
     {
         if (!uploadGPUBlock())
         {
@@ -2264,7 +2264,15 @@ namespace Divide
             set.dirty( false );
         }
 
-        _api->bindShaderResources( setEntries );
+        if ( !_api->bindShaderResources( setEntries ) )
+        {
+            for ( auto& set : _descriptorSets )
+            {
+                set.dirty( true );
+            }
+            return false;
+        }
+        return true;
     }
 
     void GFXDevice::flushCommandBuffer( Handle<GFX::CommandBuffer>&& commandBuffer )
@@ -2288,9 +2296,9 @@ namespace Divide
         const GFX::CommandBuffer::CommandList& commands = GFX::Get(commandBuffer)->commands();
         for ( GFX::CommandBase* cmd : commands )
         {
-            if ( IsSubmitCommand( cmd->type() ) )
+            if ( IsSubmitCommand( cmd->type() ) && !validateAndUploadDescriptorSets() )
             {
-                validateAndUploadDescriptorSets();
+                continue;
             }
 
             switch ( cmd->type() )
@@ -2473,7 +2481,8 @@ namespace Divide
 
     void GFXDevice::PopDebugMessage()
     {
-        s_debugScope[s_debugScopeDepth--] = {};
+        assert(s_debugScopeDepth > 0u);
+        s_debugScope[--s_debugScopeDepth] = {};
     }
 
     void GFXDevice::ClearDebugMessages()

@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -54,6 +54,18 @@ namespace Divide
 
     public:
         vkRenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor);
+
+        static constexpr void ResetAttachmentInfo(VkRenderingAttachmentInfo& info) noexcept
+        {
+            info = {};
+            info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+            info.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+        }
+
+        [[nodiscard]] static constexpr RTUsageTracker::Layout ResolveTargetUsage(const bool toWrite) noexcept
+        {
+            return toWrite ? RTUsageTracker::Layout::ATTACHMENT : RTUsageTracker::Layout::SHADER_READ;
+        }
 
         [[nodiscard]] bool create() override;
 

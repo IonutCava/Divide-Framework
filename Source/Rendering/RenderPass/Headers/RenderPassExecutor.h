@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -70,10 +70,15 @@ public:
 
         U32 range() const noexcept;
         void reset() noexcept;
-
+        void alignStart( size_t elementSize, size_t alignment ) noexcept;
 
         bool operator==(const BufferUpdateRange&) const = default;
     };
+
+    [[nodiscard]] static BufferUpdateRange TakeBufferUpdateRange( BufferUpdateRange& pending,
+                                                                  std::span<BufferUpdateRange> slots,
+                                                                  size_t slotIndex ) noexcept;
+    [[nodiscard]] static U16 BufferQueueLengthForPlayers( U8 playerCount ) noexcept;
 
     struct MaterialLookupInfo
     {
@@ -105,7 +110,7 @@ public:
 
         SharedMutex _rangeLock;
         BufferUpdateRange _updateRange;
-        BufferUpdateRange _prevUpdateRange;
+        std::array<BufferUpdateRange, (Config::MAX_FRAMES_IN_FLIGHT + 1u) * Config::MAX_LOCAL_PLAYER_COUNT> _slotUpdateRanges{};
 
         Mutex _nodeProcessedLock;
         eastl::fixed_set<U32, Config::MAX_VISIBLE_NODES, true> _nodeProcessedThisFrame;
@@ -122,9 +127,9 @@ public:
                          Handle<ShaderProgram> OITCompositionShaderMS,
                          Handle<ShaderProgram> ResolveGBufferShaderMS);
 
-    static void ResizeGPUBuffers(GFXDevice& context, size_t indirectionCount, size_t transformCount, size_t materialCount);
+    static void ResizeGPUBuffers(GFXDevice& context, size_t indirectionCount, size_t transformCount, size_t materialCount, U16 ringLength);
     static void FlushBuffersToGPU(GFX::MemoryBarrierCommand& memCmdInOut);
-    static void PrepareGPUBuffers(GFXDevice& context);
+    static void PrepareGPUBuffers(GFXDevice& context, U8 playerCount);
     static void OnStartup(GFXDevice& gfx);
     static void OnShutdown(GFXDevice& gfx);
 

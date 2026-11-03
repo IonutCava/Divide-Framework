@@ -3,8 +3,11 @@
 
 #include "Core/Headers/WindowManager.h"
 #include "Core/Headers/ErrorCodes.h"
+#include "Core/Headers/RingBuffer.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h"
+#include "Platform/Video/RenderBackend/Vulkan/Headers/vkSwapChain.h"
+#include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkRenderTarget.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Shaders/Headers/GLSLToSPIRV.h"
 #include "Platform/Video/Shaders/Headers/ShaderDataUploader.h"
@@ -13,9 +16,310 @@
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
+#include "Rendering/RenderPass/Headers/RenderPassExecutor.h"
 
 namespace Divide
 {
+    TEST_CASE( "Immediate submission failures stop later work until reinitialization", "[render_smoke][submission]" )
+    {
+        VKImmediateSubmitStatus status{};
+        CHECK_FALSE( status.failed() );
+        CHECK( status.record( VK_SUCCESS ) );
+        CHECK_FALSE( status.failed() );
+        CHECK_FALSE( status.record( VK_ERROR_OUT_OF_HOST_MEMORY ) );
+        CHECK( status.failed() );
+        CHECK( status.record( VK_SUCCESS ) );
+        CHECK( status.failed() );
+        status.reset();
+        CHECK_FALSE( status.failed() );
+        CHECK_FALSE( status.record( VK_ERROR_DEVICE_LOST ) );
+        CHECK( status.failed() );
+    }
+
+    TEST_CASE( "Per-node dirty ranges remain pending independently in every ring slot", "[render_smoke][per_node]" )
+    {
+        using Range = RenderPassExecutor::BufferUpdateRange;
+        std::array<Range, 4> slots{};
+        Range pending{ 0u, 9u };
+
+        CHECK( (RenderPassExecutor::TakeBufferUpdateRange( pending, slots, 1u ) == Range{ 0u, 9u }) );
+        CHECK( pending.range() == 0u );
+        CHECK( slots[1].range() == 0u );
+        CHECK( (slots[0] == Range{ 0u, 9u }) );
+        CHECK( (slots[2] == Range{ 0u, 9u }) );
+        CHECK( (slots[3] == Range{ 0u, 9u }) );
+
+        pending = { 20u, 23u };
+        CHECK( (RenderPassExecutor::TakeBufferUpdateRange( pending, slots, 1u ) == Range{ 20u, 23u }) );
+        CHECK( (slots[0] == Range{ 0u, 23u }) );
+        CHECK( (slots[2] == Range{ 0u, 23u }) );
+        CHECK( (slots[3] == Range{ 0u, 23u }) );
+        CHECK( RenderPassExecutor::TakeBufferUpdateRange( pending, slots, 1u ).range() == 0u );
+        CHECK( (RenderPassExecutor::TakeBufferUpdateRange( pending, slots, 2u ) == Range{ 0u, 23u }) );
+
+        pending = { 4u, 5u };
+        CHECK( (RenderPassExecutor::TakeBufferUpdateRange( pending, slots, 2u ) == Range{ 4u, 5u }) );
+        CHECK( (RenderPassExecutor::TakeBufferUpdateRange( pending, slots, 0u ) == Range{ 0u, 23u }) );
+        CHECK( (RenderPassExecutor::TakeBufferUpdateRange( pending, slots, 1u ) == Range{ 4u, 5u }) );
+    }
+
+    TEST_CASE( "Per-node upload starts align without dropping the dirty range", "[render_smoke][per_node]" )
+    {
+        using Range = RenderPassExecutor::BufferUpdateRange;
+        Range aligned{ 5u, 7u };
+        aligned.alignStart( 12u, 16u );
+        CHECK( (aligned == Range{ 4u, 7u }) );
+        CHECK( aligned.range() == 4u );
+
+        aligned = { 7u, 8u };
+        aligned.alignStart( 128u, 256u );
+        CHECK( (aligned == Range{ 6u, 8u }) );
+        aligned = { 3u, 3u };
+        aligned.alignStart( 4u, 256u );
+        CHECK( (aligned == Range{ 0u, 3u }) );
+        aligned = { 0u, 3u };
+        aligned.alignStart( 4u, 256u );
+        CHECK( (aligned == Range{ 0u, 3u }) );
+    }
+
+    TEST_CASE( "Per-node player slots outlast Vulkan's bounded in-flight frames", "[render_smoke][per_node]" )
+    {
+        CHECK( VKSwapChain::FrameSlotCount() == Config::MAX_FRAMES_IN_FLIGHT );
+        for ( U64 frame = 0u; frame < 20u; ++frame )
+        {
+            CHECK( VKSwapChain::FrameSlotIndex( frame ) == frame % Config::MAX_FRAMES_IN_FLIGHT );
+        }
+        CHECK( RenderPassExecutor::BufferQueueLengthForPlayers( 0u ) ==
+               RenderPassExecutor::BufferQueueLengthForPlayers( 1u ) );
+
+        for ( U8 players = 1u; players <= Config::MAX_LOCAL_PLAYER_COUNT; ++players )
+        {
+            const U16 length = RenderPassExecutor::BufferQueueLengthForPlayers( players );
+            RingBuffer ring{ length };
+            vector<I32> lastUsedFrame( length, -1 );
+            for ( I32 frame = 0; frame < 20; ++frame )
+            {
+                for ( U8 player = 0u; player < players; ++player )
+                {
+                    ring.incQueue();
+                    const U16 slot = ring.queueIndex();
+                    if ( lastUsedFrame[slot] >= 0 )
+                    {
+                        CHECK( frame - lastUsedFrame[slot] >= Config::MAX_FRAMES_IN_FLIGHT );
+                    }
+                    lastUsedFrame[slot] = frame;
+                }
+            }
+        }
+    }
+
+    TEST_CASE( "Vulkan rendering attachments discard resolve state between passes", "[render_smoke][render_target]" )
+    {
+        VkRenderingAttachmentInfo info{};
+        vkRenderTarget::ResetAttachmentInfo( info );
+        info.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+        info.resolveImageView = reinterpret_cast<VkImageView>( &info );
+        info.resolveImageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+        info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+
+        vkRenderTarget::ResetAttachmentInfo( info );
+        CHECK( info.sType == VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO );
+        CHECK( info.imageLayout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL );
+        CHECK( info.resolveMode == VK_RESOLVE_MODE_NONE );
+        CHECK( info.resolveImageView == VK_NULL_HANDLE );
+        CHECK( info.resolveImageLayout == VK_IMAGE_LAYOUT_UNDEFINED );
+        CHECK( info.loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR );
+    }
+
+    TEST_CASE( "Vulkan resolve targets return to shader-read after a pass", "[render_smoke][render_target]" )
+    {
+        CHECK( vkRenderTarget::ResolveTargetUsage( true ) == RTUsageTracker::Layout::ATTACHMENT );
+        CHECK( vkRenderTarget::ResolveTargetUsage( false ) == RTUsageTracker::Layout::SHADER_READ );
+
+        for ( const bool depth : { false, true } )
+        {
+            VkImageSubresourceRange range
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0u,
+                .levelCount = 1u,
+                .baseArrayLayer = 0u,
+                .layerCount = 1u
+            };
+            if ( depth )
+            {
+                range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            }
+            VkImageMemoryBarrier2 endBarrier{};
+            vkTexture::TransitionTexture( depth ? vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ
+                                                : vkTexture::TransitionType::COLOUR_ATTACHMENT_TO_SHADER_READ,
+                                          range, { ._name = "resolve", ._isResolveImage = true }, endBarrier );
+            CHECK( endBarrier.oldLayout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL );
+            CHECK( endBarrier.newLayout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL );
+
+            VkImageMemoryBarrier2 beginBarrier{};
+            vkTexture::TransitionTexture( depth ? vkTexture::TransitionType::SHADER_READ_TO_DEPTH_ATTACHMENT
+                                                : vkTexture::TransitionType::SHADER_READ_TO_COLOUR_ATTACHMENT,
+                                          range, { ._name = "resolve", ._isResolveImage = true }, beginBarrier );
+            CHECK( beginBarrier.oldLayout == endBarrier.newLayout );
+            CHECK( beginBarrier.newLayout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL );
+        }
+    }
+
+    TEST_CASE( "Vulkan shader-read transitions do not infer layout from resolve usage", "[render_smoke][image_barrier]" )
+    {
+        using Transition = vkTexture::TransitionType;
+        struct TransitionCase
+        {
+            Transition _type;
+            VkImageLayout _oldLayout;
+            VkImageLayout _newLayout;
+        };
+        constexpr std::array cases
+        {
+            TransitionCase{ Transition::UNDEFINED_TO_SHADER_READ, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL },
+            TransitionCase{ Transition::SHADER_READ_TO_SHADER_WRITE, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL },
+            TransitionCase{ Transition::SHADER_READ_TO_SHADER_READ_WRITE, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL },
+            TransitionCase{ Transition::SHADER_READ_TO_BLIT_READ, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL },
+            TransitionCase{ Transition::SHADER_READ_TO_BLIT_WRITE, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL },
+            TransitionCase{ Transition::BLIT_READ_TO_SHADER_READ, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL },
+            TransitionCase{ Transition::BLIT_WRITE_TO_SHADER_READ, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL },
+            TransitionCase{ Transition::SHADER_READ_TO_COPY_READ, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL },
+            TransitionCase{ Transition::SHADER_READ_TO_COPY_WRITE, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL },
+            TransitionCase{ Transition::COPY_READ_TO_SHADER_READ, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL },
+            TransitionCase{ Transition::COPY_WRITE_TO_SHADER_READ, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL }
+        };
+        constexpr VkImageSubresourceRange range
+        {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 2u,
+            .levelCount = 1u,
+            .baseArrayLayer = 3u,
+            .layerCount = 1u
+        };
+        for ( const TransitionCase& test : cases )
+        {
+            INFO( vkTexture::Names::transitionType[to_base( test._type )] );
+            for ( const bool isResolve : { false, true } )
+            {
+                INFO( isResolve );
+                VkImageMemoryBarrier2 barrier{};
+                vkTexture::TransitionTexture( test._type, range, { ._name = "image", ._isResolveImage = isResolve }, barrier );
+                CHECK( barrier.oldLayout == test._oldLayout );
+                CHECK( barrier.newLayout == test._newLayout );
+                CHECK( barrier.subresourceRange.baseMipLevel == range.baseMipLevel );
+                CHECK( barrier.subresourceRange.baseArrayLayer == range.baseArrayLayer );
+                if ( test._oldLayout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL )
+                {
+                    CHECK( ( barrier.srcAccessMask & VK_ACCESS_2_SHADER_READ_BIT ) != 0u );
+                }
+                if ( test._newLayout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL )
+                {
+                    CHECK( ( barrier.dstAccessMask & VK_ACCESS_2_SHADER_READ_BIT ) != 0u );
+                }
+            }
+        }
+    }
+
+    TEST_CASE( "Vulkan initializes sampleable attachments in shader-read layout", "[render_smoke][image_barrier]" )
+    {
+        TextureDescriptor descriptor{};
+        CHECK( vkTexture::InitialUsage( descriptor ) == ImageUsage::SHADER_READ );
+
+        AddImageUsageFlag( descriptor, ImageUsage::RT_COLOUR_ATTACHMENT );
+        CHECK( vkTexture::InitialUsage( descriptor ) == ImageUsage::SHADER_READ );
+        AddImageUsageFlag( descriptor, ImageUsage::RT_RESOLVE_TARGET );
+        CHECK( vkTexture::InitialUsage( descriptor ) == ImageUsage::SHADER_READ );
+        RemoveImageUsageFlag( descriptor, ImageUsage::SHADER_READ );
+        CHECK( vkTexture::InitialUsage( descriptor ) == ImageUsage::RT_RESOLVE_TARGET );
+        RemoveImageUsageFlag( descriptor, ImageUsage::RT_RESOLVE_TARGET );
+        CHECK( vkTexture::InitialUsage( descriptor ) == ImageUsage::RT_COLOUR_ATTACHMENT );
+
+        RemoveImageUsageFlag( descriptor, ImageUsage::RT_COLOUR_ATTACHMENT );
+        AddImageUsageFlag( descriptor, ImageUsage::RT_DEPTH_ATTACHMENT );
+        CHECK( vkTexture::InitialUsage( descriptor ) == ImageUsage::RT_DEPTH_ATTACHMENT );
+        AddImageUsageFlag( descriptor, ImageUsage::RT_RESOLVE_TARGET );
+        CHECK( vkTexture::InitialUsage( descriptor ) == ImageUsage::RT_RESOLVE_TARGET );
+        AddImageUsageFlag( descriptor, ImageUsage::SHADER_READ );
+        CHECK( vkTexture::InitialUsage( descriptor ) == ImageUsage::SHADER_READ );
+        RemoveImageUsageFlag( descriptor, ImageUsage::SHADER_READ );
+        RemoveImageUsageFlag( descriptor, ImageUsage::RT_RESOLVE_TARGET );
+        RemoveImageUsageFlag( descriptor, ImageUsage::RT_DEPTH_ATTACHMENT );
+        AddImageUsageFlag( descriptor, ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT );
+        CHECK( vkTexture::InitialUsage( descriptor ) == ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT );
+    }
+
+    TEST_CASE( "Vulkan initializes every sampled attachment subresource before shader reads", "[render_smoke][image_barrier]" )
+    {
+        TextureDescriptor descriptor{};
+        for ( const GFXImagePacking packing : { GFXImagePacking::NORMALIZED, GFXImagePacking::DEPTH, GFXImagePacking::DEPTH_STENCIL } )
+        {
+            descriptor._packing = packing;
+            const vkTexture::InitialClearPlan plan = vkTexture::MakeInitialClearPlan( descriptor );
+            CHECK( plan._range.aspectMask == vkTexture::GetAspectFlags( descriptor ) );
+            CHECK( plan._range.baseMipLevel == 0u );
+            CHECK( plan._range.levelCount == VK_REMAINING_MIP_LEVELS );
+            CHECK( plan._range.baseArrayLayer == 0u );
+            CHECK( plan._range.layerCount == VK_REMAINING_ARRAY_LAYERS );
+            CHECK( plan._isDepthStencil == ( packing != GFXImagePacking::NORMALIZED ) );
+            CHECK( plan._depthStencil.depth == 1.f );
+            CHECK( plan._depthStencil.stencil == 0u );
+            CHECK( plan._colour.float32[0] == 0.f );
+            CHECK( plan._colour.float32[1] == 0.f );
+            CHECK( plan._colour.float32[2] == 0.f );
+            CHECK( plan._colour.float32[3] == 0.f );
+
+            for ( const bool isResolve : { false, true } )
+            {
+                VkImageMemoryBarrier2 before{};
+                VkImageMemoryBarrier2 after{};
+                vkTexture::TransitionTexture( vkTexture::TransitionType::UNDEFINED_TO_COPY_WRITE, plan._range,
+                                              { ._name = "initial clear", ._isResolveImage = isResolve }, before );
+                vkTexture::TransitionTexture( vkTexture::TransitionType::COPY_WRITE_TO_SHADER_READ, plan._range,
+                                              { ._name = "initial clear", ._isResolveImage = isResolve }, after );
+                CHECK( before.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED );
+                CHECK( before.newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL );
+                CHECK( ( before.dstAccessMask & VK_ACCESS_2_TRANSFER_WRITE_BIT ) != 0u );
+                CHECK( after.oldLayout == before.newLayout );
+                CHECK( after.newLayout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL );
+                CHECK( ( after.srcAccessMask & VK_ACCESS_2_TRANSFER_WRITE_BIT ) != 0u );
+                CHECK( ( after.dstAccessMask & VK_ACCESS_2_SHADER_READ_BIT ) != 0u );
+            }
+        }
+    }
+
+    TEST_CASE( "Render debug scopes clear the active entry without exceeding the stack", "[render_smoke][debug_scope]" )
+    {
+        GFXDevice::ClearDebugMessages();
+        SCOPE_EXIT
+        {
+            GFXDevice::ClearDebugMessages();
+        };
+
+        for ( U32 i = 0u; i < Config::MAX_DEBUG_SCOPE_DEPTH; ++i )
+        {
+            GFXDevice::PushDebugMessage( "scope", i );
+        }
+        REQUIRE( GFXDevice::s_debugScopeDepth == Config::MAX_DEBUG_SCOPE_DEPTH );
+
+        for ( U32 i = Config::MAX_DEBUG_SCOPE_DEPTH; i > 0u; --i )
+        {
+            CHECK( GFXDevice::s_debugScope[i - 1u]._id == i - 1u );
+            GFXDevice::PopDebugMessage();
+            CHECK( GFXDevice::s_debugScopeDepth == i - 1u );
+            CHECK( GFXDevice::s_debugScope[i - 1u]._name == nullptr );
+            CHECK( GFXDevice::s_debugScope[i - 1u]._id == U32_MAX );
+        }
+    }
+
+    TEST_CASE( "Vulkan images allow VMA to choose dedicated or pooled memory", "[render_smoke][allocation]" )
+    {
+        const VmaAllocationCreateInfo info = vkTexture::ImageAllocationInfo();
+        CHECK( info.usage == VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE );
+        CHECK( ( info.flags & VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT ) == 0u );
+        CHECK( info.priority == 1.f );
+    }
+
     TEST_CASE( "Compute workgroup support treats device limits as inclusive maxima", "[compute][device_limits]" )
     {
         DeviceInformation info{};
@@ -198,7 +502,7 @@ namespace Divide
         }
 
         rhs.set( 3u, PushConstantType::FLOAT, oldValue );
-        const std::array<F32, 2> incompatible{oldValue, newValue};
+        const std::array<F32, 2> incompatible{{oldValue, newValue}};
         rhs.set( 1u, PushConstantType::FLOAT, incompatible.data(), incompatible.size() );
         CHECK_FALSE( Merge( lhs, rhs ) );
         CHECK( lhs.entries().size() == 2u );

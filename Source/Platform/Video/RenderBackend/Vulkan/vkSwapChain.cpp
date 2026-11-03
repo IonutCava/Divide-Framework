@@ -106,7 +106,7 @@ namespace Divide {
         _swapchainImages = _swapChain.get_images().value();
         _swapchainImageViews = _swapChain.get_image_views().value();
         _swapchainImagePresented.assign(_swapchainImages.size(), 0u);
-        _frames.resize(_swapchainImages.size());
+        _frames.resize(FrameSlotCount());
         _renderSemaphores.resize(_swapchainImages.size());
 
         if ( _swapChain.image_format == VK_FORMAT_UNDEFINED )
@@ -147,7 +147,7 @@ namespace Divide {
             return VK_ERROR_OUT_OF_DATE_KHR;
         }
 
-        _activeFrame = &_frames[GFXDevice::FrameCount() % _frames.size()];
+        _activeFrame = &_frames[FrameSlotIndex( GFXDevice::FrameCount() )];
 
         //wait until the GPU has finished rendering the last frame.
         {
@@ -177,22 +177,19 @@ namespace Divide {
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        static fixed_vector<VkPipelineStageFlags, 8, true> s_waitStages;
-        static VKSubmitSempahore::Container s_waitSempahores;
+        fixed_vector<VkPipelineStageFlags, 8, true> waitStages;
+        VKSubmitSempahore::Container waitSemaphores;
 
-        s_waitSempahores.reset_lose_memory();
-        s_waitSempahores.reserve(semaphores.size() + 1u);
+        waitSemaphores.reserve(semaphores.size() + 1u);
+        waitStages.reserve(semaphores.size() + 1u);
 
-        s_waitStages.reset_lose_memory();
-        s_waitStages.reserve(semaphores.size() + 1u);
-
-        s_waitSempahores.push_back( _activeFrame->_presentSemaphore );
-        s_waitStages.push_back( VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT );
+        waitSemaphores.push_back( _activeFrame->_presentSemaphore );
+        waitStages.push_back( VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT );
 
         for ( VkSemaphore s : semaphores )
         {
-            s_waitSempahores.push_back(s);
-            s_waitStages.push_back(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+            waitSemaphores.push_back(s);
+            waitStages.push_back(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
         }
 
         VK_CHECK( vkEndCommandBuffer(_activeFrame->_commandBuffer ) );
@@ -204,9 +201,9 @@ namespace Divide {
         // we will signal the _renderSemaphore, to signal that rendering has finished
        
         VkSubmitInfo submit = vk::submitInfo();
-        submit.pWaitDstStageMask = s_waitStages.data();
-        submit.waitSemaphoreCount = to_U32(s_waitSempahores.size());
-        submit.pWaitSemaphores = s_waitSempahores.data();
+        submit.pWaitDstStageMask = waitStages.data();
+        submit.waitSemaphoreCount = to_U32(waitSemaphores.size());
+        submit.pWaitSemaphores = waitSemaphores.data();
         submit.signalSemaphoreCount = 1;
         submit.pSignalSemaphores = &imageRenderSemaphore;
         submit.commandBufferCount = 1;
@@ -215,7 +212,12 @@ namespace Divide {
         // Reset only when submitting, so an abandoned frame leaves a signaled fence.
         VK_CHECK( vkResetFences( _device.getVKDevice(), 1, &_activeFrame->_renderFence._handle ) );
         // submit command buffer to the queue and execute it. _renderFence will now block until the graphic commands finish execution
-        _device.submitToQueue(QueueType::GRAPHICS, submit, _activeFrame->_renderFence._handle);
+        const VkResult submitResult = _device.submitToQueue(QueueType::GRAPHICS, submit, _activeFrame->_renderFence._handle);
+        if ( submitResult != VK_SUCCESS )
+        {
+            return submitResult;
+        }
+
         PROFILE_VK_PRESENT( &_swapChain.swapchain );
 
         // this will put the image we just rendered into the visible window.
