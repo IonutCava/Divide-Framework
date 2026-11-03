@@ -32,6 +32,7 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
 
 - Effect files are GLSW collections; `ShaderModuleDescriptor` selects a `file.Stage.variant` section, and module/global defines select material, pass, and debug variants.
 - `PreprocessIncludes` runs **before** `PreProcessMacros`, so every `#include` must resolve even inside a disabled `#if`.
+- A missing GLSW section or failed macro preprocessing aborts source loading before uniform extraction, shader compilation, or cache writes.
 - Loose uniforms are collected into generated `std140` blocks at `PER_DRAW` slots `s_uniformsStartOffset` (+1 for a second distinct block; at most two per program).
 - Prefer GLSL expression defines over helper functions so preprocessed shaders stay as inline as practical. Parenthesize macro arguments, keep bodies expression-only, and do not pass side-effecting or expensive expressions to macros that evaluate an argument more than once.
 - `GLSLToSPIRV` targets Vulkan 1.4 / SPIR-V 1.6 for Vulkan and the OpenGL 4.5 environment / SPIR-V 1.0 for OpenGL (`debug.renderer.useSPIRVForOpenGL` ingests the latter directly). Compiled-binary and reflection cache paths include `s_compiledShaderCacheVersion`; bump it whenever compiler targets change.

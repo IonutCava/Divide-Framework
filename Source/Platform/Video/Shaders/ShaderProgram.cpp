@@ -22,6 +22,9 @@
 #include "Platform/File/Headers/FileUpdateMonitor.h"
 #include "Platform/File/Headers/FileWatcherManager.h"
 
+#include <cstdarg>
+#include <cstdio>
+
 extern "C"
 {
     #include <cppdef.h>
@@ -117,21 +120,23 @@ namespace Divide
             static char* Input( char* buffer, const int size, void* userData ) noexcept
             {
                 WorkData* work = static_cast<WorkData*>(userData);
-                int i = 0;
-                for ( char ch = work->_input[work->_fGetsPos];
-                      work->_fGetsPos < work->_input.size() && i < size - 1; ch = work->_input[++work->_fGetsPos] )
+                if ( size <= 1 || work->_fGetsPos >= work->_input.size() )
                 {
-                    buffer[i++] = ch;
-
-                    if ( ch == '\n' || i == size )
-                    {
-                        buffer[i] = '\0';
-                        work->_fGetsPos++;
-                        return buffer;
-                    }
+                    return nullptr;
                 }
 
-                return nullptr;
+                int i = 0;
+                while ( work->_fGetsPos < work->_input.size() && i < size - 1 )
+                {
+                    const char ch = work->_input[work->_fGetsPos++];
+                    buffer[i++] = ch;
+                    if ( ch == '\n' )
+                    {
+                        break;
+                    }
+                }
+                buffer[i] = '\0';
+                return buffer;
             }
 
             FORCE_INLINE void Output( const int ch, void* userData )
@@ -153,9 +158,20 @@ namespace Divide
                 WorkData* work = static_cast<WorkData*>(userData);
 
                 string message;
-                const size_t length = to_size(vsnprintf( nullptr, 0, format, args ) + 1);
-                message.resize( length );
-                vsnprintf( message.data(), length, format, args );
+                va_list argsCopy;
+                va_copy( argsCopy, args );
+                const int length = vsnprintf( nullptr, 0, format, argsCopy );
+                va_end( argsCopy );
+                if ( length >= 0 )
+                {
+                    message.resize( to_size(length) + 1u );
+                    vsnprintf( message.data(), message.size(), format, args );
+                    message.resize( to_size(length) );
+                }
+                else
+                {
+                    message = "Unable to format GLSL preprocessor diagnostic";
+                }
                 
                 if ( work->_firstError )
                 {
@@ -2120,9 +2136,13 @@ namespace Divide
             glslCodeOut.append( sourceCodeStr );
         }
 
+        // GLSW may fail for various reasons (not a valid effect stage, invalid name, etc).
+        if ( glslCodeOut.empty() )
+        {
+            return;
+        }
+
         string headerDescription;
-        // GLSW may fail for various reasons (not a valid effect stage, invalid name, etc)
-        if ( !glslCodeOut.empty() )
         {
 
             string header;
@@ -2157,7 +2177,8 @@ namespace Divide
 
             if (!Preprocessor::PreProcessMacros( loadDataInOut._shaderName, glslCodeOut ))
             {
-                NOP();
+                glslCodeOut.clear();
+                return;
             }
 
             Reflection::PreProcessUniforms( glslCodeOut, loadDataInOut._uniforms );
