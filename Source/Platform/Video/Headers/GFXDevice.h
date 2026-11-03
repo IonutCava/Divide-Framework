@@ -37,6 +37,7 @@
 #include "GFXShaderData.h"
 #include "Pipeline.h"
 #include "Commands.h"
+#include "CullCounterReadbackState.h"
 #include "PushConstants.h"
 #include "RenderAPIWrapper.h"
 #include "RenderStagePass.h"
@@ -576,6 +577,7 @@ private:
             BufferRange<> _camBufferWriteRange;
             ShaderBuffer_uptr _camDataBuffer = nullptr;
             ShaderBuffer_uptr _cullCounter = nullptr;
+            CullCounterReadbackState _cullCounterReadbacks;
             size_t _camWritesThisFrame = 0u;
             size_t _renderWritesThisFrame = 0u;
         } _perFrameBuffers[PER_FRAME_BUFFER_COUNT];
@@ -591,6 +593,9 @@ private:
         inline void onEndFrame() noexcept;
 
     } _gfxBuffers;
+
+    U64 _nextCullCounterSequence{ 0u };
+    U64 _lastCompletedCullCounterSequence{ 0u };
 
     Mutex _pipelineCacheLock;
     hashMap<size_t, Pipeline, NoHash<size_t>> _pipelineCache;

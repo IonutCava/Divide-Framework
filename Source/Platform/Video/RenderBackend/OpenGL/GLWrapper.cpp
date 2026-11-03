@@ -605,6 +605,7 @@ namespace Divide
     /// Clear everything that was setup in initRenderingAPI()
     void GL_API::closeRenderingAPI()
     {
+        discardBufferReadbacks();
         glShaderProgram::DestroyStaticData();
 
         if ( _dummyVAO != GL_NULL_HANDLE )
@@ -658,6 +659,7 @@ namespace Divide
     {
         GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ) );
         GLUtil::s_glMainRenderWindow = &window;
+        pollBufferReadbacks( window.getGUID() );
         return true;
     }
 
@@ -788,6 +790,79 @@ namespace Divide
     void GL_API::idle( [[maybe_unused]] const bool fast )
     {
         glShaderProgram::Idle( _context.context() );
+    }
+
+    bool GL_API::queueBufferReadback( BufferReadbackRequest&& request )
+    {
+        if ( request._buffer == nullptr || request._target.first == nullptr || request._windowGUID == I64_LOWEST )
+        {
+            return false;
+        }
+
+        PendingBufferReadback pending{};
+        pending._sync = CreateFenceSync();
+        if ( pending._sync == nullptr )
+        {
+            DIVIDE_GPU_ASSERT( false, "GL_API::queueBufferReadback: failed to create completion fence" );
+            return false;
+        }
+
+        pending._request = MOV( request );
+        _pendingBufferReadbacks.push_back( MOV( pending ) );
+        return true;
+    }
+
+    void GL_API::pollBufferReadbacks( const I64 windowGUID )
+    {
+        for ( auto it = _pendingBufferReadbacks.begin(); it != _pendingBufferReadbacks.end(); )
+        {
+            if ( it->_request._windowGUID != windowGUID )
+            {
+                ++it;
+                continue;
+            }
+
+            const gl46core::GLenum result = gl46core::glClientWaitSync( it->_sync, gl46core::SyncObjectMask::GL_NONE_BIT, 0u );
+            if ( result == gl46core::GL_TIMEOUT_EXPIRED )
+            {
+                ++it;
+                continue;
+            }
+
+            const bool signaled = result == gl46core::GL_ALREADY_SIGNALED ||
+                                  result == gl46core::GL_CONDITION_SATISFIED;
+            if ( !signaled )
+            {
+                DIVIDE_GPU_ASSERT( false, "GL_API::pollBufferReadbacks: fence wait failed" );
+            }
+            else
+            {
+                it->_request._buffer->readData(
+                    { it->_request._offsetElementCount, it->_request._elementCount },
+                    it->_request._target,
+                    it->_request._queueIndex );
+            }
+
+            if ( it->_request._completion )
+            {
+                it->_request._completion( signaled );
+            }
+            DestroyFenceSync( it->_sync );
+            it = _pendingBufferReadbacks.erase( it );
+        }
+    }
+
+    void GL_API::discardBufferReadbacks()
+    {
+        for ( PendingBufferReadback& pending : _pendingBufferReadbacks )
+        {
+            DestroyFenceSync( pending._sync );
+            if ( pending._request._completion )
+            {
+                pending._request._completion( false );
+            }
+        }
+        _pendingBufferReadbacks.clear();
     }
 
 

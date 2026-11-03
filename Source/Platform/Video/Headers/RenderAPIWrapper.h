@@ -34,6 +34,10 @@
 #define DVD_RENDER_API_H_
 
 #include "Platform/Video/Headers/DescriptorSetsFwd.h"
+#include "Platform/Headers/PlatformDataTypes.h"
+
+#include <functional>
+#include <utility>
 
 namespace CEGUI {
     class Texture;
@@ -65,6 +69,18 @@ FWD_DECLARE_MANAGED_CLASS( Renderer );
 FWD_DECLARE_MANAGED_CLASS( GPUBuffer );
 FWD_DECLARE_MANAGED_CLASS( RenderTarget );
 FWD_DECLARE_MANAGED_CLASS( ShaderBuffer );
+
+struct BufferReadbackRequest
+{
+    ShaderBuffer* _buffer{ nullptr };
+    U32 _offsetElementCount{ 0u };
+    U32 _elementCount{ 0u };
+    /// The caller-owned destination must remain valid until completion is reported.
+    std::pair<bufferPtr, size_t> _target{ nullptr, 0u };
+    U16 _queueIndex{ U16_MAX };
+    I64 _windowGUID{ I64_LOWEST };
+    std::function<void( bool )> _completion;
+};
 
 struct VideoModes {
     // Video resolution
@@ -229,6 +245,7 @@ protected:
     [[nodiscard]] virtual bool frameEnded() = 0;
 
     virtual void idle(bool fast) = 0;
+    [[nodiscard]] virtual bool queueBufferReadback( BufferReadbackRequest&& request ) = 0;
 
     virtual ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) = 0;
     virtual void closeRenderingAPI() = 0;

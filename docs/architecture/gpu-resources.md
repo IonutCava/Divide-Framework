@@ -56,14 +56,16 @@ Textures use immutable `glTextureStorage*` storage and DSA mip/layer uploads; th
 - Non-mappable buffers and initial allocations without VMA host-access flags use staging allocations and explicit transfer commands. Initial and later staged writes flush the staging range before the transfer. Inspect mapping assumptions, staging lifetime, copies, and synchronization separately.
 - `vkTexture` derives image usage flags from engine `ImageUsage`, usually uses dedicated device-preferred VMA allocations, uploads through staging, explicitly transitions layouts, and can generate mipmaps on the GPU.
 
-CPU-readable buffers (`_hostVisible`, required by `ShaderBuffer::readBytes`) request `HOST_ACCESS_RANDOM | MAPPED`. VMA therefore places them in host-visible, preferably cached memory and keeps them persistently mapped. `vkBufferImpl::readBytes` invalidates non-coherent ranges before copying. If a mapping is missing, it maps temporarily. It rejects non-host-visible memory instead of mapping it. Reads are bounded to the selected logical ring slot before the slot offset is applied. GPU writers must record a `GPU_WRITE_TO_CPU_READ` lock, which becomes a shader-write to host-read barrier; the barrier alone does not wait for GPU completion. Callers must independently ensure the GPU has finished writing the selected slot.
+CPU-readable buffers (`_hostVisible`, required by `ShaderBuffer::readBytes`) request `HOST_ACCESS_RANDOM | MAPPED`. VMA therefore places them in host-visible, preferably cached memory and keeps them persistently mapped. `vkBufferImpl::readBytes` invalidates non-coherent ranges before copying. If a mapping is missing, it maps temporarily. It rejects non-host-visible memory instead of mapping it. Reads are bounded to the selected logical ring slot before the slot offset is applied. GPU writers must record a `GPU_WRITE_TO_CPU_READ` lock, which becomes a shader-write to host-read barrier; the barrier alone does not wait for GPU completion. `READ_BUFFER_DATA` requests are queued for deferred host reads: OpenGL inserts a fence and polls it with a zero timeout, while Vulkan associates the request with the active frame fence and reads it after that fence has been waited during frame reuse. Neither backend blocks the render thread for an individual readback.
 
 The occlusion counter initializes every ring slot, serializes slot selection
 when recording, and captures the intended slots for reads and clears. All
-counter writes are disabled when statistics are not requested. This does not
-protect a slot from wrapping while still in use or wait for the corresponding
-GPU submission: counter statistics can still be stale, and reads or clears can
-race GPU access.
+counter writes are disabled when statistics are not requested. A slot remains
+reserved until its asynchronous readback completes, preventing wraparound from
+overwriting an in-flight result. If no counter slot is available, only that
+frame's optional statistics are skipped; culling and rendering continue. The
+reported count can therefore lag by a few frames, and older completions cannot
+replace a newer result.
 
 Vulkan resets the frame fence only when submitting, not before image
 acquisition. If acquisition fails, the window's queued commands are discarded

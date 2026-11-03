@@ -737,6 +737,69 @@ namespace Divide
         NOP();
     }
 
+    bool VK_API::queueBufferReadback( BufferReadbackRequest&& request ) noexcept
+    {
+        VKPerWindowState* activeWindow = GetStateTracker()._activeWindow;
+        if ( activeWindow == nullptr ||
+             !activeWindow->_frameInProgress ||
+             activeWindow->_swapChain == nullptr ||
+             request._buffer == nullptr ||
+             request._target.first == nullptr )
+        {
+            return false;
+        }
+
+        const VkFence fence = activeWindow->_swapChain->activeFrameFence();
+        if ( fence == VK_NULL_HANDLE )
+        {
+            return false;
+        }
+
+        _pendingBufferReadbacks.push_back( { fence, MOV( request ) } );
+        return true;
+    }
+
+    void VK_API::pollBufferReadbacks( const VkFence fence, const I64 windowGUID )
+    {
+        for ( auto it = _pendingBufferReadbacks.begin(); it != _pendingBufferReadbacks.end(); )
+        {
+            if ( ( fence != VK_NULL_HANDLE && it->_fence != fence ) ||
+                 ( windowGUID != I64_LOWEST && it->_request._windowGUID != windowGUID ) )
+            {
+                ++it;
+                continue;
+            }
+
+            it->_request._buffer->readData(
+                { it->_request._offsetElementCount, it->_request._elementCount },
+                it->_request._target,
+                it->_request._queueIndex );
+            if ( it->_request._completion )
+            {
+                it->_request._completion( true );
+            }
+            it = _pendingBufferReadbacks.erase( it );
+        }
+    }
+
+    void VK_API::discardBufferReadbacks( const I64 windowGUID )
+    {
+        for ( auto it = _pendingBufferReadbacks.begin(); it != _pendingBufferReadbacks.end(); )
+        {
+            if ( windowGUID != I64_LOWEST && it->_request._windowGUID != windowGUID )
+            {
+                ++it;
+                continue;
+            }
+
+            if ( it->_request._completion )
+            {
+                it->_request._completion( false );
+            }
+            it = _pendingBufferReadbacks.erase( it );
+        }
+    }
+
     bool VK_API::drawToWindow( DisplayWindow& window )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
@@ -791,6 +854,7 @@ namespace Divide
 
         windowState._frameInProgress = true;
         windowState._recreateAfterPresent = result == VK_SUBOPTIMAL_KHR;
+        pollBufferReadbacks( windowState._swapChain->activeFrameFence(), window.getGUID() );
         return true;
     }
 
@@ -941,6 +1005,8 @@ namespace Divide
             return false;
         }
 
+        pollBufferReadbacks( VK_NULL_HANDLE, windowState._window->getGUID() );
+
         const ErrorCode err = windowState._swapChain->create( windowState._window->flags() & to_base(WindowFlags::VSYNC),
                                                               _context.context().config().runtime.adaptiveSync,
                                                               windowState._surface );
@@ -981,6 +1047,33 @@ namespace Divide
 
     void VK_API::destroyStatePerWindow( VKPerWindowState& windowState )
     {
+        bool hasPendingReadbacks = false;
+        const I64 windowGUID = windowState._window != nullptr ? windowState._window->getGUID() : I64_LOWEST;
+        for ( const PendingBufferReadback& pending : _pendingBufferReadbacks )
+        {
+            hasPendingReadbacks |= pending._request._windowGUID == windowGUID;
+        }
+        if ( hasPendingReadbacks && _device != nullptr )
+        {
+            if ( windowState._frameInProgress )
+            {
+                discardBufferReadbacks( windowGUID );
+            }
+            else
+            {
+                const VkResult idleResult = _device->waitIdle();
+                if ( idleResult == VK_SUCCESS )
+                {
+                    pollBufferReadbacks( VK_NULL_HANDLE, windowGUID );
+                }
+                else
+                {
+                    Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( idleResult ).c_str() );
+                    discardBufferReadbacks( windowGUID );
+                }
+            }
+        }
+
         windowState._swapChain.reset();
 
         if ( _vkbInstance.instance != nullptr )
@@ -1506,7 +1599,12 @@ namespace Divide
         {
             if ( _device->getVKDevice() != VK_NULL_HANDLE )
             {
-                VK_CHECK( _device->waitIdle() );
+                const VkResult idleResult = _device->waitIdle();
+                VK_CHECK( idleResult );
+                if ( idleResult == VK_SUCCESS )
+                {
+                    discardBufferReadbacks();
+                }
                 s_transientDeleteQueue.flush( _device->getVKDevice(), true );
                 s_deviceDeleteQueue.flush( _device->getVKDevice(), true );
                 for ( auto& pool : s_stateTracker._descriptorAllocators )

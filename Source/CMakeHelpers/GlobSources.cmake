@@ -842,6 +842,7 @@ set( UTILITY_SOURCE Utility/Colours.cpp
 set( TEST_ENGINE_SOURCE UnitTests/unitTestCommon.h
                         UnitTests/unitTestCommon.cpp
                         UnitTests/Test-Engine/ByteBufferTests.cpp
+                        UnitTests/Test-Engine/CullCounterReadbackTests.cpp
                         UnitTests/Test-Engine/LightingTests.cpp
                         UnitTests/Test-Engine/MathMatrixTests.cpp
                         UnitTests/Test-Engine/MathVectorTests.cpp

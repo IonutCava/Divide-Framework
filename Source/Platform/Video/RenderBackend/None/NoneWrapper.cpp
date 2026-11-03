@@ -21,6 +21,11 @@ namespace Divide
     {
     }
 
+    bool NONE_API::queueBufferReadback( [[maybe_unused]] BufferReadbackRequest&& request ) noexcept
+    {
+        return false;
+    }
+
     bool NONE_API::drawToWindow( [[maybe_unused]] DisplayWindow& window )
     {
         return true;

@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2026 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -98,6 +98,7 @@ private:
     void endPerformanceQueries();
 
     void idle(bool fast) override;
+    [[nodiscard]] bool queueBufferReadback( BufferReadbackRequest&& request ) override;
 
     void preFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) override;
 
@@ -198,6 +199,15 @@ private:
         gl46core::GLubyte _slot{ INVALID_TEXTURE_BINDING };
     };
 
+    struct PendingBufferReadback
+    {
+        gl46core::GLsync _sync{ nullptr };
+        BufferReadbackRequest _request;
+    };
+
+    void pollBufferReadbacks( I64 windowGUID );
+    void discardBufferReadbacks();
+
     static fixed_vector<TexBindEntry, 32> s_TexBindQueue;
 
     using HardwareQueryContext = std::array<glHardwareQueryEntry, to_base(QueryType::COUNT)>;
@@ -234,6 +244,7 @@ private:
     GFX::MemoryBarrierCommand _uniformsMemCommand{};
     PushConstantsStruct _lastPushConstants{};
     gl46core::GLuint _dummyVAO{ GL_NULL_HANDLE };
+    vector<PendingBufferReadback> _pendingBufferReadbacks;
 
 private:
 

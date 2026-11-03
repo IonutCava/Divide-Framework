@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2018-2026 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -85,6 +85,7 @@ protected:
     [[nodiscard]] static VkCommandBuffer GetCurrentCommandBuffer() noexcept;
 
     void idle(bool fast) noexcept override;
+    [[nodiscard]] bool queueBufferReadback( BufferReadbackRequest&& request ) noexcept override;
 
     [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
                   void onRenderThreadLoopStart() override;
@@ -113,6 +114,8 @@ private:
     void initStatePerWindow( VKPerWindowState& windowState );
     void destroyStatePerWindow( VKPerWindowState& windowState );
     [[nodiscard]] bool recreateSwapChain( VKPerWindowState& windowState );
+    void pollBufferReadbacks( VkFence fence, I64 windowGUID = I64_LOWEST );
+    void discardBufferReadbacks( I64 windowGUID = I64_LOWEST );
 
     bool setViewportInternal( const Rect<I32>& newViewport, VkCommandBuffer cmdBuffer ) noexcept;
     bool setScissorInternal( const Rect<I32>& newScissor, VkCommandBuffer cmdBuffer ) noexcept;
@@ -155,6 +158,12 @@ private:
     VkPipelineCache _pipelineCache{ VK_NULL_HANDLE };
 
     GFX::MemoryBarrierCommand _uniformsMemCommand{};
+    struct PendingBufferReadback
+    {
+        VkFence _fence{ VK_NULL_HANDLE };
+        BufferReadbackRequest _request;
+    };
+    vector<PendingBufferReadback> _pendingBufferReadbacks;
     DescriptorLayoutCache_uptr _descriptorLayoutCache{nullptr};
 
     hashMap<I64, VKPerWindowState> _perWindowState;

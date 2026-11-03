@@ -294,4 +294,9 @@ namespace Divide {
         dataOut = _activeFrame;
         return dataOut != nullptr;
     }
+
+    VkFence VKSwapChain::activeFrameFence() const noexcept
+    {
+        return _activeFrame != nullptr ? _activeFrame->_renderFence._handle : VK_NULL_HANDLE;
+    }
 }; //namespace Divide

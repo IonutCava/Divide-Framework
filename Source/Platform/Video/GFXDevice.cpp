@@ -580,6 +580,7 @@ namespace Divide
                 Util::StringFormatTo( bufferDescriptor._name, "CULL_COUNTER_{}", i );
                 _gfxBuffers._perFrameBuffers[i]._cullCounter = newShaderBuffer( bufferDescriptor );
                 ShaderBuffer& counter = *_gfxBuffers._perFrameBuffers[i]._cullCounter;
+                _gfxBuffers._perFrameBuffers[i]._cullCounterReadbacks.reset( counter.queueLength() );
                 for ( U16 slot = 0u; slot < counter.queueLength(); ++slot )
                 {
                     const BufferLock lock = counter.clearData( { 0u, 1u } );
@@ -1507,6 +1508,14 @@ namespace Divide
 
         context().app().windowManager().flushWindow();
 
+        {
+            LockGuard<Mutex> counterLock( _cullCounterLock );
+            for ( GFXBuffers::PerFrameBuffers& frameBuffers : _gfxBuffers._perFrameBuffers )
+            {
+                frameBuffers._cullCounterReadbacks.releaseReserved();
+            }
+        }
+
 
         /*while ( !s_renderThread._windows.empty() )
         {
@@ -2246,7 +2255,43 @@ namespace Divide
 
                     const GFX::ReadBufferDataCommand& crtCmd = *cmd->As<GFX::ReadBufferDataCommand>();
                     const U16 queueIndex = crtCmd._queueIndex == U16_MAX ? crtCmd._buffer->queueIndex() : crtCmd._queueIndex;
-                    crtCmd._buffer->readData( { crtCmd._offsetElementCount, crtCmd._elementCount }, crtCmd._target, queueIndex );
+
+                    BufferReadbackRequest readback{};
+                    readback._buffer = crtCmd._buffer;
+                    readback._offsetElementCount = crtCmd._offsetElementCount;
+                    readback._elementCount = crtCmd._elementCount;
+                    readback._target = crtCmd._target;
+                    readback._queueIndex = queueIndex;
+                    readback._windowGUID = context().activeWindow().getGUID();
+
+                    GFXBuffers::PerFrameBuffers* owner = nullptr;
+                    {
+                        LockGuard<Mutex> counterLock( _cullCounterLock );
+                        for ( GFXBuffers::PerFrameBuffers& frameBuffers : _gfxBuffers._perFrameBuffers )
+                        {
+                            if ( frameBuffers._cullCounter.get() == crtCmd._buffer &&
+                                 frameBuffers._cullCounterReadbacks.markInFlight( queueIndex ) )
+                            {
+                                owner = &frameBuffers;
+                                readback._target = { frameBuffers._cullCounterReadbacks.readbackData( queueIndex ), sizeof( uint4 ) };
+                                readback._completion = [this, owner, queueIndex]( const bool readSucceeded )
+                                {
+                                    LockGuard<Mutex> completionLock( _cullCounterLock );
+                                    DIVIDE_UNUSED( owner->_cullCounterReadbacks.complete( queueIndex,
+                                                                                           readSucceeded,
+                                                                                           _lastCullCount,
+                                                                                           _lastCompletedCullCounterSequence ) );
+                                };
+                                break;
+                            }
+                        }
+                    }
+
+                    const bool queued = _api->queueBufferReadback( MOV( readback ) );
+                    if ( !queued && readback._completion )
+                    {
+                        readback._completion( false );
+                    }
                 } break;
                 case GFX::CommandType::CLEAR_BUFFER_DATA:
                 {
@@ -2496,11 +2541,37 @@ namespace Divide
 
         ResourcePtr<Texture> hizTex = Get(hizBuffer);
 
-        LockGuard<Mutex> counterLock(_cullCounterLock);
-        ShaderBuffer* cullBuffer = _gfxBuffers.crtBuffers()._cullCounter.get();
-        const U16 counterQueueIndex = cullBuffer->queueIndex();
-        const bool collectStats = queryPerformanceStats() && countCulledNodes;
+        LockGuard<Mutex> counterLock( _cullCounterLock );
+        GFXBuffers::PerFrameBuffers& frameBuffers = _gfxBuffers.crtBuffers();
+        ShaderBuffer* cullBuffer = frameBuffers._cullCounter.get();
+        bool collectStats = queryPerformanceStats() && countCulledNodes;
+        U16 counterQueueIndex = U16_MAX;
+        if ( collectStats )
+        {
+            const U64 sequence = _nextCullCounterSequence + 1u;
+            const U16 reserved = frameBuffers._cullCounterReadbacks.reserve( cullBuffer->queueIndex(), sequence );
+            if ( reserved != U16_MAX )
+            {
+                while ( cullBuffer->queueIndex() != reserved )
+                {
+                    cullBuffer->incQueue();
+                }
+                counterQueueIndex = reserved;
+                _nextCullCounterSequence = sequence;
+            }
+            collectStats = counterQueueIndex != U16_MAX;
+        }
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Occlusion Cull";
+
+        if ( collectStats )
+        {
+            GFX::ClearBufferDataCommand clearAtomicCounter{};
+            clearAtomicCounter._buffer = cullBuffer;
+            clearAtomicCounter._offsetElementCount = 0u;
+            clearAtomicCounter._elementCount = 1u;
+            clearAtomicCounter._queueIndex = counterQueueIndex;
+            GFX::EnqueueCommand( bufferInOut, clearAtomicCounter );
+        }
 
         GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _hIZCullPipeline;
         {
@@ -2531,13 +2602,16 @@ namespace Divide
 
         GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( bufferInOut )->_workGroupSize = { threadCount, 1, 1 };
 
-        // Occlusion culling barrier
-        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back(BufferLock
+        if ( collectStats )
         {
-            ._range = {0u, U32_MAX },
-            ._type = BufferSyncUsage::GPU_WRITE_TO_CPU_READ,
-            ._buffer = cullBuffer->getBufferImpl()
-        });
+            // Occlusion counter writes must be visible to the deferred host read.
+            GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back(BufferLock
+            {
+                ._range = {0u, U32_MAX },
+                ._type = BufferSyncUsage::GPU_WRITE_TO_CPU_READ,
+                ._buffer = cullBuffer->getBufferImpl()
+            });
+        }
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
@@ -2545,20 +2619,13 @@ namespace Divide
         {
             GFX::ReadBufferDataCommand readAtomicCounter;
             readAtomicCounter._buffer = cullBuffer;
-            readAtomicCounter._target = { &_lastCullCount, 4 * sizeof( U32 ) };
+            readAtomicCounter._target = { frameBuffers._cullCounterReadbacks.readbackData( counterQueueIndex ), sizeof( uint4 ) };
             readAtomicCounter._offsetElementCount = 0;
             readAtomicCounter._elementCount = 1;
             readAtomicCounter._queueIndex = counterQueueIndex;
             GFX::EnqueueCommand( bufferInOut, readAtomicCounter );
 
             cullBuffer->incQueue();
-
-            GFX::ClearBufferDataCommand clearAtomicCounter{};
-            clearAtomicCounter._buffer = cullBuffer;
-            clearAtomicCounter._offsetElementCount = 0;
-            clearAtomicCounter._elementCount = 1;
-            clearAtomicCounter._queueIndex = cullBuffer->queueIndex();
-            GFX::EnqueueCommand( bufferInOut, clearAtomicCounter );
         }
     }
 #pragma endregion
