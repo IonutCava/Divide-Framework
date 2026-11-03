@@ -59,7 +59,7 @@ float KarisAverage(in vec3 col)
 }
 
 //ref: https://github.com/tgalaj/RapidGL/blob/master/src/demos/26_bloom/downscale.comp
-// Curve = (threshold - knee, knee * 2.0).
+// Curve = (threshold - knee, knee * 2.0); derive 0.25 / knee instead of the linked sample's 0.25 * knee.
 vec3 quadratic_threshold(vec3 color, float threshold, vec2 curve)
 {
     // Pixel brightness
@@ -81,7 +81,7 @@ void main()
     //x = threshold
     //y = threshold - knee
     //z = 2.0 * knee
-    //w = unused
+    //w = unused; the quadratic coefficient is derived from z (2 * knee) below.
 
     const vec2 invSrcResolution = 1.f / vec2(textureSize(srcTexture, 0));
     const float x = invSrcResolution.x;

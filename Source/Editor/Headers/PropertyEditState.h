@@ -8,7 +8,8 @@
 
 #pragma once
 
-#include <cstdint>
+#include "Platform/Headers/PlatformDataTypes.h"
+
 #include <optional>
 #include <unordered_map>
 
@@ -18,12 +19,12 @@ namespace Divide
     class PropertyEditState
     {
       public:
-        void begin(const std::uint32_t item, const Value& value)
+        void begin(const U32 item, const Value& value)
         {
             _originalValues.insert_or_assign(item, value);
         }
 
-        [[nodiscard]] std::optional<Value> finish(const std::uint32_t item)
+        [[nodiscard]] std::optional<Value> finish(const U32 item)
         {
             const auto it = _originalValues.find(item);
             if (it == _originalValues.end())
@@ -36,12 +37,12 @@ namespace Divide
         }
 
       private:
-        std::unordered_map<std::uint32_t, Value> _originalValues;
+        std::unordered_map<U32, Value> _originalValues;
     };
 
     template<typename Value, typename Register>
-    void RecordPropertyEdits(PropertyEditState<Value>& state, const std::uint32_t activatedItem,
-                             const std::uint32_t deactivatedItem, const bool deactivatedAfterEdit,
+    void RecordPropertyEdits(PropertyEditState<Value>& state, const U32 activatedItem,
+                             const U32 deactivatedItem, const bool deactivatedAfterEdit,
                              const bool reset, const Value& previous, const Value& current, Register&& record)
     {
         if (activatedItem != 0u)

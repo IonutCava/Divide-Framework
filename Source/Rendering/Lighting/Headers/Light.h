@@ -120,7 +120,6 @@ public:
     F32 _range = 10.f;
   public:
     void range(F32 value) noexcept;
-    [[nodiscard]] F32& range() noexcept { return _range; }
     [[nodiscard]] F32 range() const noexcept { return _range; }
     /// Light intensity in "lumens" (not really). Just a colour multiplier for now. ToDo: fix that -Ionut
     PROPERTY_RW(F32, intensity, 1.f);

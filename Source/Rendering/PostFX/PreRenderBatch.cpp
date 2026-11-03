@@ -20,8 +20,6 @@
 #include "Rendering/PostFX/CustomOperators/Headers/PostAAPreRenderOperator.h"
 #include "Rendering/PostFX/CustomOperators/Headers/SSAOPreRenderOperator.h"
 
-#include <array>
-
 namespace Divide {
 
 namespace

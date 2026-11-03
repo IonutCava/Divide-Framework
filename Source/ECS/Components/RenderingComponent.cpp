@@ -465,10 +465,6 @@ namespace Divide
         if ( hasCommands )
         {
             RenderPackage& pkg = getDrawPackage( renderStagePass );
-            // Tree child packages carry their vegetation chunk ID through dataFlag().
-            pkg.pushConstantsCmd()._uniformData->set( _ID( "dvd_terrainChunkOffset" ),
-                                                       PushConstantType::UINT,
-                                                       to_U32( dataFlag() ) );
 
             if ( pkg.pipelineCmd()._pipeline == nullptr )
             {

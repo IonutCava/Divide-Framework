@@ -158,7 +158,7 @@ void PostAAPreRenderOperator::reshape(const U16 width, const U16 height) {
 
 /// This is tricky as we use our screen as both input and output
 bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[maybe_unused]] const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
-    postAAQualityLevel(std::min(postAAQualityLevel(), maxQualityLevel(useSMAA())));
+    postAAQualityLevel(std::min(postAAQualityLevel(), MaxQualityLevel(useSMAA())));
 
     if (useSMAA() != currentUseSMAA()) {
         currentUseSMAA(useSMAA());

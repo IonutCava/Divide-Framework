@@ -77,6 +77,7 @@ class ParticleSource {
    private:
     mutable Mutex _emissionLock;
     std::map<std::weak_ptr<ParticleData>, D64, std::owner_less<std::weak_ptr<ParticleData>>> _emissionRemainders;
+    U32 _emissionRemainderCleanupCounter = 0u;
 };
 }
 

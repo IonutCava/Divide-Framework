@@ -568,6 +568,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandB
         });
     }
 
+    // The compute dispatch writes every destination mip explicitly; generating mipmaps would overwrite those results.
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 

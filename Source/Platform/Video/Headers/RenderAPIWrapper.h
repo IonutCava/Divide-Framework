@@ -34,10 +34,6 @@
 #define DVD_RENDER_API_H_
 
 #include "Platform/Video/Headers/DescriptorSetsFwd.h"
-#include "Platform/Headers/PlatformDataTypes.h"
-
-#include <functional>
-#include <utility>
 
 namespace CEGUI {
     class Texture;

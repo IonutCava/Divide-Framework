@@ -1021,20 +1021,17 @@ int main() {
         self.assertLess(write.index("memcpy("), write.index("vmaFlushAllocation"))
         self.assertLess(write.index("vmaFlushAllocation"), write.index("RegisterTransferRequest"))
 
-    def test_tree_chunk_offset_flows_to_each_draw_package(self):
+    def test_vegetation_chunk_offset_is_set_by_vegetation_rendering(self):
         vegetation = (ROOT / "Source" / "Environment" / "Vegetation" / "Vegetation.cpp").read_text(encoding="utf-8")
         self.assertRegex(vegetation, r"rComp->dataFlag\(\s*to_F32\( ID \)\s*\)")
+        self.assertRegex(
+            vegetation,
+            r'pkg\.pushConstantsCmd\(\)\._uniformData->set\(\s*_ID\(\s*"dvd_terrainChunkOffset"\s*\),'
+            r"\s*PushConstantType::UINT,\s*sgn->dataFlag\(\)\s*\)",
+        )
 
         rendering = (ROOT / "Source" / "ECS" / "Components" / "RenderingComponent.cpp").read_text(encoding="utf-8")
-        self.assertRegex(
-            rendering,
-            r'pkg\.pushConstantsCmd\(\)\._uniformData->set\(\s*_ID\(\s*"dvd_terrainChunkOffset"\s*\),'
-            r"\s*PushConstantType::UINT,\s*to_U32\( dataFlag\(\) \)\s*\)",
-        )
-        self.assertLess(
-            rendering.index('_ID( "dvd_terrainChunkOffset" )'),
-            rendering.index("Attorney::SceneGraphNodeComponent::prepareRender"),
-        )
+        self.assertNotIn('_ID( "dvd_terrainChunkOffset" )', rendering)
 
         tree_shader = (SHADERS / "tree.glsl").read_text(encoding="utf-8")
         self.assertIn("treeData[dvd_terrainChunkOffset * MAX_TREE_INSTANCES + instanceID]", tree_shader)

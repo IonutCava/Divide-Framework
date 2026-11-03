@@ -55,17 +55,13 @@ NOINITVTABLE_CLASS(ShaderBuffer) : public GUIDWrapper,
    public:
     explicit ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
 
-                  void       readData(ElementRange<> range, std::pair<bufferPtr, size_t> outData);
-                  void       readData(ElementRange<> range, std::pair<bufferPtr, size_t> outData, U16 queueIndex);
-                  void       readBytes(BufferRange<> range, std::pair<bufferPtr, size_t> outData);
-                  void       readBytes(BufferRange<> range, std::pair<bufferPtr, size_t> outData, U16 queueIndex);
-    [[nodiscard]] BufferLock clearData(ElementRange<> range);
-    [[nodiscard]] BufferLock clearData(ElementRange<> range, U16 queueIndex);
-    [[nodiscard]] BufferLock clearBytes(BufferRange<> range);
-    [[nodiscard]] BufferLock clearBytes(BufferRange<> range, U16 queueIndex);
+    /// U16_MAX selects the current ring-buffer slot.
+                  void       readData(ElementRange<> range, std::pair<bufferPtr, size_t> outData, U16 targetQueueIndex = U16_MAX);
+                  void       readBytes(BufferRange<> range, std::pair<bufferPtr, size_t> outData, U16 targetQueueIndex = U16_MAX);
+    [[nodiscard]] BufferLock clearData(ElementRange<> range, U16 targetQueueIndex = U16_MAX);
+    [[nodiscard]] BufferLock clearBytes(BufferRange<> range, U16 targetQueueIndex = U16_MAX);
     [[nodiscard]] BufferLock writeData(ElementRange<> range, const bufferPtr data);
-    [[nodiscard]] BufferLock writeBytes(BufferRange<> range, const bufferPtr data);
-    [[nodiscard]] BufferLock writeBytes(BufferRange<> range, const bufferPtr data, U16 queueIndex);
+    [[nodiscard]] BufferLock writeBytes(BufferRange<> range, const bufferPtr data, U16 targetQueueIndex = U16_MAX);
 
     [[nodiscard]] FORCE_INLINE U32                   getPrimitiveCount()             const noexcept { return _params._elementCount; }
     [[nodiscard]] FORCE_INLINE size_t                getPrimitiveSize()              const noexcept { return _params._elementSize; }

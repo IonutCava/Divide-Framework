@@ -36,10 +36,6 @@ ShaderBuffer::ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& des
     _maxSize = descriptor._usageType == BufferUsageType::CONSTANT_BUFFER ? GFXDevice::GetDeviceInformation()._maxSizeBytesUBO : GFXDevice::GetDeviceInformation()._maxSizeBytesSSBO;
 }
 
-BufferLock ShaderBuffer::clearData(const ElementRange<> range) {
-    return clearData(range, queueIndex());
-}
-
 BufferLock ShaderBuffer::clearData(const ElementRange<> range, const U16 targetQueueIndex) {
     return clearBytes(
                {
@@ -58,10 +54,6 @@ BufferLock ShaderBuffer::writeData(const ElementRange<> range, const bufferPtr d
                data);
 }
 
-void ShaderBuffer::readData(const ElementRange<> range, const std::pair<bufferPtr, size_t> outData) {
-    readData(range, outData, queueIndex());
-}
-
 void ShaderBuffer::readData(const ElementRange<> range, const std::pair<bufferPtr, size_t> outData, const U16 targetQueueIndex) {
     readBytes(
         {
@@ -72,15 +64,12 @@ void ShaderBuffer::readData(const ElementRange<> range, const std::pair<bufferPt
         targetQueueIndex);
 }
 
-void ShaderBuffer::readBytes(BufferRange<> range, std::pair<bufferPtr, size_t> outData) {
-    readBytes(range, outData, queueIndex());
-}
-
 void ShaderBuffer::readBytes(BufferRange<> range, std::pair<bufferPtr, size_t> outData, const U16 targetQueueIndex) {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+    const U16 resolvedQueueIndex = targetQueueIndex == U16_MAX ? queueIndex() : targetQueueIndex;
 
     if ( !DIVIDE_ASSERT( range._length > 0u &&
-                         targetQueueIndex < queueLength() &&
+                         resolvedQueueIndex < queueLength() &&
                          _params._hostVisible &&
                          getUsage() == BufferUsageType::UNBOUND_BUFFER &&
                          range._startOffset < _alignedBufferSize &&
@@ -92,28 +81,21 @@ void ShaderBuffer::readBytes(BufferRange<> range, std::pair<bufferPtr, size_t> o
     }
 
     range._length = std::min( std::min( range._length, outData.second ), _alignedBufferSize - range._startOffset );
-    range._startOffset += to_size(targetQueueIndex) * _alignedBufferSize;
+    range._startOffset += to_size(resolvedQueueIndex) * _alignedBufferSize;
 
     readBytesInternal(range, outData);
-}
-
-BufferLock ShaderBuffer::clearBytes(const BufferRange<> range) {
-    return writeBytes(range, nullptr);
 }
 
 BufferLock ShaderBuffer::clearBytes(const BufferRange<> range, const U16 targetQueueIndex) {
     return writeBytes(range, nullptr, targetQueueIndex);
 }
 
-BufferLock ShaderBuffer::writeBytes(BufferRange<> range, const bufferPtr data) {
-    return writeBytes(range, data, queueIndex());
-}
-
 BufferLock ShaderBuffer::writeBytes(BufferRange<> range, const bufferPtr data, const U16 targetQueueIndex) {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+    const U16 resolvedQueueIndex = targetQueueIndex == U16_MAX ? queueIndex() : targetQueueIndex;
 
     if ( !DIVIDE_ASSERT( range._length > 0u &&
-                         targetQueueIndex < queueLength() &&
+                         resolvedQueueIndex < queueLength() &&
                          getUpdateFrequency() != BufferUpdateFrequency::ONCE &&
                          range._startOffset < _alignedBufferSize &&
                          range._length <= _alignedBufferSize - range._startOffset &&
@@ -123,7 +105,7 @@ BufferLock ShaderBuffer::writeBytes(BufferRange<> range, const bufferPtr data, c
         return {};
     }
 
-    range._startOffset += to_size(targetQueueIndex) * _alignedBufferSize;
+    range._startOffset += to_size(resolvedQueueIndex) * _alignedBufferSize;
 
     return writeBytesInternal(range, data);
 }

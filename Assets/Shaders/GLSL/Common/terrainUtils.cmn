@@ -1,7 +1,7 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #ifndef _TERRAIN_UTILS_CMN_
 #define _TERRAIN_UTILS_CMN_
-
-// Copyright (c) 2026 DIVIDE-Studio
 
 #if defined(FRAG_SHADER) || defined(TESS_EVAL_SHADER) || defined(GEOM_SHADER)
 // VAR._normalWV is in world-space!!!!
@@ -12,7 +12,6 @@
 #endif //FRAG_SHADER || TESS_EVAL_SHADER || GEOM_SHADER
 
 #include "nodeBufferedInput.cmn"
-#include "normalTransform.cmn"
 
 uniform vec4 dvd_frustumPlanes[6];
 uniform mat4 dvd_terrainWorld;

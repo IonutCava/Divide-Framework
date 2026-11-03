@@ -1,12 +1,16 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #ifndef _WATER_DATA_CMN_
 #define _WATER_DATA_CMN_
 
-bool IsWithinWaterFootprint(in WaterBodyData data, in vec3 vertexW) {
+bool IsWithinWaterFootprint(in WaterBodyData data, in vec3 vertexW)
+{
     return all(greaterThan(data.extents.xyz, vec3(0.f))) &&
            all(lessThanEqual(abs(vertexW.xz - data.positionW.xz), data.extents.xz * 0.5f));
 }
 
-bool IsUnderWater(in vec3 vertexW) {
+bool IsUnderWater(in vec3 vertexW)
+{
     for (int i = 0; i < GLOBAL_WATER_BODIES_COUNT; ++i)
     {
         const WaterBodyData data = dvd_waterEntities[i];
@@ -16,7 +20,8 @@ bool IsUnderWater(in vec3 vertexW) {
         if (IsWithinWaterFootprint(data, vertexW))
         {
             const float depth = position.y - extents.y;
-            if (vertexW.y < position.y && vertexW.y > depth) {
+            if (vertexW.y < position.y && vertexW.y > depth)
+            {
                 return true;
             }
         }
@@ -25,7 +30,8 @@ bool IsUnderWater(in vec3 vertexW) {
     return false;
 }
 
-vec2 GetWaterDetails(in vec3 vertexW, in float maxDepth) {
+vec2 GetWaterDetails(in vec3 vertexW, in float maxDepth)
+{
 
     float maxDistance = 0.0f;
     float minDepth = 1.0f;

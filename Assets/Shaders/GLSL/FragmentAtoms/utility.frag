@@ -62,6 +62,7 @@ vec2 unpackVec2(in float pckd) { return unpackHalf2x16(floatBitsToUint(pckd)); }
 //https://www.shadertoy.com/view/Mtfyzl#
 vec2 packNormal(in vec3 n) {
     n /= (abs(n.x) + abs(n.y) + abs(n.z));
+    // Use sign-not-zero at the fold boundary; GLSL sign(0) would collapse exact zero components.
     const vec2 signNotZero = vec2(n.x >= 0.f ? 1.f : -1.f, n.y >= 0.f ? 1.f : -1.f);
     n.xy = (n.z >= 0.f) ? n.xy : (1.f - abs(n.yx)) * signNotZero;
     n.xy = 0.5f * n.xy + 0.5f;

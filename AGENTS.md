@@ -37,6 +37,12 @@
 - Reuse target variables in `Source/CMakeLists.txt`: `APP_LIB_DIVIDE`, `APP_EXE_DIVIDE`, `APP_EXE_PROJECT_MANAGER`.
 - Keep compile flags centralized in `DIVIDE_COMPILE_OPTIONS` / `THIRD_PARTY_COMPILE_OPTIONS`; reuse shared lists instead of duplicating warning flags. Preserve third-party warning suppressions.
 - Preserve intentional formatting-only expressions used to align related code, even when they are functionally redundant (for example, `x * 1`, `y * 2`, `z * 3`). Do not simplify or remove these alignment anchors when editing nearby code.
+- Put copyright headers before include guards; files using `#pragma once` may keep that directive first, with the copyright header immediately after it.
+- Put opening braces for scopes on their own line.
+- End every source, configuration, and documentation file with a newline.
+- Prefer engine numeric aliases (`U8`, `U16`, `U32`, `U64`, `I8`, `I16`, `I32`, `I64`, `F32`, `D64`) over standard fixed-width aliases. Use `size_t` for container sizes and indices.
+- Keep common or heavy headers in `Source/EngineIncludes_pch.h` rather than adding them to individual implementation files or broadly included headers.
+- Name `static constexpr` functions in PascalCase.
 - Preserve CMake variables/presets; expose new feature flags through `CMakePresets.json`.
 - For platform changes, inspect `Source/Platform/` and platform cache variables in `CMakePresets.json`, such as `WINDOWS_OS_BUILD` and `MAC_OS_BUILD`.
 - Editing `Source/EngineIncludes_pch.h` or `Source/CEGUIIncludes_pch.h` can trigger a full rebuild.

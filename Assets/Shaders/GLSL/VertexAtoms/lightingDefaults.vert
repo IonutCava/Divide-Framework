@@ -1,9 +1,7 @@
-#ifndef _LIGHTING_DEFAULTS_VERT_
-#define _LIGHTING_DEFAULTS_VERT_
-
 // Copyright (c) 2026 DIVIDE-Studio
 
-#include "normalTransform.cmn"
+#ifndef _LIGHTING_DEFAULTS_VERT_
+#define _LIGHTING_DEFAULTS_VERT_
 
 #if defined(COMPUTE_TBN)
 mat3 computeTBN(in vec4 rotation, in vec3 scale)

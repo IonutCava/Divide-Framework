@@ -54,7 +54,7 @@ class PostAAPreRenderOperator final : public PreRenderOperator {
 
     static constexpr U8 MAX_SMAA_QUALITY_LEVEL = 4u;
     static constexpr U8 MAX_FXAA_QUALITY_LEVEL = 5u;
-    [[nodiscard]] static constexpr U8 maxQualityLevel(const bool useSMAA) noexcept
+    [[nodiscard]] static constexpr U8 MaxQualityLevel(const bool useSMAA) noexcept
     {
         return useSMAA ? MAX_SMAA_QUALITY_LEVEL : MAX_FXAA_QUALITY_LEVEL;
     }

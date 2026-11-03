@@ -8,6 +8,11 @@
 
 namespace Divide {
 
+namespace
+{
+    constexpr U32 EMISSION_REMAINDER_CLEANUP_INTERVAL = 64u;
+}
+
 ParticleSource::ParticleSource(GFXDevice& context) noexcept
     : ParticleSource(context, 0)
 {
@@ -37,15 +42,18 @@ void ParticleSource::emit(const U64 deltaTimeUS, const std::shared_ptr<ParticleD
             return;
         }
 
-        for ( auto it = _emissionRemainders.begin(); it != _emissionRemainders.end(); )
+        if (++_emissionRemainderCleanupCounter % EMISSION_REMAINDER_CLEANUP_INTERVAL == 0u)
         {
-            if ( it->first.expired() )
+            for ( auto it = _emissionRemainders.begin(); it != _emissionRemainders.end(); )
             {
-                it = _emissionRemainders.erase(it);
-            }
-            else
-            {
-                ++it;
+                if ( it->first.expired() )
+                {
+                    it = _emissionRemainders.erase(it);
+                }
+                else
+                {
+                    ++it;
+                }
             }
         }
 

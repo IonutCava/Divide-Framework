@@ -170,7 +170,7 @@ namespace
                 ImGui::AlignTextToFramePadding();
                 ImGui::Text("Quality level: "); ImGui::SameLine();
                 ImGui::PushID("quality_level_slider");
-                if (ImGui::SliderInt("##hidelabel", &level, 0, to_I32(PostAAPreRenderOperator::maxQualityLevel(aaOp.useSMAA()))))
+                if (ImGui::SliderInt("##hidelabel", &level, 0, to_I32(PostAAPreRenderOperator::MaxQualityLevel(aaOp.useSMAA()))))
                 {
                     aaOp.postAAQualityLevel(to_U8(level));
                 }

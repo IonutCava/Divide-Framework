@@ -126,6 +126,7 @@ vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV
 
     const vec3 F = computeFresnelSchlickRoughness(NdotV, material._F0, material._roughness);
     const vec3 kS = F;
+    // The material diffuse colour already includes the (1 - metallic) attenuation.
     const vec3 kD = 1.f - kS;
 
     const vec3 specular = prefiltered * (F * envBRDF.x + envBRDF.y);
