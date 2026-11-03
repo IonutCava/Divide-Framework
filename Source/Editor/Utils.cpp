@@ -1,8 +1,10 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/Utils.h"
 
 #include <imgui_internal.h>
+#include <type_traits>
 
 namespace Divide
 {
@@ -372,8 +374,65 @@ namespace Divide
             return input;
         }
 
+        template<typename Colour>
+        bool colourInputField( Editor& parent, EditorComponentField& field )
+        {
+            const Colour previous = field.get<Colour>();
+            Colour value = previous;
+            const char* name = field._name.c_str();
+            BeginPropertyTable( 1, name );
+            if ( field._readOnly )
+            {
+                ImGui::BeginDisabled();
+            }
+
+            ImGui::PushID( name );
+            const U32 item = ImGui::GetID( "" );
+            bool changed = false;
+            if constexpr( std::is_same_v<Colour, FColour3> )
+            {
+                changed = ImGui::ColorEdit3( "", value._v, ImGuiColorEditFlags_DefaultOptions_ );
+            }
+            else
+            {
+                changed = ImGui::ColorEdit4( "", value._v, ImGuiColorEditFlags_DefaultOptions_ );
+            }
+            const bool activated = ImGui::IsItemActivated();
+            const bool deactivated = ImGui::IsItemDeactivated();
+            const bool deactivatedAfterEdit = ImGui::IsItemDeactivatedAfterEdit();
+            ImGui::PopID();
+
+            if ( field._readOnly )
+            {
+                ImGui::EndDisabled();
+            }
+            EndPropertyTable();
+            if ( field._readOnly )
+            {
+                return false;
+            }
+
+            if ( changed && !COMPARE( value, previous ) )
+            {
+                field.set( value );
+            }
+            const Colour current = field.get<Colour>();
+            NO_DESTROY static PropertyEditState<Colour> editState;
+            RecordPropertyEdits( editState, activated ? item : 0u, deactivated ? item : 0u,
+                                 deactivatedAfterEdit, false, previous, current,
+                                 [&]( const Colour& oldValue, const Colour& newValue )
+                                 {
+                                     RegisterFieldUndo( parent, field, name, oldValue, newValue );
+                                 } );
+            return changed || !COMPARE( current, previous );
+        }
+
         bool colourInput4( Editor& parent, EditorComponentField& field )
         {
+            if ( field._onUndoRedo )
+            {
+                return colourInputField<FColour4>( parent, field );
+            }
             FColour4 val = field.get<FColour4>();
             const auto setter = [val/*by value*/, &field]( const FColour4& col )
             {
@@ -390,6 +449,10 @@ namespace Divide
 
         bool colourInput3( Editor& parent, EditorComponentField& field )
         {
+            if ( field._onUndoRedo )
+            {
+                return colourInputField<FColour3>( parent, field );
+            }
             FColour3 val = field.get<FColour3>();
             const auto setter = [val/*by value*/, &field]( const FColour3& col )
             {

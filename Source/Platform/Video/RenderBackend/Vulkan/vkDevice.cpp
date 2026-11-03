@@ -316,7 +316,7 @@ namespace Divide
 
         // Submit command buffer to the queue and execute it.
         // "fence" will now block until the graphic commands finish execution
-        LockGuard<Mutex> w_lock( _queueLocks[to_base( queue )] );
+        LockGuard<Mutex> w_lock( queueLock( queue ) );
         VK_CHECK( vkQueueSubmit( _queues[to_base( queue )]._queue, 1, &submitInfo, fence ) );
     }
 
@@ -324,8 +324,30 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        LockGuard<Mutex> w_lock( _queueLocks[to_base( queue )] );
+        LockGuard<Mutex> w_lock( queueLock( queue ) );
         return vkQueuePresentKHR( _queues[to_base( queue )]._queue, &presentInfo );
+    }
+
+    Mutex& VKDevice::queueLock( const QueueType type ) const noexcept
+    {
+        const U8 index = to_base( type );
+        for ( U8 i = 0u; i < index; ++i )
+        {
+            if ( _queues[i]._queue == _queues[index]._queue )
+            {
+                return _queueLocks[i];
+            }
+        }
+
+        return _queueLocks[index];
+    }
+
+    VkResult VKDevice::waitIdle() const
+    {
+        ScopedLock<Mutex, Mutex, Mutex> lock( _queueLocks[to_base(QueueType::GRAPHICS)],
+                                             _queueLocks[to_base(QueueType::COMPUTE)],
+                                             _queueLocks[to_base(QueueType::TRANSFER)] );
+        return vkDeviceWaitIdle( getVKDevice() );
     }
 
 }; //namespace Divide

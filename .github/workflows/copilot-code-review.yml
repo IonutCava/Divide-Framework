@@ -1,0 +1,5 @@
+# Copyright (c) 2026 DIVIDE-Studio
+# Dedicated Copilot code-review setup; omit build steps to keep review startup lightweight.
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-24.04

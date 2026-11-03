@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -243,6 +243,7 @@ inline void GFXDevice::GFXBuffers::reset( const bool camBuffer, const bool cullB
         if ( cullBuffer )
         {
             _perFrameBuffers[i]._cullCounter.reset();
+            _perFrameBuffers[i]._cullCounterReadbacks.reset( 0u );
         }
     }
     crtBuffers()._camWritesThisFrame = 0u;

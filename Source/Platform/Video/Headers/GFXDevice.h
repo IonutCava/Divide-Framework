@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2026 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -37,6 +37,7 @@
 #include "GFXShaderData.h"
 #include "Pipeline.h"
 #include "Commands.h"
+#include "CullCounterReadbackState.h"
 #include "PushConstants.h"
 #include "RenderAPIWrapper.h"
 #include "RenderStagePass.h"
@@ -131,6 +132,13 @@ struct DebugView final : GUIDWrapper
         : GUIDWrapper()
         , _sortIndex(to_I16(sortIndex))
     {
+        _shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.f );
+        _shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.f );
+        _shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 4u );
+        _shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
+        _shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
+        _shaderData.set( _ID( "scaleAndBias" ), PushConstantType::UINT, 0u );
+        _shaderData.set( _ID( "normalizeOutput" ), PushConstantType::UINT, 0u );
         _shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 0u );
     }
 
@@ -201,11 +209,12 @@ struct RenderTargetNames
     static PerPassUtils   UTILS;
     static RenderTargetID BACK_BUFFER;
     static RenderTargetID SCREEN;
-    static RenderTargetID SCREEN_PREV;
+    static std::array<RenderTargetID, Config::MAX_LOCAL_PLAYER_COUNT> SCREEN_PREV;
     static RenderTargetID NORMALS_RESOLVED;
     static RenderTargetID SSAO_RESULT;
     static RenderTargetID BLOOM_RESULT;
     static RenderTargetID SSR_RESULT;
+    static std::array<RenderTargetID, Config::MAX_LOCAL_PLAYER_COUNT> PREVIOUS_DEPTH;
     static RenderTargetID OIT;
 
     // No CUBE OIT for cube reflections and refractions (yet) -Ionut
@@ -302,6 +311,9 @@ public:  // GPU interface
 
     const GFXShaderData::CamData& cameraData() const noexcept;
     const GFXShaderData::PrevFrameData& previousFrameData( PlayerIndex player ) const noexcept;
+    [[nodiscard]] bool previousDepthHistoryValid( PlayerIndex player ) const noexcept;
+    void invalidatePreviousDepthHistory( PlayerIndex player ) noexcept;
+    void storePreviousDepthHistory( PlayerIndex player, RenderTargetID source, GFX::CommandBuffer& bufferInOut );
 
     /// Returns true if the viewport was changed
     bool setViewport(const Rect<I32>& viewport);
@@ -470,7 +482,7 @@ protected:
                        GFX::CommandBuffer& bufferInOut);
 
     // Returns the HiZ texture that can be sent directly to occlusionCull
-    std::pair<Handle<Texture>, SamplerDescriptor> constructHIZ(RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut);
+    std::pair<Handle<Texture>, SamplerDescriptor> constructHIZ(RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut, bool dilateBaseLevel = true);
 
     [[nodiscard]] RenderAPIWrapper& getAPIImpl() { return *_api; }
     [[nodiscard]] const RenderAPIWrapper& getAPIImpl() const { return *_api; }
@@ -553,11 +565,13 @@ private:
 
     vec2<U16> _renderingResolution;
     GFXShaderData _gpuBlock;
+    std::array<bool, Config::MAX_LOCAL_PLAYER_COUNT> _previousDepthHistoryValid{};
 
     mutable Mutex _debugViewLock;
     vector<DebugView_ptr> _debugViews;
 
     Mutex _queuedCommandbufferLock;
+    Mutex _cullCounterLock;
 
     struct GFXBuffers
     {
@@ -568,6 +582,7 @@ private:
             BufferRange<> _camBufferWriteRange;
             ShaderBuffer_uptr _camDataBuffer = nullptr;
             ShaderBuffer_uptr _cullCounter = nullptr;
+            CullCounterReadbackState _cullCounterReadbacks;
             size_t _camWritesThisFrame = 0u;
             size_t _renderWritesThisFrame = 0u;
         } _perFrameBuffers[PER_FRAME_BUFFER_COUNT];
@@ -583,6 +598,9 @@ private:
         inline void onEndFrame() noexcept;
 
     } _gfxBuffers;
+
+    U64 _nextCullCounterSequence{ 0u };
+    U64 _lastCompletedCullCounterSequence{ 0u };
 
     Mutex _pipelineCacheLock;
     hashMap<size_t, Pipeline, NoHash<size_t>> _pipelineCache;

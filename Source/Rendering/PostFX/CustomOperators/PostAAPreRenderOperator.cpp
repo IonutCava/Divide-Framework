@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/PostAAPreRenderOperator.h"
 
@@ -158,6 +158,8 @@ void PostAAPreRenderOperator::reshape(const U16 width, const U16 height) {
 
 /// This is tricky as we use our screen as both input and output
 bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[maybe_unused]] const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
+    postAAQualityLevel(std::min(postAAQualityLevel(), MaxQualityLevel(useSMAA())));
+
     if (useSMAA() != currentUseSMAA()) {
         currentUseSMAA(useSMAA());
 
@@ -215,7 +217,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _smaaWeightPipeline;
 
             PushConstantsStruct& pushData = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
-            pushData.data[0]._vec[0].x = to_F32( postAAQualityLevel() - 1 );
+            pushData.data[0]._vec[0].x = to_F32( std::max(postAAQualityLevel(), U8{1}) - 1u );
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -259,7 +261,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[
         GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut )->_pipeline = _fxaaPipeline;
 
         PushConstantsStruct& pushData = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
-        pushData.data[0]._vec[0].x = to_F32( postAAQualityLevel() - 1 );
+        pushData.data[0]._vec[0].x = to_F32( std::max(postAAQualityLevel(), U8{1}) - 1u );
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;

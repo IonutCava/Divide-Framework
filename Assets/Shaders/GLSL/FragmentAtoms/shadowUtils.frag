@@ -1,3 +1,6 @@
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #ifndef _SHADOW_UTILS_FRAG_
 #define _SHADOW_UTILS_FRAG_
 
@@ -33,6 +36,8 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 9, std430) coherent ACCESS_R buffer dv
     CSMShadowProperties dvd_CSMShadowTransforms[MAX_SHADOW_CASTING_DIR_LIGHTS];
 };
 
+#define ResolveCSMSlice(props, split, quadSplit) (((split) >= MAX_CSM_SPLITS_PER_LIGHT || (props)[(quadSplit)].w <= 0.f) ? MAX_CSM_SPLITS_PER_LIGHT : (quadSplit))
+
 // find the appropriate depth map to look up in based on the depth of this fragment
 int getCSMSlice(in vec4 props[MAX_CSM_SPLITS_PER_LIGHT]) {
 
@@ -62,13 +67,14 @@ int getCSMSlice(in vec4 props[MAX_CSM_SPLITS_PER_LIGHT]) {
 
     // Ensure that every fragment in the quad choses the same split so that derivatives
     // will be meaningful for proper texture filtering and LOD selection.
-    const int SplitPow = 1 << Split;
+    const int SplitPow = 1 << min(Split, MAX_CSM_SPLITS_PER_LIGHT - 1);
     const int SplitX = int(abs(dFdx(SplitPow)));
     const int SplitY = int(abs(dFdy(SplitPow)));
     const int SplitXY = int(abs(dFdx(SplitY)));
     const int SplitMax = max(SplitXY, max(SplitX, SplitY));
 
-    return SplitMax > 0 ? SplitPowLookup[SplitMax - 1] : Split;
+    const int quadSplit = SplitMax > 0 ? SplitPowLookup[SplitMax - 1] : min(Split, MAX_CSM_SPLITS_PER_LIGHT - 1);
+    return ResolveCSMSlice(props, Split, quadSplit);
 }
 
 #endif //DISABLE_SHADOW_MAPPING

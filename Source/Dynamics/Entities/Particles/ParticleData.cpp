@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/ParticleData.h"
 
@@ -80,10 +80,6 @@ void ParticleData::wake(U32 /*index*/) {
 void ParticleData::sort() {
     const U32 count = aliveCount();
 
-    if (count == 0) {
-        return;
-    }
-
     _indices.resize(count);
     _renderingPositions.resize(count);
     _renderingColours.resize(count);
@@ -98,24 +94,11 @@ void ParticleData::sort() {
                     return indexA.second > indexB.second;
                 });
 
-   auto parsePositions = [count, this](const Task&) -> void {
-        for (U32 i = 0; i < count; ++i) {
-            _renderingPositions[i].set(_position[_indices[i].first]);
-        }
-    };
-
-    auto parseColours = [count, this](const Task&) -> void {
-        for (U32 i = 0; i < count; ++i) {
-            Util::ToByteColour(_colour[_indices[i].first], _renderingColours[i]);
-        }
-    };
-    
-    TaskPool& pool = _context.context().taskPool(TaskPoolType::HIGH_PRIORITY);
-    Task* updateTask = CreateTask(TASK_NOP);
-    pool.enqueue( *CreateTask(updateTask, parsePositions) );
-    pool.enqueue( *CreateTask(updateTask, parseColours) );
-    pool.enqueue( *updateTask );
-    pool.wait( *updateTask );
+    for (U32 i = 0; i < count; ++i) {
+        const U32 index = _indices[i].first;
+        _renderingPositions[i].set(_position[index]);
+        Util::ToByteColour(_colour[index], _renderingColours[i]);
+    }
 }
 
 void ParticleData::swapData(const U32 indexA, const U32 indexB) {

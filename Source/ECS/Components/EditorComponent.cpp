@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/EditorComponent.h"
 
@@ -70,6 +71,18 @@ namespace Divide {
         dvd_erase_if(_fields, [&field](const EditorComponentField& it) { return it._name.compare(field._name) == 0 && it._type == field._type; });
         assert(field._basicTypeSize == PushConstantSize::DWORD || field.supportsByteCount());
 
+        field._undoOwnerGUID = getGUID();
+        field._onUndoRedo = [this](const std::string_view name)
+        {
+            if (_onChangedCbk)
+            {
+                _onChangedCbk(name);
+            }
+            if constexpr(Config::Build::ENABLE_EDITOR)
+            {
+                Attorney::EditorEditorComponent::registerUnsavedSceneChanges(context().editor());
+            }
+        };
         _fields.push_back(field);
     }
 

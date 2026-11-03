@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
+Copyright (c) 2018-2026 DIVIDE-Studio
 Copyright (c) 2009 Ionut Cava
 
 This file is part of DIVIDE Framework.
@@ -79,6 +79,7 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
         OBB _obb{};
         mat4<F32> _lastTransform{MAT4_IDENTITY};
         std::atomic_bool _obbDirty = false;
+        bool _containsWorldSpaceBounds = false;
 
 
 END_COMPONENT(Bounds)

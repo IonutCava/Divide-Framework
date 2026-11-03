@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/Scene.h"
 #include "Headers/SceneInput.h"
@@ -1871,13 +1872,12 @@ namespace Divide
             {
                 const float3& extents = water._extents;
                 const float3& position = water._positionW;
-                const F32 halfWidth = (extents.x + position.x) * 0.5f;
-                const F32 halfLength = (extents.z + position.z) * 0.5f;
-                if ( eyePos.x >= -halfWidth && eyePos.x <= halfWidth &&
-                    eyePos.z >= -halfLength && eyePos.z <= halfLength )
+                if ( extents.x > 0.f && extents.y > 0.f && extents.z > 0.f &&
+                     std::abs( eyePos.x - position.x ) <= extents.x * 0.5f &&
+                     std::abs( eyePos.z - position.z ) <= extents.z * 0.5f &&
+                     eyePos.y < position.y && eyePos.y > position.y - extents.y )
                 {
-                    const float depth = -extents.y + position.y;
-                    return eyePos.y < position.y&& eyePos.y > depth;
+                    return true;
                 }
             }
         }

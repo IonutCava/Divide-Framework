@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -104,6 +104,7 @@ NOINITVTABLE_CLASS(ShadowMap)
     static void bindShadowMaps(GFX::CommandBuffer& bufferInOut);
     static U32  getLightLayerRequirements(const Light& light);
     static bool freeShadowMapOffset(const Light& light);
+    static bool tryReuseShadowMaps(const Light& light);
     static bool markShadowMapsUsed(Light& light);
     static bool generateShadowMaps(const Camera& playerCamera, Light& light, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
 
@@ -127,16 +128,18 @@ NOINITVTABLE_CLASS(ShadowMap)
   protected:
       static bool commitLayerRange(Light& light);
       static bool freeShadowMapOffsetLocked(const Light& light);
+      static bool tryReuseShadowMapsLocked(const Light& light);
 
   protected:
     struct ShadowLayerData {
         I64 _lightGUID = -1;
         U16 _lifetime = MAX_SHADOW_FRAME_LIFETIME;
+        U16 _contentLayers = 0u;
     };
     using LayerLifetimeMask = vector<ShadowLayerData>;
     static Mutex s_shadowMapUsageLock;
     static std::array<LayerLifetimeMask, to_base(ShadowType::COUNT)> s_shadowMapLifetime;
-    static vector<std::unique_ptr<ShadowMapGenerator>> s_shadowMapGenerators;
+    static std::array<std::unique_ptr<ShadowMapGenerator>, to_base(ShadowType::COUNT)> s_shadowMapGenerators;
 
     static std::array<RenderTargetHandle, to_base(ShadowType::COUNT)> s_shadowMaps;
     static std::array<RenderTargetHandle, to_base(ShadowType::COUNT)> s_shadowMapCaches;

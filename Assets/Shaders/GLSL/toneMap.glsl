@@ -111,13 +111,20 @@ vec3 convertRGB2Yxy(vec3 _rgb) {
 
     // Reference:
     // http://www.brucelindbloom.com/index.html?Eqn_XYZ_to_xyY.html
-    float inv = 1.0f / dot(xyz, vec3(1.0f));
-    return vec3(xyz.y, xyz.x * inv, xyz.y * inv);
+    const float sum = dot(xyz, vec3(1.0f));
+    if (sum <= 0.f || xyz.y <= 0.f) {
+        return vec3(0.f);
+    }
+    return vec3(xyz.y, xyz.x / sum, xyz.y / sum);
 }
 
 vec3 convertYxy2RGB(vec3 _Yxy) {
     // Reference:
     // http://www.brucelindbloom.com/index.html?Eqn_xyY_to_XYZ.html
+    if (_Yxy.x <= 0.f || _Yxy.z <= 0.f) {
+        return vec3(0.f);
+    }
+
     vec3 xyz;
     xyz.x = _Yxy.x * _Yxy.y / _Yxy.z;
     xyz.y = _Yxy.x;
@@ -159,7 +166,7 @@ void main() {
             Yxy.x = Tonemap_Unreal(Yxy.x);
         } else if (mappingFunction == AMD_ACES)     {
             Yxy.x = Tonemap_Lottes(Yxy.x);
-        } else if (mappingFunction == AMD_ACES)     {
+        } else if (mappingFunction == GT_DIFF_PARAMETERS)     {
             Yxy.x = Tonemap_Uchimura(Yxy.x, 1.0f, 1.7f, 0.1f, 0.0f, 1.33f, 0.0f);
         } else if (mappingFunction == UNCHARTED_2)     {
             Yxy.x = Uncharted2(Yxy.x);

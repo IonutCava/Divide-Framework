@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -67,6 +67,8 @@ protected:
      void OnData(const ECS::CustomEvent& data) override;
 
 protected:
+    friend class LightPool;
+    ShadowDirectionalSettingsState<Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT> _shadowDirectionalSettings;
     //Used to adjust ortho-matrix's near/far planes per pass
     vector<FeedBackContainer> _feedbackContainers;
 END_COMPONENT(DirectionalLight);

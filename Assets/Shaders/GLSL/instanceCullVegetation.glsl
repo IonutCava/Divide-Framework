@@ -5,19 +5,23 @@
 #if defined(CULL_TREES)
 uniform vec4 dvd_treeExtents;
 uniform float dvd_treeVisibilityDistance;
+uniform uint dvd_treeInstanceCount;
 
 #   define MAX_INSTANCES MAX_TREE_INSTANCES
 #   define Data treeData
 #   define Extents dvd_treeExtents
 #   define dvd_visibilityDistance dvd_treeVisibilityDistance
+#   define dvd_instanceCount dvd_treeInstanceCount
 #else
 uniform vec4 dvd_grassExtents;
+uniform float dvd_grassVisibilityDistance;
+uniform uint dvd_grassInstanceCount;
 
 #   define MAX_INSTANCES MAX_GRASS_INSTANCES
 #   define Data grassData
 #   define Extents dvd_grassExtents
 #   define dvd_visibilityDistance dvd_grassVisibilityDistance
-uniform float dvd_grassVisibilityDistance;
+#   define dvd_instanceCount dvd_grassInstanceCount
 #endif
 
 #define USE_CUSTOM_EXTENTS
@@ -26,7 +30,7 @@ vec3 _private_h_extents;
 
 uniform vec3 dvd_cameraPosition;
 
-#include "HiZCullingAlgorithm.cmn";
+#include "HiZCullingAlgorithm.cmn"
 #include "vegetationData.cmn"
 #include "sceneData.cmn"
 #include "waterData.cmn"
@@ -54,21 +58,20 @@ layout(local_size_x = WORK_GROUP_SIZE) in;
 void main(void) {
 
     const uint ident = gl_GlobalInvocationID.x;
-    const uint nodeIndex = (dvd_terrainChunkOffset * MAX_INSTANCES) + ident;
-
-    if (ident >= MAX_INSTANCES) {
-        CullItem(nodeIndex);
+    // Each chunk owns MAX_INSTANCES slots but only draws its first dvd_instanceCount; padding lanes must not touch the next chunk.
+    if (ident >= min(dvd_instanceCount, uint(MAX_INSTANCES))) {
         return;
     }
 
+    const uint nodeIndex = (dvd_terrainChunkOffset * MAX_INSTANCES) + ident;
     VegetationData instance = Data[nodeIndex];
 
     const float scale    = instance.positionAndScale.w;
     const vec4 extents   = Extents * scale;
     _private_h_extents = extents.xyz;
 
-    vec3 vert = vec3(0.0f, extents.y * 0.5f, 0.0f);
-    vert = rotate_vertex_position(vert * scale, instance.orientationQuad);
+    // Bounding volume centre: half way up the (already scaled) extents, rotated into world space.
+    const vec3 vert = rotate_vertex_position(vec3(0.0f, extents.y * 0.5f, 0.0f), instance.orientationQuad);
     const vec3 positionW = vert + instance.positionAndScale.xyz;
 
     const float dist = distance(positionW.xz, dvd_cameraPosition.xz);

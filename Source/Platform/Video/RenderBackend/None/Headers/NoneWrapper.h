@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -45,11 +45,12 @@ class NONE_API final : public RenderAPIWrapper {
 
   protected:
       void idle(bool fast) noexcept override;
+      [[nodiscard]] bool queueBufferReadback( BufferReadbackRequest&& request ) noexcept override;
 
       [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
                     void onRenderThreadLoopStart() override;
                     void onRenderThreadLoopEnd() override;
-                    void prepareFlushWindow( DisplayWindow& window ) override;
+      [[nodiscard]] bool prepareFlushWindow( DisplayWindow& window ) override;
                     void flushWindow( DisplayWindow& window ) override;
       [[nodiscard]] bool frameStarted() override;
       [[nodiscard]] bool frameEnded() override;

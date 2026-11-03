@@ -1,5 +1,7 @@
 --Compute
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "HiZCullingAlgorithm.cmn"
 #include "nodeDataDefinition.cmn"
 
@@ -51,17 +53,14 @@ void CullItem(in uint idx)
 layout(local_size_x = WORK_GROUP_SIZE) in;
 void main()
 {
-    if (dvd_numEntities < WORK_GROUP_SIZE)
-    {
-        return;
-    }
-
     const uint ident = gl_GlobalInvocationID.x;
 
     if (ident >= dvd_numEntities)
     {
-        atomicAdd(culledCount[1], 1);
-        CullItem(ident);
+        if (dvd_countCulledItems == 1u)
+        {
+            atomicAdd(culledCount[1], 1);
+        }
         return;
     }
 
@@ -72,7 +71,10 @@ void main()
     // their own culling routines
     if (DVD_BASE_INSTANCE == 0u)
     {
-        atomicAdd(culledCount[2], 1);
+        if (dvd_countCulledItems == 1u)
+        {
+            atomicAdd(culledCount[2], 1);
+        }
         return;
     }
 
@@ -80,7 +82,10 @@ void main()
     // Skip occlusion cull if the flag is set
     if (!dvd_CullNode(transformData))
     {
-        atomicAdd(culledCount[3], 1);
+        if (dvd_countCulledItems == 1u)
+        {
+            atomicAdd(culledCount[3], 1);
+        }
         return;
     }
 
@@ -90,4 +95,3 @@ void main()
         CullItem(ident);
     }
 }
-

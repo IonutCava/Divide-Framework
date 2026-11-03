@@ -133,8 +133,8 @@ void main() {
     float result = texture(texSSAO, VAR._texCoord).r;
     const float depthDelta = depthThreshold * _zPlanes.y;
 
-    for (int x = -blurKernelSize; x < blurKernelSize; ++x) {
-        for (int y = -blurKernelSize; y < blurKernelSize; ++y) {
+    for (int x = -blurKernelSize; x <= blurKernelSize; ++x) {
+        for (int y = -blurKernelSize; y <= blurKernelSize; ++y) {
             if (x != 0 || y != 0) 
             {
                 const vec2 tex_offset = min(vec2(1.0), max(vec2(0.0), VAR._texCoord + vec2(x, y) * texelSize));
@@ -283,60 +283,29 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texNormal;
 
 layout(location = 0) out vec3 _outColour;
 
-float most_representative() {
-    float samples[] = float[](
-        textureOffset(texDepthMap, VAR._texCoord, ivec2(0, 0)).r,
-        textureOffset(texDepthMap, VAR._texCoord, ivec2(0, 1)).r,
-        textureOffset(texDepthMap, VAR._texCoord, ivec2(1, 0)).r,
-        textureOffset(texDepthMap, VAR._texCoord, ivec2(1, 1)).r);
-
-    float centr = (samples[0] + samples[1] + samples[2] + samples[3]) / 4.0f;
-    float dist[] = float[](
-        abs(centr - samples[0]),
-        abs(centr - samples[1]),
-        abs(centr - samples[2]),
-        abs(centr - samples[3]));
-
-    float max_dist = max(max(dist[0], dist[1]), max(dist[2], dist[3]));
-    float rem_samples[3];
-    int rejected_idx[3];
-
-    int j = 0; int i; int k = 0;
-    for (i = 0; i < 4; i++) {
-        if (dist[i] < max_dist) {
-            rem_samples[j] = samples[i];
-            j++;
-        } else {
-            /* for the edge case where 2 or more samples
-               have max_dist distance from the centroid */
-            rejected_idx[k] = i;
-            k++;
+int representativeDepthIndex(in vec4 samples) {
+    const float center = dot(samples, vec4(0.25f));
+    int rejected = 0;
+    float maxDistance = abs(samples[0] - center);
+    for (int i = 1; i < 4; ++i) {
+        const float distance = abs(samples[i] - center);
+        if (distance > maxDistance) {
+            maxDistance = distance;
+            rejected = i;
         }
     }
 
-    /* also for the edge case where 2 or more samples
-       have max_dist distance from the centroid */
-    if (j < 2) {
-        for (i = 3; i > j; i--) {
-            rem_samples[i] = samples[rejected_idx[k]];
-            k--;
+    const float retainedCenter = (samples.x + samples.y + samples.z + samples.w - samples[rejected]) / 3.0f;
+    int best = rejected == 0 ? 1 : 0;
+    float minDistance = abs(samples[best] - retainedCenter);
+    for (int i = 0; i < 4; ++i) {
+        const float distance = abs(samples[i] - retainedCenter);
+        if (i != rejected && distance < minDistance) {
+            minDistance = distance;
+            best = i;
         }
     }
-
-    centr = (rem_samples[0] + rem_samples[1] + rem_samples[2]) / 3.0;
-
-    dist[0] = abs(rem_samples[0] - centr);
-    dist[1] = abs(rem_samples[1] - centr);
-    dist[2] = abs(rem_samples[2] - centr);
-
-    float min_dist = min(dist[0], min(dist[1], dist[2]));
-    for (int i = 0; i < 3; i++) {
-        if (dist[i] == min_dist)
-            return rem_samples[i];
-    }
-
-    /* should never reach */
-    return samples[0];
+    return best;
 }
 
 
@@ -358,15 +327,7 @@ void main()
        textureOffset(texNormal, VAR._texCoord, offsets[2]).rga,
        textureOffset(texNormal, VAR._texCoord, offsets[3]).rga);
 
-   const float best_depth = most_representative();
-
-   int i = 0;
-   for (; i < 4; ++i) {
-      if (abs(best_depth - d[i]) <= M_EPSILON) {
-          break;
-      }
-   }
-
+   const int i = representativeDepthIndex(vec4(d[0], d[1], d[2], d[3]));
    _outColour = vec3(d[i], pn[i].rg);
 }
 
@@ -395,10 +356,9 @@ float nearest_depth_ao() {
         textureOffset(texSSAONearest, VAR._texCoord, ivec2(1, 1)).r);
 
     float d0 = texture(texDepthMap, VAR._texCoord).r;
-    float min_dist = 1.0;
-
-    int best_depth_idx;
-    for (int i = 0; i < 4; i++) {
+    int best_depth_idx = 0;
+    float min_dist = abs(d0 - d[0]);
+    for (int i = 1; i < 4; i++) {
         float dist = abs(d0 - d[i]);
 
         if (min_dist > dist) {

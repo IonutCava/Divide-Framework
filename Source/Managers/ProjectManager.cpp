@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/ProjectManager.h"
 #include "Headers/FrameListenerManager.h"
@@ -846,7 +847,15 @@ namespace Divide
         const auto& waterBodies = activeSceneState->waterBodies();
         for ( const auto& body : waterBodies )
         {
+            if ( index >= GLOBAL_WATER_BODIES_COUNT )
+            {
+                break;
+            }
             sceneData->waterDetails( index++, body );
+        }
+        for ( ; index < GLOBAL_WATER_BODIES_COUNT; ++index )
+        {
+            sceneData->waterDetails( index, WaterBodyData{} );
         }
         _saveTimer += deltaGameTimeUS;
 

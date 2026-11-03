@@ -1,4 +1,5 @@
-﻿
+﻿// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Editor/Headers/UndoManager.h"
 #include "Editor/Headers/Utils.h"
@@ -973,17 +974,24 @@ namespace Divide
                             const bool isSelected = crtMode == n;
                             if ( ImGui::Selectable( field.getDisplayName( n ), isSelected ) )
                             {
-                                typeUndo._type = PushConstantType::UINT;
-                                typeUndo._name = "Drop Down Selection";
-                                typeUndo._oldVal = crtMode;
-                                typeUndo._newVal = n;
-                                typeUndo._dataSetter = [&field]( const U32& data )
+                                if ( field._onUndoRedo )
                                 {
-                                    field.set( data );
-                                };
+                                    Util::RegisterFieldUndo( _parent, field, field._name.c_str(), crtMode, n );
+                                }
+                                else
+                                {
+                                    typeUndo._type = PushConstantType::UINT;
+                                    typeUndo._name = "Drop Down Selection";
+                                    typeUndo._oldVal = crtMode;
+                                    typeUndo._newVal = n;
+                                    typeUndo._dataSetter = [&field]( const U32& data )
+                                    {
+                                        field.set( data );
+                                    };
+                                    _context.editor().registerUndoEntry( typeUndo );
+                                }
 
                                 field.set( n );
-                                _context.editor().registerUndoEntry( typeUndo );
                                 break;
                             }
                             if ( isSelected )
@@ -2541,7 +2549,6 @@ namespace Divide
 
                 ImFont* boldFont = ImGui::GetIO().Fonts->Fonts[1];
 
-                static UndoEntry<bool> undo = {};
                 bool val = field.get<bool>();
                 if ( field._type == EditorComponentFieldType::SWITCH_TYPE )
                 {
@@ -2570,10 +2577,17 @@ namespace Divide
 
                 if ( ret && !field._readOnly )
                 {
-                    RegisterUndo<bool, false>( _parent, PushConstantType::BOOL, !val, val, name, [&field]( const bool& oldVal )
-                                               {
-                                                   field.set( oldVal );
-                                               } );
+                    if ( field._onUndoRedo )
+                    {
+                        Util::RegisterFieldUndo( _parent, field, name, !val, val );
+                    }
+                    else
+                    {
+                        RegisterUndo<bool, false>( _parent, PushConstantType::BOOL, !val, val, name, [&field]( const bool& oldVal )
+                                                   {
+                                                       field.set( oldVal );
+                                                   } );
+                    }
                     field.set<bool>( val );
                 }
                 if ( field._readOnly )

@@ -9,6 +9,13 @@ foreach(variable IN ITEMS CMAKE_CXX_COMPILER CMAKE_CXX_COMPILER_TARGET
         list(APPEND _simd_preflight_args "-D${variable}=${${variable}}")
     endif()
 endforeach()
+foreach(variable IN ITEMS CMAKE_RC_COMPILER CMAKE_MT)
+    if(DEFINED ${variable} AND
+       NOT "${${variable}}" STREQUAL "" AND
+       NOT "${${variable}}" MATCHES "-NOTFOUND$")
+        list(APPEND _simd_preflight_args "-D${variable}:FILEPATH=${${variable}}")
+    endif()
+endforeach()
 if(VCPKG_CHAINLOAD_TOOLCHAIN_FILE)
     get_filename_component(_simd_toolchain "${VCPKG_CHAINLOAD_TOOLCHAIN_FILE}" ABSOLUTE BASE_DIR "${CMAKE_SOURCE_DIR}")
 elseif(CMAKE_TOOLCHAIN_FILE)

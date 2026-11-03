@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/Vegetation.h"
 
@@ -46,6 +47,19 @@ namespace Divide
         constexpr F32 g_distanceRingsBaseTrees = 2.5f;
         constexpr F32 g_slopeLimitGrass = 30.0f;
         constexpr F32 g_slopeLimitTrees = 10.0f;
+
+        RenderTargetID HiZTargetForStage( const RenderStage stage ) noexcept
+        {
+            switch ( stage )
+            {
+                case RenderStage::REFLECTION:
+                    return RenderTargetNames::REFLECT::UTILS.HI_Z;
+                case RenderStage::REFRACTION:
+                    return RenderTargetNames::REFRACT::UTILS.HI_Z;
+                default:
+                    return RenderTargetNames::UTILS.HI_Z;
+            }
+        }
     }
 
     Vegetation::Vegetation( const ResourceDescriptor<Vegetation>& descriptor )
@@ -304,15 +318,15 @@ namespace Divide
             return SceneNode::load( context );
         }
 
-        _maxGrassInstances += _maxGrassInstances % WORK_GROUP_SIZE;
-        _maxTreeInstances  += _maxTreeInstances  % WORK_GROUP_SIZE;
+        _maxGrassInstances = ((_maxGrassInstances + WORK_GROUP_SIZE - 1u) / WORK_GROUP_SIZE) * WORK_GROUP_SIZE;
+        _maxTreeInstances  = ((_maxTreeInstances  + WORK_GROUP_SIZE - 1u) / WORK_GROUP_SIZE) * WORK_GROUP_SIZE;
 
         const auto& chunks = _descriptor.parentTerrain->terrainChunks();
 
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._elementSize = sizeof( VegetationData );
         bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
-        bufferDescriptor._updateFrequency = BufferUpdateFrequency::ONCE;
+        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
 
         if ( _maxTreeInstances > 0 )
         {
@@ -489,10 +503,10 @@ namespace Divide
         }
 
         const U32 ID = sgn->dataFlag();
-        const U32 meshID = to_U32( ID % _treeMeshNames.size() );
 
         if ( instance->_instanceCountTrees > 0 && !_treeMeshNames.empty() )
         {
+            const U32 meshID = to_U32( ID % _treeMeshNames.size() );
             LockGuard<SharedMutex> w_lock( _treeMeshLock );
             if ( _treeMeshes.empty() )
             {
@@ -607,6 +621,11 @@ namespace Divide
             return;
         }
 
+        if ( IsZPrePass( renderStagePass ) )
+        {
+            STUBBED("Vegetation::prepareRender: Vegetation motion vectors are intentionally zeroed until previous instance and deformation state is implemented.");
+        }
+
         _buffer->commitData(postDrawMemCmd);
         
         rComp.setIndexBufferElementOffset(_buffer->firstIndexOffsetCount());
@@ -637,14 +656,11 @@ namespace Divide
 
         // Culling lags one full frame
         STUBBED("Vegetation::prepareRender: This is NOT CORRECT for multiple reflectors!- Ionut");
+        const RenderTargetID hiZSourceTarget = HiZTargetForStage( renderStagePass._stage );
         if ( renderState().drawState( renderStagePass ) &&
              refreshData &&
              (instance->_instanceCountGrass > 0 || instance->_instanceCountTrees > 0) )
         {
-            const RenderTargetID hiZSourceTarget = renderStagePass._stage == RenderStage::REFLECTION
-                                                                           ? RenderTargetNames::REFLECT::UTILS.HI_Z
-                                                                           : RenderTargetNames::UTILS.HI_Z;
-
             const RenderTarget* hizTarget = sgn->context().gfx().renderTargetPool().getRenderTarget( hiZSourceTarget );
             const RTAttachment* hizAttachment = hizTarget->getAttachment( RTAttachmentType::COLOUR );
 
@@ -666,6 +682,8 @@ namespace Divide
                 uniforms->set( _ID( "dvd_treeExtents" ), PushConstantType::VEC4, _treeExtents );
                 uniforms->set( _ID( "dvd_grassExtents" ), PushConstantType::VEC4, _grassExtents );
                 uniforms->set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, sgn->dataFlag() );
+                uniforms->set( _ID( "dvd_grassInstanceCount" ), PushConstantType::UINT, instance->_instanceCountGrass );
+                uniforms->set( _ID( "dvd_treeInstanceCount" ), PushConstantType::UINT, instance->_instanceCountTrees );
                 
                 PushConstantsStruct& fastConstants = cullConstantsCmd._fastData;
                 fastConstants.data[0] = viewProjectionMatrix;
@@ -682,7 +700,6 @@ namespace Divide
 
                 GFX::DispatchShaderTaskCommand computeCmd = {};
 
-                auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut ); // GPU to GPU command needed BEFORE draw (so ignore postDrawMemCmd)
                 if ( instance->_instanceCountGrass > 0 )
                 {
                     computeCmd._workGroupSize.set( (instance->_instanceCountGrass + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
@@ -691,6 +708,19 @@ namespace Divide
                     GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _cullPipelineGrass;
                     GFX::EnqueueCommand( bufferInOut, cullConstantsCmd );
                     GFX::EnqueueCommand( bufferInOut, computeCmd );
+                }
+                if ( instance->_instanceCountTrees > 0 )
+                {
+                    computeCmd._workGroupSize.set( (instance->_instanceCountTrees + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
+                    // Cull trees
+                    GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _cullPipelineTrees;
+                    GFX::EnqueueCommand( bufferInOut, cullConstantsCmd );
+                    GFX::EnqueueCommand( bufferInOut, computeCmd );
+                }
+
+                auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut );
+                if ( instance->_instanceCountGrass > 0 )
+                {
                     memCmd->_bufferLocks.emplace_back( BufferLock
                     {
                         ._range = { 0u, U32_MAX },
@@ -700,12 +730,6 @@ namespace Divide
                 }
                 if ( instance->_instanceCountTrees > 0 )
                 {
-                    computeCmd._workGroupSize.set( (instance->_instanceCountTrees + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
-                    // Cull trees
-                    GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _cullPipelineTrees;
-                    GFX::EnqueueCommand( bufferInOut, cullConstantsCmd );
-                    GFX::EnqueueCommand( bufferInOut, computeCmd );
-
                     memCmd->_bufferLocks.emplace_back( BufferLock
                     {
                         ._range = { 0u, U32_MAX },
@@ -895,16 +919,24 @@ namespace Divide
             vector<VegetationData> data = computeTransforms( false );
             _instanceCountGrass = to_U32(data.size());
 
-            const BufferLock lock = parentPtr->_grassData->writeData(ElementRange<>{_chunk->id() * parentPtr->_maxGrassInstances, _instanceCountGrass}, data.data());
-            DIVIDE_UNUSED(lock);
+            if ( !data.empty() )
+            {
+                DIVIDE_ASSERT( parentPtr->_grassData != nullptr && "Grass instance data requires an allocated buffer" );
+                const BufferLock lock = parentPtr->_grassData->writeData(ElementRange<>{_chunk->id() * parentPtr->_maxGrassInstances, _instanceCountGrass}, data.data());
+                DIVIDE_UNUSED(lock);
+            }
         }
 
-        if ( context().config().debug.renderFilter.treeInstances )
+        if ( context().config().debug.renderFilter.treeInstances && !parentPtr->_treeMeshNames.empty() )
         {
             vector<VegetationData> data = computeTransforms( true );
             _instanceCountTrees = to_U32(data.size());
-            const BufferLock lock = parentPtr->_treeData->writeData(ElementRange<>{_chunk->id() * parentPtr->_maxTreeInstances, _instanceCountTrees }, data.data() );
-            DIVIDE_UNUSED( lock );
+            if ( !data.empty() )
+            {
+                DIVIDE_ASSERT( parentPtr->_treeData != nullptr && "Tree instance data requires an allocated buffer" );
+                const BufferLock lock = parentPtr->_treeData->writeData(ElementRange<>{_chunk->id() * parentPtr->_maxTreeInstances, _instanceCountTrees }, data.data() );
+                DIVIDE_UNUSED( lock );
+            }
         }
     }
 
@@ -955,7 +987,7 @@ namespace Divide
 
             std::default_random_engine generator( to_U32( std::chrono::system_clock::now().time_since_epoch().count() ) );
 
-            const U32 meshID = to_U32( ID % parent->_treeMeshNames.size() );
+            const U32 meshID = treeData ? to_U32( ID % parent->_treeMeshNames.size() ) : 0u;
 
             const float2 chunkSize = _chunk->getOffsetAndSize().zw;
             const float2 chunkPos = _chunk->getOffsetAndSize().xy;

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -34,6 +34,7 @@
 #define DVD_LIGHT_POOL_H_
 
 #include "Light.h"
+#include "ShadowPassState.h"
 
 #include "Scenes/Headers/SceneComponent.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -66,11 +67,11 @@ class LightPool final : public FrameListener,
           /// w = range
           float4 _position = { 0.0f, 0.0f, 0.0f, 0.0f };
           /// xyz = light direction (spot and directional lights only. (0,0,0) for point)
-          /// w = spot angle
+          /// w = cosInnerConeAngle
           float4 _direction = { 0.0f, 0.0f, 0.0f, 45.0f };
           /// x = light type: 0 - directional, 1 - point, 2 - spot, 3 - none
           /// y = shadow index (-1 = no shadows)
-          /// z = reserved
+          /// z = spot cone slant height, stored as raw float bits (std::bit_cast). Read with intBitsToFloat in shaders.
           /// w = reserved
           int4 _options = { 3, -1, 0, 0 };
       };
@@ -183,7 +184,7 @@ class LightPool final : public FrameListener,
                               });
     }
 
-    [[nodiscard]] bool isShadowCacheInvalidated(const float3& cameraPosition, Light* light);
+    [[nodiscard]] bool isShadowCacheInvalidated(Light* light);
 
 
     [[nodiscard]] static bool IsLightInViewFrustum(const Frustum& frustum, const Light* light) noexcept;
@@ -225,6 +226,7 @@ class LightPool final : public FrameListener,
     std::array<LightList,         to_base(LightType::COUNT)>   _lights{};
     std::array<bool,              to_base(LightType::COUNT)>   _lightTypeState{};
     ShadowProperties _shadowBufferData;
+    ShadowCameraState<mat4<F32>> _directionalShadowCamera;
 
     mutable SharedMutex _movedSceneVolumesLock;
     fixed_vector<MovingVolume, Config::MAX_VISIBLE_NODES, true> _movedSceneVolumes;

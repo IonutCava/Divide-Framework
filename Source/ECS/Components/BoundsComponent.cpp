@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/BoundsComponent.h"
 #include "Headers/RenderingComponent.h"
@@ -13,6 +13,7 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
     : BaseComponentType<BoundsComponent, ComponentType::BOUNDS>(sgn, context)
 {
     _refBoundingBox.set(sgn->getNode().getBounds());
+    _containsWorldSpaceBounds = sgn->getNode().boundsInWorldSpace();
 
     _boundingBox.set(_refBoundingBox);
     _boundingSphere.fromBoundingBox(_boundingBox);
@@ -132,6 +133,7 @@ void BoundsComponent::setRefBoundingBox(const BoundingBox& nodeBounds) noexcept
 {
     // All the parents should already be dirty thanks to the bounds system
     _refBoundingBox.set(nodeBounds);
+    _containsWorldSpaceBounds = _parentSGN->getNode().boundsInWorldSpace();
     _transformUpdatedMask.store(to_base(TransformType::ALL));
 }
 
@@ -141,7 +143,14 @@ void BoundsComponent::updateBoundingBoxTransform()
 
     if (_transformUpdatedMask > 0u)
     {
-        _boundingBox.transform(_refBoundingBox, _lastTransform);
+        if (_parentSGN->getNode().boundsInWorldSpace())
+        {
+            _boundingBox.set(_refBoundingBox);
+        }
+        else
+        {
+            _boundingBox.transform(_refBoundingBox, _lastTransform);
+        }
     }
 }
 
@@ -159,7 +168,12 @@ void BoundsComponent::appendChildRefBBs()
         {
             BoundsComponent* const bComp = children._data[i]->get<BoundsComponent>();
             bComp->appendChildRefBBs();
-            _refBoundingBox.add(bComp->_refBoundingBox);
+            _containsWorldSpaceBounds |= bComp->_containsWorldSpaceBounds;
+            if (!_parentSGN->getNode().boundsInWorldSpace() &&
+                !children._data[i]->getNode().boundsInWorldSpace())
+            {
+                _refBoundingBox.add(bComp->_refBoundingBox);
+            }
         }
     }
 }
@@ -195,9 +209,15 @@ const OBB& BoundsComponent::getOBB()
 {
     if (_obbDirty.exchange(false))
     {
-        const TransformComponent* transform = _parentSGN->get<TransformComponent>();
-        _obb.fromBoundingBox(_refBoundingBox, transform->getWorldMatrix());
-        //_obb.fromBoundingBox(_refBoundingBox, transform->getWorldPosition(), transform->getWorldOrientation(), transform->getWorldScale());
+        if (_containsWorldSpaceBounds)
+        {
+            _obb.fromBoundingBox(_boundingBox);
+        }
+        else
+        {
+            const TransformComponent* transform = _parentSGN->get<TransformComponent>();
+            _obb.fromBoundingBox(_refBoundingBox, transform->getWorldMatrix());
+        }
         _boundingSphere = _obb.toEnclosingSphere();
     }
 

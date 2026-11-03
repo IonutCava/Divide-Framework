@@ -48,9 +48,8 @@ namespace Divide
         return bufferImpl()->writeOrClearBytes( range._startOffset, range._length, data );
     }
 
-    void glShaderBuffer::readBytesInternal( BufferRange<> range, std::pair<bufferPtr, size_t> outData )
+    void glShaderBuffer::readBytesInternal( const BufferRange<> range, std::pair<bufferPtr, size_t> outData )
     {
-        range._length = std::min( std::min( range._length, outData.second ), _alignedBufferSize - range._startOffset );
         bufferImpl()->readBytes( range._startOffset, range._length, outData );
     }
 

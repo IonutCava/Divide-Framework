@@ -34,6 +34,16 @@ vec4 Transform(in vec4 positionIn, in TransformData transform)
    return vec4(transform._position.xyz + QuaternionRotate(transform._rotation, positionIn.xyz * transform._scale.xyz), positionIn.w);
 }
 
+#define TransformNormal(NORMAL, ROTATION, SCALE) \
+    normalize(QuaternionRotate((ROTATION), (NORMAL) / \
+        (mix(vec3(-1.f), vec3(1.f), greaterThanEqual((SCALE), vec3(0.f))) * max(abs(SCALE), vec3(1e-8f)))))
+
+#define TransformMatrix(MATRIX, DATA) (mat4( \
+    vec4(QuaternionRotate((DATA)._rotation, vec3((DATA)._scale.x, 0.f, 0.f)), 0.f), \
+    vec4(QuaternionRotate((DATA)._rotation, vec3(0.f, (DATA)._scale.y, 0.f)), 0.f), \
+    vec4(QuaternionRotate((DATA)._rotation, vec3(0.f, 0.f, (DATA)._scale.z)), 0.f), \
+    vec4((DATA)._position.xyz, 1.f)) * (MATRIX))
+
 #define NodeIndirectionData uvec4
 
 #if defined(FRAG_SHADER)

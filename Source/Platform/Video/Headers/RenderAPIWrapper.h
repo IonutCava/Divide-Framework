@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -65,6 +65,18 @@ FWD_DECLARE_MANAGED_CLASS( Renderer );
 FWD_DECLARE_MANAGED_CLASS( GPUBuffer );
 FWD_DECLARE_MANAGED_CLASS( RenderTarget );
 FWD_DECLARE_MANAGED_CLASS( ShaderBuffer );
+
+struct BufferReadbackRequest
+{
+    ShaderBuffer* _buffer{ nullptr };
+    U32 _offsetElementCount{ 0u };
+    U32 _elementCount{ 0u };
+    /// The caller-owned destination must remain valid until completion is reported.
+    std::pair<bufferPtr, size_t> _target{ nullptr, 0u };
+    U16 _queueIndex{ U16_MAX };
+    I64 _windowGUID{ I64_LOWEST };
+    std::function<void( bool )> _completion;
+};
 
 struct VideoModes {
     // Video resolution
@@ -194,6 +206,16 @@ struct DeviceInformation
     } _meshShading;
 };
 
+/// True if a compute workgroup with the given local size can run on this device. Device limits are inclusive maxima.
+[[nodiscard]] constexpr bool SupportsComputeWorkgroup( const DeviceInformation& info, const U32 x, const U32 y, const U32 z ) noexcept
+{
+    return x > 0u && y > 0u && z > 0u &&
+           x <= info._maxWorkgroupSize[0] &&
+           y <= info._maxWorkgroupSize[1] &&
+           z <= info._maxWorkgroupSize[2] &&
+           to_U64( x ) * y * z <= info._maxWorkgroupInvocations;
+}
+
 
 struct DebugScope
 {
@@ -213,12 +235,13 @@ protected:
     [[nodiscard]] virtual bool drawToWindow(DisplayWindow& window) = 0;
                   virtual void onRenderThreadLoopStart() = 0;
                   virtual void onRenderThreadLoopEnd() = 0;
-                  virtual void prepareFlushWindow(DisplayWindow& window) = 0;
+    [[nodiscard]] virtual bool prepareFlushWindow(DisplayWindow& window) = 0;
                   virtual void flushWindow(DisplayWindow& window) = 0;
     [[nodiscard]] virtual bool frameStarted() = 0;
     [[nodiscard]] virtual bool frameEnded() = 0;
 
     virtual void idle(bool fast) = 0;
+    [[nodiscard]] virtual bool queueBufferReadback( BufferReadbackRequest&& request ) = 0;
 
     virtual ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) = 0;
     virtual void closeRenderingAPI() = 0;

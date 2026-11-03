@@ -148,7 +148,7 @@ namespace Divide
             shaderDescriptor._globalDefines.emplace_back( "_specularShininess PushData0[0].w" );
             shaderDescriptor._globalDefines.emplace_back( "_waterDistanceFogColour PushData0[1].xyz" );
             shaderDescriptor._globalDefines.emplace_back( "_noiseTile PushData0[2].xy" );
-            shaderDescriptor._globalDefines.emplace_back( "_noiseFactor PushData0[2].zw)" );
+            shaderDescriptor._globalDefines.emplace_back( "_noiseFactor PushData0[2].zw" );
             shaderDescriptor._globalDefines.emplace_back( "_fogStartEndDistances PushData0[3].xy" );
 
             return shaderDescriptor;

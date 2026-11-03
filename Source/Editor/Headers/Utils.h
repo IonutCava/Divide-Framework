@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2021 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2021-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -71,11 +71,19 @@ namespace Util {
     };
     // Separate activate is used for stuff that do continuous value changes, e.g. colour selectors, but you only want to register the old val once
     template<typename T, bool SeparateActivate, typename Pred>
-    void RegisterUndo(Editor& editor, PushConstantType type, const T& oldVal, const T& newVal, const char* name, Pred&& dataSetter);
+    void RegisterUndo(Editor& editor, PushConstantType type, const T& oldVal, const T& newVal, const char* name, Pred&& dataSetter,
+                      const DELEGATE<void, std::string_view>& onChanged = {}, I64 ownerGUID = -1);
+
+    template<typename T>
+    void RegisterFieldUndo(Editor& editor, const EditorComponentField& field, const char* name, const T& oldValue, const T& newValue);
 
     struct DrawReturnValue {
         bool wasChanged = false;
         bool wasDeactivated = false;
+        bool wasDeactivatedAfterEdit = false;
+        bool wasReset = false;
+        U32 activatedItem = 0u;
+        U32 deactivatedItem = 0u;
     };
 
     template<typename T, size_t N, bool isSlider>

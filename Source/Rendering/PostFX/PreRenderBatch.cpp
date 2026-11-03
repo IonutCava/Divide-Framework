@@ -27,6 +27,8 @@ namespace
     //ToneMap ref: https://bruop.github.io/exposure/
     constexpr U8  GROUP_X_THREADS = 16u;
     constexpr U8  GROUP_Y_THREADS = 16u;
+    constexpr U32 HISTOGRAM_BIN_COUNT = 256u;
+    static_assert(GROUP_X_THREADS * GROUP_Y_THREADS == HISTOGRAM_BIN_COUNT);
 };
 
 namespace TypeUtil
@@ -336,13 +338,15 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
         _lineariseDepthBuffer = CreateResource(lineariseDepthBuffer, loadTasks);
     }
 
+    std::array<U32, HISTOGRAM_BIN_COUNT> initialHistogram{};
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._name = "LUMINANCE_HISTOGRAM_BUFFER";
     bufferDescriptor._ringBufferLength = 0;
-    bufferDescriptor._elementCount = 256;
+    bufferDescriptor._elementCount = HISTOGRAM_BIN_COUNT;
     bufferDescriptor._elementSize = sizeof(U32);
     bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
     bufferDescriptor._updateFrequency = BufferUpdateFrequency::ONCE;
+    bufferDescriptor._initialData = { initialHistogram.data(), initialHistogram.size() * sizeof(U32) };
 
     _histogramBuffer = _context.newShaderBuffer(bufferDescriptor);
 
@@ -524,8 +528,8 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
 
     const RenderTargetHandle prevScreenHandle
     {
-        _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV),
-        RenderTargetNames::SCREEN_PREV
+        _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV[idx]),
+        RenderTargetNames::SCREEN_PREV[idx]
     };
 
     GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: Execute PrePass operators";
@@ -613,7 +617,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         memCmd->_bufferLocks.emplace_back(BufferLock
         {
             ._range = { 0u, U32_MAX },
-            ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+            ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE,
             ._buffer = _histogramBuffer->getBufferImpl()
         });
 
@@ -638,7 +642,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         {
             ._targetView   = luminanceView,
             ._sourceLayout = ImageUsage::SHADER_READ,
-            ._targetLayout = ImageUsage::SHADER_WRITE,
+            ._targetLayout = ImageUsage::SHADER_READ_WRITE,
         });
 
         GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _pipelineLumCalcAverage;
@@ -651,7 +655,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 12u, ShaderStageVisibility::COMPUTE );
-            Set(binding._data, luminanceView, ImageUsage::SHADER_WRITE );
+            Set(binding._data, luminanceView, ImageUsage::SHADER_READ_WRITE );
         }
 
 
@@ -668,14 +672,14 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             memCmd->_bufferLocks.emplace_back( BufferLock
             {
                 ._range = { 0u, U32_MAX },
-                ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+                ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE,
                 ._buffer = _histogramBuffer->getBufferImpl()
             });
 
             memCmd->_textureLayoutChanges.emplace_back(TextureLayoutChange
             {
                 ._targetView   = luminanceView,
-                ._sourceLayout = ImageUsage::SHADER_WRITE,
+                ._sourceLayout = ImageUsage::SHADER_READ_WRITE,
                 ._targetLayout = ImageUsage::SHADER_READ,
             });
         }
@@ -718,13 +722,12 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     }
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
-    RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV);
+    RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV[idx]);
     Handle<Texture> prevScreenTex = prevScreenRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO )->texture();
 
-    static bool firstPass = true;
-    if ( firstPass )
+    if ( !_previousScreenInitialized[idx] )
     {
-        firstPass = false;
+        _previousScreenInitialized[idx] = true;
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_textureLayoutChanges.emplace_back(TextureLayoutChange
         {
@@ -737,7 +740,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     // Copy our screen target PRE tonemap to feed back to PostFX operators in the next frame
     GFX::BlitRenderTargetCommand blitScreenColourCmd = {};
     blitScreenColourCmd._source = getInput(true)._targetID;
-    blitScreenColourCmd._destination = RenderTargetNames::SCREEN_PREV;
+    blitScreenColourCmd._destination = RenderTargetNames::SCREEN_PREV[idx];
     blitScreenColourCmd._params.emplace_back(RTBlitEntry
     {
         ._input = 
@@ -881,6 +884,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 }
 
 void PreRenderBatch::reshape(const U16 width, const U16 height) {
+    _previousScreenInitialized.fill( false );
     for (OperatorBatch& batch : _operators)
     {
         for (auto& op : batch)

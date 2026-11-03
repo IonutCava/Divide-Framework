@@ -12,7 +12,8 @@
 #define SPOT_LIGHT_COUNT        dvd_LightData.z
 #define _TYPE _options.x
 #define _SHADOW_INDEX _options.y
-#define _SPOT_CONE_SLANT_HEIGHT _options.z
+// Stored as raw float bits so the geometric value survives the integer field without truncation.
+#define SpotConeSlantHeight(L) intBitsToFloat((L)._options.z)
 
 struct Light
 {
@@ -27,7 +28,7 @@ struct Light
     vec4   _directionWV; 
     /// x = light type: 0 - directional, 1  - point, 2 - spot, 3 - none
     /// y = shadow index (-1 = no shadows)
-    /// z = spot cone slant height
+    /// z = spot cone slant height (float bits, see SpotConeSlantHeight)
     /// w = reserved
     ivec4  _options;
 };
@@ -44,10 +45,22 @@ vec4 getPositionAndRangeForLight(in Light source)
 
     if (source._TYPE == LIGHT_SPOT)
     {
-        vec4 returnValue = vec4( 0.f );
-        returnValue.w = source._SPOT_CONE_SLANT_HEIGHT * 0.5f;//range to radius conversion
-        returnValue.xyz = source._positionWV.xyz + (source._directionWV.xyz * returnValue.w);
-        return returnValue;
+        // Minimal sphere enclosing the lit region: the outer cone clipped by a sphere of radius L (spherical sector).
+        const float L = SpotConeSlantHeight(source);
+        const float cosOuter = source._colour.w;
+        const vec3 dir = normalize(source._directionWV.xyz);
+        if (cosOuter >= 0.70710678f) // cos(45 degrees)
+        {
+            // Narrow cone: the apex and the rim circle lie on the sphere.
+            const float radius = L / (2.f * cosOuter);
+            return vec4(source._positionWV.xyz + dir * radius, radius);
+        }
+        if (cosOuter > 0.f)
+        {
+            // Wide cone (< 180 degrees total): the rim circle is the sphere's equator.
+            return vec4(source._positionWV.xyz + dir * (L * cosOuter), L * sqrt(1.f - Squared(cosOuter)));
+        }
+        return vec4(source._positionWV.xyz, L);
     }
     else if (source._TYPE == LIGHT_OMNIDIRECTIONAL)
     {
@@ -96,15 +109,21 @@ struct VolumeTileAABB
 
 #if !defined(COMPUTE_SHADER)
 
-// cluster depth index from depth in screen coordinates (gl_FragCoord.z)
+// Cluster depth slice from window-space depth (gl_FragCoord.z). Works for perspective and orthographic projections.
 uint GetClusterZIndex(in float screenDepth)
 {
-    return uint( max( log( ToLinearDepth( screenDepth, dvd_ZPlanes ) ) * dvd_LightScale + dvd_LightBias, 0.f ) );
+    const float viewDistance = max(ViewDistanceFromDepth(screenDepth, dvd_ProjectionMatrix), 1e-6f);
+    const float slice = max(log(viewDistance) * dvd_LightScale + dvd_LightBias, 0.f);
+    return min(uint(slice), CLUSTERS_Z - 1u);
 }
 
 uint GetClusterIndex(in vec4 fragCoord)
 {
-    const uvec3 indices = uvec3(uvec2(fragCoord.xy / dvd_ClusterSizes), GetClusterZIndex( fragCoord.z ) );
+    // Clusters are built bottom-up relative to the viewport origin. Vulkan offscreen targets match OpenGL's window convention.
+    const vec2 relCoord = fragCoord.xy - dvd_ViewPort.xy;
+    // Clamp in float space: converting a negative float to uint is undefined.
+    const vec2 tile = clamp(floor(relCoord / dvd_ClusterSizes), vec2(0.f), vec2(CLUSTERS_X - 1, CLUSTERS_Y - 1));
+    const uvec3 indices = uvec3(uvec2(tile), GetClusterZIndex( fragCoord.z ) );
     return (CLUSTERS_X * CLUSTERS_Y) * indices.z +
             CLUSTERS_X * indices.y +
             indices.x;

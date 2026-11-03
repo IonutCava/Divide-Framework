@@ -1,5 +1,5 @@
-/* Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+/* Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -123,6 +123,8 @@ namespace Divide
         DELEGATE_STD<void, void*, void*> _dataGetter = {};
         DELEGATE_STD<void, const void*, void*> _dataSetter = {};
         DELEGATE_STD<const char*, U32, void*> _displayNameGetter = {};
+        DELEGATE<void, std::string_view> _onUndoRedo = {};
+        I64 _undoOwnerGUID = -1;
 
         Str<128> _tooltip = "";
         void* _data = nullptr;

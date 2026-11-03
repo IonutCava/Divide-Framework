@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -36,6 +36,7 @@
 #include "ParticleSource.h"
 #include "ParticleUpdater.h"
 #include "Graphs/Headers/SceneNode.h"
+#include "Platform/Threading/Headers/SharedMutex.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
 
 /// original source code:
@@ -80,6 +81,7 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
     }
 
     [[nodiscard]] U32 getAliveParticleCount() const noexcept;
+    [[nodiscard]] bool boundsInWorldSpace() const noexcept override { return true; }
 
    protected:
     static constexpr U8 s_MaxPlayerBuffers = 4;
@@ -107,6 +109,7 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
 
    private:
     std::shared_ptr<ParticleData> _particles;
+    U32 _geometryIndexCount = 0u;
 
     vector<std::shared_ptr<ParticleSource>> _sources;
     vector<std::shared_ptr<ParticleUpdater>> _updaters;
@@ -118,10 +121,8 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
 
     BuffersPerPlayer _particleGPUBuffers{};
     HandlesPerPlayer _particleGPUBufferHandles{};
-    std::array<bool, to_base(RenderStage::COUNT)> _buffersDirty{};
+    Mutex _particleRenderLock;
 
-    Task* _bufferUpdate = nullptr;
-    Task* _bbUpdate = nullptr;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(ParticleEmitter);

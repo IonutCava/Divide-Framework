@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -208,6 +208,7 @@ class PreRenderBatch {
 
     RenderTargetHandle _sceneEdges{};
     RenderTargetHandle _linearDepthRT{};
+    std::array<bool, Config::MAX_LOCAL_PLAYER_COUNT> _previousScreenInitialized{};
 
     F32 _adaptiveExposureValue{1.f};
     mutable bool _adaptiveExposureValueNeedsUpdate{false};

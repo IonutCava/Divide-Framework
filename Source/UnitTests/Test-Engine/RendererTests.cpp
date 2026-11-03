@@ -12,9 +12,81 @@
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkDevice.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Rendering/RenderPass/Headers/NodeBufferedData.h"
 
 namespace Divide
 {
+    TEST_CASE( "Compute workgroup support treats device limits as inclusive maxima", "[compute][device_limits]" )
+    {
+        DeviceInformation info{};
+        info._maxWorkgroupSize[0] = 256u;
+        info._maxWorkgroupSize[1] = 128u;
+        info._maxWorkgroupSize[2] = 64u;
+        info._maxWorkgroupInvocations = 256u;
+
+        CHECK( SupportsComputeWorkgroup( info, 1u, 1u, 1u ) );
+        CHECK( SupportsComputeWorkgroup( info, 256u, 1u, 1u ) );
+        CHECK( SupportsComputeWorkgroup( info, 16u, 16u, 1u ) );
+        CHECK( SupportsComputeWorkgroup( info, 2u, 2u, 64u ) );
+
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 0u, 1u, 1u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 1u, 0u, 1u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 1u, 1u, 0u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 257u, 1u, 1u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 1u, 129u, 1u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 1u, 1u, 65u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 32u, 32u, 1u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 16u, 8u, 4u ) );
+
+        // The product is computed in 64 bits so huge per-axis limits cannot wrap the invocation check.
+        info._maxWorkgroupSize[0] = info._maxWorkgroupSize[1] = info._maxWorkgroupSize[2] = U32_MAX;
+        info._maxWorkgroupInvocations = 1024u;
+        CHECK_FALSE( SupportsComputeWorkgroup( info, 65536u, 65536u, 1u ) );
+
+        // Vulkan's guaranteed minimum limits.
+        DeviceInformation vkMinimum{};
+        vkMinimum._maxWorkgroupSize[0] = 128u;
+        vkMinimum._maxWorkgroupSize[1] = 128u;
+        vkMinimum._maxWorkgroupSize[2] = 64u;
+        vkMinimum._maxWorkgroupInvocations = 128u;
+        CHECK( SupportsComputeWorkgroup( vkMinimum, 8u, 8u, 1u ) );
+        CHECK( SupportsComputeWorkgroup( vkMinimum, 64u, 1u, 1u ) );
+        CHECK_FALSE( SupportsComputeWorkgroup( vkMinimum, 16u, 16u, 1u ) );
+    }
+
+    TEST_CASE( "Instanced draws agree with material indirection requirements", "[instancing][indirection]" )
+    {
+        for ( const U32 instanceCount : { 0u, 1u, 2u, 64u } )
+        {
+            const bool drawRequiresInstancing = instanceCount > 1u;
+            const bool nonInstancedMaterial = RequiresInstancedIndirection( false, false, instanceCount );
+            CHECK( nonInstancedMaterial == drawRequiresInstancing );
+            CHECK( IndirectionBaseInstance( nonInstancedMaterial, 37u ) == (drawRequiresInstancing ? 0u : 38u) );
+
+            const bool instancedMaterial = RequiresInstancedIndirection( false, true, instanceCount );
+            CHECK( instancedMaterial );
+            CHECK( IndirectionBaseInstance( instancedMaterial, 37u ) == 0u );
+            CHECK( RequiresInstancedIndirection( true, false, instanceCount ) );
+        }
+
+        CHECK( IndirectionBaseInstance( false, 0u ) == 1u );
+    }
+
+    TEST_CASE( "Light descriptor visibility names match their shader stages", "[descriptors][lighting]" )
+    {
+        constexpr auto vertex = to_base( ShaderStageVisibility::VERTEX );
+        constexpr auto fragment = to_base( ShaderStageVisibility::FRAGMENT );
+        constexpr auto compute = to_base( ShaderStageVisibility::COMPUTE );
+        constexpr auto fragmentCompute = to_base( ShaderStageVisibility::COMPUTE_AND_FRAGMENT );
+        constexpr auto lightBuffer = to_base( ShaderStageVisibility::VERTEX_FRAGMENT_COMPUTE );
+
+        CHECK( fragmentCompute == (fragment | compute) );
+        CHECK( (fragmentCompute & vertex) == 0u );
+        CHECK( lightBuffer == (vertex | fragment | compute) );
+        CHECK( (lightBuffer & to_base( ShaderStageVisibility::GEOMETRY )) == 0u );
+        CHECK( to_base( ShaderStageVisibility::COMPUTE_AND_DRAW ) == fragmentCompute );
+    }
+
     struct WindowManagerTestAccess
     {
         static ErrorCode ApplyContextSettings(WindowManager& manager, const bool debug)
@@ -70,6 +142,24 @@ namespace Divide
         U32 value = 1u;
         std::memcpy( &value, view._shaderData.data( entry->_range._startOffset ), sizeof(value) );
         CHECK( value == 0u );
+    }
+
+    TEST_CASE( "Debug previews reset numerical display options", "[texture_fallbacks]" )
+    {
+        DebugView view;
+        const auto& entries = view._shaderData.entries();
+        for (const U64 hash : { _ID( "channelsArePacked" ), _ID( "scaleAndBias" ), _ID( "normalizeOutput" ) })
+        {
+            const auto entry = std::find_if( entries.begin(), entries.end(), [hash](const auto& value)
+            {
+                return value._bindingHash == hash;
+            } );
+            REQUIRE( entry != entries.end() );
+            CHECK( entry->_type == PushConstantType::UINT );
+            U32 value = 1u;
+            std::memcpy( &value, view._shaderData.data( entry->_range._startOffset ), sizeof(value) );
+            CHECK( value == 0u );
+        }
     }
 
     TEST_CASE( "Push command merging preserves shared uniform storage", "[push_constants]" )

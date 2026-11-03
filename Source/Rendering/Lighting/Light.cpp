@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/Light.h"
 
@@ -37,9 +38,10 @@ namespace Divide
         }
     }
 
-    Light::Light( SceneGraphNode* sgn, [[maybe_unused]] const F32 range, const LightType type, LightPool& parentPool )
+    Light::Light( SceneGraphNode* sgn, const F32 range, const LightType type, LightPool& parentPool )
         : IEventListener( sgn->sceneGraph()->GetECSEngine() ),
         _castsShadows( false ),
+        _range( range ),
         _sgn( sgn ),
         _parentPool( parentPool ),
         _type( type )
@@ -79,11 +81,25 @@ namespace Divide
         DIVIDE_EXPECTED_CALL( _parentPool.removeLight( *this ) );
     }
 
+    void Light::range( const F32 value ) noexcept
+    {
+        if ( _range != value )
+        {
+            _range = value;
+            staticShadowsDirty( true );
+            dynamicShadowsDirty( true );
+        }
+    }
+
     void Light::registerFields( EditorComponent& comp )
     {
         EditorComponentField rangeField = {};
         rangeField._name = "Range";
         rangeField._data = &_range;
+        rangeField._dataSetter = [this]( const void* value, [[maybe_unused]] void* userData ) noexcept
+        {
+            range( *static_cast<const F32*>( value ) );
+        };
         rangeField._type = EditorComponentFieldType::PUSH_TYPE;
         rangeField._readOnly = false;
         rangeField._range = { EPSILON_F32, 10000.f };
@@ -193,12 +209,22 @@ namespace Divide
                 break;
             case LightType::SPOT:
             {
-                const Angle::RADIANS_F angle = Angle::to_RADIANS( static_cast<SpotLightComponent*>(this)->outerConeCutoffAngle() );
-                const F32 radius = angle > M_PI_DIV_4 ? range() * tan( angle ) : range() * 0.5f / pow( cos( angle ), 2.0f );
-                const float3 position = positionCache() + directionCache() * radius;
-
-                _boundingVolume.setCenter( position );
-                _boundingVolume.setRadius( radius );
+                const auto* spot = static_cast<SpotLightComponent*>(this);
+                const F32 slantHeight = spot->coneSlantHeight();
+                const F32 cosOuter = std::cos( Angle::to_RADIANS( spot->outerConeCutoffAngle() ) );
+                const SpotBoundingSphere sphere = SpotConeBoundingSphere( slantHeight, cosOuter );
+                float3 direction = directionCache();
+                if ( direction.lengthSquared() < SQUARED( EPSILON_F32 ) )
+                {
+                    _boundingVolume.setCenter( positionCache() );
+                    _boundingVolume.setRadius( slantHeight );
+                }
+                else
+                {
+                    direction.normalize();
+                    _boundingVolume.setCenter( positionCache() + direction * sphere._offset );
+                    _boundingVolume.setRadius( sphere._radius );
+                }
                 break;
             };
 

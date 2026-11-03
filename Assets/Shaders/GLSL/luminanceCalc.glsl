@@ -41,7 +41,7 @@ layout(local_size_x = THREADS_X, local_size_y = THREADS_Y, local_size_z = 1) in;
 void main() {
     // Initialize the bin for this thread to 0
     histogramShared[gl_LocalInvocationIndex] = 0;
-    groupMemoryBarrier();
+    barrier();
 
     uvec2 dim = uvec2(u_params.zw);
     // Ignore threads that map to areas beyond the bounds of our HDR image
@@ -56,7 +56,7 @@ void main() {
     }
     // Wait for all threads in the work group to reach this point before adding our
     // local histogram to the global one
-    groupMemoryBarrier();
+    barrier();
 
     // Technically there's no chance that two threads write to the same bin here,
     // but different work groups might! So we still need the atomic add.
@@ -75,15 +75,15 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 13, std430) coherent ACCESS_RW buffer h
     uint histogram[];
 };
 
-shared uint histogramShared[GROUP_SIZE];
+shared float histogramShared[GROUP_SIZE];
 
 layout(local_size_x = GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 void main() {
     // Get the count from the histogram buffer
     uint countForThisBin = histogram[gl_LocalInvocationIndex];
-    histogramShared[gl_LocalInvocationIndex] = countForThisBin * gl_LocalInvocationIndex;
+    histogramShared[gl_LocalInvocationIndex] = float(countForThisBin) * float(gl_LocalInvocationIndex);
 
-    groupMemoryBarrier();
+    barrier();
 
     // Reset the count stored in the buffer in anticipation of the next pass
     histogram[gl_LocalInvocationIndex] = 0;
@@ -94,7 +94,7 @@ void main() {
             histogramShared[gl_LocalInvocationIndex] += histogramShared[gl_LocalInvocationIndex + binIndex];
         }
 
-        groupMemoryBarrier();
+        barrier();
     }
 
     // We only need to calculate this once, so only a single thread is needed.

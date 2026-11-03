@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -193,6 +193,9 @@ struct VKPerWindowState
 
     VkExtent2D _windowExtents{};
     bool _skipEndFrame{ false };
+    bool _frameInProgress{ false };
+    bool _recreateAfterPresent{ false };
+    bool _needsRecreate{ false };
 
     struct VKDynamicState
     {

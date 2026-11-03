@@ -69,29 +69,6 @@ vec3 GetSpecularDominantDir(in vec3 normal, in vec3 reflection, in float roughne
     return mix(normal, reflection, lerpFactor);
 }
 
-vec3 FixCubeLookup(in vec3 v)
-{
-    const float M = max(max(abs(v.x), abs(v.y)), abs(v.z));
-    const float scale = (REFLECTION_PROBE_RESOLUTION - 1) / REFLECTION_PROBE_RESOLUTION;
-
-    if (abs(v.x) != M)
-    {
-        v.x += scale;
-    }
-
-    if (abs(v.y) != M)
-    {
-        v.y += scale;
-    }
-
-    if (abs(v.z) != M)
-    {
-        v.z += scale;
-    }
-
-    return v;
-}
-
 vec3 GetCubeReflectionDirection(in vec3 viewDirectionWV, in vec3 normalWV, in vec3 positionW, in uint probeID, in float roughness)
 {
     const vec3 reflectionWV = reflect(-viewDirectionWV, normalWV);
@@ -101,26 +78,20 @@ vec3 GetCubeReflectionDirection(in vec3 viewDirectionWV, in vec3 normalWV, in ve
         const ProbeData probe = dvd_Probes[probeID];
 
         //Box Projected Cube Environment Mapping by Bartosz Czuba
-        const vec3 dominantDirW = normalize(mat3(dvd_InverseViewMatrix) * GetSpecularDominantDir(normalWV, reflectionWV, roughness));
-        const vec3 nrdir = normalize(FixCubeLookup(dominantDirW));
-
+        const vec3 nrdir = normalize(mat3(dvd_InverseViewMatrix) * GetSpecularDominantDir(normalWV, reflectionWV, roughness));
         const vec3 EnvBoxHalfSize = probe._halfExtents.xyz;
-        const vec3 EnvBoxSize = EnvBoxHalfSize * 2;
-        const vec3 EnvBoxStart = probe._positionW.xyz - EnvBoxHalfSize;
-        const vec3 rbmax = (EnvBoxStart + EnvBoxSize - positionW) / nrdir;
-        const vec3 rbmin = (EnvBoxStart - positionW) / nrdir;
-
-        const vec3 rbminmax = vec3(
-            (nrdir.x > 0.f) ? rbmax.x : rbmin.x,
-            (nrdir.y > 0.f) ? rbmax.y : rbmin.y,
-            (nrdir.z > 0.f) ? rbmax.z : rbmin.z
+        const vec3 boxMin = probe._positionW.xyz - EnvBoxHalfSize;
+        const vec3 boxMax = probe._positionW.xyz + EnvBoxHalfSize;
+        const vec3 exitDistances = vec3(
+            nrdir.x == 0.f ? 1e30f : ((nrdir.x > 0.f ? boxMax.x : boxMin.x) - positionW.x) / nrdir.x,
+            nrdir.y == 0.f ? 1e30f : ((nrdir.y > 0.f ? boxMax.y : boxMin.y) - positionW.y) / nrdir.y,
+            nrdir.z == 0.f ? 1e30f : ((nrdir.z > 0.f ? boxMax.z : boxMin.z) - positionW.z) / nrdir.z
         );
-
-        const float fa = min(min(rbminmax.x, rbminmax.y), rbminmax.z);
-        return (positionW + nrdir * fa) - (EnvBoxStart + EnvBoxHalfSize);
+        const float fa = min(min(exitDistances.x, exitDistances.y), exitDistances.z);
+        return (positionW + nrdir * fa) - probe._positionW.xyz;
     }
 
-    return reflectionWV;
+    return normalize(mat3(dvd_InverseViewMatrix) * reflectionWV);
 }
 
 vec3 getIBLAmbient(in PBRMaterial material)
@@ -146,7 +117,8 @@ vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV
 
     const vec4 reflectionLookup = getReflectionLookup(material._roughness, viewDirectionWV, normalWV, positionW, probeID);
 
-    const vec3 irradiance = texture(texEnvIrradiance, reflectionLookup).rgb;
+    const vec3 normalW = normalize(mat3(dvd_InverseViewMatrix) * normalWV);
+    const vec3 irradiance = texture(texEnvIrradiance, vec4(normalW, float(probeID))).rgb;
     const vec3 prefiltered = textureLod(texEnvPrefiltered, reflectionLookup, (material._roughness * REFLECTION_PROBE_MIP_COUNT)).rgb;
     const vec2 envBRDF = texture(texBRDFLut, vec2(NdotV, material._roughness)).rg;
     const vec3 diffuse = irradiance * material._diffuseColour;
@@ -154,7 +126,8 @@ vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV
 
     const vec3 F = computeFresnelSchlickRoughness(NdotV, material._F0, material._roughness);
     const vec3 kS = F;
-    const vec3 kD = (1.f - kS) * (1.f - material._metallic);
+    // The material diffuse colour already includes the (1 - metallic) attenuation.
+    const vec3 kD = 1.f - kS;
 
     const vec3 specular = prefiltered * (F * envBRDF.x + envBRDF.y);
     return (kD * diffuse + specular) * material._occlusion + ambient;

@@ -37,7 +37,6 @@ void main()
 {
     const vec4 pos = gl_in[0].gl_Position;
 
-    lightColour = colourAndSize[0].xyz;
     const float size = colourAndSize[0].w;
 
     // a: left-bottom 
@@ -45,6 +44,7 @@ void main()
     gl_Position = dvd_ProjectionMatrix * vec4(va, pos.zw);
     _out._texCoord = vec2(0.0 + (texCoordOffset[0].x * 0.5),
                          (0.0 + (texCoordOffset[0].y * 0.5)));
+    lightColour = colourAndSize[0].xyz;
     EmitVertex();
 
     // d: right-bottom
@@ -52,6 +52,7 @@ void main()
     gl_Position = dvd_ProjectionMatrix * vec4(vd, pos.zw);
     _out._texCoord = vec2(0.5 + (texCoordOffset[0].x * 0.5),
                          (0.0 + (texCoordOffset[0].y * 0.5)));
+    lightColour = colourAndSize[0].xyz;
     EmitVertex();
 
     // b: left-top
@@ -59,6 +60,7 @@ void main()
     gl_Position = dvd_ProjectionMatrix * vec4(vb, pos.zw);
     _out._texCoord = vec2(0.0 + (texCoordOffset[0].x * 0.5), 
                          (0.5 + (texCoordOffset[0].y * 0.5)));
+    lightColour = colourAndSize[0].xyz;
     EmitVertex();
     
     // c: right-top
@@ -66,6 +68,7 @@ void main()
     gl_Position = dvd_ProjectionMatrix * vec4(vc, pos.zw);
     _out._texCoord = vec2(0.5 + (texCoordOffset[0].x * 0.5),
                          (0.5 + (texCoordOffset[0].y * 0.5)));
+    lightColour = colourAndSize[0].xyz;
     EmitVertex();
 
     EndPrimitive();
