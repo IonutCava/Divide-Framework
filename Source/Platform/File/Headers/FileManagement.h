@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -153,7 +153,7 @@ struct Paths {
     }; //class Shaders
 
     // include command regex pattern
-    static constexpr auto g_includePattern = ctll::fixed_string{ R"(\s*#\s*include\s+["<]([^">]+)*[">])" };
+    static constexpr auto g_includePattern = ctll::fixed_string{ R"(\s*#\s*include\s+["<]([^">]+)*[">][ \t]*(?://[^\r\n]*|/\*[^\r\n]*\*/[ \t]*)?)" };
     // define regex pattern
     static constexpr auto g_definePattern = ctll::fixed_string{ R"(([#!][A-z]{2,}[\s]{1,}?([A-z]{2,}[\s]{1,}?)?)([\\(]?[^\s\\)]{1,}[\\)]?)?)" };
     // use command regex pattern

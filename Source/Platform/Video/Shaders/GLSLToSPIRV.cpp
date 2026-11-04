@@ -1,4 +1,5 @@
-
+// Copyright (c) 2018-2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/GLSLToSPIRV.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
@@ -288,6 +289,69 @@ namespace
 
         return ShaderStageVisibility::NONE;
     }
+
+    [[nodiscard]] bool CollectVertexInputs( const SpvReflectShaderModule& module, AttributeFlags& inputs )
+    {
+        U32 count = 0u;
+        if ( spvReflectEnumerateInputVariables( &module, &count, nullptr ) != SPV_REFLECT_RESULT_SUCCESS )
+        {
+            return false;
+        }
+
+        std::vector<SpvReflectInterfaceVariable*> variables( count );
+        if ( count > 0u && spvReflectEnumerateInputVariables( &module, &count, variables.data() ) != SPV_REFLECT_RESULT_SUCCESS )
+        {
+            return false;
+        }
+
+        inputs.fill( false );
+        for ( const SpvReflectInterfaceVariable* variable : variables )
+        {
+            if ( variable == nullptr )
+            {
+                Console::errorfn( "SPIR-V reflection returned a null vertex input." );
+                return false;
+            }
+            if ( variable->built_in != -1 )
+            {
+                continue;
+            }
+
+            const size_t firstLocation = to_size( variable->location );
+            if ( variable->member_count != 0u || variable->numeric.scalar.width == 0u ||
+                 variable->numeric.scalar.width > 32u || firstLocation >= inputs.size() )
+            {
+                Console::errorfn( "Unsupported vertex shader input '{}' at location {}.",
+                                  variable->name != nullptr ? variable->name : "<unnamed>", variable->location );
+                return false;
+            }
+
+            size_t locationCount = std::max( size_t{ 1u }, to_size( variable->numeric.matrix.column_count ) );
+            const size_t availableLocations = inputs.size() - firstLocation;
+            for ( U32 i = 0u; i < variable->array.dims_count; ++i )
+            {
+                const size_t dimension = to_size( variable->array.dims[i] );
+                if ( dimension == 0u || locationCount > availableLocations / dimension )
+                {
+                    Console::errorfn( "Vertex shader input '{}' exceeds the supported attribute locations.",
+                                      variable->name != nullptr ? variable->name : "<unnamed>" );
+                    return false;
+                }
+                locationCount *= dimension;
+            }
+            if ( locationCount > availableLocations )
+            {
+                Console::errorfn( "Vertex shader input '{}' exceeds the supported attribute locations.",
+                                  variable->name != nullptr ? variable->name : "<unnamed>" );
+                return false;
+            }
+            for ( size_t location = firstLocation; location < firstLocation + locationCount; ++location )
+            {
+                inputs[location] = true;
+            }
+        }
+        return true;
+    }
 }
 
 bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, const std::vector<unsigned int>& spirv, const Divide::RenderAPI renderAPI, Divide::Reflection::Data& reflectionDataInOut )
@@ -298,8 +362,18 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
     {
         return false;
     }
+    const std::unique_ptr<SpvReflectShaderModule, decltype( &spvReflectDestroyShaderModule )> moduleScope{
+        &module, &spvReflectDestroyShaderModule
+    };
     uint32_t count = 0u;
-    if ( shader_type == ShaderType::FRAGMENT )
+    if ( shader_type == ShaderType::VERTEX )
+    {
+        if ( !CollectVertexInputs( module, reflectionDataInOut._vertexInputs ) )
+        {
+            return false;
+        }
+    }
+    else if ( shader_type == ShaderType::FRAGMENT )
     {
         result = spvReflectEnumerateOutputVariables( &module, &count, nullptr );
         if ( result != SPV_REFLECT_RESULT_SUCCESS )
@@ -575,8 +649,6 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
             }
         }
     }
-
-    spvReflectDestroyShaderModule( &module );
 
     return true;
 }

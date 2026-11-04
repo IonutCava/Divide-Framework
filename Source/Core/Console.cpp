@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/Console.h"
 
@@ -119,7 +119,6 @@ void Console::PrintToFile(const OutputEntry& entry)
 
         if ( s_flags & to_base( Flags::PRINT_TO_STD_CONSOLE))
         {
-            assert(entry._text.length() < 4096);
             ::printf("%s", entry._text.c_str());
         }
         const bool toErr = entry._type == EntryType::ERR && s_flags & to_base(Flags::ENABLE_ERROR_STREAM);
@@ -262,4 +261,3 @@ bool Console::UnbindConsoleOutput( size_t& index )
 }
 
 } //namespace Divide
-

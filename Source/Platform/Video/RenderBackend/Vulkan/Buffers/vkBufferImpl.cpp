@@ -14,7 +14,7 @@ namespace Divide
         std::atomic_uint g_bufferCount{ 0u };
     }
 
-    VertexInputDescription getVertexDescription( const AttributeMap& vertexFormat )
+    VertexInputDescription getVertexDescription( const AttributeMap& vertexFormat, const AttributeFlags& shaderInputs )
     {
         VertexInputDescription description;
 
@@ -31,7 +31,7 @@ namespace Divide
         for ( U8 idx = 0u; idx < to_base( AttribLocation::COUNT ); ++idx )
         {
             const AttributeDescriptor& descriptor = vertexFormat._attributes[idx];
-            if ( descriptor._dataType == GFXDataFormat::COUNT )
+            if ( !shaderInputs[idx] || descriptor._dataType == GFXDataFormat::COUNT )
             {
                 continue;
             }

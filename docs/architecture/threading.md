@@ -1,5 +1,7 @@
 # Threading and synchronization
 
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
+
 See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 ## Entry points and task pools
@@ -14,6 +16,28 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 Reuse these semantics for asynchronous asset/GPU preparation rather than introducing ad-hoc threads.
 DDS/NVTT cache generation uses `HIGH_PRIORITY` when available.
 Render preparation uses partitions (`g_nodesPerPrepareDrawPartition`) and shared locks around dirty ranges.
+
+When the main thread waits for `Parallel_For` partitions, it also services
+`PlatformContext` completion callbacks. Asset-loading workers can depend on
+these callbacks to finalize resources, including work from another pool.
+Asynchronous task completion callbacks run on the main thread. A `REALTIME`
+task and its completion callback execute on their caller, including asset-loader
+workers; they must not synchronously depend on the main thread while holding
+locks that the main thread may need.
+Callback dispatch releases its lock and dequeues one callback at a time, so a
+callback can safely wait for another callback. Main-thread task waits and
+shutdown waits service pending callbacks as well.
+Resource creation without an external task counter does not retain a pointer
+to a temporary counter; supplied counters must outlive their asynchronous work.
+Resource states use release/acquire ordering to publish completed resource data.
+Resource-pool reference-count increments and decrements both require the pool's
+exclusive lock.
+Material descriptor caches are built, invalidated, and copied under the texture
+lock. Render preparation receives a snapshot, never a reference to a cache
+that another worker may still be populating or invalidating.
+Vulkan shader-loading workers queue reload notifications under a mutex; the
+render thread drains a reusable GUID batch at frame end without holding that
+mutex while invalidating pipelines.
 
 ## CPU and resource lifetime checks
 

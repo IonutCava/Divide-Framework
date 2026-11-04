@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/ConditionalWait.h"
 
@@ -12,6 +12,14 @@ namespace {
 
 void InitConditionalWait(PlatformContext& context) noexcept {
     g_ctx = &context;
+}
+
+void ShutdownConditionalWait(PlatformContext& context) noexcept
+{
+    if (g_ctx == &context)
+    {
+        g_ctx = nullptr;
+    }
 }
 
 void PlatformContextIdleCall()

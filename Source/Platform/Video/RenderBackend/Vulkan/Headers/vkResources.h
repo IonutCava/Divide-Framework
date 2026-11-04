@@ -62,6 +62,7 @@ namespace Divide {
 
 class VKDevice;
 class vkShaderProgram;
+class Pipeline;
 enum class DescriptorSetBindingType : U8;
 
 FWD_DECLARE_MANAGED_CLASS( VKSwapChain );
@@ -99,6 +100,7 @@ struct CompiledPipeline
 {
     VkPipelineBindPoint _bindPoint{ VK_PIPELINE_BIND_POINT_MAX_ENUM };
     vkShaderProgram* _program{ nullptr };
+    I64 _programGUID{ I64_LOWEST };
     VkPipeline _vkPipeline{ VK_NULL_HANDLE };
     VkPipeline _vkPipelineWireframe{ VK_NULL_HANDLE };
     VkPipelineLayout _vkPipelineLayout{ VK_NULL_HANDLE };
@@ -106,6 +108,33 @@ struct CompiledPipeline
     VkShaderStageFlags _stageFlags{ VK_FLAGS_NONE };
     VkDescriptorSetLayout* _descriptorSetlayout{ nullptr };
     bool _isValid{false};
+};
+
+struct VKRenderingSignature
+{
+    std::array<VkFormat, to_base( RTColourAttachmentSlot::COUNT )> _colourFormats{};
+    U32 _colourAttachmentCount{ 0u };
+    U32 _viewMask{ 0u };
+    VkFormat _depthFormat{ VK_FORMAT_UNDEFINED };
+    VkFormat _stencilFormat{ VK_FORMAT_UNDEFINED };
+    U8 _sampleCount{ 0u };
+
+    [[nodiscard]] static VKRenderingSignature From( const VkPipelineRenderingCreateInfo& info, U8 sampleCount ) noexcept;
+    bool operator==( const VKRenderingSignature& ) const noexcept = default;
+};
+
+struct VKPipelineCacheKey
+{
+    size_t _pipelineStateHash{ 0u };
+    size_t _blendStateHash{ 0u };
+    VKRenderingSignature _rendering{};
+
+    bool operator==( const VKPipelineCacheKey& ) const noexcept = default;
+};
+
+struct VKPipelineCacheKeyHash
+{
+    [[nodiscard]] size_t operator()( const VKPipelineCacheKey& key ) const noexcept;
 };
 
 struct PipelineBuilder
@@ -243,6 +272,9 @@ struct VKStateTracker
     VMAAllocatorInstance _allocatorInstance{};
     std::array<DescriptorAllocator, to_base( DescriptorSetUsage::COUNT )> _descriptorAllocators;
     CompiledPipeline _pipeline{};
+    const Pipeline* _logicalPipeline{ nullptr };
+    VKRenderingSignature _renderingSignature{};
+    VKRenderingSignature _boundRenderingSignature{};
 
     VkPipelineRenderingCreateInfo _pipelineRenderInfo{};
 
@@ -252,7 +284,6 @@ struct VKStateTracker
     VkShaderStageFlags _pipelineStageMask{ VK_FLAGS_NONE };
 
     RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
-    size_t _renderTargetFormatHash{0u};
     size_t _activeRenderTargetColourAttachmentCount{ 0u };
     vec2<U16> _activeRenderTargetDimensions{ 1u };
 
@@ -261,6 +292,13 @@ struct VKStateTracker
 
     bool* _enabledAPIDebugging;
     bool* _assertOnAPIError;
+
+    [[nodiscard]] bool needsGraphicsPipelineRebind() const noexcept
+    {
+        return _logicalPipeline != nullptr &&
+               _pipeline._bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS &&
+               _boundRenderingSignature != _renderingSignature;
+    }
 
 
    private:

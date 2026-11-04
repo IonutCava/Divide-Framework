@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -112,6 +112,7 @@ namespace Divide
             vector<ImageEntry> _images{};
             vector<BufferEntry> _buffers{};
             std::array<bool, to_base(RTColourAttachmentSlot::COUNT)> _fragmentOutputs{};
+            AttributeFlags _vertexInputs{};
 
             U8 _uniformBlockBindingSet{ to_base( DescriptorSetUsage::PER_DRAW ) };
             U8 _uniformBlockBindingIndex{ INVALID_BINDING_INDEX };

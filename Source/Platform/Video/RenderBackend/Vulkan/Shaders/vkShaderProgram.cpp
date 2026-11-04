@@ -180,7 +180,7 @@ namespace Divide {
 
             if ( !_shaderStage.empty() )
             {
-                VK_API::OnShaderReloaded(this);
+                VK_API::OnShaderReloaded( getGUID() );
                 return true;
             }
         }

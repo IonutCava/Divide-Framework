@@ -1,5 +1,7 @@
 # Asset pipeline
 
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
+
 See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 ## Entry points
@@ -29,6 +31,8 @@ Before changing geometry upload, check cache compatibility, attribute-presence t
 ## Texture flow
 
 `Texture::loadInternal()` treats comma-separated asset lists as layers or cubemap faces, accumulates bytes into `ImageTools::ImageData`, and inspects/caches transparency and translucency.
+
+Cube face counts are converted to cube counts when allocating backend storage.
 
 - STB decodes standard formats; DevIL handles DDS compatibility.
 - NVTT can generate DDS cache files; conversion may run on the `HIGH_PRIORITY` task pool.
