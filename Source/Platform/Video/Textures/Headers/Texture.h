@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -112,6 +112,9 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         [[nodiscard]] static TextureDescriptor DefaultTextureDescriptor( TextureType type, GFXDataFormat sampledDataType, bool depth ) noexcept;
         [[nodiscard]] static const SamplerDescriptor DefaultSampler() noexcept;
         [[nodiscard]] static U8 GetBytesPerPixel( GFXDataFormat format, GFXImageFormat baseFormat, GFXImagePacking packing ) noexcept;
+        [[nodiscard]] static U16 TextureLayersForImageLayers( TextureType type, U16 imageLayers ) noexcept;
+        [[nodiscard]] static bool GetViewLayerRange( TextureType sourceType, TextureType targetType, U16 textureLayers,
+                                                     SubRange requested, SubRange& rangeOut ) noexcept;
 
         /// API-dependent loading function that uploads ptr data to the GPU using the specified parameters
         ImageUsage createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment );

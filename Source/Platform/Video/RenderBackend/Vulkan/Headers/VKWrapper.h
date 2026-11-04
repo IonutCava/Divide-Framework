@@ -149,7 +149,7 @@ public:
     static void PushDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
     static void PopDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer);
 
-    static void OnShaderReloaded( vkShaderProgram* program);
+    static void OnShaderReloaded( I64 programGUID );
 private:
     GFXDevice& _context;
     vkb::Instance _vkbInstance;
@@ -167,7 +167,8 @@ private:
     DescriptorLayoutCache_uptr _descriptorLayoutCache{nullptr};
 
     hashMap<I64, VKPerWindowState> _perWindowState;
-    hashMap<size_t, CompiledPipeline> _compiledPipelines;
+    hashMap<VKPipelineCacheKey, CompiledPipeline, VKPipelineCacheKeyHash> _compiledPipelines;
+    vector<I64> _shaderReloadsToProcess;
 
     std::array<DynamicBindings, to_base( DescriptorSetUsage::COUNT )> _descriptorDynamicBindings;
     std::array<VkDescriptorSetLayout, to_base( DescriptorSetUsage::COUNT )> _descriptorSetLayouts;
@@ -188,7 +189,8 @@ private:
     static VKImageBarrierQueue s_imageBarrierQueue;
     static VKSubmitSempahore s_submitSemaphores;
 
-    static eastl::stack<vkShaderProgram*> s_reloadedShaders;
+    static Mutex s_reloadedShadersLock;
+    static vector<I64> s_reloadedShaders;
 
 public:
     struct DepthFormatInformation

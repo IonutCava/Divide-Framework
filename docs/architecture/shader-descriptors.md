@@ -26,7 +26,16 @@ The resource pool calls `unload()` before destroying a loaded shader program.
 Vulkan's destructor only releases any remaining module-parent references, so it
 also cleans up partially loaded programs without unregistering a loaded program
 twice.
-Hot reload deliberately invalidates caches and reparses source. Configuration-derived constants (clustered-lighting budget, reflection-probe size/mips, binding maps, etc.) are injected into the generated shader header by `InitGLSW`. Every generated line passes through one helper that folds the stage name and line into an FNV-1a (`_ID`) fingerprint. GLSL, SPIR-V, and reflection caches live under `header-<fingerprint>`, so any generated-header change invalidates them. New generated lines must use `AppendToShaderHeader`, not `glswAddDirectiveToken` directly.
+Material shader slots own their program references. Cloning acquires a separate
+reference, moving a slot transfers it, and replacing a program releases the old
+reference after acquiring the replacement. Queued replacements retain the old
+program until processed but do not report the slot ready; material unload cancels
+queued writes and waits for in-flight shader loads before releasing slots.
+Vulkan shader-load and reload notifications are queued by program GUID under a
+mutex. The render thread swaps the pending IDs into reusable storage at frame
+end and invalidates matching compiled pipelines without retaining queued program
+pointers; notifications arriving during the batch are processed next frame.
+Hot reload deliberately invalidates caches and reparses source. Configuration-derived constants (clustered-lighting budget, reflection-probe size/mips, binding maps, etc.) are injected into the generated shader header by `InitGLSW`. Every generated line passes through one helper that folds the stage name and line into an FNV-1a (`_ID`) fingerprint. GLSL, SPIR-V, and reflection caches live under `header-<fingerprint>/<preprocess-version>`, so generated-header changes invalidate them. New generated lines must use `AppendToShaderHeader`, not `glswAddDirectiveToken` directly; bump `s_shaderPreprocessCacheVersion` whenever preprocessing semantics change.
 The newest shader-atom timestamp is read and updated under `g_cacheLock`,
 including file-watcher updates racing asset-loader cache reads.
 
@@ -35,12 +44,16 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
 ### GLSL authoring and preprocessing
 
 - Effect files are GLSW collections; `ShaderModuleDescriptor` selects a `file.Stage.variant` section, and module/global defines select material, pass, and debug variants.
+- Shader-thread initialization resets the thread-local preprocessor tag cursor;
+  repeated initialization on the same thread must not append past its tag array.
 - `PreprocessIncludes` runs **before** `PreProcessMacros`, so every `#include` must resolve even inside a disabled `#if`.
+- Include directives may end with whitespace or a single-line comment. Malformed, missing, cyclic, or nested includes beyond 64 levels stop source loading instead of being silently dropped by the macro preprocessor. Expansion uses an explicit stack; cached atoms retain their dependency depth so cache hits cannot bypass the limit. Only successfully expanded atoms are cached, and changing a dependency invalidates every cached parent.
 - A missing GLSW section or failed macro preprocessing aborts source loading before uniform extraction, shader compilation, or cache writes.
 - Loose uniforms are collected into generated `std140` blocks at `PER_DRAW` slots `s_uniformsStartOffset` (+1 for a second distinct block; at most two per program).
+- SPIR-V reflection records vertex input locations, including matrix columns and array elements, and reflection-cache version 6 persists them. Built-in inputs are excluded; unsupported input types or locations fail reflection. Vulkan uses the reflected locations to omit unused vertex attributes from pipeline descriptions without inventing missing attributes. Shader reloads clear and rebuild this mask.
 - Prefer GLSL expression defines over helper functions so preprocessed shaders stay as inline as practical. Parenthesize macro arguments, keep bodies expression-only, and do not pass side-effecting or expensive expressions to macros that evaluate an argument more than once.
 - `GLSLToSPIRV` targets Vulkan 1.4 / SPIR-V 1.6 for Vulkan and the OpenGL 4.5 environment / SPIR-V 1.0 for OpenGL (`debug.renderer.useSPIRVForOpenGL` ingests the latter directly). Compiled-binary and reflection cache paths include `s_compiledShaderCacheVersion`; bump it whenever compiler targets change.
-- `Source/UnitTests/ShaderCompilationTests.py` compiles representative generated-header variants for both APIs and checks cross-stage links. `ShaderMathTests.py` executes selected shader macros numerically on a Vulkan compute device (skipping when none is available). Neither replaces the engine preprocessor or image-based rendering checks.
+- `Source/UnitTests/Test-Engine/ShaderCompilerTests.cpp` exercises repeated shader-thread initialization, diagnostics, and include expansion. CPU checks do not replace GPU execution or image-based rendering checks.
 
 ## Descriptor ownership and invariants
 

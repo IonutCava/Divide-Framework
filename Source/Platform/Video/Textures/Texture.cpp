@@ -1,5 +1,4 @@
-
-
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/Texture.h"
 
 #include "Core/Headers/ByteBuffer.h"
@@ -224,10 +223,10 @@ namespace Divide
 
                     if ( _descriptor._layerCount == 0u )
                     {
-                        _descriptor._layerCount = targetLayers % 6;
+                        _descriptor._layerCount = TextureLayersForImageLayers( _descriptor._texType, targetLayers );
                     }
 
-                    DIVIDE_ASSERT( _descriptor._layerCount == targetLayers % 6 );
+                    DIVIDE_ASSERT( _descriptor._layerCount == TextureLayersForImageLayers( _descriptor._texType, targetLayers ) );
 
                     // We only use cube arrays to simplify some logic in the texturing code
                     if ( _descriptor._texType == TextureType::TEXTURE_CUBE_MAP )
@@ -275,6 +274,43 @@ namespace Divide
     bool Texture::postLoad()
     {
         return CachedResource::postLoad();
+    }
+
+    U16 Texture::TextureLayersForImageLayers( const TextureType type, const U16 imageLayers ) noexcept
+    {
+        return IsCubeTexture( type ) ? to_U16( imageLayers / 6u ) : imageLayers;
+    }
+
+    bool Texture::GetViewLayerRange( const TextureType sourceType, TextureType targetType, const U16 textureLayers,
+                                     const SubRange requested, SubRange& rangeOut ) noexcept
+    {
+        if ( targetType == TextureType::COUNT )
+        {
+            targetType = sourceType;
+        }
+
+        U32 availableLayers = sourceType == TextureType::TEXTURE_3D ? 1u : textureLayers;
+        if ( IsCubeTexture( sourceType ) && !IsCubeTexture( targetType ) )
+        {
+            availableLayers *= 6u;
+        }
+
+        if ( availableLayers >= ALL_LAYERS || requested._offset >= availableLayers || requested._count == 0u )
+        {
+            return false;
+        }
+
+        const bool arrayView = IsArrayTexture( targetType );
+        const U32 selectedCount = requested._count == ALL_LAYERS
+                                ? (arrayView ? availableLayers - requested._offset : 1u)
+                                : requested._count;
+        if ( selectedCount > availableLayers - requested._offset || (!arrayView && selectedCount != 1u) )
+        {
+            return false;
+        }
+
+        rangeOut = { requested._offset, to_U16( selectedCount ) };
+        return true;
     }
 
     /// Load texture data using the specified file name
@@ -405,7 +441,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
-        ImageUsage ret = prepareTextureData(imageData.dimensions(0u, 0u), imageData.layerCount(), true);
+        ImageUsage ret = prepareTextureData(imageData.dimensions(0u, 0u), TextureLayersForImageLayers( _descriptor._texType, imageData.layerCount() ), true);
         DIVIDE_UNUSED(ret);
 
         if ( !IsRenderTargetAttachment(descriptor()) )
@@ -767,9 +803,25 @@ namespace Divide
         }
     }
 
+    namespace
+    {
+        SubRange ResolveViewLayers( const Texture& texture, const TextureType targetType, const SubRange requested )
+        {
+            SubRange range{};
+            if ( !Texture::GetViewLayerRange( texture.descriptor()._texType, targetType, texture.layerCount(), requested, range ) )
+            {
+                Console::errorfn( "Invalid texture view layers for '{}': offset {}, count {}, available {}",
+                                  texture.resourceName().c_str(), requested._offset, requested._count, texture.layerCount() );
+                Console::Flush();
+                std::abort();
+            }
+            return range;
+        }
+    }
+
     ImageView Texture::getView() const noexcept
     {
-        const U16 layerCount = _descriptor._texType == TextureType::TEXTURE_3D ? 1u : _depth;
+        const SubRange layerRange = ResolveViewLayers( *this, _descriptor._texType, { 0u, ALL_LAYERS } );
 
         return ImageView
         {
@@ -787,10 +839,7 @@ namespace Divide
                 {
                     ._count = _mipCount
                 },
-                ._layerRange = 
-                {
-                    ._count = layerCount
-                }
+                ._layerRange = layerRange
             }
         };
     }
@@ -799,6 +848,7 @@ namespace Divide
     {
         ImageView ret = getView();
         ret._targetType = targetType;
+        ret._subRange._layerRange = ResolveViewLayers( *this, targetType, { 0u, ALL_LAYERS } );
         return ret;
     }
 
@@ -812,7 +862,7 @@ namespace Divide
     ImageView Texture::getView( const SubRange mipRange, const SubRange layerRange ) const noexcept
     {
         ImageView ret = getView( mipRange );
-        ret._subRange._layerRange = { layerRange._offset, std::min(layerRange._count, ret._subRange._layerRange._count) };
+        ret._subRange._layerRange = ResolveViewLayers( *this, _descriptor._texType, layerRange );
         return ret;
     }
 
@@ -826,7 +876,7 @@ namespace Divide
     ImageView Texture::getView( const TextureType targetType, const SubRange mipRange, const SubRange layerRange ) const noexcept
     {
         ImageView ret = getView( targetType, mipRange );
-        ret._subRange._layerRange = { layerRange._offset, std::min( layerRange._count, ret._subRange._layerRange._count ) };
+        ret._subRange._layerRange = ResolveViewLayers( *this, targetType, layerRange );
         return ret;
     }
 };

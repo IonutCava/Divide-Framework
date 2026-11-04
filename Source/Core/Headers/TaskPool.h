@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -82,6 +82,7 @@ class TaskPool final : public GUIDWrapper {
     /// <returns>A pointer to the newly allocated Task.</returns>
     static Task* AllocateTask(Task* parentTask, DELEGATE<void, Task&>&& func ) noexcept;
 
+    /// REALTIME tasks and their completion callbacks run on the caller; other callbacks run on the main thread.
     void enqueue(Task& task, TaskPriority priority = TaskPriority::DONT_CARE, DELEGATE<void>&& onCompletionFunction = {});
     void wait(const Task& task);
 

@@ -357,7 +357,8 @@ namespace Divide
     VKSubmitSempahore VK_API::s_submitSemaphores;
 
     VKStateTracker VK_API::s_stateTracker;
-    eastl::stack<vkShaderProgram*> VK_API::s_reloadedShaders;
+    Mutex VK_API::s_reloadedShadersLock;
+    vector<I64> VK_API::s_reloadedShaders;
     SharedMutex VK_API::s_samplerMapLock;
     VK_API::SamplerObjectMap VK_API::s_samplerMap{};
     VK_API::DepthFormatInformation VK_API::s_depthFormatInformation;
@@ -436,6 +437,13 @@ namespace Divide
         constexpr U32 stateCount = to_U32( std::size( dynamicStates ) );
 
         const VkPipelineDynamicStateCreateInfo dynamicState = vk::pipelineDynamicStateCreateInfo( dynamicStates, stateCount - (VK_API::s_hasDynamicBlendStateSupport ? 0u : 3u) );
+        const VkPipelineTessellationDomainOriginStateCreateInfo tessellationOrigin
+        {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO,
+            .domainOrigin = VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT
+        };
+        VkPipelineTessellationStateCreateInfo tessellationState = _tessellation;
+        tessellationState.pNext = &tessellationOrigin;
 
         //build the actual pipeline
         //we now use all of the info structs we have been writing into into this one to create the pipeline
@@ -450,7 +458,7 @@ namespace Divide
         pipelineInfo.pMultisampleState = &_multisampling;
         pipelineInfo.pColorBlendState = &colorBlending;
         pipelineInfo.pDepthStencilState = &_depthStencil;
-        pipelineInfo.pTessellationState = &_tessellation;
+        pipelineInfo.pTessellationState = &tessellationState;
         pipelineInfo.subpass = 0;
         pipelineInfo.pNext = &VK_API::GetStateTracker()._pipelineRenderInfo;
 
@@ -645,6 +653,36 @@ namespace Divide
         }
     }
 
+    VKRenderingSignature VKRenderingSignature::From( const VkPipelineRenderingCreateInfo& info, const U8 sampleCount ) noexcept
+    {
+        DIVIDE_ASSERT( info.colorAttachmentCount <= to_base( RTColourAttachmentSlot::COUNT ) );
+        DIVIDE_ASSERT( info.colorAttachmentCount == 0u || info.pColorAttachmentFormats != nullptr );
+        VKRenderingSignature result{};
+        result._colourAttachmentCount = info.colorAttachmentCount;
+        result._viewMask = info.viewMask;
+        result._depthFormat = info.depthAttachmentFormat;
+        result._stencilFormat = info.stencilAttachmentFormat;
+        result._sampleCount = sampleCount;
+        for ( U32 i = 0u; i < info.colorAttachmentCount; ++i )
+        {
+            result._colourFormats[i] = info.pColorAttachmentFormats[i];
+        }
+        return result;
+    }
+
+    size_t VKPipelineCacheKeyHash::operator()( const VKPipelineCacheKey& key ) const noexcept
+    {
+        size_t hash = key._pipelineStateHash;
+        Util::Hash_combine( hash, key._blendStateHash, key._rendering._colourAttachmentCount,
+                            key._rendering._viewMask, key._rendering._depthFormat,
+                            key._rendering._stencilFormat, key._rendering._sampleCount );
+        for ( U32 i = 0u; i < key._rendering._colourAttachmentCount; ++i )
+        {
+            Util::Hash_combine( hash, key._rendering._colourFormats[i] );
+        }
+        return hash;
+    }
+
     void VKStateTracker::init( const Configuration& config, VKDevice* device, VKPerWindowState* mainWindow )
     {
         DIVIDE_GPU_ASSERT(device != nullptr && mainWindow != nullptr);
@@ -668,6 +706,9 @@ namespace Divide
     void VKStateTracker::setDefaultState()
     {
         _pipeline = {};
+        _logicalPipeline = nullptr;
+        _renderingSignature = {};
+        _boundRenderingSignature = {};
         _activeWindow = nullptr;
         _activeMSAASamples = 0u;
         _activeRenderTargetID = INVALID_RENDER_TARGET_ID;
@@ -1010,21 +1051,23 @@ namespace Divide
         s_transientDeleteQueue.onFrameEnd();
         s_deviceDeleteQueue.onFrameEnd();
 
-        while ( !s_reloadedShaders.empty() )
         {
-            vkShaderProgram* program = s_reloadedShaders.top();
+            LockGuard<Mutex> lock( s_reloadedShadersLock );
+            s_reloadedShaders.swap( _shaderReloadsToProcess );
+        }
+
+        if ( !_shaderReloadsToProcess.empty() )
+        {
+            std::sort( _shaderReloadsToProcess.begin(), _shaderReloadsToProcess.end() );
             for ( auto& it : _compiledPipelines )
             {
-                if ( !it.second._isValid )
-                {
-                    continue;
-                }
-                if ( it.second._program->getGUID() == program->getGUID() )
+                if ( it.second._isValid &&
+                     std::binary_search( _shaderReloadsToProcess.begin(), _shaderReloadsToProcess.end(), it.second._programGUID ) )
                 {
                     destroyPipeline( it.second, true );
                 }
             }
-            s_reloadedShaders.pop();
+            _shaderReloadsToProcess.clear();
         }
 
         //vkResetCommandPool(_device->getVKDevice(), _device->graphicsCommandPool(), VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
@@ -1619,6 +1662,8 @@ namespace Divide
         pipeline._vkPipelineLayout = VK_NULL_HANDLE;
         pipeline._vkPipeline = VK_NULL_HANDLE;
         pipeline._vkPipelineWireframe = VK_NULL_HANDLE;
+        pipeline._program = nullptr;
+        pipeline._programGUID = I64_LOWEST;
         pipeline._isValid = false;
     }
 
@@ -1635,6 +1680,11 @@ namespace Divide
     void VK_API::closeRenderingAPI()
     {
         vkShaderProgram::DestroyStaticData();
+        {
+            LockGuard<Mutex> lock( s_reloadedShadersLock );
+            s_reloadedShaders.clear();
+        }
+        _shaderReloadsToProcess.clear();
 
         // Destroy sampler objects
         {
@@ -1695,6 +1745,21 @@ namespace Divide
             }
             if ( _allocator != VK_NULL_HANDLE )
             {
+                VmaTotalStatistics statistics{};
+                vmaCalculateStatistics( _allocator, &statistics );
+                if ( statistics.total.statistics.allocationCount > 0u )
+                {
+                    char* allocationDetails = nullptr;
+                    vmaBuildStatsString( _allocator, &allocationDetails, VK_TRUE );
+                    Console::errorfn( "Vulkan allocator has {} live allocations at shutdown:\n{}",
+                                      statistics.total.statistics.allocationCount,
+                                      allocationDetails != nullptr ? allocationDetails : "<allocation details unavailable>" );
+                    if ( allocationDetails != nullptr )
+                    {
+                        vmaFreeStatsString( _allocator, allocationDetails );
+                    }
+                    Console::Flush();
+                }
                 vmaDestroyAllocator( _allocator );
                 _allocator = VK_NULL_HANDLE;
             }
@@ -1816,9 +1881,27 @@ namespace Divide
         VkCommandBuffer cmdBuffer = GetCurrentCommandBuffer();
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        const auto& pipeline = GetStateTracker()._pipeline;
+        VKStateTracker& stateTracker = GetStateTracker();
+        if ( stateTracker.needsGraphicsPipelineRebind() )
+        {
+            const Pipeline* logicalPipeline = stateTracker._logicalPipeline;
+            if ( bindPipeline( *logicalPipeline, cmdBuffer ) == ShaderResult::Failed )
+            {
+                const auto handle = logicalPipeline->descriptor()._shaderProgramHandle;
+                Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_BIND" ), handle._index, handle._generation );
+                stateTracker._pipeline = {};
+                stateTracker._logicalPipeline = nullptr;
+                return false;
+            }
+        }
+
+        const auto& pipeline = stateTracker._pipeline;
+        if ( pipeline._program == nullptr || pipeline._vkPipeline == VK_NULL_HANDLE )
+        {
+            Console::errorfn( "Vulkan submission skipped: no valid pipeline is bound." );
+            return false;
+        }
         auto& program = pipeline._program;
-        DIVIDE_GPU_ASSERT( program != nullptr );
         auto& drawDescriptor = program->perDrawDescriptorSetLayout();
         const bool targetDescriptorEmpty = IsEmpty( drawDescriptor );
         const auto& setUsageData = program->setUsage();
@@ -2393,14 +2476,14 @@ namespace Divide
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        size_t stateHash = pipeline.stateHash();
-        Util::Hash_combine(stateHash, GetStateTracker()._renderTargetFormatHash );
-        if ( !s_hasDynamicBlendStateSupport )
+        VKStateTracker& stateTracker = GetStateTracker();
+        const VKPipelineCacheKey key
         {
-            Util::Hash_combine(stateHash, pipeline.blendStateHash());
-        }
-
-        CompiledPipeline& compiledPipeline = _compiledPipelines[stateHash];
+            ._pipelineStateHash = pipeline.stateHash(),
+            ._blendStateHash = s_hasDynamicBlendStateSupport ? 0u : pipeline.blendStateHash(),
+            ._rendering = stateTracker._renderingSignature
+        };
+        CompiledPipeline& compiledPipeline = _compiledPipelines[key];
         if ( !compiledPipeline._isValid )
         {
             PROFILE_SCOPE( "Compile PSO", Profiler::Category::Graphics);
@@ -2417,6 +2500,7 @@ namespace Divide
             }
 
             compiledPipeline._program = static_cast<vkShaderProgram*>(program);
+            compiledPipeline._programGUID = program->getGUID();
             compiledPipeline._topology = pipelineDescriptor._primitiveTopology;
             const RenderStateBlock& currentState = pipelineDescriptor._stateBlock;
 
@@ -2462,10 +2546,9 @@ namespace Divide
             }
             compiledPipeline._bindPoint = isGraphicsPipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
 
-            //vertex input controls how to read vertices from vertex buffers. We aren't using it yet
             pipelineBuilder._vertexInputInfo = vk::pipelineVertexInputStateCreateInfo();
-            //connect the pipeline builder vertex input info to the one we get from Vertex
-            const VertexInputDescription vertexDescription = getVertexDescription( pipelineDescriptor._vertexFormat );
+            const VertexInputDescription vertexDescription = getVertexDescription( pipelineDescriptor._vertexFormat,
+                                                                                   compiledPipeline._program->vertexInputs() );
             pipelineBuilder._vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
             pipelineBuilder._vertexInputInfo.vertexAttributeDescriptionCount = to_U32( vertexDescription.attributes.size() );
             pipelineBuilder._vertexInputInfo.pVertexBindingDescriptions = vertexDescription.bindings.data();
@@ -2571,11 +2654,13 @@ namespace Divide
 
         VK_PROFILE( vkCmdBindPipeline, cmdBuffer, compiledPipeline._bindPoint, compiledPipeline._vkPipeline );
 
-        GetStateTracker()._pipeline = compiledPipeline;
-        if ( GetStateTracker()._pipelineStageMask != compiledPipeline._stageFlags )
+        stateTracker._pipeline = compiledPipeline;
+        stateTracker._logicalPipeline = &pipeline;
+        stateTracker._boundRenderingSignature = stateTracker._renderingSignature;
+        if ( stateTracker._pipelineStageMask != compiledPipeline._stageFlags )
         {
-            GetStateTracker()._pipelineStageMask = compiledPipeline._stageFlags;
-            GetStateTracker()._pushConstantsValid = false;
+            stateTracker._pipelineStageMask = compiledPipeline._stageFlags;
+            stateTracker._pushConstantsValid = false;
         }
 
         bindDynamicState( pipeline.descriptor()._stateBlock, pipeline.descriptor()._blendStates, cmdBuffer );
@@ -2726,7 +2811,10 @@ namespace Divide
                 // We can do this outside of a renderpass
                 FlushBufferTransferRequests( cmdBuffer );
 
+                stateTracker._pipelineRenderInfo = {};
+                stateTracker._pipelineRenderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
                 VkRenderingInfo renderingInfo{ .sType = VK_STRUCTURE_TYPE_RENDERING_INFO };
+                VkRenderingAttachmentInfo swapchainAttachment{};
                 if ( crtCmd->_target == SCREEN_TARGET_ID )
                 {
                     VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();
@@ -2737,7 +2825,7 @@ namespace Divide
                     const bool canLoadPreviousContents = !shouldClear &&
                                                          (imageWasPresented || imageWasRenderedThisFrame);
 
-                    VkRenderingAttachmentInfo attachmentInfo
+                    swapchainAttachment =
                     {
                         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                         .imageView = VK_NULL_HANDLE,
@@ -2760,7 +2848,7 @@ namespace Divide
 
                     PROFILE_SCOPE( "Draw to screen", Profiler::Category::Graphics);
 
-                    attachmentInfo.imageView = swapChain->getCurrentImageView();
+                    swapchainAttachment.imageView = swapChain->getCurrentImageView();
                     stateTracker._pipelineRenderInfo.colorAttachmentCount = 1u;
                     stateTracker._pipelineRenderInfo.pColorAttachmentFormats = &swapChain->getSwapChain().image_format;
 
@@ -2771,7 +2859,7 @@ namespace Divide
                     };
                     renderingInfo.layerCount = 1u;
                     renderingInfo.colorAttachmentCount = 1u;
-                    renderingInfo.pColorAttachments = &attachmentInfo;
+                    renderingInfo.pColorAttachments = &swapchainAttachment;
 
                     VkImageMemoryBarrier2 imageBarrier = vk::imageMemoryBarrier2();
                     imageBarrier.image = swapChain->getCurrentImage();
@@ -2817,11 +2905,8 @@ namespace Divide
                 {
                     PROFILE_SCOPE( "Begin Rendering", Profiler::Category::Graphics );
 
-                    stateTracker._renderTargetFormatHash = 0u;
-                    for ( U32 i = 0u; i < stateTracker._pipelineRenderInfo.colorAttachmentCount; ++i )
-                    {
-                        Util::Hash_combine( stateTracker._renderTargetFormatHash, stateTracker._pipelineRenderInfo.pColorAttachmentFormats[i]);
-                    }
+                    stateTracker._renderingSignature = VKRenderingSignature::From( stateTracker._pipelineRenderInfo,
+                                                                                 stateTracker._activeMSAASamples );
                 
                     const Rect<I32> renderArea
                     { 
@@ -2889,7 +2974,7 @@ namespace Divide
                 }
 
                 PopDebugMessage( _context.context().config(), cmdBuffer );
-                stateTracker._renderTargetFormatHash = 0u;
+                stateTracker._renderingSignature = {};
                 stateTracker._activeMSAASamples = _context.context().config().rendering.MSAASamples;
                 stateTracker._activeRenderTargetDimensions = s_stateTracker._activeWindow->_window->getDrawableSize();
                 stateTracker._activeRenderTargetColourAttachmentCount = 1u;
@@ -2951,6 +3036,8 @@ namespace Divide
                 {
                     const auto handle = pipeline->descriptor()._shaderProgramHandle;
                     Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_BIND" ), handle._index, handle._generation );
+                    stateTracker._pipeline = {};
+                    stateTracker._logicalPipeline = nullptr;
                 }
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS:
@@ -3229,8 +3316,6 @@ namespace Divide
 
                     const vkTexture* vkTex = static_cast<const vkTexture*>(it._targetView._srcTexture);
 
-                    const bool isCube = IsCubeTexture( vkTex->descriptor()._texType);
-
                     vkTexture::TransitionType transitionType = vkTexture::TransitionType::COUNT;
 
                     switch ( it._targetLayout )
@@ -3372,14 +3457,8 @@ namespace Divide
 
                     if ( transitionType != vkTexture::TransitionType::COUNT )
                     {
-                        auto subRange = it._targetView._subRange;
-                        const VkImageSubresourceRange subResourceRange = {
-                            .aspectMask = vkTexture::GetAspectFlags( vkTex->descriptor() ),
-                            .baseMipLevel = subRange._mipLevels._offset,
-                            .levelCount = subRange._mipLevels._count == ALL_MIPS ? VK_REMAINING_MIP_LEVELS : subRange._mipLevels._count,
-                            .baseArrayLayer = subRange._layerRange._offset,
-                            .layerCount = subRange._layerRange._count == ALL_LAYERS ? VK_REMAINING_ARRAY_LAYERS : subRange._layerRange._count * (isCube ? 6u : 1u),
-                        };
+                        const VkImageSubresourceRange subResourceRange = vkTexture::GetViewSubresourceRange(
+                            TargetType( it._targetView ), it._targetView._subRange, vkTexture::GetAspectFlags( vkTex->descriptor() ) );
 
                         vkTexture::TransitionTexture(
                             transitionType,
@@ -3633,14 +3712,10 @@ namespace Divide
     {
     }
 
-    void VK_API::OnShaderReloaded( vkShaderProgram* program )
+    void VK_API::OnShaderReloaded( const I64 programGUID )
     {
-        if ( program == nullptr )
-        {
-            return;
-        }
-
-        s_reloadedShaders.push(program);
+        LockGuard<Mutex> lock( s_reloadedShadersLock );
+        s_reloadedShaders.push_back( programGUID );
     }
 
     VKStateTracker& VK_API::GetStateTracker() noexcept

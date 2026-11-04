@@ -927,6 +927,12 @@ namespace Divide
             }
         }
 
+        {
+            LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+            VK_CHECK( vmaFlushAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator,
+                                         _stagingBuffer->_allocation, 0u, totalSize ) );
+        }
+
         const bool needsMipMaps = _descriptor._mipMappingState == MipMappingState::AUTO && numMips < mipCount();
 
         VK_API::GetStateTracker().IMCmdContext(QueueType::GRAPHICS)->flushCommandBuffer([&](VkCommandBuffer cmdBuffer, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue)
@@ -1326,6 +1332,20 @@ namespace Divide
         return grabData;
     }
 
+    VkImageSubresourceRange vkTexture::GetViewSubresourceRange( const TextureType targetType, const ImageSubRange& range,
+                                                                const VkImageAspectFlags aspect ) noexcept
+    {
+        const U32 layerScale = IsCubeTexture( targetType ) ? 6u : 1u;
+        return VkImageSubresourceRange
+        {
+            .aspectMask = aspect,
+            .baseMipLevel = range._mipLevels._offset,
+            .levelCount = range._mipLevels._count == ALL_MIPS ? VK_REMAINING_MIP_LEVELS : range._mipLevels._count,
+            .baseArrayLayer = range._layerRange._offset * layerScale,
+            .layerCount = range._layerRange._count == ALL_LAYERS ? VK_REMAINING_ARRAY_LAYERS : range._layerRange._count * layerScale,
+        };
+    }
+
      VkImageView vkTexture::getImageView( const CachedImageView::Descriptor& viewDescriptor ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
@@ -1345,29 +1365,10 @@ namespace Divide
             CachedImageView newView{};
             newView._descriptor = viewDescriptor;
 
-            VkImageSubresourceRange range{};
-            if ( HasUsageFlagSet( _descriptor, ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT ) )
-            {
-                range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-            }
-            else
-            {
-                range.aspectMask = GetAspectFlags( _descriptor );
-            }
-
-            range.baseMipLevel = newView._descriptor._subRange._mipLevels._offset;
-            range.levelCount = newView._descriptor._subRange._mipLevels._count == ALL_MIPS ? VK_REMAINING_MIP_LEVELS : newView._descriptor._subRange._mipLevels._count;
-            range.baseArrayLayer = newView._descriptor._subRange._layerRange._offset;
-
-            const U16 layerCountIn = newView._descriptor._subRange._layerRange._count;
-            if ( layerCountIn == ALL_LAYERS )
-            {
-                range.layerCount = VK_REMAINING_ARRAY_LAYERS;
-            }
-            else
-            {
-                range.layerCount = layerCountIn * (IsCubeTexture(newView._descriptor._type) ? 6u : 1u);
-            }
+            const VkImageAspectFlags aspect = HasUsageFlagSet( _descriptor, ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT )
+                                            ? VK_IMAGE_ASPECT_DEPTH_BIT
+                                            : GetAspectFlags( _descriptor );
+            const VkImageSubresourceRange range = GetViewSubresourceRange( newView._descriptor._type, newView._descriptor._subRange, aspect );
 
             VkImageViewCreateInfo imageInfo = vk::imageViewCreateInfo();
             imageInfo.image = _image->_image;

@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/Material.h"
 #include "Headers/ShaderComputeQueue.h"
@@ -195,16 +195,13 @@ namespace Divide
     Material::Material( const ResourceDescriptor<Material>& descriptor )
         : CachedResource( descriptor, "Material")
     {
-        const ShaderProgramInfo defaultShaderInfo = {};
         // Could just direct copy the arrays, but this looks cool
         for ( U8 s = 0u; s < to_U8( RenderStage::COUNT ); ++s )
         {
-            auto& perPassInfo = _shaderInfo[s];
             auto& perPassStates = _defaultRenderStates[s];
 
             for ( U8 p = 0u; p < to_U8( RenderPassType::COUNT ); ++p )
             {
-                perPassInfo[p].fill( defaultShaderInfo );
                 perPassStates[p].fill( {{}, false});
             }
         }
@@ -323,8 +320,20 @@ namespace Divide
                       auto& variantMapDst = cloneMat->_shaderInfo[s][p];
                 for ( U8 v = 0u; v < to_U8( RenderStagePass::VariantType::COUNT ); ++v )
                 {
-                    variantMapDst[v] = variantMapSrc[v].clone();
-                }
+                          if ( variantMapDst[v]._shaderQueued.load( std::memory_order_acquire ) )
+                          {
+                              cloneMat->_context->shaderComputeQueue().cancel( variantMapDst[v] );
+                          }
+                          if ( variantMapDst[v]._shaderRef != INVALID_HANDLE<ShaderProgram> )
+                          {
+                              const ShaderProgram* previous = Get( variantMapDst[v]._shaderRef );
+                              if ( previous != nullptr && previous->getState() != ResourceState::RES_LOADED )
+                              {
+                                  cloneMat->_context->shaderComputeQueue().waitForPendingLoads();
+                              }
+                          }
+                          variantMapDst[v] = variantMapSrc[v].clone();
+                      }
             }
         }
 
@@ -502,13 +511,22 @@ namespace Divide
         computeAndAppendShaderDefines( shaderDescriptor, stagePass );
 
         ShaderProgramInfo& info = shaderInfo( stagePass );
+        ShaderComputeQueue& shaderQueue = _context->shaderComputeQueue();
+        if ( info._shaderQueued.load( std::memory_order_acquire ) )
+        {
+            shaderQueue.cancel( info );
+        }
         // if we already have a different shader assigned ...
         if ( info._shaderRef != INVALID_HANDLE<ShaderProgram> )
         {
             ResourcePtr<ShaderProgram> ptr = Get( info._shaderRef);
 
             // We cannot replace a shader that is still loading in the background
-            WAIT_FOR_CONDITION( ptr->getState() == ResourceState::RES_LOADED );
+            if ( !WaitForReady( ptr ) )
+            {
+                info._shaderCompStage = ShaderBuildStage::FAILED;
+                return;
+            }
             if ( ptr->descriptor() != shaderDescriptor )
             {
                 Console::printfn( LOCALE_STR( "REPLACE_SHADER" ),
@@ -520,16 +538,16 @@ namespace Divide
             }
             else
             {
+                info._shaderCompStage = ShaderBuildStage::COMPUTED;
                 return;
             }
         }
 
-        ShaderComputeQueue::ShaderQueueElement shaderElement{ &info._shaderRef, shaderDescriptor };
+        ShaderComputeQueue::ShaderQueueElement shaderElement{ &info, shaderDescriptor };
         if ( updatePriorirty() == UpdatePriority::High )
         {
-            _context->shaderComputeQueue().process( shaderElement );
+            shaderQueue.process( shaderElement );
             info._shaderCompStage = ShaderBuildStage::COMPUTED;
-            DIVIDE_ASSERT( info._shaderRef != INVALID_HANDLE<ShaderProgram> );
             if ( !WaitForReady( Get(info._shaderRef) ) )
             {
                 info._shaderCompStage = ShaderBuildStage::FAILED;
@@ -539,11 +557,11 @@ namespace Divide
         {
             if ( updatePriorirty() == UpdatePriority::Medium )
             {
-                _context->shaderComputeQueue().addToQueueFront( shaderElement );
+                shaderQueue.addToQueueFront( shaderElement );
             }
             else
             {
-                _context->shaderComputeQueue().addToQueueBack( shaderElement );
+                shaderQueue.addToQueueBack( shaderElement );
             }
             info._shaderCompStage = ShaderBuildStage::QUEUED;
         }
@@ -632,13 +650,17 @@ namespace Divide
                                       renderStagePass );
         }
 
-        // If we have a shader queued (with a valid ref) ...
+        // A replacement may retain its previous shader until the queue processes it.
         if ( info._shaderCompStage == ShaderBuildStage::QUEUED )
         {
-            // ... we are now passed the "compute" stage. We just need to wait for it to load
+            if ( info._shaderQueued.load( std::memory_order_acquire ) )
+            {
+                return false;
+            }
+
             if ( info._shaderRef == INVALID_HANDLE<ShaderProgram> )
             {
-                // Shader is still in the queue
+                info._shaderCompStage = ShaderBuildStage::FAILED;
                 return false;
             }
             info._shaderCompStage = ShaderBuildStage::COMPUTED;
@@ -955,6 +977,22 @@ namespace Divide
 
     bool Material::unload()
     {
+        ShaderComputeQueue& shaderQueue = _context->shaderComputeQueue();
+        for ( auto& stage : _shaderInfo )
+        {
+            for ( auto& pass : stage )
+            {
+                for ( ShaderProgramInfo& info : pass )
+                {
+                    if ( info._shaderQueued.load( std::memory_order_acquire ) )
+                    {
+                        shaderQueue.cancel( info );
+                    }
+                }
+            }
+        }
+        shaderQueue.waitForPendingLoads();
+
         for ( TextureInfo& tex : _textures )
         {
             DestroyResource(tex._ptr);
@@ -968,7 +1006,6 @@ namespace Divide
                 auto& shaders = passMapShaders[p];
                 for ( ShaderProgramInfo& info : shaders )
                 {
-                    DestroyResource(info._shaderRef);
                     info = {};
                 }
             }
@@ -976,21 +1013,23 @@ namespace Divide
 
         if ( _baseMaterial != INVALID_HANDLE<Material> )
         {
-            LockGuard<SharedMutex> w_lock( _instanceLock );
             Material* baseMat = Get(_baseMaterial);
             DIVIDE_ASSERT(baseMat != nullptr);
-
-            erase_if( baseMat->_instances,
-                      [guid = getGUID()]( Handle<Material> instance ) noexcept
-                      {
-                          if (instance != INVALID_HANDLE<Material>)
+            if ( baseMat != nullptr )
+            {
+                LockGuard<SharedMutex> w_lock( baseMat->_instanceLock );
+                erase_if( baseMat->_instances,
+                          [guid = getGUID()]( Handle<Material> instance ) noexcept
                           {
-                              return true;
-                          }
+                              if ( instance == INVALID_HANDLE<Material> )
+                              {
+                                  return true;
+                              }
 
-                          Material* mat = Get(instance);
-                          return mat == nullptr || mat->getGUID() == guid;
-                      } );
+                              Material* mat = Get(instance);
+                              return mat == nullptr || mat->getGUID() == guid;
+                          } );
+            }
         }
 
         LockGuard<SharedMutex> r_lock( _instanceLock );
@@ -1256,7 +1295,7 @@ namespace Divide
         dataOut._textureOperations.w = Util::PACK_UNORM4x8( properties().receivesShadows() ? 1.f : 0.f, 0.f, 0.f, 0.f );
     }
 
-    DescriptorSet& Material::getDescriptorSet( const RenderStagePass& renderStagePass )
+    DescriptorSet Material::getDescriptorSet( const RenderStagePass& renderStagePass )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -1271,19 +1310,23 @@ namespace Divide
                                                                 ? _descriptorSetMainPass
                                                                 : _descriptorSetSecondaryPass;
 
+        {
+            SharedLock<SharedMutex> r_lock( _textureLock );
+            if ( descriptor._bindingCount != 0u )
+            {
+                return descriptor;
+            }
+        }
+
+        ScopedLock<SharedMutex> w_lock( _textureLock );
         if ( descriptor._bindingCount == 0u )
         {
-            ScopedLock<SharedMutex> w_lock( _textureLock );
-            // Check again
-            if ( descriptor._bindingCount == 0u )
+            for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
             {
-                for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
+                if ( usesTextureInShader( static_cast<TextureSlot>(i), isPrePass, isShadowPass ) )
                 {
-                    if ( usesTextureInShader( static_cast<TextureSlot>(i), isPrePass, isShadowPass ) )
-                    {
-                        DescriptorSetBinding& binding = AddBinding( descriptor, i, texVisibility );
-                        Set( binding._data, _textures[i]._ptr, _textures[i]._sampler );
-                    }
+                    DescriptorSetBinding& binding = AddBinding( descriptor, i, texVisibility );
+                    Set( binding._data, _textures[i]._ptr, _textures[i]._sampler );
                 }
             }
         }

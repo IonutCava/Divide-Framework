@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -305,7 +305,7 @@ class Material final : public CachedResource {
     [[nodiscard]] const TextureInfo& getTextureInfo(TextureSlot usage) const;
     [[nodiscard]] const RenderStateBlock& getOrCreateRenderStateBlock(RenderStagePass renderStagePass);
     [[nodiscard]] Handle<Texture> getTexture(TextureSlot textureUsage) const;
-    [[nodiscard]] DescriptorSet& getDescriptorSet(const RenderStagePass& renderStagePass);
+    [[nodiscard]] DescriptorSet getDescriptorSet(const RenderStagePass& renderStagePass);
     [[nodiscard]] Handle<ShaderProgram> getProgramHandle(RenderStagePass renderStagePass) const;
     [[nodiscard]] Handle<ShaderProgram> computeAndGetProgramHandle(RenderStagePass renderStagePass);
     [[nodiscard]] bool hasTransparency() const noexcept;

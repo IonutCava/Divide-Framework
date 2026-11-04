@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Platform/Threading/Headers/Task.h"
 #include "Headers/TaskPool.h"
@@ -91,19 +91,30 @@ namespace Divide
             return;
         }
 
-        if (_runningTaskCount.load() > 0u)
+        if (flushCallbacks)
+        {
+            DIVIDE_ASSERT(Runtime::isMainThread());
+            using namespace std::chrono_literals;
+            while (_runningTaskCount.load() > 0u)
+            {
+                PlatformContextIdleCall();
+                flushCallbackQueue();
+
+                UniqueLock<Mutex> lock(_taskFinishedMutex);
+                _taskFinishedCV.wait_for(lock, 2ms, [this]() noexcept
+                {
+                    return _runningTaskCount.load() == 0u;
+                });
+            }
+            flushCallbackQueue();
+        }
+        else if (_runningTaskCount.load() > 0u)
         {
             UniqueLock<Mutex> lock(_taskFinishedMutex);
             _taskFinishedCV.wait(lock, [this]() noexcept
             {
                 return _runningTaskCount.load() == 0u;
             });
-        }
-
-        if (flushCallbacks)
-        {
-            DIVIDE_ASSERT(Runtime::isMainThread());
-            flushCallbackQueue();
         }
     }
 
@@ -133,23 +144,30 @@ namespace Divide
 
         DIVIDE_ASSERT(_isRunning.load(), "TaskPool::enqueue error: Task pool is not running!");
 
-        if (priority == TaskPriority::REALTIME ) [[unlikely]]
+        const bool realtime = priority == TaskPriority::REALTIME;
+        if (realtime) [[unlikely]]
         {
             while (task._unfinishedJobs.load() > 1u)
             {
-                if (flushCallbackQueue() == 0u)
+                if (Runtime::isMainThread())
                 {
-                    threadWaiting();
+                    PlatformContextIdleCall();
+                    if (flushCallbackQueue() == 0u)
+                    {
+                        threadWaiting();
+                    }
+                }
+                else if (!threadWaiting())
+                {
+                    std::this_thread::yield();
                 }
             }
 
             runTask(task, false);
-
             if (onCompletionFunction)
             {
                 onCompletionFunction();
             }
-
             return;
         }
 
@@ -175,6 +193,7 @@ namespace Divide
                 _taskCallbacks.emplace_back( MOV(onCompletionFunction), task._globalId );
             }
         }
+
         // Returning false from a PoolTask lambda will just reschedule it for later execution again. 
         // This may leave the task in an infinite loop, always re-queuing!
         auto poolTask = [this, &task, priority, hasOnCompletionFunction](const bool isIdleCall)
@@ -243,6 +262,7 @@ namespace Divide
         using namespace std::chrono_literals;
         while ( !Finished( task ) )
         {
+            PlatformContextIdleCall();
             threadWaiting();
 
             UniqueLock<Mutex> lock( _taskFinishedMutex );
@@ -259,37 +279,29 @@ namespace Divide
 
         DIVIDE_ASSERT( Runtime::isMainThread() );
 
-        constexpr I32 maxDequeueItems = 1 << 3;
-        U32 completedTaskIndices[maxDequeueItems];
-
         size_t ret = 0u;
-        while ( true )
+        U32 completedTaskIndex = 0u;
+        while ( _threadedCallbackBuffer.try_dequeue( completedTaskIndex ) )
         {
-            const size_t count = _threadedCallbackBuffer.try_dequeue_bulk( completedTaskIndices, maxDequeueItems );
-            if ( count == 0u )
+            DELEGATE<void> callback;
             {
-                break;
-            }
-
-            LockGuard<SharedMutex> w_lock( _taskCallbacksLock );
-            for ( size_t i = 0u; i < count; ++i )
-            {
-                const U32 idx = completedTaskIndices[i];
+                LockGuard<SharedMutex> w_lock( _taskCallbacksLock );
                 for (CallbackEntry& entry : _taskCallbacks)
                 {
-                    if ( entry._taskID == idx)
+                    if ( entry._taskID == completedTaskIndex)
                     {
-                        if ( entry._cbk )
-                        {
-                            entry._cbk();
-                        }
+                        callback = MOV(entry._cbk);
                         entry = {};
                         break;
                     }
                 }
             }
 
-            ret += count;
+            if (callback)
+            {
+                callback();
+            }
+            ++ret;
         }
 
         return ret;
@@ -462,6 +474,7 @@ namespace Divide
             {
                 while ( jobCount.load() > 0 )
                 {
+                    PlatformContextIdleCall();
                     pool.threadWaiting();
                 }
             }

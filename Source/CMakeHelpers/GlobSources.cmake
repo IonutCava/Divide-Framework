@@ -407,6 +407,7 @@ set( GUI_SOURCE_HEADERS GUI/CEGUIAddons/Headers/CEGUIFormattedListBox.h
                         GUI/CEGUIAddons/Renderer/Headers/DVDTexture.inl
                         GUI/CEGUIAddons/Renderer/Headers/DVDTextureTarget.h
                         GUI/CEGUIAddons/Renderer/Headers/DVDTextureTarget.inl
+                        GUI/Headers/FontVertexFormat.h
                         GUI/Headers/GUI.h
                         GUI/Headers/GUIButton.h
                         GUI/Headers/GUIConsole.h
@@ -851,6 +852,7 @@ set( TEST_ENGINE_SOURCE UnitTests/unitTestCommon.h
                         UnitTests/Test-Engine/RendererTests.cpp
                         UnitTests/Test-Engine/ShaderCompilerTests.cpp
                         UnitTests/Test-Engine/ScriptingTests.cpp
+                        UnitTests/Test-Engine/TaskPoolTests.cpp
                         UnitTests/Test-Engine/UndoManagerTests.cpp
                         UnitTests/Test-Engine/SunTests.cpp
 )

@@ -4,9 +4,11 @@
 #include "Core/Headers/WindowManager.h"
 #include "Core/Headers/ErrorCodes.h"
 #include "Core/Headers/RingBuffer.h"
+#include "GUI/Headers/FontVertexFormat.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkSwapChain.h"
+#include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkBufferImpl.h"
 #include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkRenderTarget.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Shaders/Headers/GLSLToSPIRV.h"
@@ -15,11 +17,301 @@
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkDevice.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/fontstash.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
 #include "Rendering/RenderPass/Headers/RenderPassExecutor.h"
 
 namespace Divide
 {
+    TEST_CASE( "Vulkan pipeline variants retain the complete rendering signature", "[vulkan][pipeline]" )
+    {
+        std::array<VkFormat, 2> colourFormats{ VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R8G8B8A8_UNORM };
+        VkPipelineRenderingCreateInfo info{ .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+        info.colorAttachmentCount = to_U32( colourFormats.size() );
+        info.pColorAttachmentFormats = colourFormats.data();
+
+        const VKRenderingSignature base = VKRenderingSignature::From( info, 1u );
+        CHECK( base._colourAttachmentCount == 2u );
+        CHECK( base._colourFormats[0] == colourFormats[0] );
+        CHECK( base._colourFormats[1] == colourFormats[1] );
+        CHECK( base._depthFormat == VK_FORMAT_UNDEFINED );
+        CHECK( base._stencilFormat == VK_FORMAT_UNDEFINED );
+
+        info.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
+        const VKRenderingSignature depth = VKRenderingSignature::From( info, 1u );
+        CHECK( depth != base );
+        info.stencilAttachmentFormat = VK_FORMAT_S8_UINT;
+        CHECK( VKRenderingSignature::From( info, 1u ) != depth );
+        info.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+        info.viewMask = 3u;
+        CHECK( VKRenderingSignature::From( info, 1u ) != depth );
+        info.viewMask = 0u;
+        CHECK( VKRenderingSignature::From( info, 4u ) != depth );
+        info.colorAttachmentCount = 1u;
+        CHECK( VKRenderingSignature::From( info, 1u ) != depth );
+        info.colorAttachmentCount = 2u;
+        colourFormats[0] = VK_FORMAT_R8G8B8A8_UNORM;
+        CHECK( VKRenderingSignature::From( info, 1u ) != depth );
+        CHECK( depth._colourFormats[0] == VK_FORMAT_R16G16B16A16_SFLOAT );
+
+        struct CollidingHash
+        {
+            size_t operator()( const VKPipelineCacheKey& ) const noexcept { return 0u; }
+        };
+        hashMap<VKPipelineCacheKey, U32, CollidingHash> variants;
+        const VKPipelineCacheKey colourOnly{ ._pipelineStateHash = 42u, ._rendering = base };
+        const VKPipelineCacheKey withDepth{ ._pipelineStateHash = 42u, ._rendering = depth };
+        variants[colourOnly] = 1u;
+        variants[withDepth] = 2u;
+        REQUIRE( variants.size() == 2u );
+        CHECK( variants[colourOnly] == 1u );
+        CHECK( variants[withDepth] == 2u );
+        CHECK( VKPipelineCacheKeyHash{}( colourOnly ) == VKPipelineCacheKeyHash{}( colourOnly ) );
+    }
+
+    TEST_CASE( "Vulkan rebinds retained graphics pipelines when pass compatibility changes", "[vulkan][pipeline]" )
+    {
+        PipelineDescriptor descriptor{};
+        descriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+        const Pipeline logicalPipeline{ descriptor };
+        VKStateTracker tracker{};
+        tracker._logicalPipeline = &logicalPipeline;
+        tracker._pipeline._bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        tracker._renderingSignature._sampleCount = 1u;
+        tracker._boundRenderingSignature = tracker._renderingSignature;
+        CHECK_FALSE( tracker.needsGraphicsPipelineRebind() );
+
+        tracker._renderingSignature._depthFormat = VK_FORMAT_D32_SFLOAT;
+        CHECK( tracker.needsGraphicsPipelineRebind() );
+        tracker._boundRenderingSignature = tracker._renderingSignature;
+        CHECK_FALSE( tracker.needsGraphicsPipelineRebind() );
+        tracker._renderingSignature._sampleCount = 4u;
+        CHECK( tracker.needsGraphicsPipelineRebind() );
+        tracker._pipeline._bindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
+        CHECK_FALSE( tracker.needsGraphicsPipelineRebind() );
+        tracker._pipeline._bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        tracker._logicalPipeline = nullptr;
+        CHECK_FALSE( tracker.needsGraphicsPipelineRebind() );
+    }
+
+    TEST_CASE( "FontStash vertex format matches its uploaded vertices", "[vulkan][font]" )
+    {
+        const AttributeMap format = CreateFontVertexFormat();
+        REQUIRE( format._vertexBindings.size() == 1u );
+        CHECK( format._vertexBindings[0]._bufferBindIndex == 0u );
+        CHECK( format._vertexBindings[0]._strideInBytes == sizeof( FONSvert ) );
+
+        AttributeFlags shaderInputs{};
+        shaderInputs[to_base( AttribLocation::POSITION )] = true;
+        shaderInputs[to_base( AttribLocation::TEXCOORD )] = true;
+        shaderInputs[to_base( AttribLocation::COLOR )] = true;
+        const VertexInputDescription input = getVertexDescription( format, shaderInputs );
+        REQUIRE( input.bindings.size() == 1u );
+        CHECK( input.bindings[0].binding == 0u );
+        CHECK( input.bindings[0].stride == sizeof( FONSvert ) );
+        CHECK( input.bindings[0].inputRate == VK_VERTEX_INPUT_RATE_VERTEX );
+        REQUIRE( input.attributes.size() == 3u );
+
+        const auto checkAttribute = []( const VkVertexInputAttributeDescription& attribute,
+                                        const AttribLocation location, const VkFormat type, const size_t offset )
+        {
+            CHECK( attribute.binding == 0u );
+            CHECK( attribute.location == to_base( location ) );
+            CHECK( attribute.format == type );
+            CHECK( attribute.offset == offset );
+        };
+        checkAttribute( input.attributes[0], AttribLocation::POSITION, VK_FORMAT_R32G32_SFLOAT, offsetof( FONSvert, pos ) );
+        checkAttribute( input.attributes[1], AttribLocation::TEXCOORD, VK_FORMAT_R32G32_SFLOAT, offsetof( FONSvert, tcoords ) );
+        checkAttribute( input.attributes[2], AttribLocation::COLOR, VK_FORMAT_R8G8B8A8_UNORM, offsetof( FONSvert, colours ) );
+    }
+
+    TEST_CASE( "FontStash keeps the atlas only after successful creation", "[vulkan][font]" )
+    {
+        struct AtlasState
+        {
+            I32 _createResult = 1;
+            I32 _resizeResult = 1;
+            U32 _creates = 0u;
+            U32 _resizes = 0u;
+            U32 _deletes = 0u;
+        } state;
+
+        FONSparams params{};
+        params.width = 32;
+        params.height = 32;
+        params.userPtr = &state;
+        params.renderCreate = []( void* userPtr, int, int )
+        {
+            AtlasState& atlas = *static_cast<AtlasState*>( userPtr );
+            ++atlas._creates;
+            return atlas._createResult;
+        };
+        params.renderResize = []( void* userPtr, int, int )
+        {
+            AtlasState& atlas = *static_cast<AtlasState*>( userPtr );
+            ++atlas._resizes;
+            return atlas._resizeResult;
+        };
+        params.renderDelete = []( void* userPtr )
+        {
+            ++static_cast<AtlasState*>( userPtr )->_deletes;
+        };
+
+        SECTION( "A successfully created atlas remains usable until deletion" )
+        {
+            FONScontext* context = fonsCreateInternal( &params );
+            REQUIRE( context != nullptr );
+            CHECK( state._creates == 1u );
+            CHECK( state._deletes == 0u );
+            CHECK( fonsExpandAtlas( context, 64, 64 ) == 1 );
+            CHECK( state._resizes == 1u );
+
+            state._resizeResult = 0;
+            CHECK( fonsExpandAtlas( context, 128, 128 ) == 0 );
+            int width = 0;
+            int height = 0;
+            fonsGetAtlasSize( context, &width, &height );
+            CHECK( width == 64 );
+            CHECK( height == 64 );
+            fonsDeleteInternal( context );
+            CHECK( state._deletes == 1u );
+        }
+
+        SECTION( "A failed atlas creation returns no context and releases its resources" )
+        {
+            state._createResult = 0;
+            CHECK( fonsCreateInternal( &params ) == nullptr );
+            CHECK( state._creates == 1u );
+            CHECK( state._deletes == 1u );
+        }
+    }
+
+    TEST_CASE( "Vulkan attachment selections address cubemap faces and array layers", "[vulkan][render_target]" )
+    {
+        SubRange range{};
+        for ( U16 cube = 0u; cube < 7u; ++cube )
+        {
+            for ( U8 face = 0u; face < 6u; ++face )
+            {
+                const DrawLayerEntry entry{ ._layer = { cube, 1u }, ._cubeFace = face };
+                REQUIRE( vkRenderTarget::GetAttachmentLayerRange( entry, 7u, true, range ) );
+                CHECK( range._offset == cube * 6u + face );
+                CHECK( range._count == 1u );
+            }
+        }
+
+        CHECK( vkRenderTarget::GetAttachmentLayerRange( { ._layer = { 0u, ALL_LAYERS } }, 7u, true, range ) );
+        CHECK( (range == SubRange{ 0u, 42u }) );
+        CHECK( vkRenderTarget::GetAttachmentLayerRange( { ._layer = { 2u, ALL_LAYERS } }, 7u, true, range ) );
+        CHECK( (range == SubRange{ 12u, 30u }) );
+        CHECK( vkRenderTarget::GetAttachmentLayerRange( { ._layer = { 2u, 3u } }, 7u, true, range ) );
+        CHECK( (range == SubRange{ 12u, 18u }) );
+        CHECK( vkRenderTarget::GetAttachmentLayerRange( { ._layer = { 2u, ALL_LAYERS } }, 7u, false, range ) );
+        CHECK( (range == SubRange{ 2u, 5u }) );
+        CHECK( vkRenderTarget::GetAttachmentLayerRange( { ._layer = { 6u, 1u } }, 7u, false, range ) );
+        CHECK( (range == SubRange{ 6u, 1u }) );
+
+        CHECK_FALSE( vkRenderTarget::GetAttachmentLayerRange( { ._layer = { 7u, 1u } }, 7u, true, range ) );
+        CHECK_FALSE( vkRenderTarget::GetAttachmentLayerRange( { ._layer = { 6u, 2u } }, 7u, true, range ) );
+        CHECK_FALSE( vkRenderTarget::GetAttachmentLayerRange( { ._layer = { 0u, 0u } }, 7u, true, range ) );
+        CHECK_FALSE( vkRenderTarget::GetAttachmentLayerRange( { ._layer = { 0u, 1u }, ._cubeFace = 6u }, 7u, true, range ) );
+        CHECK_FALSE( vkRenderTarget::GetAttachmentLayerRange( { ._layer = { 0u, 2u }, ._cubeFace = 1u }, 7u, true, range ) );
+        CHECK_FALSE( vkRenderTarget::GetAttachmentLayerRange( { ._layer = { 0u, ALL_LAYERS }, ._cubeFace = 1u }, 7u, true, range ) );
+        CHECK_FALSE( vkRenderTarget::GetAttachmentLayerRange( { ._layer = { 0u, 1u }, ._cubeFace = 1u }, 7u, false, range ) );
+    }
+
+    TEST_CASE( "Texture views preserve cube and array layer ranges", "[vulkan][texture]" )
+    {
+        SubRange range{};
+        CHECK( Texture::GetViewLayerRange( TextureType::TEXTURE_CUBE_ARRAY, TextureType::TEXTURE_CUBE_ARRAY, 7u,
+                                          { 0u, ALL_LAYERS }, range ) );
+        CHECK( (range == SubRange{ 0u, 7u }) );
+        CHECK( Texture::GetViewLayerRange( TextureType::TEXTURE_CUBE_ARRAY, TextureType::TEXTURE_CUBE_ARRAY, 7u,
+                                          { 2u, ALL_LAYERS }, range ) );
+        CHECK( (range == SubRange{ 2u, 5u }) );
+        CHECK( Texture::GetViewLayerRange( TextureType::TEXTURE_CUBE_ARRAY, TextureType::TEXTURE_CUBE_MAP, 7u,
+                                          { 6u, 1u }, range ) );
+        CHECK( (range == SubRange{ 6u, 1u }) );
+        CHECK( Texture::GetViewLayerRange( TextureType::TEXTURE_CUBE_ARRAY, TextureType::TEXTURE_2D_ARRAY, 7u,
+                                          { 0u, ALL_LAYERS }, range ) );
+        CHECK( (range == SubRange{ 0u, 42u }) );
+        CHECK( Texture::GetViewLayerRange( TextureType::TEXTURE_CUBE_ARRAY, TextureType::TEXTURE_2D, 7u,
+                                          { 37u, 1u }, range ) );
+        CHECK( (range == SubRange{ 37u, 1u }) );
+        CHECK( Texture::GetViewLayerRange( TextureType::TEXTURE_2D_ARRAY, TextureType::TEXTURE_2D_ARRAY, 8u,
+                                          { 3u, ALL_LAYERS }, range ) );
+        CHECK( (range == SubRange{ 3u, 5u }) );
+        CHECK( Texture::GetViewLayerRange( TextureType::TEXTURE_3D, TextureType::TEXTURE_3D, 1u,
+                                          { 0u, ALL_LAYERS }, range ) );
+        CHECK( (range == SubRange{ 0u, 1u }) );
+        CHECK_FALSE( Texture::GetViewLayerRange( TextureType::TEXTURE_CUBE_ARRAY, TextureType::TEXTURE_CUBE_ARRAY, 7u,
+                                                { 7u, 1u }, range ) );
+        CHECK_FALSE( Texture::GetViewLayerRange( TextureType::TEXTURE_CUBE_ARRAY, TextureType::TEXTURE_2D_ARRAY, 7u,
+                                                { 41u, 2u }, range ) );
+        CHECK_FALSE( Texture::GetViewLayerRange( TextureType::TEXTURE_CUBE_ARRAY, TextureType::TEXTURE_2D, 7u,
+                                                { 0u, 2u }, range ) );
+        CHECK_FALSE( Texture::GetViewLayerRange( TextureType::TEXTURE_2D_ARRAY, TextureType::TEXTURE_2D_ARRAY, 8u,
+                                                { 0u, 0u }, range ) );
+    }
+
+    TEST_CASE( "Vulkan view barriers use the view's layer units", "[vulkan][texture]" )
+    {
+        ImageSubRange input{ ._mipLevels = { 1u, 2u }, ._layerRange = { 2u, 3u } };
+        VkImageSubresourceRange range = vkTexture::GetViewSubresourceRange(
+            TextureType::TEXTURE_CUBE_ARRAY, input, VK_IMAGE_ASPECT_COLOR_BIT );
+        CHECK( range.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT );
+        CHECK( range.baseMipLevel == 1u );
+        CHECK( range.levelCount == 2u );
+        CHECK( range.baseArrayLayer == 12u );
+        CHECK( range.layerCount == 18u );
+
+        input._mipLevels = { 0u, ALL_MIPS };
+        input._layerRange = { 37u, 1u };
+        range = vkTexture::GetViewSubresourceRange( TextureType::TEXTURE_2D_ARRAY, input, VK_IMAGE_ASPECT_DEPTH_BIT );
+        CHECK( range.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT );
+        CHECK( range.levelCount == VK_REMAINING_MIP_LEVELS );
+        CHECK( range.baseArrayLayer == 37u );
+        CHECK( range.layerCount == 1u );
+
+        input._layerRange = { 2u, ALL_LAYERS };
+        range = vkTexture::GetViewSubresourceRange( TextureType::TEXTURE_CUBE_ARRAY, input, VK_IMAGE_ASPECT_COLOR_BIT );
+        CHECK( range.baseArrayLayer == 12u );
+        CHECK( range.layerCount == VK_REMAINING_ARRAY_LAYERS );
+    }
+
+    TEST_CASE( "Vulkan retained attachments transition only their rendered mip", "[vulkan][render_target]" )
+    {
+        using Transition = vkTexture::TransitionType;
+        for ( const U16 mip : { U16{ 0u }, U16{ 1u }, U16{ 5u } } )
+        {
+            for ( const bool depth : { false, true } )
+            {
+                CAPTURE( mip, depth );
+                const VkImageAspectFlags aspect = depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+                const VkImageSubresourceRange range = vkRenderTarget::GetAttachmentTransitionRange( aspect, mip );
+                CHECK( range.aspectMask == aspect );
+                CHECK( range.baseMipLevel == mip );
+                CHECK( range.levelCount == 1u );
+                CHECK( range.baseArrayLayer == 0u );
+                CHECK( range.layerCount == VK_REMAINING_ARRAY_LAYERS );
+
+                VkImageMemoryBarrier2 toAttachment{};
+                VkImageMemoryBarrier2 toRead{};
+                vkTexture::TransitionTexture( depth ? Transition::SHADER_READ_TO_DEPTH_ATTACHMENT : Transition::SHADER_READ_TO_COLOUR_ATTACHMENT,
+                                              range, {}, toAttachment );
+                vkTexture::TransitionTexture( depth ? Transition::DEPTH_ATTACHMENT_TO_SHADER_READ : Transition::COLOUR_ATTACHMENT_TO_SHADER_READ,
+                                              range, {}, toRead );
+                CHECK( toAttachment.oldLayout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL );
+                CHECK( toAttachment.newLayout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL );
+                CHECK( toRead.oldLayout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL );
+                CHECK( toRead.newLayout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL );
+                CHECK( toRead.subresourceRange.baseMipLevel == mip );
+                CHECK( toRead.subresourceRange.levelCount == 1u );
+                CHECK( toRead.subresourceRange.layerCount == VK_REMAINING_ARRAY_LAYERS );
+            }
+        }
+    }
+
     TEST_CASE( "Immediate submission failures stop later work until reinitialization", "[render_smoke][submission]" )
     {
         VKImmediateSubmitStatus status{};

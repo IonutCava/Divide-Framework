@@ -195,6 +195,8 @@ namespace Divide
         [[nodiscard]] VkImageView getImageView( const CachedImageView::Descriptor& descriptor ) const;
 
         [[nodiscard]] static VkImageAspectFlags GetAspectFlags( const TextureDescriptor& descriptor ) noexcept;
+        [[nodiscard]] static VkImageSubresourceRange GetViewSubresourceRange( TextureType targetType, const ImageSubRange& range,
+                                                                             VkImageAspectFlags aspect ) noexcept;
         [[nodiscard]] static ImageUsage InitialUsage( const TextureDescriptor& descriptor ) noexcept;
         [[nodiscard]] static InitialClearPlan MakeInitialClearPlan( const TextureDescriptor& descriptor ) noexcept;
 

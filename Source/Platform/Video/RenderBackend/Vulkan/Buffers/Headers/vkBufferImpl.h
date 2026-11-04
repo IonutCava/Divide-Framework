@@ -48,7 +48,7 @@ namespace Divide {
         VkPipelineVertexInputStateCreateFlags flags{0u};
     };
 
-    VertexInputDescription getVertexDescription(const AttributeMap& vertexFormat);
+    VertexInputDescription getVertexDescription(const AttributeMap& vertexFormat, const AttributeFlags& shaderInputs);
 
     struct VMABuffer
     {

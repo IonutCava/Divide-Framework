@@ -1,4 +1,5 @@
-
+// Copyright (c) 2018-2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/ShaderDataUploader.h"
 
@@ -10,7 +11,7 @@ namespace Divide
 
     namespace Reflection
     {
-        constexpr U16 BYTE_BUFFER_VERSION = 5u; // v5: reflected sampler texture types and formats
+        constexpr U16 BYTE_BUFFER_VERSION = 6u; // v6: reflected vertex input locations
 
         bool UniformCompare::operator()( const UniformDeclaration& lhs, const UniformDeclaration& rhs ) const
         {
@@ -132,6 +133,7 @@ namespace Divide
             buffer << reflectionDataIn._uniformBlockBindingIndex;
             buffer << to_base(reflectionDataIn._pushConstantsState);
             buffer << reflectionDataIn._fragmentOutputs;
+            buffer << reflectionDataIn._vertexInputs;
             buffer << reflectionDataIn._images.size();
             for ( const auto& image : reflectionDataIn._images )
             {
@@ -231,6 +233,7 @@ namespace Divide
                     buffer >> reflectionDataOut._uniformBlockBindingIndex;
                     buffer >> reflectionDataOut._pushConstantsState;
                     buffer >> reflectionDataOut._fragmentOutputs;
+                    buffer >> reflectionDataOut._vertexInputs;
                     buffer >> sizeTemp;
                     reflectionDataOut._images.resize( sizeTemp );
                     for ( size_t i = 0u; i < sizeTemp; ++i )

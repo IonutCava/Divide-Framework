@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -164,8 +164,13 @@ namespace Divide
 
         using ShaderProgramMap = fixed_vector<ShaderProgram*, U16_MAX, true>;
 
-        using AtomMap = hashMap<U64 /*name hash*/, string>;
-        using AtomInclusionMap = hashMap<U64 /*name hash*/, eastl::set<U64>>;
+        struct ShaderAtom
+        {
+            string _source;
+            eastl::set<U64> _includes;
+            size_t _maxIncludeDepth{ 0u };
+        };
+        using AtomMap = hashMap<U64 /*name hash*/, ShaderAtom>;
         using ShaderQueue = eastl::stack<ShaderQueueEntry, vector<ShaderQueueEntry>>;
 
         struct BindingsPerSet
@@ -247,6 +252,7 @@ namespace Divide
         PROPERTY_RW( bool, useShaderCache, true );
         PROPERTY_R_IW( BindingsPerSetArray, perDrawDescriptorSetLayout );
         PROPERTY_R_IW( RenderTargets, fragmentOutputs );
+        PROPERTY_R_IW( AttributeFlags, vertexInputs );
         PROPERTY_R_IW( SetUsageData, setUsage );
 
         static Mutex g_cacheLock;
@@ -281,28 +287,31 @@ namespace Divide
                              Reflection::UniformsSet& previousUniformsInOut,
                              U8& blockIndexInOut );
 
-        void loadAndParseGLSL( const ModuleDefines& defines,
-                               LoadData& loadDataInOut,
-                               Reflection::UniformsSet& previousUniformsInOut,
-                               U8& blockIndexInOut,
-                               eastl::set<U64>& atomIDsInOut );
+        static void loadAndParseGLSL( std::string_view programName,
+                                      RenderAPI renderAPI,
+                                      const ModuleDefines& defines,
+                                      LoadData& loadDataInOut,
+                                      Reflection::UniformsSet& previousUniformsInOut,
+                                      U8& blockIndexInOut,
+                                      eastl::set<U64>& atomIDsInOut );
 
         void initDrawDescriptorSetLayout( const PerFileShaderData& loadData );
         void initUniformUploader( const PerFileShaderData& loadData );
 
 
     private:
+        friend struct ShaderProgramTestAccess;
+
+        static bool InitGLSW( RenderAPI renderingAPI, const Configuration& config );
+        static bool InitShaderThread( RenderAPI renderingAPI, const Configuration& config );
+        static void InitAtomLocations();
+
         static void EraseAtom(const U64 atomHash);
         static void EraseAtomLocked(const U64 atomHash);
 
-        static const string& ShaderFileRead( const ResourcePath& filePath, std::string_view atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
-        static const string& ShaderFileReadLocked( const ResourcePath& filePath, std::string_view atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
-
         static void PreprocessIncludes( std::string_view name,
                                         string& sourceInOut,
-                                        I32 level,
-                                        eastl::set<U64>& foundAtomIDsInOut,
-                                        bool lock );
+                                        eastl::set<U64>& foundAtomIDsInOut );
     protected:
         template <typename T>
         friend class ImplResourceLoader;
@@ -325,7 +334,6 @@ namespace Divide
         /// Shaders loaded from files are kept as atoms
         static Mutex s_atomLock;
         static AtomMap s_atoms;
-        static AtomInclusionMap s_atomIncludes;
 
         //extra entry for "common" location
         static ResourcePath shaderAtomLocationPrefix[to_base( ShaderType::COUNT ) + 1];
