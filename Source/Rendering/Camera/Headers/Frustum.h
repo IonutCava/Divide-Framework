@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -44,15 +44,9 @@ class Frustum {
 
     void set(const Frustum& other) noexcept;
 
-    [[nodiscard]] FrustumCollision ContainsPoint(const float3& point, I8& lastPlaneCache) const noexcept;
     [[nodiscard]] FrustumCollision ContainsBoundingBox(const BoundingBox& bbox, I8& lastPlaneCache) const noexcept;
     [[nodiscard]] FrustumCollision ContainsSphere(const BoundingSphere& bSphere, I8& lastPlaneCache) const noexcept;
     [[nodiscard]] FrustumCollision ContainsSphere(const float3& center, F32 radius, I8& lastPlaneCache) const noexcept;
-
-    [[nodiscard]] FrustumCollision ContainsPoint(const float3& point) const noexcept {
-        I8 lastPlaneCache = -1;
-        return ContainsPoint(point, lastPlaneCache);
-    }
 
     [[nodiscard]] FrustumCollision ContainsBoundingBox(const BoundingBox& bbox) const noexcept {
         I8 lastPlaneCache = -1;
@@ -74,11 +68,6 @@ class Frustum {
     [[nodiscard]] FrustumCollision PlaneBoundingSphereIntersect(FrustumPlane frustumPlane, const BoundingSphere& bsphere) const noexcept;
     [[nodiscard]] FrustumCollision PlanePointIntersect(FrustumPlane frustumPlane, const float3& point) const noexcept;
     [[nodiscard]] FrustumCollision PlaneSphereIntersect(FrustumPlane frustumPlane, const float3& center, F32 radius) const noexcept;
-    [[nodiscard]] FrustumCollision PlaneBoundingBoxIntersect(const FrustumPlane* frustumPlanes, U8 count, const BoundingBox& bbox) const noexcept;
-    [[nodiscard]] FrustumCollision PlaneBoundingSphereIntersect(const FrustumPlane* frustumPlanes, U8 count, const BoundingSphere& bsphere) const noexcept;
-    [[nodiscard]] FrustumCollision PlanePointIntersect(const FrustumPlane* frustumPlanes, U8 count, const float3& point) const noexcept;
-    [[nodiscard]] FrustumCollision PlaneSphereIntersect(const FrustumPlane* frustumPlanes, U8 count, const float3& center, F32 radius) const noexcept;
-
     [[nodiscard]] const std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>& planes() const noexcept { return _frustumPlanes; }
 
     bool operator==(const Frustum& other) const = default;

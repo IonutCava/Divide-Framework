@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/SingleShadowMapGenerator.h"
 
@@ -169,7 +170,7 @@ SingleShadowMapGenerator::~SingleShadowMapGenerator()
     DestroyResource( _blurDepthMapShader );
 }
 
-void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut)
+void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut)
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -189,6 +190,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
 
     RenderPassParams params = {};
     params._sourceNode = light.sgn();
+    params._pendingShaderOut = &pendingCastersOut;
     params._stagePass = { RenderStage::SHADOW, RenderPassType::COUNT, lightIndex, static_cast<RenderStagePass::VariantType>(ShadowType::SINGLE) };
     params._target = _drawBufferDepth._targetID;
     params._passName = "SingleShadowMap";
@@ -208,16 +210,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     GFX::BlitRenderTargetCommand blitRenderTargetCommand = {};
     blitRenderTargetCommand._source = _drawBufferDepth._targetID;
     blitRenderTargetCommand._destination = ShadowMap::getShadowMap( _type )._targetID;
-    blitRenderTargetCommand._params.emplace_back( RTBlitEntry{
-        ._input = {
-            ._layerOffset = 0u,
-            ._index = 0u
-        },
-        ._output = {
-            ._layerOffset = light.getShadowArrayOffset(),
-            ._index = 0u
-        }
-    } );
+    blitRenderTargetCommand._params.emplace_back( ShadowMap::ScratchBlit( light.getShadowArrayOffset() ) );
 
     GFX::EnqueueCommand(bufferInOut, blitRenderTargetCommand);
 
@@ -268,6 +261,7 @@ void SingleShadowMapGenerator::blurTarget( const U16 layerOffset, GFX::CommandBu
     // Blur vertically
     beginRenderPassCmd._target = handle._targetID;
     beginRenderPassCmd._name = "DO_SM_BLUR_PASS_VERTICAL";
+    beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, false };
     GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
     const auto& blurAtt = _blurBuffer._rt->getAttachment(RTAttachmentType::COLOUR);

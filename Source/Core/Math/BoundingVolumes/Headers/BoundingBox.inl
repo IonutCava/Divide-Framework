@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -381,7 +381,7 @@ inline void BoundingBox::transform(const float3& initialMin, const float3& initi
 }
 
 template<typename T> requires std::is_same_v<T, mat3<F32>> || std::is_same_v<T, mat4<F32>>
-void BoundingBox::transformInternal(const float3& initialMin, const float3& initialMax, const float3 translation, const T& rotation) noexcept
+void BoundingBox::transformInternal(const float3 initialMin, const float3 initialMax, const float3 translation, const T& rotation) noexcept
 {
     _min = _max = translation;
 

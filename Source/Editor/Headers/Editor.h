@@ -33,6 +33,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_EDITOR_H_
 #define DVD_EDITOR_H_
 
+#include "GizmoSelectionRefresh.h"
 #include "UndoManager.h"
 
 #include "Core/Headers/FrameListener.h"
@@ -363,6 +364,7 @@ namespace Divide
         EditorOptionsWindow_uptr _optionsWindow;
         UndoManager_uptr         _undoManager;
         Gizmo_uptr               _gizmo ;
+        GizmoSelectionRefresh    _gizmoSelectionRefresh;
 
         DisplayWindow* _mainWindow = nullptr;
         vector<std::pair<ImTextureData*, Handle<Texture>>> _fontTextures;

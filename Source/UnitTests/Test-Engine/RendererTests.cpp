@@ -5,9 +5,11 @@
 #include "Core/Headers/ErrorCodes.h"
 #include "Core/Headers/RingBuffer.h"
 #include "GUI/Headers/FontVertexFormat.h"
+#include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkSwapChain.h"
+#include "Platform/Video/RenderBackend/Vulkan/Headers/vkToolProperties.h"
 #include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkBufferImpl.h"
 #include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkRenderTarget.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
@@ -16,14 +18,413 @@
 #include "Platform/Video/RenderBackend/Vulkan/Textures/Headers/vkTexture.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkDevice.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
+#include "Platform/Video/Headers/CommandBufferPool.h"
+#include "Platform/Video/Headers/BlurPass.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/RenderPackage.h"
 #include "Platform/Video/Headers/fontstash.h"
+#include "Rendering/PostFX/CustomOperators/Headers/SSAOState.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
 #include "Rendering/RenderPass/Headers/RenderPassExecutor.h"
+#include "Rendering/RenderPass/Headers/RenderQueue.h"
+#include "../../../Assets/Shaders/GLSL/Common/ssaoResampling.cmn"
 
 namespace Divide
 {
-    TEST_CASE( "Vulkan pipeline variants retain the complete rendering signature", "[vulkan][pipeline]" )
+    template<typename T>
+    concept UniformScalarCanBeSet = requires( UniformData& uniforms, const T& value )
+    {
+        uniforms.set( 1u, PushConstantType::VEC4, value );
+    };
+
+    static_assert( UniformScalarCanBeSet<float4> );
+    static_assert( UniformScalarCanBeSet<std::array<float4, 2>> );
+    static_assert( !UniformScalarCanBeSet<vector<float4>> );
+    static_assert( !UniformScalarCanBeSet<std::vector<float4>> );
+    static_assert( sizeof(float4) == 4u * sizeof(F32) );
+
+    TEST_CASE( "SSAO preserves each configured blur kernel size", "[renderer][ssao]" )
+    {
+        Configuration::SSAOSettings fullRes;
+        Configuration::SSAOSettings halfRes;
+        fullRes.BlurKernelSize = 0;
+        halfRes.BlurKernelSize = 4;
+
+        const std::array<I32, 2> sizes = SSAO::ConfiguredBlurKernelSizes( fullRes, halfRes );
+        CHECK( sizes[0] == 0 );
+        CHECK( sizes[1] == 4 );
+    }
+
+    TEST_CASE( "SSAO resizes all full- and half-resolution targets together", "[renderer][ssao]" )
+    {
+        struct TestTarget
+        {
+            vec2<U16> _resolution{};
+            U32 _resizeCount = 0u;
+
+            void resize( const U16 width, const U16 height )
+            {
+                _resolution.set( width, height );
+                ++_resizeCount;
+            }
+        };
+
+        TestTarget output;
+        TestTarget blur;
+        TestTarget halfOutput;
+        TestTarget halfDepthAndNormals;
+
+        const auto checkTargets = [&]( const vec2<U16> resolution, const vec2<U16> halfResolution, const U32 count )
+        {
+            CHECK( output._resolution.width == resolution.width );
+            CHECK( output._resolution.height == resolution.height );
+            CHECK( blur._resolution.width == resolution.width );
+            CHECK( blur._resolution.height == resolution.height );
+            CHECK( halfOutput._resolution.width == halfResolution.width );
+            CHECK( halfOutput._resolution.height == halfResolution.height );
+            CHECK( halfDepthAndNormals._resolution.width == halfResolution.width );
+            CHECK( halfDepthAndNormals._resolution.height == halfResolution.height );
+            CHECK( output._resizeCount == count );
+            CHECK( blur._resizeCount == count );
+            CHECK( halfOutput._resizeCount == count );
+            CHECK( halfDepthAndNormals._resizeCount == count );
+        };
+
+        SSAO::ResizeTargets( { 1920u, 1080u }, output, blur, halfOutput, halfDepthAndNormals );
+        checkTargets( { 1920u, 1080u }, { 960u, 540u }, 1u );
+
+        SSAO::ResizeTargets( { 1279u, 719u }, output, blur, halfOutput, halfDepthAndNormals );
+        checkTargets( { 1279u, 719u }, { 640u, 360u }, 2u );
+
+        SSAO::ResizeTargets( { 1u, 1u }, output, blur, halfOutput, halfDepthAndNormals );
+        checkTargets( { 1u, 1u }, { 1u, 1u }, 3u );
+    }
+
+    TEST_CASE( "Half-resolution SSAO downsampling covers each source texel", "[renderer][shader][ssao]" )
+    {
+        using std::min;
+
+        for ( const U16 size : std::array<U16, 6>{ { 1u, 2u, 3u, 5u, 1279u, 65535u } } )
+        {
+            CAPTURE( size );
+            const I32 sourceSize = size;
+            const I32 targetSize = SSAO::HalfResolution( { size, size } ).width;
+            std::vector<bool> covered( size, false );
+            for ( I32 pixel = 0; pixel < targetSize; ++pixel )
+            {
+                for ( const I32 offset : { 0, 1 } )
+                {
+                    const I32 source = SSAO_DOWNSAMPLE_SOURCE_PIXEL( pixel, offset, sourceSize - 1 );
+                    REQUIRE( source >= 0 );
+                    REQUIRE( source < sourceSize );
+                    CHECK( source == min( pixel * 2 + offset, sourceSize - 1 ) );
+                    covered[to_size( source )] = true;
+                }
+            }
+            CHECK( std::ranges::all_of( covered, []( const bool value ) { return value; } ) );
+        }
+    }
+
+    TEST_CASE( "Half-resolution SSAO upsampling follows the bilinear footprint", "[renderer][shader][ssao]" )
+    {
+        using std::clamp;
+        using std::floor;
+
+        const auto sourcePixels = []( const I32 fullPixel, const I32 fullSize, const I32 halfSize )
+        {
+            const F32 uv = ( to_F32( fullPixel ) + 0.5f ) / to_F32( fullSize );
+            const I32 base = to_I32( SSAO_UPSAMPLE_SOURCE_POSITION( uv, to_F32( halfSize ) ) );
+            return std::array<I32, 2>{ {
+                SSAO_CLAMP_SOURCE_PIXEL( base, 0, 0, halfSize - 1 ),
+                SSAO_CLAMP_SOURCE_PIXEL( base, 1, 0, halfSize - 1 )
+            } };
+        };
+
+        CHECK( ( sourcePixels( 0, 1, 1 ) == std::array<I32, 2>{ { 0, 0 } } ) );
+        CHECK( ( sourcePixels( 0, 4, 2 ) == std::array<I32, 2>{ { 0, 0 } } ) );
+        CHECK( ( sourcePixels( 1, 4, 2 ) == std::array<I32, 2>{ { 0, 1 } } ) );
+        CHECK( ( sourcePixels( 2, 4, 2 ) == std::array<I32, 2>{ { 0, 1 } } ) );
+        CHECK( ( sourcePixels( 3, 4, 2 ) == std::array<I32, 2>{ { 1, 1 } } ) );
+        CHECK( ( sourcePixels( 0, 5, 3 ) == std::array<I32, 2>{ { 0, 0 } } ) );
+        CHECK( ( sourcePixels( 1, 5, 3 ) == std::array<I32, 2>{ { 0, 1 } } ) );
+        CHECK( ( sourcePixels( 2, 5, 3 ) == std::array<I32, 2>{ { 1, 2 } } ) );
+        CHECK( ( sourcePixels( 3, 5, 3 ) == std::array<I32, 2>{ { 1, 2 } } ) );
+        CHECK( ( sourcePixels( 4, 5, 3 ) == std::array<I32, 2>{ { 2, 2 } } ) );
+    }
+
+    TEST_CASE( "SSAO uploads kernel elements independently for both quality modes", "[renderer][ssao]" )
+    {
+        std::array<UniformData, 2> modes;
+        vector<float4> fullKernel( 32u );
+        vector<float4> halfKernel( 24u );
+        for ( size_t i = 0u; i < fullKernel.size(); ++i )
+        {
+            fullKernel[i].set( to_F32(i), -to_F32(i), to_F32(i) * 0.1f, 1.f );
+        }
+        for ( size_t i = 0u; i < halfKernel.size(); ++i )
+        {
+            halfKernel[i].set( -to_F32(i), to_F32(i), to_F32(i) * 0.2f, 0.f );
+        }
+
+        const auto checkKernel = []( const UniformData& uniforms, const vector<float4>& expected )
+        {
+            REQUIRE( uniforms.entries().size() == 1u );
+            const UniformData::Entry& entry = uniforms.entries().front();
+            REQUIRE( entry._bindingHash == _ID( "sampleKernel" ) );
+            REQUIRE( entry._type == PushConstantType::VEC4 );
+            REQUIRE( entry._range._length == expected.size() * 4u * sizeof(F32) );
+            CHECK( std::memcmp( uniforms.data( entry._range._startOffset ), expected.data(), entry._range._length ) == 0 );
+        };
+
+        SSAO::UploadSampleKernel( modes[1], halfKernel );
+        SSAO::UploadSampleKernel( modes[0], fullKernel );
+        checkKernel( modes[1], halfKernel );
+        checkKernel( modes[0], fullKernel );
+
+        halfKernel[0].set( 0.5f, 0.25f, 0.125f, 0.f );
+        SSAO::UploadSampleKernel( modes[1], halfKernel );
+        SSAO::UploadSampleKernel( modes[0], fullKernel );
+        checkKernel( modes[1], halfKernel );
+        checkKernel( modes[0], fullKernel );
+    }
+
+    TEST_CASE( "OpenGL object labels respect the device length limit", "[renderer][opengl]" )
+    {
+        std::array<char, 500> storage;
+        storage.fill( 'x' );
+        const std::string_view label{ storage.data(), storage.size() };
+        CHECK( GLUtil::ObjectLabelLength( label.substr( 0u, 12u ), 256u ) == 12u );
+        CHECK( GLUtil::ObjectLabelLength( label.substr( 0u, 255u ), 256u ) == 255u );
+        CHECK( GLUtil::ObjectLabelLength( label.substr( 0u, 256u ), 256u ) == 255u );
+        CHECK( GLUtil::ObjectLabelLength( label, 256u ) == 255u );
+        CHECK( GLUtil::ObjectLabelLength( label, 1u ) == 0u );
+        CHECK( GLUtil::ObjectLabelLength( label, 0u ) == 0u );
+
+        const std::string_view substring{ storage.data() + 1u, 3u };
+        CHECK( GLUtil::ObjectLabelLength( substring, 256u ) == 3u );
+        CHECK( GLUtil::ObjectLabelLength( substring, 3u ) == 2u );
+    }
+
+    TEST_CASE( "Vulkan tool enumeration handles changing counts and errors", "[render_smoke][vulkan_tools]" )
+    {
+        std::vector<VkPhysicalDeviceToolProperties> tools( 1u );
+
+        SECTION( "No active tools" )
+        {
+            const VkResult result = EnumeratePhysicalDeviceTools(
+                []( U32* count, VkPhysicalDeviceToolProperties* properties )
+                {
+                    CHECK( properties == nullptr );
+                    *count = 0u;
+                    return VK_SUCCESS;
+                },
+                tools );
+            CHECK( result == VK_SUCCESS );
+            CHECK( tools.empty() );
+        }
+
+        SECTION( "An incomplete result is retried using a fresh count" )
+        {
+            U32 countCalls = 0u;
+            U32 dataCalls = 0u;
+            const VkResult result = EnumeratePhysicalDeviceTools(
+                [&]( U32* count, VkPhysicalDeviceToolProperties* properties )
+                {
+                    if ( properties == nullptr )
+                    {
+                        *count = countCalls++ == 0u ? 1u : 2u;
+                        return VK_SUCCESS;
+                    }
+
+                    for ( U32 i = 0u; i < *count; ++i )
+                    {
+                        CHECK( properties[i].sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES );
+                        CHECK( properties[i].pNext == nullptr );
+                    }
+                    if ( dataCalls++ == 0u )
+                    {
+                        CHECK( *count == 1u );
+                        return VK_INCOMPLETE;
+                    }
+                    CHECK( *count == 2u );
+                    properties[0].name[0] = 'A';
+                    properties[1].name[0] = 'B';
+                    return VK_SUCCESS;
+                },
+                tools );
+            REQUIRE( result == VK_SUCCESS );
+            REQUIRE( tools.size() == 2u );
+            CHECK( tools[0].name[0] == 'A' );
+            CHECK( tools[1].name[0] == 'B' );
+            CHECK( countCalls == 2u );
+            CHECK( dataCalls == 2u );
+        }
+
+        SECTION( "A shrinking count keeps only the returned properties" )
+        {
+            const VkResult result = EnumeratePhysicalDeviceTools(
+                []( U32* count, VkPhysicalDeviceToolProperties* properties )
+                {
+                    if ( properties == nullptr )
+                    {
+                        *count = 2u;
+                    }
+                    else
+                    {
+                        *count = 1u;
+                    }
+                    return VK_SUCCESS;
+                },
+                tools );
+            CHECK( result == VK_SUCCESS );
+            CHECK( tools.size() == 1u );
+        }
+
+        SECTION( "Repeated incomplete results are bounded" )
+        {
+            U32 dataCalls = 0u;
+            const VkResult result = EnumeratePhysicalDeviceTools(
+                [&]( U32* count, VkPhysicalDeviceToolProperties* properties )
+                {
+                    *count = 1u;
+                    if ( properties == nullptr )
+                    {
+                        return VK_SUCCESS;
+                    }
+                    ++dataCalls;
+                    return VK_INCOMPLETE;
+                },
+                tools );
+            CHECK( result == VK_INCOMPLETE );
+            CHECK( dataCalls == MAX_VULKAN_TOOL_ENUMERATION_ATTEMPTS );
+            CHECK( tools.empty() );
+        }
+
+        SECTION( "Query failures and invalid returned counts do not publish partial results" )
+        {
+            for ( const bool invalidCount : { false, true } )
+            {
+                const VkResult result = EnumeratePhysicalDeviceTools(
+                    [invalidCount]( U32* count, VkPhysicalDeviceToolProperties* properties )
+                    {
+                        if ( properties == nullptr )
+                        {
+                            *count = 1u;
+                            return VK_SUCCESS;
+                        }
+                        if ( invalidCount )
+                        {
+                            *count = 2u;
+                            return VK_SUCCESS;
+                        }
+                        return VK_ERROR_OUT_OF_HOST_MEMORY;
+                    },
+                    tools );
+                CHECK( result == ( invalidCount ? VK_ERROR_UNKNOWN : VK_ERROR_OUT_OF_HOST_MEMORY ) );
+                CHECK( tools.empty() );
+            }
+        }
+    }
+
+    TEST_CASE( "Blur passes record their constants before every draw", "[render_smoke][blur]" )
+    {
+        for ( const bool gaussian : { false, true } )
+        {
+            for ( const U8 layers : { U8{ 1u }, U8{ 3u } } )
+            {
+                for ( const F32 direction : { 0.f, 1.f } )
+                {
+                    CAPTURE( gaussian, layers, direction );
+                    PushConstantsStruct pushData{};
+                    pushData.data[0]._vec[0].w = 7.f;
+                    pushData.data[0]._vec[1].x = direction;
+                    pushData.data[0]._vec[1].y = to_F32( layers );
+
+                    GFX::CommandBuffer commands;
+                    GFX::RecordBlurDrawCommands( commands, pushData, gaussian, layers );
+                    const size_t drawCount = gaussian ? 1u : to_size( layers );
+                    REQUIRE( commands.commands().size() == drawCount * 2u );
+                    for ( size_t draw = 0u; draw < drawCount; ++draw )
+                    {
+                        auto* constants = commands.commands()[draw * 2u];
+                        const auto* command = commands.commands()[draw * 2u + 1u];
+                        REQUIRE( constants->type() == GFX::CommandType::SEND_PUSH_CONSTANTS );
+                        REQUIRE( command->type() == GFX::CommandType::DRAW_COMMANDS );
+                        const PushConstantsStruct& recorded = constants->As<GFX::SendPushConstantsCommand>()->_fastData;
+                        CHECK( recorded.data[0]._vec[0].x == ( gaussian ? 0.f : to_F32( draw ) ) );
+                        CHECK( recorded.data[0]._vec[0].w == 7.f );
+                        CHECK( recorded.data[0]._vec[1].x == direction );
+                        CHECK( recorded.data[0]._vec[1].y == to_F32( layers ) );
+                    }
+                }
+            }
+        }
+    }
+
+    TEST_CASE( "View depth and colour passes exclude translucent bins without changing shadow casters", "[renderer][render_queue]" )
+    {
+        using Params = RenderQueue::PopulateQueueParams;
+        constexpr std::array<RenderBinType, 7u> bins{{
+            RenderBinType::OPAQUE, RenderBinType::WATER, RenderBinType::TERRAIN, RenderBinType::TERRAIN_AUX,
+            RenderBinType::SKY, RenderBinType::TRANSLUCENT, RenderBinType::IMPOSTOR
+        }};
+        constexpr std::array<RenderStage, 4u> stages{{
+            RenderStage::DISPLAY, RenderStage::REFLECTION, RenderStage::REFRACTION, RenderStage::NODE_PREVIEW
+        }};
+
+        for ( const RenderStage stage : stages )
+        {
+            for ( const RenderPassType pass : { RenderPassType::PRE_PASS, RenderPassType::MAIN_PASS } )
+            {
+                const Params params = Params::ForPass( { stage, pass }, false );
+                for ( const RenderBinType bin : bins )
+                {
+                    CAPTURE( stage, pass, bin );
+                    CHECK( params.includes( bin ) == ( bin != RenderBinType::TRANSLUCENT ) );
+                }
+                CHECK_FALSE( params.includes( RenderBinType::COUNT ) );
+            }
+
+            for ( const RenderPassType pass : { RenderPassType::OIT_PASS, RenderPassType::TRANSPARENCY_PASS } )
+            {
+                const Params params = Params::ForPass( { stage, pass }, true );
+                for ( const RenderBinType bin : bins )
+                {
+                    CAPTURE( stage, pass, bin );
+                    CHECK( params.includes( bin ) == ( bin == RenderBinType::TRANSLUCENT ) );
+                }
+            }
+        }
+
+        for ( const RenderPassType pass : { RenderPassType::PRE_PASS, RenderPassType::MAIN_PASS } )
+        {
+            const Params params = Params::ForPass( { RenderStage::SHADOW, pass }, false );
+            for ( const RenderBinType bin : bins )
+            {
+                CAPTURE( pass, bin );
+                CHECK( params.includes( bin ) );
+            }
+        }
+
+        const Params all{ {}, RenderBinType::COUNT, false };
+        const Params none{ {}, RenderBinType::COUNT, true };
+        for ( const RenderBinType bin : bins )
+        {
+            CHECK( all.includes( bin ) );
+            CHECK_FALSE( none.includes( bin ) );
+        }
+    }
+
+    TEST_CASE( "OIT composition selects the destination and sample-count variant", "[render_smoke][oit]" )
+    {
+        using Variant = RenderPassExecutor::OITCompositionVariant;
+        CHECK( RenderPassExecutor::SelectOITCompositionVariant( false, false ) == Variant::COLOUR );
+        CHECK( RenderPassExecutor::SelectOITCompositionVariant( false, true ) == Variant::COLOUR_MSAA );
+        CHECK( RenderPassExecutor::SelectOITCompositionVariant( true, false ) == Variant::COLOUR_NORMALS );
+        CHECK( RenderPassExecutor::SelectOITCompositionVariant( true, true ) == Variant::COLOUR_NORMALS_MSAA );
+    }
+
+    TEST_CASE( "Vulkan pipeline variants retain the complete rendering signature", "[render_smoke][pipeline]" )
     {
         std::array<VkFormat, 2> colourFormats{ VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R8G8B8A8_UNORM };
         VkPipelineRenderingCreateInfo info{ .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
@@ -69,7 +470,7 @@ namespace Divide
         CHECK( VKPipelineCacheKeyHash{}( colourOnly ) == VKPipelineCacheKeyHash{}( colourOnly ) );
     }
 
-    TEST_CASE( "Vulkan rebinds retained graphics pipelines when pass compatibility changes", "[vulkan][pipeline]" )
+    TEST_CASE( "Vulkan rebinds retained graphics pipelines when pass compatibility changes", "[render_smoke][pipeline]" )
     {
         PipelineDescriptor descriptor{};
         descriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
@@ -94,7 +495,7 @@ namespace Divide
         CHECK_FALSE( tracker.needsGraphicsPipelineRebind() );
     }
 
-    TEST_CASE( "FontStash vertex format matches its uploaded vertices", "[vulkan][font]" )
+    TEST_CASE( "FontStash vertex format matches its uploaded vertices", "[render_smoke][font]" )
     {
         const AttributeMap format = CreateFontVertexFormat();
         REQUIRE( format._vertexBindings.size() == 1u );
@@ -125,7 +526,7 @@ namespace Divide
         checkAttribute( input.attributes[2], AttribLocation::COLOR, VK_FORMAT_R8G8B8A8_UNORM, offsetof( FONSvert, colours ) );
     }
 
-    TEST_CASE( "FontStash keeps the atlas only after successful creation", "[vulkan][font]" )
+    TEST_CASE( "FontStash keeps the atlas only after successful creation", "[render_smoke][font]" )
     {
         struct AtlasState
         {
@@ -186,7 +587,109 @@ namespace Divide
         }
     }
 
-    TEST_CASE( "Vulkan attachment selections address cubemap faces and array layers", "[vulkan][render_target]" )
+    TEST_CASE( "Additional render commands retain their package's uniform storage", "[render_smoke][uniforms]" )
+    {
+        RenderPackage package;
+        RenderPackage otherPackage;
+        GFX::CommandBuffer commands;
+        constexpr U64 chunkBinding = _ID( "dvd_terrainChunkOffset" );
+
+        {
+            GFX::SendPushConstantsCommand cull = package.additionalPushConstantsCmd();
+            REQUIRE( cull._uniformData != nullptr );
+            CHECK( cull._uniformData == package.pushConstantsCmd()._uniformData );
+            CHECK( cull._uniformData != otherPackage.additionalPushConstantsCmd()._uniformData );
+            cull._uniformData->set( chunkBinding, PushConstantType::UINT, 7u );
+            GFX::EnqueueCommand( commands, cull );
+        }
+
+        REQUIRE( commands.commands().size() == 1u );
+        const auto* queued = commands.commands().front()->As<GFX::SendPushConstantsCommand>();
+        REQUIRE( queued->_uniformData != nullptr );
+        REQUIRE( queued->_uniformData->entries().size() == 1u );
+        const UniformData::Entry& entry = queued->_uniformData->entries().front();
+        CHECK( entry._bindingHash == chunkBinding );
+        U32 chunkIndex = 0u;
+        std::memcpy( &chunkIndex, queued->_uniformData->data( entry._range._startOffset ), sizeof( chunkIndex ) );
+        CHECK( chunkIndex == 7u );
+
+        Clear( package );
+        CHECK( package.additionalPushConstantsCmd()._uniformData == package.pushConstantsCmd()._uniformData );
+    }
+
+    TEST_CASE( "Render package preparation is copied separately from draw commands", "[render_smoke][vegetation][commands]" )
+    {
+        GFX::InitPools( 4u );
+        SCOPE_EXIT
+        {
+            GFX::DestroyPools();
+        };
+
+        RenderPackage package;
+        GFX::CommandBuffer pass;
+        AppendPreparationCommands( package, pass );
+        CHECK( pass.commands().empty() );
+
+        const Handle<GFX::CommandBuffer> prepHandle = GetPreparationCommandBuffer( package );
+        REQUIRE( prepHandle == GetPreparationCommandBuffer( package ) );
+        GFX::CommandBuffer* preparation = GFX::Get( prepHandle );
+        REQUIRE( preparation != nullptr );
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( *preparation )->_workGroupSize.set( 1u, 1u, 1u );
+        AppendPreparationCommands( package, pass );
+
+        GFX::CommandBuffer* draw = GFX::Get( GetCommandBuffer( package ) );
+        REQUIRE( draw != nullptr );
+        GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( *draw );
+        preparation->clear();
+
+        GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( pass );
+        pass.add( *draw );
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>( pass );
+        REQUIRE( pass.commands().size() == 4u );
+        CHECK( pass.commands()[0]->type() == GFX::CommandType::DISPATCH_SHADER_TASK );
+        CHECK( pass.commands()[1]->type() == GFX::CommandType::BEGIN_RENDER_PASS );
+        CHECK( pass.commands()[2]->type() == GFX::CommandType::BIND_SHADER_RESOURCES );
+        CHECK( pass.commands()[3]->type() == GFX::CommandType::END_RENDER_PASS );
+
+        Clear( package );
+        GFX::CommandBuffer afterClear;
+        AppendPreparationCommands( package, afterClear );
+        CHECK( afterClear.commands().empty() );
+    }
+
+    TEST_CASE( "Visible tree consumers schedule their preparation owner once", "[render_smoke][vegetation][commands]" )
+    {
+        struct Owner {};
+        struct Package {};
+        Owner grassAndTrees;
+        Owner treesOnly;
+        Package preparedGrass;
+        vector<std::pair<Owner*, Package*>> owners{
+            { &treesOnly, nullptr },
+            { &grassAndTrees, nullptr },
+            { &treesOnly, nullptr },
+            { &grassAndTrees, &preparedGrass },
+            { &grassAndTrees, nullptr }
+        };
+        vector<std::pair<Owner*, Package*>> selected;
+
+        RenderPassExecutor::VisitPreparationOwners( owners, [&]( Owner& owner, Package* prepared )
+        {
+            selected.emplace_back( &owner, prepared );
+        } );
+
+        REQUIRE( selected.size() == 2u );
+        CHECK( std::ranges::count_if( selected, [&]( const auto& entry )
+        {
+            return entry.first == &grassAndTrees && entry.second == &preparedGrass;
+        } ) == 1 );
+        CHECK( std::ranges::count_if( selected, [&]( const auto& entry )
+        {
+            return entry.first == &treesOnly && entry.second == nullptr;
+        } ) == 1 );
+    }
+
+    TEST_CASE( "Vulkan attachment selections address cubemap faces and array layers", "[render_smoke][render_target]" )
     {
         SubRange range{};
         for ( U16 cube = 0u; cube < 7u; ++cube )
@@ -220,7 +723,61 @@ namespace Divide
         CHECK_FALSE( vkRenderTarget::GetAttachmentLayerRange( { ._layer = { 0u, 1u }, ._cubeFace = 1u }, 7u, false, range ) );
     }
 
-    TEST_CASE( "Texture views preserve cube and array layer ranges", "[vulkan][texture]" )
+    TEST_CASE( "Render package uniforms remain stable when their owning collection grows", "[render_smoke][uniforms]" )
+    {
+        STATIC_REQUIRE_FALSE( std::is_copy_constructible_v<RenderPackage> );
+        STATIC_REQUIRE_FALSE( std::is_move_constructible_v<RenderPackage> );
+
+        vector<std::unique_ptr<RenderPackage>> packages;
+        packages.emplace_back( std::make_unique<RenderPackage>() );
+        RenderPackage& package = *packages.front();
+        GFX::CommandBuffer commands;
+        GFX::SendPushConstantsCommand constants = package.additionalPushConstantsCmd();
+        constexpr U64 binding = _ID( "dvd_terrainChunkOffset" );
+        constants._uniformData->set( binding, PushConstantType::UINT, 7u );
+        GFX::EnqueueCommand( commands, constants );
+
+        for ( U32 i = 0u; i < 128u; ++i )
+        {
+            packages.emplace_back( std::make_unique<RenderPackage>() );
+        }
+
+        REQUIRE( commands.commands().size() == 1u );
+        const auto* queued = commands.commands().front()->As<GFX::SendPushConstantsCommand>();
+        REQUIRE( queued->_uniformData == packages.front()->pushConstantsCmd()._uniformData );
+        REQUIRE( queued->_uniformData->entries().size() == 1u );
+        CHECK( queued->_uniformData->entries().front()._bindingHash == binding );
+    }
+
+    TEST_CASE( "File texture arrays validate loaded layers against the descriptor", "[render_smoke][texture]" )
+    {
+        TextureDescriptor descriptor{};
+        descriptor._texType = TextureType::TEXTURE_2D_ARRAY;
+        descriptor._layerCount = 8u;
+        CHECK( Texture::HasValidFileLayerCount( descriptor, 8u ) );
+        CHECK_FALSE( Texture::HasValidFileLayerCount( descriptor, 7u ) );
+        CHECK_FALSE( Texture::HasValidFileLayerCount( descriptor, 1u ) );
+
+        descriptor._texType = TextureType::TEXTURE_1D_ARRAY;
+        descriptor._layerCount = 2u;
+        CHECK( Texture::HasValidFileLayerCount( descriptor, 2u ) );
+        CHECK_FALSE( Texture::HasValidFileLayerCount( descriptor, 1u ) );
+
+        descriptor._texType = TextureType::TEXTURE_CUBE_ARRAY;
+        CHECK( Texture::HasValidFileLayerCount( descriptor, 6u ) );
+        CHECK( Texture::HasValidFileLayerCount( descriptor, 12u ) );
+        CHECK_FALSE( Texture::HasValidFileLayerCount( descriptor, 0u ) );
+        CHECK_FALSE( Texture::HasValidFileLayerCount( descriptor, 7u ) );
+        CHECK( Texture::TextureLayersForImageLayers( descriptor._texType, 6u ) == 1u );
+        CHECK( Texture::TextureLayersForImageLayers( descriptor._texType, 12u ) == 2u );
+
+        descriptor._texType = TextureType::TEXTURE_2D;
+        CHECK( Texture::HasValidFileLayerCount( descriptor, 1u ) );
+        CHECK_FALSE( Texture::HasValidFileLayerCount( descriptor, 2u ) );
+        CHECK( Texture::TextureLayersForImageLayers( TextureType::TEXTURE_2D_ARRAY, 8u ) == 8u );
+    }
+
+    TEST_CASE( "Texture views preserve cube and array layer ranges", "[render_smoke][texture]" )
     {
         SubRange range{};
         CHECK( Texture::GetViewLayerRange( TextureType::TEXTURE_CUBE_ARRAY, TextureType::TEXTURE_CUBE_ARRAY, 7u,
@@ -254,7 +811,7 @@ namespace Divide
                                                 { 0u, 0u }, range ) );
     }
 
-    TEST_CASE( "Vulkan view barriers use the view's layer units", "[vulkan][texture]" )
+    TEST_CASE( "Vulkan view barriers use the view's layer units", "[render_smoke][texture]" )
     {
         ImageSubRange input{ ._mipLevels = { 1u, 2u }, ._layerRange = { 2u, 3u } };
         VkImageSubresourceRange range = vkTexture::GetViewSubresourceRange(
@@ -277,39 +834,6 @@ namespace Divide
         range = vkTexture::GetViewSubresourceRange( TextureType::TEXTURE_CUBE_ARRAY, input, VK_IMAGE_ASPECT_COLOR_BIT );
         CHECK( range.baseArrayLayer == 12u );
         CHECK( range.layerCount == VK_REMAINING_ARRAY_LAYERS );
-    }
-
-    TEST_CASE( "Vulkan retained attachments transition only their rendered mip", "[vulkan][render_target]" )
-    {
-        using Transition = vkTexture::TransitionType;
-        for ( const U16 mip : { U16{ 0u }, U16{ 1u }, U16{ 5u } } )
-        {
-            for ( const bool depth : { false, true } )
-            {
-                CAPTURE( mip, depth );
-                const VkImageAspectFlags aspect = depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-                const VkImageSubresourceRange range = vkRenderTarget::GetAttachmentTransitionRange( aspect, mip );
-                CHECK( range.aspectMask == aspect );
-                CHECK( range.baseMipLevel == mip );
-                CHECK( range.levelCount == 1u );
-                CHECK( range.baseArrayLayer == 0u );
-                CHECK( range.layerCount == VK_REMAINING_ARRAY_LAYERS );
-
-                VkImageMemoryBarrier2 toAttachment{};
-                VkImageMemoryBarrier2 toRead{};
-                vkTexture::TransitionTexture( depth ? Transition::SHADER_READ_TO_DEPTH_ATTACHMENT : Transition::SHADER_READ_TO_COLOUR_ATTACHMENT,
-                                              range, {}, toAttachment );
-                vkTexture::TransitionTexture( depth ? Transition::DEPTH_ATTACHMENT_TO_SHADER_READ : Transition::COLOUR_ATTACHMENT_TO_SHADER_READ,
-                                              range, {}, toRead );
-                CHECK( toAttachment.oldLayout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL );
-                CHECK( toAttachment.newLayout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL );
-                CHECK( toRead.oldLayout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL );
-                CHECK( toRead.newLayout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL );
-                CHECK( toRead.subresourceRange.baseMipLevel == mip );
-                CHECK( toRead.subresourceRange.levelCount == 1u );
-                CHECK( toRead.subresourceRange.layerCount == VK_REMAINING_ARRAY_LAYERS );
-            }
-        }
     }
 
     TEST_CASE( "Immediate submission failures stop later work until reinitialization", "[render_smoke][submission]" )
@@ -423,6 +947,67 @@ namespace Divide
         CHECK( info.loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR );
     }
 
+    TEST_CASE( "Vulkan render passes load retained attachments before resolving", "[render_smoke][render_target]" )
+    {
+        for ( const bool clear : { false, true } )
+        {
+            for ( const bool resolve : { false, true } )
+            {
+                for ( const bool keep : { false, true } )
+                {
+                    CAPTURE( clear, resolve, keep );
+                    VkRenderingAttachmentInfo info{};
+                    vkRenderTarget::ConfigureAttachmentLoadStore( info, clear, resolve, keep );
+                    CHECK( info.loadOp == ( clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD ) );
+                    CHECK( info.storeOp == ( resolve && !keep ? VK_ATTACHMENT_STORE_OP_DONT_CARE
+                                                              : VK_ATTACHMENT_STORE_OP_STORE ) );
+                }
+            }
+        }
+
+        VkRenderingAttachmentInfo retainedPass{};
+        vkRenderTarget::ConfigureAttachmentLoadStore( retainedPass, true, true, true );
+        REQUIRE( retainedPass.storeOp == VK_ATTACHMENT_STORE_OP_STORE );
+
+        VkRenderingAttachmentInfo finalPass{};
+        vkRenderTarget::ConfigureAttachmentLoadStore( finalPass, false, true, false );
+        CHECK( finalPass.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD );
+        CHECK( finalPass.storeOp == VK_ATTACHMENT_STORE_OP_DONT_CARE );
+    }
+
+    TEST_CASE( "Vulkan retained attachments transition only their rendered mip", "[render_smoke][render_target]" )
+    {
+        using Transition = vkTexture::TransitionType;
+        for ( const U16 mip : { U16{ 0u }, U16{ 1u }, U16{ 5u } } )
+        {
+            for ( const bool depth : { false, true } )
+            {
+                CAPTURE( mip, depth );
+                const VkImageAspectFlags aspect = depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+                const VkImageSubresourceRange range = vkRenderTarget::GetAttachmentTransitionRange( aspect, mip );
+                CHECK( range.aspectMask == aspect );
+                CHECK( range.baseMipLevel == mip );
+                CHECK( range.levelCount == 1u );
+                CHECK( range.baseArrayLayer == 0u );
+                CHECK( range.layerCount == VK_REMAINING_ARRAY_LAYERS );
+
+                VkImageMemoryBarrier2 toAttachment{};
+                VkImageMemoryBarrier2 toRead{};
+                vkTexture::TransitionTexture( depth ? Transition::SHADER_READ_TO_DEPTH_ATTACHMENT : Transition::SHADER_READ_TO_COLOUR_ATTACHMENT,
+                                              range, {}, toAttachment );
+                vkTexture::TransitionTexture( depth ? Transition::DEPTH_ATTACHMENT_TO_SHADER_READ : Transition::COLOUR_ATTACHMENT_TO_SHADER_READ,
+                                              range, {}, toRead );
+                CHECK( toAttachment.oldLayout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL );
+                CHECK( toAttachment.newLayout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL );
+                CHECK( toRead.oldLayout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL );
+                CHECK( toRead.newLayout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL );
+                CHECK( toRead.subresourceRange.baseMipLevel == mip );
+                CHECK( toRead.subresourceRange.levelCount == 1u );
+                CHECK( toRead.subresourceRange.layerCount == VK_REMAINING_ARRAY_LAYERS );
+            }
+        }
+    }
+
     TEST_CASE( "Vulkan resolve targets return to shader-read after a pass", "[render_smoke][render_target]" )
     {
         CHECK( vkRenderTarget::ResolveTargetUsage( true ) == RTUsageTracker::Layout::ATTACHMENT );
@@ -455,6 +1040,73 @@ namespace Divide
                                           range, { ._name = "resolve", ._isResolveImage = true }, beginBarrier );
             CHECK( beginBarrier.oldLayout == endBarrier.newLayout );
             CHECK( beginBarrier.newLayout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL );
+        }
+    }
+
+    TEST_CASE( "Vulkan attachment blits restore layouts and attachment load access", "[render_smoke][image_barrier]" )
+    {
+        using Transition = vkTexture::TransitionType;
+        for ( const bool depth : { false, true } )
+        {
+            for ( const bool isResolve : { false, true } )
+            {
+                CAPTURE( depth, isResolve );
+                const VkImageAspectFlags aspect = depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+                const VkImageSubresourceRange range
+                {
+                    .aspectMask = aspect,
+                    .baseMipLevel = 2u,
+                    .levelCount = 1u,
+                    .baseArrayLayer = 3u,
+                    .layerCount = 1u
+                };
+                const VkAccessFlags2 attachmentAccess = depth
+                    ? VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+                    : VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                const VkPipelineStageFlags2 attachmentStages = depth
+                    ? VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT
+                    : VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+                const std::array cases
+                {
+                    std::pair
+                    {
+                        depth ? Transition::ATTACHMENT_TO_BLIT_READ_DEPTH : Transition::ATTACHMENT_TO_BLIT_READ_COLOUR,
+                        depth ? Transition::BLIT_READ_TO_ATTACHMENT_DEPTH : Transition::BLIT_READ_TO_ATTACHMENT_COLOUR
+                    },
+                    std::pair
+                    {
+                        depth ? Transition::ATTACHMENT_TO_BLIT_WRITE_DEPTH : Transition::ATTACHMENT_TO_BLIT_WRITE_COLOUR,
+                        depth ? Transition::BLIT_WRITE_TO_ATTACHMENT_DEPTH : Transition::BLIT_WRITE_TO_ATTACHMENT_COLOUR
+                    }
+                };
+                for ( size_t i = 0u; i < cases.size(); ++i )
+                {
+                    const bool read = i == 0u;
+                    const VkAccessFlags2 transferAccess = read ? VK_ACCESS_2_TRANSFER_READ_BIT : VK_ACCESS_2_TRANSFER_WRITE_BIT;
+                    const VkImageLayout transferLayout = read ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                    VkImageMemoryBarrier2 before{};
+                    VkImageMemoryBarrier2 after{};
+                    const vkTexture::NamedVKImage image{ ._name = "attachment", ._isResolveImage = isResolve };
+                    vkTexture::TransitionTexture( cases[i].first, range, image, before );
+                    vkTexture::TransitionTexture( cases[i].second, range, image, after );
+                    CHECK( before.oldLayout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL );
+                    CHECK( before.newLayout == transferLayout );
+                    CHECK( after.oldLayout == transferLayout );
+                    CHECK( after.newLayout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL );
+                    CHECK( ( before.srcAccessMask & attachmentAccess ) == attachmentAccess );
+                    CHECK( ( before.srcStageMask & attachmentStages ) == attachmentStages );
+                    CHECK( ( before.dstAccessMask & transferAccess ) == transferAccess );
+                    CHECK( ( after.srcAccessMask & transferAccess ) == transferAccess );
+                    CHECK( ( after.dstAccessMask & attachmentAccess ) == attachmentAccess );
+                    CHECK( ( after.dstStageMask & attachmentStages ) == attachmentStages );
+                    CHECK( before.subresourceRange.baseMipLevel == range.baseMipLevel );
+                    CHECK( before.subresourceRange.baseArrayLayer == range.baseArrayLayer );
+                    CHECK( after.subresourceRange.aspectMask == range.aspectMask );
+                    CHECK( after.subresourceRange.levelCount == range.levelCount );
+                    CHECK( after.subresourceRange.layerCount == range.layerCount );
+                }
+            }
         }
     }
 
@@ -755,6 +1407,103 @@ namespace Divide
             U32 value = 1u;
             std::memcpy( &value, view._shaderData.data( entry->_range._startOffset ), sizeof(value) );
             CHECK( value == 0u );
+        }
+    }
+
+    TEST_CASE( "Removed debug views retain queued uniform data until frame flush", "[render_smoke][debug_views]" )
+    {
+        DebugViewRegistry registry;
+        DebugView_ptr view = std::make_shared<DebugView>();
+        view->_shaderData.set( _ID( "layer" ), PushConstantType::INT, I32{ 7 } );
+        std::weak_ptr<DebugView> weakView = view;
+        DebugView* const raw = registry.add( view );
+        registry.add( view );
+        GFX::SendPushConstantsCommand command;
+        command._uniformData = &view->_shaderData;
+        view.reset();
+
+        REQUIRE( registry.remove( raw ) );
+        CHECK_FALSE( registry.remove( raw ) );
+        CHECK_FALSE( registry.remove( nullptr ) );
+        vector<std::tuple<string, I16, I16, bool>> names;
+        registry.getNames( names );
+        CHECK( names.empty() );
+        REQUIRE_FALSE( weakView.expired() );
+        REQUIRE( command._uniformData == &weakView.lock()->_shaderData );
+        const auto& entries = command._uniformData->entries();
+        const auto layer = std::find_if( entries.begin(), entries.end(), []( const auto& entry )
+        {
+            return entry._bindingHash == _ID( "layer" );
+        } );
+        REQUIRE( layer != entries.end() );
+        I32 layerValue = -1;
+        std::memcpy( &layerValue, command._uniformData->data( layer->_range._startOffset ), sizeof( layerValue ) );
+        CHECK( layerValue == 7 );
+
+        registry.releaseRetired();
+        CHECK( weakView.expired() );
+    }
+
+    TEST_CASE( "Debug views sort by group and index and support concurrent removal", "[render_smoke][debug_views]" )
+    {
+        DebugViewRegistry registry;
+        std::array<DebugView_ptr, 3> ordered = {
+            std::make_shared<DebugView>( 2 ),
+            std::make_shared<DebugView>( 0 ),
+            std::make_shared<DebugView>( 1 )
+        };
+        for ( size_t i = 0u; i < ordered.size(); ++i )
+        {
+            ordered[i]->_groupID = to_I16( i + 1u );
+            ordered[i]->_name = Util::StringFormat( "view{}", i );
+            registry.add( ordered[i] );
+        }
+        vector<std::tuple<string, I16, I16, bool>> names;
+        registry.getNames( names );
+        REQUIRE( names.size() == ordered.size() );
+        CHECK( std::get<0>( names[0] ) == "view0" );
+        CHECK( std::get<0>( names[1] ) == "view1" );
+        CHECK( std::get<0>( names[2] ) == "view2" );
+
+        constexpr size_t viewCount = 32u;
+        std::array<DebugView_ptr, viewCount> views;
+        std::array<std::weak_ptr<DebugView>, viewCount> weakViews;
+        for ( size_t i = 0u; i < viewCount; ++i )
+        {
+            views[i] = std::make_shared<DebugView>();
+            weakViews[i] = views[i];
+        }
+
+        std::atomic_bool removedAll{ true };
+        std::array<std::thread, 4> workers;
+        for ( size_t worker = 0u; worker < workers.size(); ++worker )
+        {
+            workers[worker] = std::thread( [&, worker]
+            {
+                for ( size_t i = worker; i < viewCount; i += workers.size() )
+                {
+                    registry.add( views[i] );
+                    if ( !registry.remove( views[i].get() ) )
+                    {
+                        removedAll.store( false );
+                    }
+                }
+            } );
+        }
+        for ( std::thread& worker : workers )
+        {
+            worker.join();
+        }
+        REQUIRE( removedAll.load() );
+        views.fill( nullptr );
+        for ( const auto& weak : weakViews )
+        {
+            CHECK_FALSE( weak.expired() );
+        }
+        registry.releaseRetired();
+        for ( const auto& weak : weakViews )
+        {
+            CHECK( weak.expired() );
         }
     }
 

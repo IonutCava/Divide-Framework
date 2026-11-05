@@ -62,6 +62,16 @@ namespace Divide
             info.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
         }
 
+        static constexpr void ConfigureAttachmentLoadStore(VkRenderingAttachmentInfo& info,
+                                                           const bool clear,
+                                                           const bool resolveMSAA,
+                                                           const bool keepMSAAData) noexcept
+        {
+            info.loadOp = clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+            info.storeOp = resolveMSAA && !keepMSAAData ? VK_ATTACHMENT_STORE_OP_DONT_CARE
+                                                        : VK_ATTACHMENT_STORE_OP_STORE;
+        }
+
         [[nodiscard]] static constexpr RTUsageTracker::Layout ResolveTargetUsage(const bool toWrite) noexcept
         {
             return toWrite ? RTUsageTracker::Layout::ATTACHMENT : RTUsageTracker::Layout::SHADER_READ;
@@ -98,7 +108,6 @@ namespace Divide
         struct RenderInfoState
         {
             U16 _mipLevel{ 0u };
-            bool _keptMSAAData{false};
         } _renderInfoState;
     };
 

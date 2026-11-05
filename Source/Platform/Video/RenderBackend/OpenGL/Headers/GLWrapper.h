@@ -261,7 +261,7 @@ private:
 
     static std::unique_ptr<glHardwareQueryPool> s_hardwareQueryPool;
 
-    static U32 s_fenceSyncCounter[s_LockFrameLifetime];
+    static std::atomic_uint s_fenceSyncCounter[s_LockFrameLifetime];
 };
 
 };  // namespace Divide

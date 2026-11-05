@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -76,16 +76,19 @@ public:
 
     void pushFilter(const FilterType filter, const bool overrideScene = false)
     {
-        if (!getFilterState(filter))
+        const bool wasEnabled = getFilterState(filter);
+        const U32 filterMask = 1u << to_U32(filter);
+        if (overrideScene)
         {
-            if (overrideScene)
-            {
-                _overrideFilterStack |= 1u << to_U32(filter);
-            }
-            else
-            {
-                _filterStack |= 1u << to_U32(filter);
-            }
+            _overrideFilterStack |= filterMask;
+        }
+        else
+        {
+            _filterStack |= filterMask;
+        }
+
+        if (!wasEnabled)
+        {
             _filtersDirty = true;
             getFilterBatch().onFilterToggle(filter, true);
         }
@@ -93,18 +96,41 @@ public:
 
     void popFilter(const FilterType filter, const bool overrideScene = false)
     {
-        if (getFilterState(filter))
+        const bool wasEnabled = getFilterState(filter);
+        const U32 filterMask = 1u << to_U32(filter);
+        if (overrideScene)
         {
-            if (overrideScene)
-            {
-                _overrideFilterStack &= ~(1u << to_U32(filter));
-            }
-            else
-            {
-                _filterStack &= ~(1u << to_U32(filter));
-            }
+            _overrideFilterStack &= ~filterMask;
+        }
+        else
+        {
+            _filterStack &= ~filterMask;
+        }
+
+        if (wasEnabled && !getFilterState(filter))
+        {
             _filtersDirty = true;
             getFilterBatch().onFilterToggle(filter, false);
+        }
+    }
+
+    void setFilterState(const FilterType filter, const bool enabled, const bool overrideScene = false)
+    {
+        if (enabled)
+        {
+            pushFilter(filter, overrideScene);
+        }
+        else
+        {
+            const bool wasEnabled = getFilterState(filter);
+            const U32 filterMask = 1u << to_U32(filter);
+            _filterStack &= ~filterMask;
+            _overrideFilterStack &= ~filterMask;
+            if (wasEnabled)
+            {
+                _filtersDirty = true;
+                getFilterBatch().onFilterToggle(filter, false);
+            }
         }
     }
 

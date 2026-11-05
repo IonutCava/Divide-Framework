@@ -1,15 +1,14 @@
 --Compute
 
-#define INVS_SQRT_3 0.57735026919f
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #if defined(CULL_TREES)
-uniform vec4 dvd_treeExtents;
 uniform float dvd_treeVisibilityDistance;
 uniform uint dvd_treeInstanceCount;
 
 #   define MAX_INSTANCES MAX_TREE_INSTANCES
 #   define Data treeData
-#   define Extents dvd_treeExtents
 #   define dvd_visibilityDistance dvd_treeVisibilityDistance
 #   define dvd_instanceCount dvd_treeInstanceCount
 #else
@@ -24,16 +23,11 @@ uniform uint dvd_grassInstanceCount;
 #   define dvd_instanceCount dvd_grassInstanceCount
 #endif
 
-#define USE_CUSTOM_EXTENTS
-vec3 _private_h_extents;
-#define getHalfExtents(P, R) _private_h_extents
-
 uniform vec3 dvd_cameraPosition;
+uniform float dvd_globalWaterHeight;
 
-#include "HiZCullingAlgorithm.cmn"
+#include "frustumCulling.cmn"
 #include "vegetationData.cmn"
-#include "sceneData.cmn"
-#include "waterData.cmn"
 
 vec3 rotate_vertex_position(vec3 position, vec4 q) {
     vec3 v = position.xyz;
@@ -65,10 +59,17 @@ void main(void) {
 
     const uint nodeIndex = (dvd_terrainChunkOffset * MAX_INSTANCES) + ident;
     VegetationData instance = Data[nodeIndex];
+    if (instance.positionAndScale.y < dvd_globalWaterHeight) {
+        CullItem(nodeIndex);
+        return;
+    }
 
     const float scale    = instance.positionAndScale.w;
-    const vec4 extents   = Extents * scale;
-    _private_h_extents = extents.xyz;
+#if defined(CULL_TREES)
+    const vec4 extents = vec4(0.f, 0.f, 0.f, instance.data.y * scale);
+#else
+    const vec4 extents = Extents * scale;
+#endif
 
     // Bounding volume centre: half way up the (already scaled) extents, rotated into world space.
     const vec3 vert = rotate_vertex_position(vec3(0.0f, extents.y * 0.5f, 0.0f), instance.orientationQuad);
@@ -76,20 +77,16 @@ void main(void) {
 
     const float dist = distance(positionW.xz, dvd_cameraPosition.xz);
     // Too far away
-    if (dist > dvd_visibilityDistance) {
+    if (dvd_visibilityDistance <= 0.f || dist > dvd_visibilityDistance || !SphereInFrustum(positionW, extents.w)) {
         CullItem(nodeIndex);
         return;
     }
 
-    if (HiZCull(positionW, extents.w) || IsUnderWater(positionW.xyz)) {
-        CullItem(nodeIndex);
-    } else {
-#       if defined(CULL_TREES)
-            Data[nodeIndex].data.z = dist > (dvd_visibilityDistance * 0.33f) ? 2.0f : 1.0f;
-#       else //CULL_TREES
-            Data[nodeIndex].data.z = max(1.0f - smoothstep(dvd_visibilityDistance * 0.85f, dvd_visibilityDistance * 0.995f, dist), 0.05f);
-            Data[nodeIndex].data.y = getLoD(dist);
-#       endif //CULL_TREES
-        Data[nodeIndex].data.w = dist;
-    }
+#   if defined(CULL_TREES)
+        Data[nodeIndex].data.z = dist > (dvd_visibilityDistance * 0.33f) ? 2.0f : 1.0f;
+#   else //CULL_TREES
+        Data[nodeIndex].data.z = max(1.0f - smoothstep(dvd_visibilityDistance * 0.85f, dvd_visibilityDistance * 0.995f, dist), 0.05f);
+        Data[nodeIndex].data.y = getLoD(dist);
+#   endif //CULL_TREES
+    Data[nodeIndex].data.w = dist;
 }

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #include "Headers/glFramebuffer.h"
 
 #include "Core/Resources/Headers/ResourceCache.h"
@@ -22,10 +25,7 @@ namespace Divide
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
             // label this FB to be able to tell that it's internally created and nor from a 3rd party lib
-            gl46core::glObjectLabel( gl46core::GL_FRAMEBUFFER,
-                                     _framebufferHandle,
-                                     -1,
-                                     (name() + "_RENDER").c_str());
+            GLUtil::SetObjectLabel( gl46core::GL_FRAMEBUFFER, _framebufferHandle, (name() + "_RENDER").c_str() );
         }
 
         // Everything disabled so that the initial "begin" will override this
@@ -200,10 +200,7 @@ namespace Divide
             gl46core::glCreateFramebuffers( 1, &_framebufferResolveHandle );
             if constexpr ( Config::ENABLE_GPU_VALIDATION )
             {
-                gl46core::glObjectLabel( gl46core::GL_FRAMEBUFFER,
-                                         _framebufferResolveHandle,
-                                         -1,
-                                         (name() + "_RESOLVE").c_str() );
+                GLUtil::SetObjectLabel( gl46core::GL_FRAMEBUFFER, _framebufferResolveHandle, (name() + "_RESOLVE").c_str() );
             }
         }
         else if ( !needsAutoResolve && _framebufferResolveHandle != GL_NULL_HANDLE )
@@ -775,4 +772,3 @@ namespace Divide
     }
 
 };  // namespace Divide
-

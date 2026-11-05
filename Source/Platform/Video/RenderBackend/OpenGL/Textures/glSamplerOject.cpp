@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/glSamplerObject.h"
 
@@ -104,10 +105,7 @@ gl46core::GLuint glSamplerObject::Construct(const SamplerDescriptor& descriptor)
 
     if constexpr ( Config::ENABLE_GPU_VALIDATION )
     {
-        gl46core::glObjectLabel( gl46core::GL_SAMPLER,
-                                 samplerID,
-                                 -1,
-                                 Util::StringFormat("SAMPLER_{}", GetHash(descriptor)).c_str() );
+        GLUtil::SetObjectLabel( gl46core::GL_SAMPLER, samplerID, Util::StringFormat( "SAMPLER_{}", GetHash( descriptor ) ).c_str() );
     }
 
     return samplerID;

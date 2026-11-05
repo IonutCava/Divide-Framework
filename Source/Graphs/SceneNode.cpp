@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/SceneNode.h"
 
@@ -63,10 +63,22 @@ void SceneNode::postLoad(SceneGraphNode* sgn)
     sgn->postLoad();
 }
 
+BoundingBox SceneNode::getBounds() const noexcept
+{
+    SharedLock<SharedMutex> r_lock(_boundsLock);
+    return _boundingBox;
+}
+
 void SceneNode::setBounds(const BoundingBox& aabb)
 {
-    _boundsChanged = true;
+    LockGuard<SharedMutex> w_lock(_boundsLock);
+    const bool changed = _boundingBox != aabb;
     _boundingBox.set(aabb);
+    if (changed)
+    {
+        _boundsRevision.fetch_add(1u, std::memory_order_release);
+    }
+    _boundsChanges.markChanged();
 }
 
 Handle<Material> SceneNode::getMaterialTemplate() const

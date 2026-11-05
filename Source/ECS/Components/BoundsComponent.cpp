@@ -5,6 +5,7 @@
 #include "Headers/TransformComponent.h"
 
 #include "Graphs/Headers/SceneNode.h"
+#include "Graphs/Headers/SceneGraph.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 
 namespace Divide {
@@ -18,7 +19,7 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
     _boundingBox.set(_refBoundingBox);
     _boundingSphere.fromBoundingBox(_boundingBox);
 
-    _transformUpdatedMask.store(to_base(TransformType::ALL));
+    _boundsUpdate.markDirty(to_base(TransformType::ALL));
 
     EditorComponentField bbField = {};
     bbField._name = "Bounding Box";
@@ -46,7 +47,7 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
 
     EditorComponentField obsField = {};
     obsField._name = "Oriented Bouding Box";
-    obsField._data = &_obb;
+    obsField._dataGetter = [this](void* dataOut, [[maybe_unused]] void* user_data) { *static_cast<OBB*>(dataOut) = getOBB(); };
     obsField._type = EditorComponentFieldType::ORIENTED_BOUNDING_BOX;
     obsField._readOnly = true;
     obsField._serialise = false;
@@ -100,13 +101,7 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
 void BoundsComponent::flagBoundingBoxDirty(const U32 transformMask, const bool recursive) {
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-    if (_transformUpdatedMask.exchange(transformMask) != 0u)
-    {
-        // already dirty
-        return;
-    }
-
-    _lastTransform = _parentSGN->get<TransformComponent>()->getWorldMatrix();
+    _boundsUpdate.markDirty(transformMask);
 
     if (recursive)
     {
@@ -119,38 +114,24 @@ void BoundsComponent::flagBoundingBoxDirty(const U32 transformMask, const bool r
     }
 }
 
-void BoundsComponent::OnData(const ECS::CustomEvent& data)
-{
-    SGNComponent::OnData(data);
-
-    if (data._type == ECS::CustomEvent::Type::TransformUpdated)
-    {
-        flagBoundingBoxDirty(data._flag, true);
-    }
-}
-
 void BoundsComponent::setRefBoundingBox(const BoundingBox& nodeBounds) noexcept
 {
     // All the parents should already be dirty thanks to the bounds system
     _refBoundingBox.set(nodeBounds);
     _containsWorldSpaceBounds = _parentSGN->getNode().boundsInWorldSpace();
-    _transformUpdatedMask.store(to_base(TransformType::ALL));
+    _boundsUpdate.markDirty(to_base(TransformType::ALL));
 }
 
 void BoundsComponent::updateBoundingBoxTransform()
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-    if (_transformUpdatedMask > 0u)
+    if (_boundsUpdate.consumeDirty())
     {
-        if (_parentSGN->getNode().boundsInWorldSpace())
-        {
-            _boundingBox.set(_refBoundingBox);
-        }
-        else
-        {
-            _boundingBox.transform(_refBoundingBox, _lastTransform);
-        }
+        const bool worldSpace = _parentSGN->getNode().boundsInWorldSpace();
+        const mat4<F32>& worldMatrix = worldSpace ? MAT4_IDENTITY : _parentSGN->get<TransformComponent>()->getWorldMatrix();
+        _boundsUpdate.update(_boundingBox, _refBoundingBox, worldSpace, worldMatrix);
+        _rebuildChildBounds = true;
     }
 }
 
@@ -182,10 +163,11 @@ void BoundsComponent::appendChildBBs()
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-    if (_transformUpdatedMask.exchange(0u) == 0u)
+    if (!_rebuildChildBounds)
     {
         return;
     }
+    _rebuildChildBounds = false;
 
     const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
 
@@ -196,32 +178,25 @@ void BoundsComponent::appendChildBBs()
         if (children._data[i]->HasComponents(ComponentType::BOUNDS))
         {
             BoundsComponent* const bComp = children._data[i]->get<BoundsComponent>();
-            // This will also clear our transform flag so subsequent calls will be fast
             bComp->appendChildBBs();
             _boundingBox.add(bComp->_boundingBox);
         }
     }
+    const BoundingSphere previous = _boundingSphere;
     _boundingSphere.fromBoundingBox(_boundingBox);
-    _obbDirty.store(true);
+    if (BoundingSphereChanged(previous, _boundingSphere))
+    {
+        _parentSGN->sceneGraph()->invalidateShadowBounds(
+            *_parentSGN, previous, _parentSGN->usageContext() == NodeUsageContext::NODE_STATIC);
+    }
 }
 
-const OBB& BoundsComponent::getOBB()
+OBB BoundsComponent::getOBB() const
 {
-    if (_obbDirty.exchange(false))
-    {
-        if (_containsWorldSpaceBounds)
-        {
-            _obb.fromBoundingBox(_boundingBox);
-        }
-        else
-        {
-            const TransformComponent* transform = _parentSGN->get<TransformComponent>();
-            _obb.fromBoundingBox(_refBoundingBox, transform->getWorldMatrix());
-        }
-        _boundingSphere = _obb.toEnclosingSphere();
-    }
-
-    return _obb;
+    const mat4<F32>& worldMatrix = _containsWorldSpaceBounds
+                                 ? MAT4_IDENTITY
+                                 : _parentSGN->get<TransformComponent>()->getWorldMatrix();
+    return CalculateBoundsOBB(_boundingBox, _refBoundingBox, _containsWorldSpaceBounds, worldMatrix);
 }
 
 bool Collision( const BoundsComponent& lhs, const BoundsComponent& rhs ) noexcept

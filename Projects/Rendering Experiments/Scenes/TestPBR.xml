@@ -5,6 +5,9 @@
     <grassVisibility>1000</grassVisibility>
     <treeVisibility>1000</treeVisibility>
 </vegetation>
+<water>
+    <global node="Water" height="0" size="4608" depth="500"/>
+</water>
 <wind>
     <windDirX>1</windDirX>
     <windDirZ>1</windDirZ>

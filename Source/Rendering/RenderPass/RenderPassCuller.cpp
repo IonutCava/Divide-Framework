@@ -177,9 +177,9 @@ namespace Divide
 
         nodesOut.reset();
 
-        F32 distanceSqToCamera = F32_MAX;
         for ( SceneGraphNode* node : nodes )
         {
+            F32 distanceSqToCamera = 0.f;
             if ( Attorney::SceneGraphNodeRenderPassCuller::frustumCullNode( node, params, cullFlags, distanceSqToCamera ) != FrustumCollision::FRUSTUM_OUT )
             {
                 nodesOut.append( { node, distanceSqToCamera } );

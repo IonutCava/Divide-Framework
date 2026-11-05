@@ -1,6 +1,6 @@
 /*
 Copyright (c) 2018-2026 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -109,6 +109,13 @@ struct UniformData
 
     template<typename T>
     void set(U64 bindingHash, PushConstantType type, const T& value);
+
+    // Dynamic vectors must be uploaded as their elements, not as container objects.
+    template<typename T>
+    void set(U64 bindingHash, PushConstantType type, const vector<T>& values) = delete;
+
+    template<typename T, typename Allocator>
+    void set(U64 bindingHash, PushConstantType type, const std::vector<T, Allocator>& values) = delete;
 
     template<typename T> requires (!std::is_same_v<bool, T>)
     void set(U64 bindingHash, PushConstantType type, const T* values, size_t count);

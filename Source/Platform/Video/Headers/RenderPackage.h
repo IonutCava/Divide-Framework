@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
+Copyright (c) 2018-2026 DIVIDE-Studio
 Copyright (c) 2009 Ionut Cava
 
 This file is part of DIVIDE Framework.
@@ -44,6 +44,12 @@ struct RenderPackage
 
     RenderPackage();
     ~RenderPackage();
+    RenderPackage( const RenderPackage& ) = delete;
+    RenderPackage& operator=( const RenderPackage& ) = delete;
+    RenderPackage( RenderPackage&& ) = delete;
+    RenderPackage& operator=( RenderPackage&& ) = delete;
+
+    [[nodiscard]] GFX::SendPushConstantsCommand additionalPushConstantsCmd() noexcept;
 
     PROPERTY_RW(GFX::BindPipelineCommand, pipelineCmd);
     PROPERTY_RW(GFX::BindShaderResourcesCommand, descriptorSetCmd);
@@ -54,15 +60,20 @@ struct RenderPackage
 
 private:
     friend Handle<GFX::CommandBuffer> GetCommandBuffer( RenderPackage& pkg );
+    friend Handle<GFX::CommandBuffer> GetPreparationCommandBuffer( RenderPackage& pkg );
+    friend void AppendPreparationCommands( const RenderPackage& pkg, GFX::CommandBuffer& buffer );
     friend void Clear( RenderPackage& pkg ) noexcept;
 
     Handle<GFX::CommandBuffer> _additionalCommands =  INVALID_HANDLE<GFX::CommandBuffer>;
+    Handle<GFX::CommandBuffer> _preparationCommands = INVALID_HANDLE<GFX::CommandBuffer>;
 
     UniformData _uniforms{};
 };
 
 void Clear(RenderPackage& pkg) noexcept;
 Handle<GFX::CommandBuffer> GetCommandBuffer(RenderPackage& pkg);
+Handle<GFX::CommandBuffer> GetPreparationCommandBuffer(RenderPackage& pkg);
+void AppendPreparationCommands(const RenderPackage& pkg, GFX::CommandBuffer& buffer);
 }; // namespace Divide
 
 #endif //DVD_RENDER_PACKAGE_H_

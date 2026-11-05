@@ -1,5 +1,7 @@
 --Fragment
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "utility.frag"
 
 #if defined(USE_MSAA_TARGET)
@@ -15,10 +17,12 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform SamplerType accumTexture;
 /* prod(1 - a) */
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform SamplerType revealageTexture;
 
-DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform SamplerType normalsTexture;
-
 layout(location = TARGET_ALBEDO)   out vec4 _colourOut;
+
+#if !defined(OIT_COLOUR_ONLY)
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform SamplerType normalsTexture;
 layout(location = TARGET_NORMALS)  out vec4 _normalsOut;
+#endif
 
 // calculate floating point numbers equality accurately
 bool isApproximatelyEqual( in float a, in float b )
@@ -57,8 +61,11 @@ void main()
     // dst' =  (accumulation.rgb / accumulation.a) * (1 - revealage) + dst
     // [dst has already been modulated by the transmission colors and coverage and the blend mode inverts revealage for us] 
     _colourOut = vec4(averageColor, revealage);
-    _normalsOut = revealage < 0.5f
-        ? vec4(texelFetch(normalsTexture, C, SampleID).rgb, 1.f)
+#if !defined(OIT_COLOUR_ONLY)
+    const vec3 normalSum = texelFetch(normalsTexture, C, SampleID).xyz;
+    const float normalLengthSquared = dot(normalSum, normalSum);
+    _normalsOut = revealage < 0.5f && normalLengthSquared > M_EPSILON * M_EPSILON
+        ? vec4(packNormal(normalSum * inversesqrt(normalLengthSquared)), 0.f, 1.f)
         : vec4(0.f);
+#endif
 }
-

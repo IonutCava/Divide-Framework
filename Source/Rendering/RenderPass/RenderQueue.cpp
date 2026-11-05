@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/RenderQueue.h"
 
@@ -121,40 +122,11 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        if ( params._binType == RenderBinType::COUNT )
+        for ( U8 i = 0u; i < to_base( RenderBinType::COUNT ); ++i )
         {
-            if ( !params._filterByBinType )
+            if ( params.includes( static_cast<RenderBinType>( i ) ) )
             {
-                for ( const RenderBin& renderBin : _renderBins )
-                {
-                    renderBin.populateRenderQueue( params._stagePass, queueInOut );
-                }
-            }
-            else
-            {
-                // Why are we allowed to exclude everything? idk.
-                NOP();
-            }
-        }
-        else
-        {
-            if ( !params._filterByBinType )
-            {
-                if ( params._binType != RenderBinType::COUNT)
-                {
-                    getBin(params._binType).populateRenderQueue(params._stagePass, queueInOut);
-                }
-            }
-            else
-            {
-                for ( U8 i = 0u; i < to_base( RenderBinType::COUNT ); ++i )
-                {
-                    if ( i == to_base( params._binType ) )
-                    {
-                        continue;
-                    }
-                    _renderBins[i].populateRenderQueue( params._stagePass, queueInOut );
-                }
+                _renderBins[i].populateRenderQueue( params._stagePass, queueInOut );
             }
         }
     }

@@ -352,6 +352,8 @@ void main()
     _out._normalW = WORLD_Y_AXIS;
     _out._tbnWV = mat3(1.f);
     _out._indirectionIDs = _in[0]._indirectionIDs;
+    _out._SelectionFlag = dvd_SelectionFlag(dvd_Transforms[TRANSFORM_IDX]);
+    _out._LoDLevel = tcs_ringID[0];
     tes_waterData = vec2(0.f);
 
 #if defined(TOGGLE_DEBUG) || defined(TOGGLE_TESS_LEVEL)
@@ -370,7 +372,6 @@ void main()
 
     gl_Position = _out._vertexW;
 #else //TOGGLE_DEBUG
-    _out._LoDLevel = tcs_ringID[0];
     gl_Position = dvd_ProjectionMatrix * _out._vertexWV;
 #endif //TOGGLE_DEBUG
 }
@@ -545,6 +546,8 @@ layout(location = ATTRIB_FREE_START + 4) in vec3 tes_debugColour;
 
 void main(void) {
 
+    const vec4 positionDx = dFdx(VAR._vertexW);
+    const vec4 positionDy = dFdy(VAR._vertexW);
     vec3 normalWV = WORLD_Y_AXIS;
     const vec4 albedo = BuildTerrainData(normalWV);
 
@@ -569,7 +572,11 @@ void main(void) {
     }
 #else //TOGGLE_BLEND_MAP
     const NodeMaterialData materialData = dvd_Materials[MATERIAL_IDX];
-    colourOut = getPixelColour(vec4(albedo.rgb, 1.f), materialData, normalWV);
+    const vec3 viewVec = computeViewDirectionWV();
+    const float NdotV = max(dot(normalWV, viewVec), 0.f);
+    const PBRMaterial material = initMaterialProperties(materialData, albedo.rgb, VAR._texCoord, normalWV, NdotV);
+    const IBLGradients gradients = IBL_GRADIENTS(vec3(0.f), vec2(0.f));
+    colourOut = getPixelColour(vec4(albedo.rgb, 1.f), materialData, normalWV, material, viewVec, gradients, positionDx, positionDy);
 #endif //TOGGLE_BLEND_MAP
 #endif //TOGGLE_TESS_LEVEL
 

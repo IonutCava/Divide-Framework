@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/Water.h"
 
@@ -54,7 +54,7 @@ namespace Divide
     void WaterPlane::onEditorChange( std::string_view ) noexcept
     {
 
-        if ( _fogStartEnd.y <= _fogStartEnd.y )
+        if ( _fogStartEnd.y <= _fogStartEnd.x )
         {
             _fogStartEnd.y = _fogStartEnd.x + 0.1f;
         }
@@ -73,7 +73,7 @@ namespace Divide
 
         const auto name = resourceName();
 
-        ResourceDescriptor<Quad3D> waterPlane( "waterPlane" );
+        ResourceDescriptor<Quad3D> waterPlane( "waterPlane_" + name );
         waterPlane.flag( true );  // No default material
         waterPlane.waitForReady( true );
 
@@ -106,6 +106,8 @@ namespace Divide
         waterMat->properties().shadingMode( ShadingMode::BLINN_PHONG );
         waterMat->properties().bumpMethod( BumpMethod::NORMAL );
         waterMat->properties().isStatic( true );
+        waterMat->properties().reflectorType( ReflectorType::PLANAR );
+        waterMat->properties().refractorType( RefractorType::PLANAR );
         waterMat->addShaderDefine( "ENABLE_TBN" );
 
         WAIT_FOR_CONDITION( loadTasks.load() == 0u );
@@ -161,17 +163,17 @@ namespace Divide
 
         setMaterialTemplate( waterMatHandle, attributes );
 
-        const F32 halfWidth = _dimensions.width * 0.5f;
-        const F32 halfLength = _dimensions.height * 0.5f;
+        const F32 halfWidth = to_F32( _dimensions.width ) * 0.5f;
+        const F32 halfLength = to_F32( _dimensions.height ) * 0.5f;
 
-        setBounds( BoundingBox( float3( -halfWidth, -_dimensions.depth, -halfLength ), float3( halfWidth, 0, halfLength ) ) );
+        setBounds( BoundingBox( float3( -halfWidth, -to_F32( _dimensions.depth ), -halfLength ), float3( halfWidth, 0, halfLength ) ) );
 
+        registerEditorFields( context );
         return SceneNode::load( context );
     }
 
-    void WaterPlane::postLoad( SceneGraphNode* sgn )
+    void WaterPlane::registerEditorFields( PlatformContext& pContext )
     {
-        PlatformContext& pContext = sgn->context();
         registerEditorComponent( pContext );
         DIVIDE_ASSERT( _editorComponent != nullptr );
 
@@ -287,6 +289,10 @@ namespace Divide
         {
             onEditorChange( field );
         });
+    }
+
+    void WaterPlane::postLoad( SceneGraphNode* sgn )
+    {
         NavigationComponent* nComp = sgn->get<NavigationComponent>();
         if ( nComp != nullptr )
         {
@@ -299,20 +305,12 @@ namespace Divide
             rComp->physicsCollisionGroup( PhysicsGroup::GROUP_STATIC );
         }
 
-        const F32 halfWidth = _dimensions.width * 0.5f;
-        const F32 halfLength = _dimensions.height * 0.5f;
-
-        Get(_plane)->setCorner( Quad3D::CornerLocation::TOP_LEFT, float3( -halfWidth, 0, -halfLength ) );
-        Get(_plane)->setCorner( Quad3D::CornerLocation::TOP_RIGHT, float3( halfWidth, 0, -halfLength ) );
-        Get(_plane)->setCorner( Quad3D::CornerLocation::BOTTOM_LEFT, float3( -halfWidth, 0, halfLength ) );
-        Get(_plane)->setCorner( Quad3D::CornerLocation::BOTTOM_RIGHT, float3( halfWidth, 0, halfLength ) );
-        Get(_plane)->setNormal( Quad3D::CornerLocation::CORNER_ALL, WORLD_Y_AXIS );
-        _boundingBox.set( float3( -halfWidth, -_dimensions.depth, -halfLength ), float3( halfWidth, 0, halfLength ) );
+        updateGeometry();
 
         RenderingComponent* renderable = sgn->get<RenderingComponent>();
 
         // If the reflector is reasonably sized, we should keep LoD fixed so that we always update reflections
-        if ( sgn->context().config().rendering.lodThresholds.x < std::max( halfWidth, halfLength ) )
+        if ( sgn->context().config().rendering.lodThresholds.x < to_F32( std::max( _dimensions.width, _dimensions.height ) ) * 0.5f )
         {
             renderable->lockLoD( 0u );
         }
@@ -341,20 +339,6 @@ namespace Divide
     {
         DestroyResource(_plane);
         return SceneNode::unload();
-    }
-
-    void WaterPlane::sceneUpdate( const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState )
-    {
-        sceneState.waterBodies().emplace_back(WaterBodyData
-        {
-            ._positionW = sgn->get<TransformComponent>()->getWorldPosition(),
-            ._extents = { to_F32( _dimensions.width ),
-                          to_F32( _dimensions.depth ),
-                          to_F32( _dimensions.height ),
-                          0.f}
-        });
-
-        SceneNode::sceneUpdate( deltaTimeUS, sgn, sceneState );
     }
 
     void WaterPlane::prepareRender( SceneGraphNode* sgn,
@@ -418,7 +402,6 @@ namespace Divide
         params._sourceNode = renderParams._sgn;
         params._targetHIZ = renderParams._hizTarget;
         params._targetOIT = renderParams._oitTarget;
-        params._minExtents.set( 1.0f );
         params._stagePass = {
             ._stage = RenderStage::REFRACTION,
             ._passType = RenderPassType::COUNT,
@@ -428,13 +411,7 @@ namespace Divide
         params._target = renderParams._renderTarget;
         params._clippingPlanes.set( 0, refractionPlane );
         params._passName = "Refraction";
-        params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
         params._clearDescriptorMainPass[to_base(RTColourAttachmentSlot::SLOT_0)] = { DefaultColours::BLUE, true };
-
-        if ( !underwater )
-        {
-            params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
-        }
 
         auto& passManager = renderParams._context.context().kernel().renderPassManager();
         passManager->doCustomPass( renderParams._camera, params, bufferInOut, memCmdInOut );
@@ -522,10 +499,7 @@ namespace Divide
         params._target = renderParams._renderTarget;
         params._clippingPlanes.set( 0, reflectionPlane );
         params._passName = "Reflection";
-        params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
         params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLUE, true };
-
-        params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
 
         auto& passManager = renderParams._context.context().kernel().renderPassManager();
         passManager->doCustomPass( _reflectionCam, params, bufferInOut, memCmdInOut );
@@ -574,9 +548,22 @@ namespace Divide
         plane.set( Normalized( float3( orientation * (reflection ? WORLD_Y_AXIS : WORLD_Y_NEG_AXIS) ) ), offset + waterLevel );
     }
 
-    const vec3<U16>& WaterPlane::getDimensions() const noexcept
+    const vec3<U32>& WaterPlane::getDimensions() const noexcept
     {
         return _dimensions;
+    }
+
+    void WaterPlane::updateGeometry()
+    {
+        const F32 halfWidth = to_F32( _dimensions.width ) * 0.5f;
+        const F32 halfLength = to_F32( _dimensions.height ) * 0.5f;
+        Get(_plane)->setCorner( Quad3D::CornerLocation::TOP_LEFT, float3( -halfWidth, 0.f, -halfLength ) );
+        Get(_plane)->setCorner( Quad3D::CornerLocation::TOP_RIGHT, float3( halfWidth, 0.f, -halfLength ) );
+        Get(_plane)->setCorner( Quad3D::CornerLocation::BOTTOM_LEFT, float3( -halfWidth, 0.f, halfLength ) );
+        Get(_plane)->setCorner( Quad3D::CornerLocation::BOTTOM_RIGHT, float3( halfWidth, 0.f, halfLength ) );
+        Get(_plane)->setNormal( Quad3D::CornerLocation::CORNER_ALL, WORLD_Y_AXIS );
+        setBounds( BoundingBox( float3( -halfWidth, -to_F32( _dimensions.depth ), -halfLength ),
+                                float3( halfWidth, 0.f, halfLength ) ) );
     }
 
     void WaterPlane::saveToXML( boost::property_tree::ptree& pt ) const
@@ -590,11 +577,12 @@ namespace Divide
 
     void WaterPlane::loadFromXML( const boost::property_tree::ptree& pt )
     {
-        _dimensions.width = pt.get<U16>( "dimensions.<xmlattr>.width", _dimensions.width );
-        _dimensions.height = pt.get<U16>( "dimensions.<xmlattr>.length", _dimensions.height );
-        _dimensions.depth = pt.get<U16>( "dimensions.<xmlattr>.depth", _dimensions.depth );
+        _dimensions.width = pt.get<U32>( "dimensions.<xmlattr>.width", _dimensions.width );
+        _dimensions.height = pt.get<U32>( "dimensions.<xmlattr>.length", _dimensions.height );
+        _dimensions.depth = pt.get<U32>( "dimensions.<xmlattr>.depth", _dimensions.depth );
 
         SceneNode::loadFromXML( pt );
+        onEditorChange( "Fog start/end distances" );
     }
 
 } //namespace Divide

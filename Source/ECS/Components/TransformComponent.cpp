@@ -1,8 +1,9 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/TransformComponent.h"
 
 #include "Core/Headers/ByteBuffer.h"
+#include "ECS/Systems/Headers/TransformHierarchy.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 
 namespace Divide
@@ -62,14 +63,6 @@ namespace Divide
 
             _hasChanged = true;
         });
-    }
-
-    void TransformComponent::onParentTransformDirty(const U32 transformMask) noexcept
-    {
-        if (transformMask != to_base(TransformType::NONE))
-        {
-            setTransformDirty(transformMask);
-        }
     }
 
     void TransformComponent::onParentUsageChanged(const NodeUsageContext context) noexcept
@@ -492,24 +485,45 @@ namespace Divide
         };
     }
 
-    void TransformComponent::onParentChanged(const SceneGraphNode* oldParent, const SceneGraphNode* newParent)
+    TransformValues TransformComponent::pendingWorldValues() const
     {
-        // This tries to keep the object's global transform intact when switching from one parent to another
-
-        // Step 1: Embed parent transform into ourselves
-        if (oldParent != nullptr && oldParent->HasComponents(ComponentType::TRANSFORM))
+        TransformValues local;
         {
-            const mat4<F32>& parentTransform = oldParent->get<TransformComponent>()->getWorldMatrix();
-            setTransforms(parentTransform * _local._matrix );
+            SharedLock<SharedMutex> r_lock(_lock);
+            local = _transformInterface;
         }
 
-        // Step 2: Undo the new parent transform internally so we don't change transforms when we request the world matrix
-        // Ignore root node as that node's transform should be set to identity anyway
-        if (newParent != nullptr && newParent->parent() != nullptr && newParent->HasComponents(ComponentType::TRANSFORM))
+        const SceneGraphNode* parent = _parentSGN->parent();
+        const TransformComponent* parentTransform = parent != nullptr ? parent->get<TransformComponent>() : nullptr;
+        if (parentTransform != nullptr)
         {
-            const mat4<F32>& parentTransform = newParent->get<TransformComponent>()->getWorldMatrix();
-            setTransforms(GetInverse(parentTransform) * _local._matrix );
+            const TransformValues parentWorld = parentTransform->pendingWorldValues();
+            return ComposeWorldTransform(local, &parentWorld, rotationMode() == RotationMode::LOCAL);
         }
+        return local;
+    }
+
+    bool TransformComponent::prepareParentChange(const SceneGraphNode* oldParent, const SceneGraphNode* newParent,
+                                                 TransformValues& localOut) const
+    {
+        const TransformComponent* oldTransform = oldParent != nullptr ? oldParent->get<TransformComponent>() : nullptr;
+        const TransformComponent* newTransform = newParent != nullptr ? newParent->get<TransformComponent>() : nullptr;
+        TransformValues oldWorld;
+        TransformValues newWorld;
+        if (oldTransform != nullptr)
+        {
+            oldWorld = oldTransform->pendingWorldValues();
+        }
+        if (newTransform != nullptr)
+        {
+            newWorld = newTransform->pendingWorldValues();
+        }
+
+        SharedLock<SharedMutex> r_lock(_lock);
+        return TryReparentTransform(_transformInterface,
+                                    oldTransform != nullptr ? &oldWorld : nullptr,
+                                    newTransform != nullptr ? &newWorld : nullptr,
+                                    rotationMode() == RotationMode::LOCAL, localOut);
     }
 
     void TransformComponent::getWorldMatrix( mat4<F32>& matrixOut) const

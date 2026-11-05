@@ -73,7 +73,6 @@ class Quad3D;
 class Texture;
 class Object3D;
 class GFXRTPool;
-class ShadowMap;
 class IMPrimitive;
 class WindowManager;
 class ResourceCache;
@@ -83,7 +82,6 @@ class SceneShaderData;
 class SceneRenderState;
 class KernelApplication;
 class ShaderComputeQueue;
-class CascadedShadowMapsGenerator;
 
 struct SizeChangeParams;
 struct ShaderBufferDescriptor;
@@ -105,7 +103,6 @@ namespace Attorney
     class GFXDeviceGFXRTPool;
     class GFXDeviceProjectManager;
     class GFXDeviceShaderProgram;
-    class GFXDeviceShadowMap;
     class GFXDeviceWindowManager;
     class KernelApplication;
 };
@@ -150,11 +147,27 @@ struct DebugView final : GUIDWrapper
     I16 _groupID = -1;
     I16 _sortIndex = -1;
     U8 _textureBindSlot = 0u;
-    bool _enabled = false;
+    std::atomic_bool _enabled{ false };
     bool _cycleMips = false;
 };
 
 FWD_DECLARE_MANAGED_STRUCT(DebugView);
+
+class DebugViewRegistry final
+{
+  public:
+    DebugView* add(const DebugView_ptr& view);
+    bool remove(const DebugView* view);
+    void releaseRetired();
+    void clear();
+    void getNames(vector<std::tuple<string, I16, I16, bool>>& namesOut) const;
+
+  private:
+    friend class GFXDevice;
+    mutable Mutex _lock;
+    vector<DebugView_ptr> _active;
+    vector<DebugView_ptr> _retired;
+};
 
 template<typename Descriptor, size_t N>
 struct DebugPrimitiveHandler
@@ -243,7 +256,6 @@ class GFXDevice final : public PlatformContextComponent, public FrameListener
     friend class Attorney::GFXDeviceGraphicsResource;
     friend class Attorney::GFXDeviceGFXRTPool;
     friend class Attorney::GFXDeviceShaderProgram;
-    friend class Attorney::GFXDeviceShadowMap;
     friend class Attorney::GFXDeviceWindowManager;
     friend class Attorney::GFXDeviceProjectManager;
 
@@ -365,7 +377,7 @@ public:  // Accessors and Mutators
 
     static void FrameInterpolationFactor(const D64 interpolation) noexcept { s_interpolationFactor = interpolation; }
     [[nodiscard]] static D64 FrameInterpolationFactor() noexcept { return s_interpolationFactor; }
-    [[nodiscard]] static U64 FrameCount() noexcept { return s_frameCount; }
+    [[nodiscard]] static U64 FrameCount() noexcept { return s_frameCount.load(std::memory_order_relaxed); }
 
     static const DeviceInformation& GetDeviceInformation() noexcept;
     static void OverrideDeviceInformation(const DeviceInformation& info) noexcept;
@@ -495,7 +507,6 @@ private:
     void renderFromCamera(const CameraSnapshot& cameraSnapshot);
     void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept;
     void prevViewProjectionMatrix(const mat4<F32>& vpMatrix) noexcept;
-    void worldAOViewProjectionMatrix(const mat4<F32>& vpMatrix) noexcept;
 
     [[nodiscard]] ErrorCode createAPIInstance(RenderAPI api);
 
@@ -567,8 +578,7 @@ private:
     GFXShaderData _gpuBlock;
     std::array<bool, Config::MAX_LOCAL_PLAYER_COUNT> _previousDepthHistoryValid{};
 
-    mutable Mutex _debugViewLock;
-    vector<DebugView_ptr> _debugViews;
+    DebugViewRegistry _debugViews;
 
     Mutex _queuedCommandbufferLock;
     Mutex _cullCounterLock;
@@ -619,7 +629,7 @@ private:
     static IMPrimitivePool s_IMPrimitivePool;
 
     static D64 s_interpolationFactor;
-    static U64 s_frameCount;
+    static std::atomic<U64> s_frameCount;
 
     static DeviceInformation s_deviceInformation;
 };
@@ -695,17 +705,6 @@ namespace Attorney
         friend class Divide::ProjectManager;
     };
 
-    class GFXDeviceShadowMap
-    {
-        static void worldAOViewProjectionMatrix( GFXDevice& device, const mat4<F32>& vpMatrix ) noexcept
-        {
-            device.worldAOViewProjectionMatrix( vpMatrix );
-        }
-
-        friend class Divide::ShadowMap;
-        friend class Divide::CascadedShadowMapsGenerator;
-    }; 
-    
     class GFXDeviceWindowManager
     {
         static void drawToWindow( GFXDevice& device, DisplayWindow& window )

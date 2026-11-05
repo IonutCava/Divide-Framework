@@ -3,6 +3,7 @@
 
 #include "Headers/GFXDevice.h"
 #include "Headers/GFXRTPool.h"
+#include "Headers/BlurPass.h"
 #include "Editor/Headers/Editor.h"
 
 #include "Core/Headers/Kernel.h"
@@ -155,7 +156,7 @@ namespace Divide
     };
 
     D64 GFXDevice::s_interpolationFactor = 1.0;
-    U64 GFXDevice::s_frameCount = 0u;
+    std::atomic<U64> GFXDevice::s_frameCount = 0u;
 
     DeviceInformation GFXDevice::s_deviceInformation{};
     GFXDevice::IMPrimitivePool GFXDevice::s_IMPrimitivePool{};
@@ -301,7 +302,7 @@ namespace Divide
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 5,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // Shadow Cube
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 6,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // Shadow Single
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 7,  DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::FRAGMENT );             // PROBE_DATA;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 8,  DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::ALL );                  // SCENE_DATA; (vegetation culling reads water data in compute)
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 8,  DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::ALL );                  // SCENE_DATA;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 9,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::FRAGMENT );             // LIGHT_SHADOW;
 
         _api->initDescriptorSets();
@@ -1528,6 +1529,7 @@ namespace Divide
         }
 
         context().app().windowManager().flushWindow();
+        _debugViews.releaseRetired();
 
         {
             LockGuard<Mutex> counterLock( _cullCounterLock );
@@ -1594,7 +1596,7 @@ namespace Divide
 
             _performanceMetrics._scratchBufferQueueUsage[0] = to_U32( _gfxBuffers.crtBuffers()._camWritesThisFrame );
             _performanceMetrics._scratchBufferQueueUsage[1] = to_U32( _gfxBuffers.crtBuffers()._renderWritesThisFrame );
-            ++s_frameCount;
+            s_frameCount.fetch_add(1u, std::memory_order_relaxed);
         }
  
         return true;
@@ -1751,6 +1753,20 @@ namespace Divide
         }
     }
 
+    void GFX::RecordBlurDrawCommands( CommandBuffer& buffer,
+                                     PushConstantsStruct pushData,
+                                     const bool gaussian,
+                                     const U8 layerCount )
+    {
+        const U8 loopCount = gaussian ? 1u : layerCount;
+        for ( U8 loop = 0u; loop < loopCount; ++loop )
+        {
+            pushData.data[0]._vec[0].x = gaussian ? 0.f : to_F32( loop );
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( buffer )->_fastData = pushData;
+            GFX::EnqueueCommand<GFX::DrawCommand>( buffer )->_drawCommands.emplace_back();
+        }
+    }
+
     void GFXDevice::blurTarget( RenderTargetHandle& blurSource,
                                 RenderTargetHandle& blurBuffer,
                                 const RenderTargetHandle& blurTarget,
@@ -1769,8 +1785,6 @@ namespace Divide
         pushData.data[0]._vec[1].y = to_F32( layerCount );
         pushData.data[0]._vec[1].z = 0.f;
         pushData.data[0]._vec[1].w = 0.f;
-
-        const U8 loopCount = gaussian ? 1u : layerCount;
 
         {// Blur horizontally
             pushData.data[0]._vec[0].x = 0.f;
@@ -1793,21 +1807,7 @@ namespace Divide
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, inputAttachment->texture(), inputAttachment->_descriptor._sampler );
 
-    
-            if ( !gaussian && layerCount > 1 )
-            {
-                pushData.data[0]._vec[0].x = 0.f;
-            }
-
-            for ( U8 loop = 0u; loop < loopCount; ++loop )
-            {
-                if ( !gaussian && loop > 0u )
-                {
-                    pushData.data[0]._vec[0].x = to_F32( loop );
-                    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut)->_fastData = pushData;
-                }
-                GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
-            }
+            GFX::RecordBlurDrawCommands( bufferInOut, pushData, gaussian, layerCount );
 
             GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
         }
@@ -1829,17 +1829,7 @@ namespace Divide
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, bufferAttachment->texture(), bufferAttachment->_descriptor._sampler );
 
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = pushData;
-
-            for ( U8 loop = 0u; loop < loopCount; ++loop )
-            {
-                if ( !gaussian && loop > 0u )
-                {
-                    pushData.data[0]._vec[0].x = to_F32( loop );
-                    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = pushData;
-                }
-                GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
-            }
+            GFX::RecordBlurDrawCommands( bufferInOut, pushData, gaussian, layerCount );
 
             GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
         }
@@ -2140,13 +2130,6 @@ namespace Divide
             data.dvd_lightingTweakValues.zw = { lightBleedBias, minShadowVariance };
             _gpuBlock._camNeedsUpload = true;
         }
-    }
-
-    void GFXDevice::worldAOViewProjectionMatrix( const mat4<F32>& vpMatrix ) noexcept
-    {
-        GFXShaderData::CamData& data = _gpuBlock._camData;
-        data.dvd_WorldAOVPMatrix = vpMatrix;
-        _gpuBlock._camNeedsUpload = true;
     }
 
     void GFXDevice::prevViewProjectionMatrix( const mat4<F32>& vpMatrix ) noexcept
@@ -2910,9 +2893,11 @@ namespace Divide
 
         initDebugViews();
 
+        LockGuard<Mutex> lock( _debugViews._lock );
+        const auto& views = _debugViews._active;
         constexpr I32 columnCount = 6u;
-        I32 viewCount = to_I32( _debugViews.size() );
-        for ( const auto& view : _debugViews )
+        I32 viewCount = to_I32( views.size() );
+        for ( const auto& view : views )
         {
             if ( !view->_enabled )
             {
@@ -2947,14 +2932,14 @@ namespace Divide
         Pipeline* crtPipeline = nullptr;
         U16 idx = 0u;
         const I32 mipTimer = to_I32( std::ceil( Time::App::ElapsedMilliseconds() / 750.0f ) );
-        for ( U16 i = 0; i < to_U16( _debugViews.size() ); ++i )
+        for ( U16 i = 0; i < to_U16( views.size() ); ++i )
         {
-            if ( !_debugViews[i]->_enabled )
+            if ( !views[i]->_enabled )
             {
                 continue;
             }
 
-            const DebugView_ptr& view = _debugViews[i];
+            const DebugView_ptr& view = views[i];
 
             if ( view->_cycleMips )
             {
@@ -3014,49 +2999,89 @@ namespace Divide
         GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut )->_viewport.set( previousViewport );
     }
 
-    DebugView* GFXDevice::addDebugView( const std::shared_ptr<DebugView>& view )
+    DebugView* DebugViewRegistry::add( const DebugView_ptr& view )
     {
-        LockGuard<Mutex> lock( _debugViewLock );
+        LockGuard<Mutex> lock( _lock );
 
-        _debugViews.push_back( view );
+        _active.push_back( view );
 
-        if ( _debugViews.back()->_sortIndex == -1 )
+        if ( _active.back()->_sortIndex == -1 )
         {
-            _debugViews.back()->_sortIndex = to_I16( _debugViews.size() );
+            _active.back()->_sortIndex = to_I16( _active.size() );
         }
 
-        eastl::sort( eastl::begin( _debugViews ),
-                     eastl::end( _debugViews ),
+        eastl::sort( eastl::begin( _active ),
+                     eastl::end( _active ),
                      []( const std::shared_ptr<DebugView>& a, const std::shared_ptr<DebugView>& b ) noexcept -> bool
                      {
-                         if ( a->_groupID == b->_groupID )
-                         {
-                             return a->_sortIndex < b->_sortIndex;
-                         }
-                         if ( a->_sortIndex == b->_sortIndex )
-                         {
-                             return a->_groupID < b->_groupID;
-                         }
-
-                         return a->_groupID < b->_groupID&& a->_sortIndex < b->_sortIndex;
+                         return std::pair{ a->_groupID, a->_sortIndex } < std::pair{ b->_groupID, b->_sortIndex };
                      } );
 
         return view.get();
     }
 
+    bool DebugViewRegistry::remove( const DebugView* view )
+    {
+        LockGuard<Mutex> lock( _lock );
+        if ( view == nullptr )
+        {
+            return false;
+        }
+
+        bool removed = false;
+        for ( auto it = _active.begin(); it != _active.end(); )
+        {
+            if ( it->get() == view )
+            {
+                _retired.push_back( *it );
+                it = _active.erase( it );
+                removed = true;
+            }
+            else
+            {
+                ++it;
+            }
+        }
+        return removed;
+    }
+
+    void DebugViewRegistry::releaseRetired()
+    {
+        LockGuard<Mutex> lock( _lock );
+        _retired.clear();
+    }
+
+    void DebugViewRegistry::clear()
+    {
+        LockGuard<Mutex> lock( _lock );
+        _active.clear();
+        _retired.clear();
+    }
+
+    void DebugViewRegistry::getNames( vector<std::tuple<string, I16, I16, bool>>& namesOut ) const
+    {
+        LockGuard<Mutex> lock( _lock );
+        namesOut.clear();
+        for ( const auto& view : _active )
+        {
+            namesOut.emplace_back( view->_name, view->_groupID, view->_sortIndex, view->_enabled.load( std::memory_order_relaxed ) );
+        }
+    }
+
+    DebugView* GFXDevice::addDebugView( const std::shared_ptr<DebugView>& view )
+    {
+        return _debugViews.add( view );
+    }
+
     bool GFXDevice::removeDebugView( DebugView* view )
     {
-        return dvd_erase_if( _debugViews,
-                             [view]( const std::shared_ptr<DebugView>& entry ) noexcept
-                             {
-                                 return view != nullptr && view->getGUID() == entry->getGUID();
-                             } );
+        return _debugViews.remove( view );
     }
 
     void GFXDevice::toggleDebugView( const I16 index, const bool state )
     {
-        LockGuard<Mutex> lock( _debugViewLock );
-        for ( auto& view : _debugViews )
+        LockGuard<Mutex> lock( _debugViews._lock );
+        for ( auto& view : _debugViews._active )
         {
             if ( view->_sortIndex == index )
             {
@@ -3068,8 +3093,8 @@ namespace Divide
 
     void GFXDevice::toggleDebugGroup( I16 group, const bool state )
     {
-        LockGuard<Mutex> lock( _debugViewLock );
-        for ( auto& view : _debugViews )
+        LockGuard<Mutex> lock( _debugViews._lock );
+        for ( auto& view : _debugViews._active )
         {
             if ( view->_groupID == group )
             {
@@ -3080,8 +3105,8 @@ namespace Divide
 
     bool GFXDevice::getDebugGroupState( I16 group ) const
     {
-        LockGuard<Mutex> lock( _debugViewLock );
-        for ( const auto& view : _debugViews )
+        LockGuard<Mutex> lock( _debugViews._lock );
+        for ( const auto& view : _debugViews._active )
         {
             if ( view->_groupID == group )
             {
@@ -3097,13 +3122,7 @@ namespace Divide
 
     void GFXDevice::getDebugViewNames( vector<std::tuple<string, I16, I16, bool>>& namesOut )
     {
-        namesOut.resize( 0 );
-
-        LockGuard<Mutex> lock( _debugViewLock );
-        for ( auto& view : _debugViews )
-        {
-            namesOut.emplace_back( view->_name, view->_groupID, view->_sortIndex, view->_enabled );
-        }
+        _debugViews.getNames( namesOut );
     }
 
     PipelineDescriptor& GFXDevice::getDebugPipeline( const IM::BaseDescriptor& descriptor ) noexcept

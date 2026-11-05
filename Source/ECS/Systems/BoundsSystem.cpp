@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/BoundsSystem.h"
 
@@ -6,6 +6,7 @@
 #include "Core/Headers/PlatformContext.h"
 
 #include "Graphs/Headers/SceneNode.h"
+#include "Graphs/Headers/SceneGraph.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 
 // For debug rendering
@@ -43,16 +44,13 @@ namespace Divide
 
         for (BoundsComponent* bComp : _componentCache)
         {
-            if (Attorney::SceneNodeBoundsSystem::boundsChanged(bComp->parentSGN()->getNode()))
+            if (bComp->_boundsChanges.changed(Attorney::SceneNodeBoundsSystem::boundsChangeRevision(bComp->parentSGN()->getNode())))
             {
-                bComp->flagBoundingBoxDirty(to_U32(TransformType::ALL), false);
+                bComp->flagBoundingBoxDirty(to_U32(TransformType::ALL), true);
 
-                SceneGraphNode* parent = bComp->parentSGN()->parent();
-                while (parent != nullptr)
-                {
-                    Attorney::SceneNodeBoundsSystem::setBoundsChanged(parent->getNode());
-                    parent = parent->parent();
-                }
+                MarkAncestorBoundsChanged(bComp->parentSGN()->parent(),
+                    [](SceneGraphNode& node) { return node.parent(); },
+                    [](SceneGraphNode& node) { Attorney::SceneNodeBoundsSystem::setBoundsChanged(node.getNode()); });
             }
         }
     }
@@ -65,8 +63,32 @@ namespace Divide
         // This is fast and does not need to run in parallel
         for (BoundsComponent* bComp : _componentCache)
         {
+            SceneGraphNode* node = bComp->parentSGN();
+            SceneNode& sceneNode = node->getNode();
+            const U64 revision = Attorney::SceneNodeBoundsSystem::boundsRevision(sceneNode);
+            const bool sourceChanged = sceneNode.getState() == ResourceState::RES_LOADED &&
+                                       bComp->_sourceBoundsRevision != revision;
+            if (sourceChanged)
+            {
+                bComp->_sourceBoundsRevision = revision;
+                bComp->flagBoundingBoxDirty(to_U32(TransformType::ALL), true);
+                Attorney::SceneNodeBoundsSystem::setBoundsChanged(sceneNode);
+                MarkAncestorBoundsChanged(node->parent(),
+                    [](SceneGraphNode& parent) { return parent.parent(); },
+                    [](SceneGraphNode& parent) { Attorney::SceneNodeBoundsSystem::setBoundsChanged(parent.getNode()); });
+                if (node->usageContext() == NodeUsageContext::NODE_STATIC &&
+                    (Is3DObject(sceneNode.type()) || sceneNode.type() == SceneNodeType::TYPE_VEGETATION))
+                {
+                    node->sceneGraph()->invalidateStaticGeometryBounds(*node);
+                }
+            }
+        }
+
+        for (BoundsComponent* bComp : _componentCache)
+        {
             const SceneNode& sceneNode = bComp->parentSGN()->getNode();
-            if (Attorney::SceneNodeBoundsSystem::boundsChanged(sceneNode))
+            bComp->_boundsChanges.capture(Attorney::SceneNodeBoundsSystem::boundsChangeRevision(sceneNode));
+            if (bComp->_boundsChanges.capturedChanged())
             {
                 bComp->setRefBoundingBox(sceneNode.getBounds());
             }
@@ -74,7 +96,7 @@ namespace Divide
 
         for (BoundsComponent* bComp : _componentCache)
         {
-            if (Attorney::SceneNodeBoundsSystem::boundsChanged(bComp->parentSGN()->getNode()))
+            if (bComp->_boundsChanges.capturedChanged())
             {
                 bComp->appendChildRefBBs();
             }
@@ -99,12 +121,15 @@ namespace Divide
 
         for (BoundsComponent* bComp : _componentCache)
         {
-            Attorney::SceneNodeBoundsSystem::clearBoundsChanged(bComp->parentSGN()->getNode());
-            bComp->parentSGN()->SendEvent(
+            bComp->_boundsChanges.complete();
+            if (bComp->_boundsUpdate.recomputed())
             {
-                ._type = ECS::CustomEvent::Type::BoundsUpdated,
-                ._sourceCmp = bComp,
-            });
+                bComp->parentSGN()->SendEvent(
+                {
+                    ._type = ECS::CustomEvent::Type::BoundsUpdated,
+                    ._sourceCmp = bComp,
+                });
+            }
         }
 
         for (BoundsComponent* bComp : _componentCache)

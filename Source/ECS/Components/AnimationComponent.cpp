@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/AnimationComponent.h"
 
@@ -150,6 +150,7 @@ void AnimationComponent::resetTimers(const D64 parentTimeStamp) noexcept
     _currentTimeStamp = -1.0;
     _parentTimeStamp = parentTimeStamp;
     _frameIndex = {};
+    _frameTicked = false;
 }
 
 /// Select an animation by name
@@ -241,7 +242,7 @@ U8 AnimationComponent::boneCount() const
 
 bool AnimationComponent::frameTicked() const noexcept
 {
-    return _playAnimations ? _frameIndex._prev != _frameIndex._curr : false;
+    return _frameTicked;
 }
 
 AnimEvaluator& AnimationComponent::getAnimationByIndex(const U32 animationID) const

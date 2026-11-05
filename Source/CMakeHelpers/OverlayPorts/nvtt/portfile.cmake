@@ -17,6 +17,7 @@ vcpkg_from_github(
         skip-building-libsquish.patch
         fix-intrinsic-function.patch
         fix-release-flags.patch
+        fix-bmp-memory-offset.patch
 )
 
 vcpkg_replace_string("${SOURCE_PATH}/cmake/OptimalOptions.cmake"

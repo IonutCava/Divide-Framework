@@ -267,6 +267,7 @@ class Material final : public CachedResource {
     bool setSampler(TextureSlot textureUsageSlot,
                     SamplerDescriptor sampler);
 
+    /// A valid handle transfers one resource reference to the material.
     bool setTexture(TextureSlot textureUsageSlot,
                     Handle<Texture> texture,
                     SamplerDescriptor sampler,
@@ -312,6 +313,7 @@ class Material final : public CachedResource {
     [[nodiscard]] bool isReflective() const noexcept;
     [[nodiscard]] bool isRefractive() const noexcept;
     [[nodiscard]] bool canDraw(RenderStagePass renderStagePass, bool& shaderJustFinishedLoading);
+    [[nodiscard]] bool shaderPending(RenderStagePass renderStagePass) const;
     [[nodiscard]] const ModuleDefines& shaderDefines(ShaderType type) const;
 
     // type == ShaderType::Count = add to all stages

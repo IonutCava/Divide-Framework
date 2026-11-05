@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -200,7 +200,7 @@ namespace Divide {
 
         VAOBindings _vaoBufferData;
         eastl::queue<std::pair<gl46core::GLsync, U64>> _endFrameFences;
-        U64 _lastSyncedFrameNumber{ 0u };
+        std::atomic<U64> _lastSyncedFrameNumber{ 0u };
 
         size_t _attributeHash{ 0u };
 

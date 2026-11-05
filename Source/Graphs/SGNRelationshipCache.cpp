@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/SGNRelationshipCache.h"
 #include "Headers/SceneGraphNode.h"
@@ -27,12 +27,20 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
         LockGuard<SharedMutex> w_lock( _updateMutex );
+        clearEntries();
         updateChildren( 0u, _childrenRecursiveCache );
         updateParents( 0u, _parentRecursiveCache );
         updateSiblings( 0u, _siblingCache );
 
         _isValid = true;
         return true;
+    }
+
+    void SGNRelationshipCache::clearEntries() noexcept
+    {
+        _childrenRecursiveCache.clear();
+        _parentRecursiveCache.clear();
+        _siblingCache.clear();
     }
 
     SGNRelationshipCache::RelationshipType SGNRelationshipCache::classifyNode( const I64 GUID ) const noexcept
@@ -81,6 +89,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
         assert(isValid());
+        SharedLock<SharedMutex> r_lock( _updateMutex );
 
         switch ( type )
         {

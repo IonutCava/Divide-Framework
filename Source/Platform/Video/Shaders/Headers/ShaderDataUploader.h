@@ -145,8 +145,10 @@ namespace Divide
 
         using UniformsSet = eastl::set<UniformDeclaration, UniformCompare>;
 
-        bool SaveReflectionData( const ResourcePath& path, const ResourcePath& file, const Data& reflectionDataIn, const eastl::set<U64>& atomIDsIn );
-        bool LoadReflectionData( const ResourcePath& path, const ResourcePath& file, Data& reflectionDataOut, eastl::set<U64>& atomIDsOut );
+        bool SaveReflectionData( const ResourcePath& path, const ResourcePath& file, const Data& reflectionDataIn,
+                                 const UniformsSet& uniformsIn, const eastl::set<U64>& atomIDsIn );
+        bool LoadReflectionData( const ResourcePath& path, const ResourcePath& file, Data& reflectionDataOut,
+                                 UniformsSet& uniformsOut, eastl::set<U64>& atomIDsOut );
         void PreProcessUniforms( string& sourceInOut, UniformsSet& foundUniforms );
 
         const Reflection::BufferEntry* FindUniformBlock( const Reflection::Data& data );

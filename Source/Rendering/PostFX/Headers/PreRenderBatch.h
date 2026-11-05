@@ -129,6 +129,7 @@ class PreRenderBatch {
     [[nodiscard]] RenderTargetHandle screenRT() const noexcept;
     [[nodiscard]] RenderTargetHandle edgesRT() const noexcept;
     [[nodiscard]] Handle<Texture> luminanceTex() const noexcept;
+    [[nodiscard]] Handle<Texture> ssrTexture(bool enabled) const noexcept;
 
     [[nodiscard]] PreRenderOperator* getOperator(FilterType type) const;
 
@@ -196,6 +197,7 @@ class PreRenderBatch {
     ScreenTargets _screenRTs{};
     ShaderBuffer_uptr _histogramBuffer{ nullptr };
     Handle<Texture> _currentLuminance{ INVALID_HANDLE<Texture> };
+    Handle<Texture> _disabledSSR{ INVALID_HANDLE<Texture> };
     Handle<ShaderProgram> _toneMap{ INVALID_HANDLE<ShaderProgram> };
     Handle<ShaderProgram> _createHistogram{ INVALID_HANDLE<ShaderProgram> };
     Handle<ShaderProgram> _averageHistogram{ INVALID_HANDLE<ShaderProgram> };

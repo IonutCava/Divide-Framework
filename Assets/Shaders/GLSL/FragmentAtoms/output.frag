@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #ifndef _OUTPUT_FRAG_
 #define _OUTPUT_FRAG_
 
@@ -24,7 +26,7 @@ void writePixel(in vec4 colourIn, in vec3 transmissionCoefficient)
     vec4 premultipliedReflect = vec4( colourIn.rgb * colourIn.a, colourIn.a );
 
     // NEW: Perform this operation before modifying the coverage to account for transmission.
-    _modulate.rgb = premultipliedReflect.a * (vec3(1.f) - transmissionCoefficient);
+    _modulate = vec4(premultipliedReflect.a * (vec3(1.f) - transmissionCoefficient), 0.f);
 
     //Modulate the net coverage for composition by the transmission. This does not affect the color channels of the
     //transparent surface because the caller's BSDF model should have already taken into account if transmission modulates
@@ -66,9 +68,7 @@ void writeScreenColour(in vec4 colour, in vec3 transmissionCoefficient, in vec3 
 {
     writePixel(colour, transmissionCoefficient);
 
-    _normalsOut.rg = packNormal(normalWV);
-    _normalsOut.b = 0.f;
-    _normalsOut.a = 1.f;
+    _normalsOut = vec4(normalWV * _revealage, _revealage);
 }
 #endif //OIT_PASS
 

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #ifndef _MATERIAL_DATA_FRAG_
 #define _MATERIAL_DATA_FRAG_
 
@@ -59,7 +61,7 @@ DESCRIPTOR_SET_RESOURCE(PER_PASS, 4) uniform sampler2D texSSAO;
 #if defined(MSAA_SCREEN_TARGET)
 #define sampleTexSceneNormals() texelFetch(texSceneNormals, ivec2(gl_FragCoord.xy), gl_SampleID)
 #else  //MSAA_SCREEN_TARGET
-#define sampleTexSceneNormals() texture(texSceneNormals, dvd_screenPositionNormalised)
+#define sampleTexSceneNormals() SampleScreenTexture(texSceneNormals)
 #endif //MSAA_SCREEN_TARGET
 #endif //!PRE_PASS
 
@@ -191,15 +193,15 @@ PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, 
     getTextureOMR(dvd_UsePackedOMR(matData), vec3(uv, 0), dvd_TexOperationsB(matData).xyz, OMR.rgb);
     material._occlusion = OMR.r;
 
-#if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS)
+#if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS) && !defined(OIT_PASS) && !defined(TRANSPARENCY_PASS)
     material._roughness = sampleTexSceneNormals().b;
-#else //MAIN_DISPLAY_PASS && !PRE_PASS
+#else
 #if defined(SHADING_MODE_BLINN_PHONG)
     material._roughness = SpecularToRoughness(material._specular.rgb, material._specular.a);
 #else //SHADING_MODE_BLINN_PHONG
     material._roughness = OMR.b;
 #endif //SHADING_MODE_BLINN_PHONG
-#endif //MAIN_DISPLAY_PASS && !PRE_PASS
+#endif
 
 #if defined(SHADING_MODE_BLINN_PHONG)
     material._metallic = SpecularToMetalness(material._specular.rgb, material._specular.a);
@@ -324,9 +326,9 @@ vec3 getNormalMap(in sampler2DArray tex, in vec3 uv, out float normalVariation) 
 
 vec3 getNormalWV(in NodeMaterialData data, in vec3 uv, out float normalVariation) {
     normalVariation = 0.f;
-#if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS)
+#if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS) && !defined(OIT_PASS) && !defined(TRANSPARENCY_PASS)
     return normalize(unpackNormal(sampleTexSceneNormals().rg));
-#else //MAIN_DISPLAY_PASS && !PRE_PASS
+#else
     vec3 normalWV = VAR._normalWV;
 #if defined(COMPUTE_TBN)
     if (dvd_BumpMethod(MATERIAL_IDX) != BUMP_NONE) {
@@ -334,8 +336,12 @@ vec3 getNormalWV(in NodeMaterialData data, in vec3 uv, out float normalVariation
         normalWV = getTBNWV() * normalData;
     }
 #endif //COMPUTE_TBN
+#if defined(OIT_PASS) || defined(TRANSPARENCY_PASS)
+    return normalize(normalWV) * (2.f * float(gl_FrontFacing) - 1.f);
+#else
     return normalize(normalWV) * (dvd_IsDoubleSided(data) ? (2.f * float(gl_FrontFacing) - 1.f) : 1.f);
-#endif  //MAIN_DISPLAY_PASS && !PRE_PASS
+#endif
+#endif
 }
 
 vec3 getNormalWV(in NodeMaterialData data, in vec3 uv) {

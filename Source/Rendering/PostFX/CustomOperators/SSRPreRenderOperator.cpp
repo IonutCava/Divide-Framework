@@ -97,25 +97,6 @@ void SSRPreRenderOperator::reshape(const U16 width, const U16 height)
     };
 }
 
-void SSRPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::CommandBuffer& bufferInOut)
-{
-    PreRenderOperator::prepare(idx, bufferInOut);
-
-    if (_stateChanged && !_enabled)
-    {
-        GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-        renderPassCmd->_name = "DO_SSR_CLEAR_TARGET";
-        renderPassCmd->_target = RenderTargetNames::SSR_RESULT;
-        renderPassCmd->_descriptor = _screenOnlyDraw;
-        renderPassCmd->_clearDescriptor[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
-        renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { VECTOR4_ZERO, true };
-
-        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
-    }
-
-    _stateChanged = false;
-}
-
 bool SSRPreRenderOperator::execute( const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut)
 {
     assert(_enabled);

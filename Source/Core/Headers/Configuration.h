@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -46,6 +46,7 @@ struct Configuration final : XML::IXMLSerializable {
             bool enableRenderAPIDebugging = false;
             bool enableRenderAPIBestPractices = false;
             bool enableRenderAPIDebugGrouping = false;
+            bool enableVMADebugLogging = false;
             bool assertOnRenderAPIError = false;
             bool useSPIRVForOpenGL = true;
         } renderer = {};
@@ -147,6 +148,12 @@ struct Configuration final : XML::IXMLSerializable {
         U8 maxAnisotropicFilteringLevel = 16;
         U16 reflectionProbeResolution = 256;
         U16 reflectionPlaneResolution = 512;
+        struct Reflection
+        {
+            bool includeGrass = true;
+            bool includeTrees = true;
+            bool includeDynamicObjects = false;
+        } reflection = {};
         I32 numLightsPerCluster = -1;
         bool enableFog = true;
         F32 fogDensity = 0.01f;

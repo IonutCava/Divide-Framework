@@ -11,7 +11,7 @@ namespace Divide
 
     namespace Reflection
     {
-        constexpr U16 BYTE_BUFFER_VERSION = 6u; // v6: reflected vertex input locations
+        constexpr U16 BYTE_BUFFER_VERSION = 7u; // v7: generated loose-uniform declarations
 
         bool UniformCompare::operator()( const UniformDeclaration& lhs, const UniformDeclaration& rhs ) const
         {
@@ -68,7 +68,8 @@ namespace Divide
             return lhs._name < rhs._name;
         };
 
-        bool SaveReflectionData( const ResourcePath& path, const ResourcePath& file, const Reflection::Data& reflectionDataIn, const eastl::set<U64>& atomIDsIn )
+        bool SaveReflectionData( const ResourcePath& path, const ResourcePath& file, const Reflection::Data& reflectionDataIn,
+                                 const UniformsSet& uniformsIn, const eastl::set<U64>& atomIDsIn )
         {
             const auto saveDataEntry = []( ByteBuffer& buffer, const DataEntry& entry )
             {
@@ -130,6 +131,12 @@ namespace Divide
 
             ByteBuffer buffer;
             buffer << BYTE_BUFFER_VERSION;
+            buffer << uniformsIn.size();
+            for ( const UniformDeclaration& uniform : uniformsIn )
+            {
+                buffer << uniform._name;
+                buffer << uniform._type;
+            }
             buffer << reflectionDataIn._uniformBlockBindingIndex;
             buffer << to_base(reflectionDataIn._pushConstantsState);
             buffer << reflectionDataIn._fragmentOutputs;
@@ -153,7 +160,8 @@ namespace Divide
             return buffer.dumpToFile( path, file.string() );
         }
 
-        bool LoadReflectionData( const ResourcePath& path, const ResourcePath& file, Reflection::Data& reflectionDataOut, eastl::set<U64>& atomIDsOut )
+        bool LoadReflectionData( const ResourcePath& path, const ResourcePath& file, Reflection::Data& reflectionDataOut,
+                                 UniformsSet& uniformsOut, eastl::set<U64>& atomIDsOut )
         {
             size_t sizeTemp;
 
@@ -230,6 +238,16 @@ namespace Divide
                 buffer >> tempVer;
                 if ( tempVer == BYTE_BUFFER_VERSION )
                 {
+                    buffer >> sizeTemp;
+                    uniformsOut.clear();
+                    for ( size_t i = 0u; i < sizeTemp; ++i )
+                    {
+                        UniformDeclaration uniform{};
+                        buffer >> uniform._name;
+                        buffer >> uniform._type;
+                        uniform._typeHash = _ID( uniform._type.c_str() );
+                        uniformsOut.emplace( uniform );
+                    }
                     buffer >> reflectionDataOut._uniformBlockBindingIndex;
                     buffer >> reflectionDataOut._pushConstantsState;
                     buffer >> reflectionDataOut._fragmentOutputs;

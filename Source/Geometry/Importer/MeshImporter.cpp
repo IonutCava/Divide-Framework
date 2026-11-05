@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/MeshImporter.h"
 #include "Headers/DVDConverter.h"
@@ -507,10 +507,8 @@ namespace Import
                 textureSampler._wrapV = tex.wrapV();
                 textureSampler._wrapW = tex.wrapW();
 
-                if ( tex.srgb() )
-                {
-                    textureDescriptor._packing = GFXImagePacking::NORMALIZED_SRGB;
-                }
+                textureDescriptor._packing = tex.srgb() ? GFXImagePacking::NORMALIZED_SRGB
+                                                      : GFXImagePacking::NORMALIZED;
 
                 textureDescriptor._textureOptions._useDDSCache = tex.useDDSCache();
                 textureDescriptor._textureOptions._isNormalMap = tex.isNormalMap();

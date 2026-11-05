@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/Camera.h"
 
@@ -271,7 +271,7 @@ namespace Divide
         _data._zPlanes.set( 0.1f, 1000.0f );
         _data._orientation.identity();
 
-        _translationAccumulator.set( eye );
+        setEye( eye );
 
         if (mode == Mode::THIRD_PERSON || mode == Mode::ORBIT)
         {
@@ -368,7 +368,9 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
         _data._eye.set( ExtractCameraPos2( viewMatrix ) );
-        _data._orientation.fromMatrix(viewMatrix);
+        _data._orientation.fromMatrix( viewMatrix );
+        _data._orientation.normalize();
+        _data._orientation = _data._orientation.inverse();
 
         _rotationAccumulator.reset();
         _translationAccumulator.reset();
@@ -387,16 +389,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-        _translationAccumulator.set( eye );
-        _rotationAccumulator.set(Angle::to_DEGREES(quatf(LookAt(eye, target, up)).getEuler()));
-        _data._orientation.identity();
-        _data._eye.reset();
-        _viewMatrixDirty = true;
-        _frustumDirty = true;
-
-        updateViewMatrix();
-
-        return _data._viewMatrix;
+        return lookAt( LookAt( eye, target, up ) );
     }
 
     /// Tell the rendering API to set up our desired PoV

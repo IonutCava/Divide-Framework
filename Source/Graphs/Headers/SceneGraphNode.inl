@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -117,6 +117,12 @@ namespace Divide
         ret._deleter = [handle]() { Handle<T> handleCpy = handle; DestroyResource( handleCpy ); };
 
         return ret;
+    }
+
+    template<typename T> requires std::is_base_of_v<SceneNode, T>
+    SceneNodeHandle FromSharedHandle( const Handle<T> handle )
+    {
+        return FromHandle( GetResourceRef( handle ) );
     }
 }; //namespace Divide
 

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -85,7 +85,9 @@ class SSAOPreRenderOperator final : public PreRenderOperator {
        void prepare(PlayerIndex idx, GFX::CommandBuffer& bufferInOut) override;
 
    private:
-    UniformData _ssaoGenerateConstants;
+    [[nodiscard]] UniformData& generationConstants() noexcept { return _ssaoGenerateConstants[_genHalfRes ? 1u : 0u]; }
+
+    std::array<UniformData, 2> _ssaoGenerateConstants;
     UniformData _ssaoBlurConstants;
     Handle<ShaderProgram> _ssaoGenerateShader = INVALID_HANDLE<ShaderProgram>;
     Handle<ShaderProgram> _ssaoGenerateHalfResShader = INVALID_HANDLE<ShaderProgram>;
@@ -115,7 +117,7 @@ class SSAOPreRenderOperator final : public PreRenderOperator {
     F32 _fadeStart[2] = { 1.f, 1.f };
     F32 _blurThreshold[2] = { 0.05f, 0.05f };
     F32 _blurSharpness[2] = { 40.f, 40.f };
-    I32 _kernelSize[2] = { 3, 3 };
+    std::array<I32, 2> _kernelSize = { { 3, 3 } };
     U8  _kernelSampleCount[2] = { 0u, 0u };
     bool _blur[2] = { false, false };
     bool _stateChanged = false;

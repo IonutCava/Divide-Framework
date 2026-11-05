@@ -282,7 +282,7 @@ namespace Divide
         U8 s_computeBufferSlot =  0u;
 
         constexpr U8 s_uniformsStartOffset = 14u;
-        constexpr std::string_view s_shaderPreprocessCacheVersion = "preprocess-v2";
+        constexpr std::string_view s_shaderPreprocessCacheVersion = "preprocess-v3";
         constexpr std::string_view s_compiledShaderCacheVersion = "target-env-v2";
 
         void RefreshBindingSlots()
@@ -629,6 +629,10 @@ namespace Divide
         AppendToShaderHeader( ShaderType::COUNT, "#define MAX_SHADOW_CASTING_POINT_LIGHTS " + Util::to_string( Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS ) );
         AppendToShaderHeader( ShaderType::COUNT, "#define MAX_SHADOW_CASTING_SPOT_LIGHTS " + Util::to_string( Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS ) );
         AppendToShaderHeader( ShaderType::COUNT, "#define WORLD_AO_LAYER_INDEX " + Util::to_string( ShadowMap::WORLD_AO_LAYER_INDEX ) );
+        if ( !config.rendering.shadowMapping.enabled )
+        {
+            AppendToShaderHeader( ShaderType::FRAGMENT, "#define DISABLE_WORLD_AO" );
+        }
         AppendToShaderHeader( ShaderType::COUNT, "#define MAX_LIGHTS " + Util::to_string( Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME ) );
         AppendToShaderHeader( ShaderType::COUNT, "#define MAX_VISIBLE_NODES " + Util::to_string( Config::MAX_VISIBLE_NODES ) );
         AppendToShaderHeader( ShaderType::COUNT, "#define MAX_CONCURRENT_MATERIALS " + Util::to_string( Config::MAX_CONCURRENT_MATERIALS ) );
@@ -1666,7 +1670,8 @@ namespace Divide
             } break;
             case LoadData::ShaderCacheType::REFLECTION:
             {
-                ret = Reflection::SaveReflectionData( ReflCacheLocation(), ReflTargetName( dataIn._shaderName ), dataIn._reflectionData, atomIDsIn );
+                ret = Reflection::SaveReflectionData( ReflCacheLocation(), ReflTargetName( dataIn._shaderName ),
+                                                      dataIn._reflectionData, dataIn._uniforms, atomIDsIn );
                 if ( !ret )
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_SHADER_SAVE_REFL_FAILED" ), dataIn._shaderName.c_str() );
@@ -1685,6 +1690,26 @@ namespace Divide
         }
 
         return ret;
+    }
+
+    bool ShaderProgram::ReadCachedSPIRV( std::istream& stream, std::vector<SpvWord>& spirvOut )
+    {
+        spirvOut.clear();
+        stream.seekg( 0, std::ios::end );
+        const std::streamoff byteCount = stream.tellg();
+        if ( byteCount <= 0 || byteCount % sizeof( SpvWord ) != 0 )
+        {
+            return false;
+        }
+
+        stream.seekg( 0, std::ios::beg );
+        spirvOut.resize( to_size( byteCount ) / sizeof( SpvWord ) );
+        if ( !stream.read( reinterpret_cast<char*>( spirvOut.data() ), byteCount ) )
+        {
+            spirvOut.clear();
+            return false;
+        }
+        return true;
     }
 
     bool ShaderProgram::LoadFromCache( const LoadData::ShaderCacheType cache, LoadData& dataInOut, eastl::set<U64>& atomIDsOut )
@@ -1728,32 +1753,15 @@ namespace Divide
 
                 if ( err == FileError::NONE )
                 {
-                    tempData.seekg(0, std::ios::end);
-                    dataInOut._sourceCodeSpirV.reserve( tempData.tellg() / sizeof( SpvWord ) );
-                    tempData.seekg(0);
-
-                    while (!tempData.eof())
-                    {
-                        SpvWord inWord;
-                        tempData.read((char *)&inWord, sizeof(inWord));
-                        if (!tempData.eof())
-                        {
-                            dataInOut._sourceCodeSpirV.push_back(inWord);
-                            if (tempData.fail())
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                    
-                    return true;
+                    return ReadCachedSPIRV( tempData, dataInOut._sourceCodeSpirV );
                 }
 
                 return false;
             }
             case LoadData::ShaderCacheType::REFLECTION:
             {
-                return Reflection::LoadReflectionData( ReflCacheLocation(), ReflTargetName( dataInOut._shaderName ), dataInOut._reflectionData, atomIDsOut );
+                return Reflection::LoadReflectionData( ReflCacheLocation(), ReflTargetName( dataInOut._shaderName ),
+                                                       dataInOut._reflectionData, dataInOut._uniforms, atomIDsOut );
             }
             default:
             case LoadData::ShaderCacheType::COUNT: break;
@@ -1773,18 +1781,23 @@ namespace Divide
 
         _usedAtomIDs.clear();
 
+        std::array<U64, to_base( ShaderType::COUNT )> orderedFiles{};
+        size_t orderedFileCount = 0u;
         for ( const ShaderModuleDescriptor& shaderDescriptor : _descriptor._modules )
         {
             const U64 fileHash = _ID( shaderDescriptor._sourceFile.data() );
+            if ( fileData.find( fileHash ) == fileData.end() )
+            {
+                orderedFiles[orderedFileCount++] = fileHash;
+            }
             fileData[fileHash]._modules.push_back( shaderDescriptor );
             ShaderModuleDescriptor& newDescriptor = fileData[fileHash]._modules.back();
             newDescriptor._defines.insert( end( newDescriptor._defines ), begin( _descriptor._globalDefines ), end( _descriptor._globalDefines ) );
             _usedAtomIDs.insert( _ID( shaderDescriptor._sourceFile.c_str() ) );
         }
 
-        U8 blockOffset = 0u;
-
-        Reflection::UniformsSet previousUniforms;
+        UniformBlockLayouts uniformBlocks{};
+        size_t precedingStagesHash = 0u;
 
         _uniformBlockBuffers.clear();
         _setUsage.fill( false );
@@ -1792,8 +1805,9 @@ namespace Divide
         _sampledImages.clear();
         _perDrawDescriptorSetLayout = {};
 
-        for ( auto& [fileHash, loadDataPerFile] : fileData )
+        for ( size_t fileIndex = 0u; fileIndex < orderedFileCount; ++fileIndex )
         {
+            PerFileShaderData& loadDataPerFile = fileData[orderedFiles[fileIndex]];
             for ( const ShaderModuleDescriptor& data : loadDataPerFile._modules )
             {
                 const ShaderType type = data._moduleType;
@@ -1818,12 +1832,14 @@ namespace Divide
                     stageData._shaderName.append( ("." + Util::to_string(stageData._definesHash)).c_str());
                 }
                 stageData._shaderName.append( ("." + shaderAtomExtensionName[to_U8(type)]).c_str() );
+                stageData._shaderName.append( Util::StringFormat( ".p{:016x}", precedingStagesHash ).c_str() );
 
-                if ( !loadSourceCode( data._defines, overwrite, stageData, previousUniforms, blockOffset ) )
+                if ( !loadSourceCode( data._defines, overwrite, stageData, uniformBlocks ) )
                 {
                     Console::errorfn(LOCALE_STR("ERROR_SHADER_LOAD_SOURCE_CODE_FAILED"), stageData._shaderName.c_str(), overwrite ? "TRUE" : "FALSE");
                     return false;
                 }
+                Util::Hash_combine( precedingStagesHash, GetHash( data ) );
 
                 if ( !loadDataPerFile._programName.empty() )
                 {
@@ -2083,113 +2099,118 @@ namespace Divide
         }
     }
 
-    bool ShaderProgram::loadSourceCode( const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut, Reflection::UniformsSet& previousUniformsInOut, U8& blockIndexInOut )
+    U8 ShaderProgram::FindUniformBlockIndex( const UniformBlockLayouts& uniformBlocks,
+                                            const Reflection::UniformsSet& uniforms ) noexcept
     {
-        // Clear existing code
-        loadDataInOut._sourceCodeGLSL.resize( 0 );
-        loadDataInOut._sourceCodeSpirV.resize( 0 );
+        if ( uniforms.empty() )
+        {
+            return Reflection::INVALID_BINDING_INDEX;
+        }
+
+        for ( U8 i = 0u; i < uniformBlocks.size(); ++i )
+        {
+            if ( uniformBlocks[i] == uniforms )
+            {
+                return i;
+            }
+        }
+        for ( U8 i = 0u; i < uniformBlocks.size(); ++i )
+        {
+            if ( uniformBlocks[i].empty() )
+            {
+                return i;
+            }
+        }
+        return Reflection::INVALID_BINDING_INDEX;
+    }
+
+    bool ShaderProgram::CachedUniformBlockMatches( const UniformBlockLayouts& uniformBlocks,
+                                                   const LoadData& data, U8& blockIndexOut ) noexcept
+    {
+        blockIndexOut = FindUniformBlockIndex( uniformBlocks, data._uniforms );
+        const U8 cachedBinding = data._reflectionData._uniformBlockBindingIndex;
+        return data._uniforms.empty()
+            ? cachedBinding == Reflection::INVALID_BINDING_INDEX
+            : blockIndexOut != Reflection::INVALID_BINDING_INDEX &&
+              cachedBinding == blockIndexOut + s_uniformsStartOffset;
+    }
+
+    bool ShaderProgram::loadSourceCode( const ModuleDefines& defines, const bool reloadExisting,
+                                        LoadData& loadDataInOut, UniformBlockLayouts& uniformBlocksInOut )
+    {
+        loadDataInOut._sourceCodeGLSL.clear();
+        loadDataInOut._sourceCodeSpirV.clear();
+        loadDataInOut._uniforms.clear();
+        loadDataInOut._reflectionData = {};
 
         eastl::set<U64> atomIDs;
-
-        bool needGLSL = s_renderAPI == RenderAPI::OpenGL;
         if ( reloadExisting )
         {
-            // Hot reloading will always reparse GLSL source files so the best way to achieve that is to delete cache files
-            needGLSL = true;
-            // We should have cached the existing shader, so a failure here is NOT expected
             DIVIDE_EXPECTED_CALL( DeleteCache( LoadData::ShaderCacheType::COUNT, loadDataInOut._shaderName ) );
         }
-
-        // Load SPIRV code from cache (if needed)
-        if ( reloadExisting || !useShaderCache()  || !LoadFromCache(LoadData::ShaderCacheType::SPIRV, loadDataInOut, atomIDs) )
+        else if ( useShaderCache() && LoadFromCache( LoadData::ShaderCacheType::REFLECTION, loadDataInOut, atomIDs ) )
         {
-            needGLSL = true;
-        }
-
-        // We either have SPIRV code or we explicitly require GLSL code (e.g. for OpenGL)
-        if ( needGLSL )
-        {
-            // Try and load GLSL code from cache (if needed)
-            if ( reloadExisting || !useShaderCache() || !LoadFromCache( LoadData::ShaderCacheType::GLSL, loadDataInOut, atomIDs ) )
+            U8 blockIndex = Reflection::INVALID_BINDING_INDEX;
+            if ( CachedUniformBlockMatches( uniformBlocksInOut, loadDataInOut, blockIndex ) &&
+                 LoadFromCache( LoadData::ShaderCacheType::SPIRV, loadDataInOut, atomIDs ) &&
+                 !loadDataInOut._sourceCodeSpirV.empty() &&
+                 ( s_renderAPI != RenderAPI::OpenGL ||
+                   LoadFromCache( LoadData::ShaderCacheType::GLSL, loadDataInOut, atomIDs ) ) )
             {
-                // That failed, so re-parse the code
-                loadAndParseGLSL( resourceName(), s_renderAPI, defines, loadDataInOut, previousUniformsInOut, blockIndexInOut, atomIDs );
-                if ( loadDataInOut._sourceCodeGLSL.empty() )
+                if ( blockIndex != Reflection::INVALID_BINDING_INDEX )
                 {
-                    // That failed so we have no choice but to bail
-                    return false;
+                    uniformBlocksInOut[blockIndex] = loadDataInOut._uniforms;
                 }
-                else
+                if ( !loadDataInOut._sourceCodeGLSL.empty() )
                 {
-                    // That succeeded so save the new cache file for future use
-                    SaveToCache( LoadData::ShaderCacheType::GLSL, loadDataInOut, atomIDs );
+                    loadDataInOut._reflectionData._pushConstantsState = DetectPushConstantsUsage( loadDataInOut._sourceCodeGLSL );
                 }
-            }
-
-            // We MUST have GLSL code at this point so now we have too options.
-            // We already have SPIRV code and can proceed or we failed loading SPIRV from cache so we must convert GLSL -> SPIRV
-            if ( loadDataInOut._sourceCodeSpirV.empty() )
-            {
-                // We are in situation B: we need SPIRV code, so convert our GLSL code over
-                DIVIDE_GPU_ASSERT( !loadDataInOut._sourceCodeGLSL.empty() );
-                if ( !SpirvHelper::GLSLtoSPV( loadDataInOut._type, loadDataInOut._sourceCodeGLSL.c_str(), loadDataInOut._sourceCodeSpirV, s_renderAPI ) )
-                {
-                    Console::errorfn( LOCALE_STR( "ERROR_SHADER_CONVERSION_SPIRV_FAILED" ), loadDataInOut._shaderName.c_str() );
-                    // We may fail here for WHATEVER reason so bail
-                    if ( !DeleteCache( LoadData::ShaderCacheType::GLSL, loadDataInOut._shaderName ) )
-                    {
-                        NOP();
-                    }
-                    return false;
-                }
-                else
-                {
-                    // We managed to generate good SPIRV so save it to the cache for future use
-                    SaveToCache( LoadData::ShaderCacheType::SPIRV, loadDataInOut, atomIDs );
-                }
+                _usedAtomIDs.insert( begin( atomIDs ), end( atomIDs ) );
+                return true;
             }
         }
 
-        // Whatever the process to get here was, we need SPIRV to proceed
-        DIVIDE_GPU_ASSERT( !loadDataInOut._sourceCodeSpirV.empty() );
-
-        // Time to see if we have any cached reflection data, and, if not, build it
-        if ( reloadExisting || !useShaderCache() || !LoadFromCache( LoadData::ShaderCacheType::REFLECTION, loadDataInOut, atomIDs ) )
+        // A cache entry is usable only as a complete, layout-compatible set.
+        loadDataInOut._sourceCodeGLSL.clear();
+        loadDataInOut._sourceCodeSpirV.clear();
+        loadDataInOut._uniforms.clear();
+        loadDataInOut._reflectionData = {};
+        atomIDs.clear();
+        loadAndParseGLSL( resourceName(), s_renderAPI, defines, loadDataInOut, uniformBlocksInOut, atomIDs );
+        if ( loadDataInOut._sourceCodeGLSL.empty() )
         {
-            // Well, we failed. Time to build our reflection data again
-            if ( !SpirvHelper::BuildReflectionData( loadDataInOut._type, loadDataInOut._sourceCodeSpirV, s_renderAPI, loadDataInOut._reflectionData ) )
+            return false;
+        }
+        SaveToCache( LoadData::ShaderCacheType::GLSL, loadDataInOut, atomIDs );
+
+        if ( !SpirvHelper::GLSLtoSPV( loadDataInOut._type, loadDataInOut._sourceCodeGLSL.c_str(), loadDataInOut._sourceCodeSpirV, s_renderAPI ) )
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_SHADER_CONVERSION_SPIRV_FAILED" ), loadDataInOut._shaderName.c_str() );
+            if ( !DeleteCache( LoadData::ShaderCacheType::GLSL, loadDataInOut._shaderName ) )
             {
-                Console::errorfn( LOCALE_STR( "ERROR_SHADER_REFLECTION_SPIRV_FAILED" ), loadDataInOut._shaderName.c_str() );
-                return false;
+                NOP();
             }
-            // Save reflection data to cache for future use
-            SaveToCache( LoadData::ShaderCacheType::REFLECTION, loadDataInOut, atomIDs );
+            return false;
         }
-        else if ( loadDataInOut._reflectionData._uniformBlockBindingIndex != Reflection::INVALID_BINDING_INDEX )
-        {
-            blockIndexInOut = loadDataInOut._reflectionData._uniformBlockBindingIndex - s_uniformsStartOffset;
-        }
+        SaveToCache( LoadData::ShaderCacheType::SPIRV, loadDataInOut, atomIDs );
 
-        if (!loadDataInOut._sourceCodeGLSL.empty())
+        if ( !SpirvHelper::BuildReflectionData( loadDataInOut._type, loadDataInOut._sourceCodeSpirV, s_renderAPI, loadDataInOut._reflectionData ) )
         {
-            loadDataInOut._reflectionData._pushConstantsState = DetectPushConstantsUsage(loadDataInOut._sourceCodeGLSL);
+            Console::errorfn( LOCALE_STR( "ERROR_SHADER_REFLECTION_SPIRV_FAILED" ), loadDataInOut._shaderName.c_str() );
+            return false;
         }
+        loadDataInOut._reflectionData._pushConstantsState = DetectPushConstantsUsage( loadDataInOut._sourceCodeGLSL );
+        SaveToCache( LoadData::ShaderCacheType::REFLECTION, loadDataInOut, atomIDs );
 
-        if ( !loadDataInOut._sourceCodeGLSL.empty() || !loadDataInOut._sourceCodeSpirV.empty() )
-        {
-            _usedAtomIDs.insert( begin( atomIDs ), end( atomIDs ) );
-            return true;
-        }
-
-        return false;
+        _usedAtomIDs.insert( begin( atomIDs ), end( atomIDs ) );
+        return true;
     }
 
     void ShaderProgram::loadAndParseGLSL( const std::string_view programName,
                                           const RenderAPI renderAPI,
                                           const ModuleDefines& defines,
                                           LoadData& loadDataInOut,
-                                          Reflection::UniformsSet& previousUniformsInOut,
-                                          U8& blockIndexInOut,
+                                          UniformBlockLayouts& uniformBlocksInOut,
                                           eastl::set<U64>& atomIDsInOut )
     {
         auto& glslCodeOut = loadDataInOut._sourceCodeGLSL;
@@ -2253,15 +2274,16 @@ namespace Divide
 
         if ( !loadDataInOut._uniforms.empty() )
         {
-            if ( !previousUniformsInOut.empty() && previousUniformsInOut != loadDataInOut._uniforms )
+            const U8 blockIndex = FindUniformBlockIndex( uniformBlocksInOut, loadDataInOut._uniforms );
+            if ( blockIndex == Reflection::INVALID_BINDING_INDEX )
             {
-                ++blockIndexInOut;
-
-                DIVIDE_GPU_ASSERT(blockIndexInOut < 2, "ShaderProgram::load: We only support 2 uniform blocks per shader program at the moment. Batch uniforms from different stages together to reduce usage!");
+                Console::errorfn( "Shader program [{}] requires more than two distinct loose-uniform blocks.", programName );
+                glslCodeOut.clear();
+                return;
             }
 
             loadDataInOut._reflectionData._uniformBlockBindingSet = to_base( DescriptorSetUsage::PER_DRAW );
-            loadDataInOut._reflectionData._uniformBlockBindingIndex = blockIndexInOut + s_uniformsStartOffset;
+            loadDataInOut._reflectionData._uniformBlockBindingIndex = blockIndex + s_uniformsStartOffset;
 
             string& uniformBlock = loadDataInOut._uniformBlock;
             uniformBlock = "layout( ";
@@ -2289,9 +2311,9 @@ namespace Divide
                 : ShaderProgram::GetGLBindingForDescriptorSlot( DescriptorSetUsage::PER_DRAW,
                                                                 loadDataInOut._reflectionData._uniformBlockBindingIndex );
 
-            Util::StringFormatTo( uniformBlock, uniformBlock.c_str(), layoutIndex, Util::StringFormat( "dvd_UniformBlock_{}", blockIndexInOut ) );
+            Util::StringFormatTo( uniformBlock, uniformBlock.c_str(), layoutIndex, Util::StringFormat( "dvd_UniformBlock_{}", blockIndex ) );
 
-            previousUniformsInOut = loadDataInOut._uniforms;
+            uniformBlocksInOut[blockIndex] = loadDataInOut._uniforms;
         }
 
         string pushConstantCodeBlock{};

@@ -65,24 +65,16 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
-        constexpr U8 MAX_STEP_PER_FRAME = 15u;
-
-        if ( _shaderComputeQueue.empty() )
-        {
-            return false;
-        }
-
-        if ( _maxShaderLoadsInFlight.load() >= MAX_STEP_PER_FRAME )
-        {
-            return false;
-        }
-
-        while ( !_shaderComputeQueue.empty() )
+        constexpr U8 MAX_SHADER_LOADS_IN_FLIGHT = 15u;
+        bool processed = false;
+        while ( !_shaderComputeQueue.empty() &&
+                _maxShaderLoadsInFlight.load( std::memory_order_relaxed ) < MAX_SHADER_LOADS_IN_FLIGHT )
         {
             processLocked( _shaderComputeQueue.front() );
             _shaderComputeQueue.pop_front();
+            processed = true;
         }
-        return true;
+        return processed;
     }
 
     void ShaderComputeQueue::addToQueueFront( const ShaderQueueElement& element )

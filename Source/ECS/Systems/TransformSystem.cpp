@@ -1,7 +1,9 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/TransformSystem.h"
+#include "Headers/TransformHierarchy.h"
 
+#include "ECS/Components/Headers/BoundsComponent.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -16,24 +18,6 @@ namespace Divide {
         : PlatformContextComponent(context)
         , ECSSystem(parentEngine)
     {
-    }
-
-    void TransformSystem::PreUpdate(const F32 dt)
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
-
-        Parent::PreUpdate(dt);
-
-        for ( TransformComponent* comp : _componentCache )
-        {
-            // If we have dirty transforms, inform everybody
-            const U32 updateMask = comp->_transformUpdatedMask.load();
-            if (updateMask != to_base(TransformType::NONE))
-            {
-                Attorney::SceneGraphNodeSystem::setTransformDirty(comp->parentSGN(), updateMask);
-                comp->_local._computed = comp->_world._computed = false;
-            }
-        }
     }
 
     void TransformSystem::Update(const F32 dt)
@@ -52,6 +36,7 @@ namespace Divide {
             const U32 previousMask = comp->_transformUpdatedMask.exchange(to_U32(TransformType::NONE));
             if (previousMask != to_U32(TransformType::NONE))
             {
+                comp->_local._computed = comp->_world._computed = false;
                 dirtyComponents.emplace_back(comp);
                 comp->_broadcastMask = previousMask;
             }
@@ -95,6 +80,15 @@ namespace Divide {
 
         Parent::PostUpdate(dt);
 
+        if (++_worldUpdateEpoch == 0u)
+        {
+            for (TransformComponent* comp : _componentCache)
+            {
+                comp->_worldResolutionEpoch = 0u;
+            }
+            ++_worldUpdateEpoch;
+        }
+
         for (TransformComponent* comp : _componentCache)
         {
             computeWorldMatrix(comp);
@@ -104,6 +98,11 @@ namespace Divide {
         {
             if ( comp->_broadcastMask != 0u )
             {
+                if ( BoundsComponent* bounds = comp->parentSGN()->get<BoundsComponent>() )
+                {
+                    bounds->flagBoundingBoxDirty( comp->_broadcastMask, true );
+                }
+
                 comp->parentSGN()->SendEvent(
                     ECS::CustomEvent
                     {
@@ -121,43 +120,23 @@ namespace Divide {
 
     void TransformSystem::computeWorldMatrix(TransformComponent* comp) const
     {
-        if ( comp->_world._computed )
+        const auto getParent = [](const TransformComponent& transform) -> TransformComponent*
         {
-            return;
-        }
-
-        const bool useLocalRotations = comp->rotationMode() == TransformComponent::RotationMode::LOCAL;
-
-        comp->_world._matrix         = comp->_local._matrix;
-        comp->_world._previousValues = comp->_world._values;
-        comp->_world._values         = comp->_local._values;
-
-        SceneGraphNode* grandParent = comp->_parentSGN->parent();
-        if ( grandParent != nullptr ) 
-        {
-            TransformComponent* tComp = grandParent->get<TransformComponent>();
-            if ( tComp != nullptr )
-            {
-                computeWorldMatrix(tComp);
-
-                comp->_world._values._orientation = tComp->_world._values._orientation * comp->_world._values._orientation;
-                comp->_world._values._scale       = tComp->_world._values._scale       * comp->_world._values._scale;
-
-                const float3 worldPosition = useLocalRotations ? comp->_world._values._translation
-                                                               : tComp->_world._values._orientation * (tComp->_world._values._scale * comp->_world._values._translation);
-
-                comp->_world._values._translation = tComp->_world._values._translation + worldPosition;
-            }
-        }
-
-        comp->_world._matrix = mat4<F32>
-        {
-            comp->_world._values._translation,
-            comp->_world._values._scale,
-            comp->_world._values._orientation.getConjugate()
+            const SceneGraphNode* parent = transform._parentSGN->parent();
+            return parent != nullptr ? parent->get<TransformComponent>() : nullptr;
         };
-
-        comp->_world._computed = true;
+        const auto getEntry = [](TransformComponent& transform) -> TransformHierarchyEntry
+        {
+            return
+            {
+                transform._local,
+                transform._world,
+                transform._broadcastMask,
+                transform._worldResolutionEpoch,
+                transform.rotationMode() == TransformComponent::RotationMode::LOCAL
+            };
+        };
+        ResolveWorldTransform(*comp, _worldUpdateEpoch, getParent, getEntry);
     }
 
     bool TransformSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer)

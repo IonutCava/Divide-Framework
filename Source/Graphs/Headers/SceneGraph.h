@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -34,6 +34,7 @@
 #define DVD_SCENE_GRAPH_H_
 
 #include "SceneNode.h"
+#include "SceneNodeRemovalQueue.h"
 #include "IntersectionRecord.h"
 #include "Scenes/Headers/SceneComponent.h"
 #include "Core/Headers/FrameListener.h"
@@ -82,12 +83,18 @@ class SceneGraph final : NonCopyable,
     /// Update all nodes. Called from "updateSceneState" from class Scene
     void sceneUpdate(U64 deltaTimeUS, SceneState& sceneState);
 
+    void invalidateStaticGeometryBounds() noexcept;
+    void invalidateStaticGeometryBounds(const SceneGraphNode& node) noexcept;
+    void invalidateShadowBounds(const SceneGraphNode& node, const BoundingSphere& previous, bool previousStatic);
+    void updateStaticGeometryBounds();
+    [[nodiscard]] bool staticGeometryBounds(BoundingBox& boundsOut) const noexcept;
+
     bool intersect(const SGNIntersectionParams& params, vector<SGNRayResult>& intersectionsOut) const;
 
     SceneGraphNode* createSceneGraphNode(PlatformContext& context, SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor);
 
     void destroySceneGraphNode(SceneGraphNode*& node, bool inPlace = true);
-    void addToDeleteQueue(SceneGraphNode* node, size_t childIdx);
+    void addToDeleteQueue(I64 guid);
 
     // If this function returns true, the node was successfully removed (or queued for removal)
     bool removeNode(I64 guid);
@@ -141,7 +148,7 @@ class SceneGraph final : NonCopyable,
    protected:
     void onNodeMoved(const SceneGraphNode& node);
     void onNodeDestroy(SceneGraphNode* oldNode);
-    void onNodeAdd(SceneGraphNode* newNode);
+    void onNodeAdd(SceneGraphNode* newNode, bool reparented = false);
     void onNodeUpdated(const SceneGraphNode& node);
     void onNodeSpatialChange(const SceneGraphNode& node);
 
@@ -156,20 +163,28 @@ class SceneGraph final : NonCopyable,
     ECS::ECSEngine _ecsEngine;
     ECSManager_uptr _ecsManager;
     bool _nodeListChanged = false;
+    bool _unloading = false;
+    std::atomic<U64> _staticGeometryRevision{ 1u };
+    U64 _computedStaticGeometryRevision = 0u;
+    BoundingBox _staticGeometryBounds{};
+    bool _hasStaticGeometryBounds = false;
 
     SceneGraphNode* _root = nullptr;
     vector<SceneGraphNode*> _nodeList;
     Mutex _intersectionsLock;
     IntersectionContainer _intersectionsCache;
     std::array<vector<SceneGraphNode*>, to_base(SceneNodeType::COUNT)> _nodesByType;
+    hashMap<I64, SceneGraphNode*> _nodesByGUID;
 
     mutable Mutex _nodeCreateMutex;
     mutable SharedMutex _nodesByTypeLock;
-    mutable SharedMutex _pendingDeletionLock;
-    hashMap<SceneGraphNode*, vector<size_t>> _pendingDeletion;
+    SceneNodeRemovalQueue _pendingDeletion;
 
+    mutable RecursiveMutex _nodeEventLifetimeLock;
     mutable Mutex _nodeEventLock;
     fixed_vector<SceneGraphNode*, 1024, true> _nodeEventQueue;
+    fixed_vector<SceneGraphNode*, 1024, true> _processingNodeEvents;
+    bool _processingNodeEventsActive = false;
 
     mutable Mutex _nodeParentChangeLock;
     fixed_vector<SceneGraphNode*, 256, true> _nodeParentChangeQueue;
@@ -182,9 +197,9 @@ namespace Attorney
 
 class SceneGraphSGN
 {
-    static void onNodeAdd(Divide::SceneGraph* sceneGraph, SceneGraphNode* newNode)
+    static void onNodeAdd(Divide::SceneGraph* sceneGraph, SceneGraphNode* newNode, const bool reparented)
     {
-        sceneGraph->onNodeAdd(newNode);
+        sceneGraph->onNodeAdd(newNode, reparented);
     }
 
     static void onNodeDestroy(Divide::SceneGraph* sceneGraph, SceneGraphNode* oldNode)

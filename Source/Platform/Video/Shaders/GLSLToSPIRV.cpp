@@ -198,28 +198,20 @@ bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* p
     {
         using namespace Divide;
 
-        Console::errorfn( shader.getInfoLog() );
-        Console::errorfn( shader.getInfoDebugLog() );
-        const bool decorations[] = {
-            Console::IsFlagSet( Console::Flags::DECORATE_TIMESTAMP ),
-            Console::IsFlagSet( Console::Flags::DECORATE_THREAD_ID ),
-            Console::IsFlagSet( Console::Flags::DECORATE_FRAME ),
-            Console::IsFlagSet( Console::Flags::DECORATE_SEVERITY )
+        Console::errorfn( "{}", shader.getInfoLog() );
+        Console::errorfn( "{}", shader.getInfoDebugLog() );
+        const Console::ScopedFlags consoleFlags{
+            0u,
+            to_U32(to_base(Console::Flags::DECORATE_TIMESTAMP) |
+                   to_base(Console::Flags::DECORATE_THREAD_ID) |
+                   to_base(Console::Flags::DECORATE_FRAME) |
+                   to_base(Console::Flags::DECORATE_SEVERITY))
         };
-
-        Console::ToggleFlag( Console::Flags::DECORATE_TIMESTAMP, false );
-        Console::ToggleFlag( Console::Flags::DECORATE_THREAD_ID, false );
-        Console::ToggleFlag( Console::Flags::DECORATE_FRAME,     false );
-        Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY,  false );
 
         Console::errorfn( "-------------------------------------------------------\n\n" );
         Console::errorfn( "{}", pshader );
         Console::errorfn( "\n\n-------------------------------------------------------" );
 
-        Console::ToggleFlag( Console::Flags::DECORATE_TIMESTAMP, decorations[0] );
-        Console::ToggleFlag( Console::Flags::DECORATE_THREAD_ID, decorations[1] );
-        Console::ToggleFlag( Console::Flags::DECORATE_FRAME,     decorations[2] );
-        Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY,  decorations[3] );
     };
 
     if ( !shader.parse( &Resources, 100, false, messages ) )

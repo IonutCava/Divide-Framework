@@ -1,6 +1,6 @@
 /*
 Copyright (c) 2018-2026 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -34,6 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DVD_BOUNDS_COMPONENT_H_
 
 #include "SGNComponent.h"
+#include "BoundsUpdateState.h"
 #include "Core/Math/BoundingVolumes/Headers/OBB.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingBox.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
@@ -46,12 +47,11 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
         [[nodiscard]] const BoundingBox& getBoundingBox() const noexcept { return _boundingBox; }
         [[nodiscard]] const BoundingSphere& getBoundingSphere() const noexcept { return _boundingSphere; }
 
-        [[nodiscard]] const OBB& getOBB();
+        [[nodiscard]] OBB getOBB() const;
 
         void updateBoundingBoxTransform();
         void appendChildBBs();
         void appendChildRefBBs();
-        [[nodiscard]] FORCE_INLINE bool isClean() const noexcept { return _transformUpdatedMask.load() == 0u; }
 
         PROPERTY_RW(bool, collisionsEnabled, true);
         PROPERTY_RW(bool, showAABB, false);
@@ -61,10 +61,9 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
     protected:
         friend class SceneGraph;
         friend class BoundsSystem;
+        friend class TransformSystem;
         template<typename T, typename U>
         friend class ECSSystem;
-
-        void OnData(const ECS::CustomEvent& data) override;
 
         void setRefBoundingBox(const BoundingBox& nodeBounds) noexcept;
 
@@ -72,14 +71,14 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
         void flagBoundingBoxDirty(U32 transformMask, bool recursive);
 
     private:
-        std::atomic_uint _transformUpdatedMask;
+        BoundsUpdateState _boundsUpdate;
+        BoundsChangeTracker _boundsChanges;
         BoundingBox _boundingBox{};
         BoundingBox _refBoundingBox{};
         BoundingSphere _boundingSphere{};
-        OBB _obb{};
-        mat4<F32> _lastTransform{MAT4_IDENTITY};
-        std::atomic_bool _obbDirty = false;
+        U64 _sourceBoundsRevision = U64_MAX;
         bool _containsWorldSpaceBounds = false;
+        bool _rebuildChildBounds = false;
 
 
 END_COMPONENT(Bounds)

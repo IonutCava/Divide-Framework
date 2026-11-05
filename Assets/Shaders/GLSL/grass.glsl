@@ -104,6 +104,8 @@ layout(location = ATTRIB_FREE_START + 1) flat in uint  _instanceID;
 layout(location = ATTRIB_FREE_START + 2)      in float _alphaFactor;
 
 void main (void){
+    const vec4 positionDx = dFdx(VAR._vertexW);
+    const vec4 positionDy = dFdy(VAR._vertexW);
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
 
     vec4 albedo = texture(texDiffuse0, vec3(VAR._texCoord, _layer));
@@ -129,12 +131,13 @@ void main (void){
 #endif //DEBUG_LODS
 
     const vec3 normalWV = getNormalWV(data, vec3(VAR._texCoord, 0));
+    const vec3 viewVec = computeViewDirectionWV();
+    const float NdotV = max(dot(normalWV, viewVec), 0.f);
+    const PBRMaterial material = initMaterialProperties(data, albedo.rgb, VAR._texCoord, normalWV, NdotV);
+    const IBLGradients gradients = IBL_GRADIENTS(vec3(0.f), vec2(0.f));
 
-    vec4 colour = vec4(albedo.rgb, min(albedo.a, _alphaFactor));
-    if (albedo.a > ALPHA_DISCARD_THRESHOLD) {
-        colour = getPixelColour(albedo, data, normalWV);
-    }
-    writeScreenColour(colour, vec3(0.f), normalWV);
+    albedo.a *= _alphaFactor;
+    writeScreenColour(getPixelColour(albedo, data, normalWV, material, viewVec, gradients, positionDx, positionDy), vec3(0.f), normalWV);
 }
 
 --Fragment.PrePass
@@ -166,10 +169,11 @@ layout(location = ATTRIB_FREE_START + 2)      in float _alphaFactor;
 layout(location = 0) out vec2 _colourOut;
 
 void main(void) {
+    const vec2 moments = computeMoments();
     // Only discard alpha == 0
     if (texture(texDiffuse0, vec3(VAR._texCoord, _layer)).a < ALPHA_DISCARD_THRESHOLD) {
         discard;
     }
 
-    _colourOut = computeMoments();
+    _colourOut = moments;
 }

@@ -27,6 +27,21 @@ namespace Divide
         return directional ? maxCascades : contentCount;
     }
 
+    template<typename Bounds>
+    [[nodiscard]] bool ShadowVolumeAffectsLight(const bool directional, const Bounds& volume,
+                                                 const Bounds& lightBounds) noexcept
+    {
+        return directional || volume.collision(lightBounds);
+    }
+
+    template<typename Queue, typename Bounds>
+    void AppendShadowVolumeChange(Queue& pending, const Bounds& previous, const bool previousStatic,
+                                  const Bounds& current, const bool currentStatic)
+    {
+        pending.push_back({ previous, previousStatic });
+        pending.push_back({ current, currentStatic });
+    }
+
     template<typename Layers, typename Owner>
     [[nodiscard]] bool TryReuseShadowLayers(Layers& layers, const Owner owner,
                                              const size_t offset, const size_t count,
@@ -121,6 +136,50 @@ namespace Divide
         std::array<U32, TypeCount> _perType{};
         U32 _total = 0u;
         U32 _totalLimit;
+    };
+
+    class ShadowMovementBatch
+    {
+      public:
+        struct Snapshot
+        {
+            size_t _count;
+            bool _invalidateAll;
+        };
+
+        [[nodiscard]] Snapshot begin(const size_t pendingCount) noexcept
+        {
+            if (!_active)
+            {
+                _count = pendingCount;
+                _active = true;
+            }
+            return { _count, _invalidateAll };
+        }
+
+        [[nodiscard]] size_t finish(const size_t pendingCount) noexcept
+        {
+            size_t consumed = 0u;
+            if (_active)
+            {
+                assert(_count <= pendingCount);
+                consumed = _count;
+                _invalidateAll = false;
+            }
+            else if (pendingCount > 0u)
+            {
+                consumed = pendingCount;
+                _invalidateAll = true;
+            }
+            _count = 0u;
+            _active = false;
+            return consumed;
+        }
+
+      private:
+        size_t _count = 0u;
+        bool _active = false;
+        bool _invalidateAll = false;
     };
 
     template<typename Matrix>

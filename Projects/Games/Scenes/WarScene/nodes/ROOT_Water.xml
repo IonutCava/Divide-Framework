@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <static>true</static>
-<dimensions width="4096" length="4096" depth="500"/>
+<dimensions width="4608" length="4608" depth="500"/>
 <WATER>
     <Blur__reflections>true</Blur__reflections>
     <Blur__kernel__size>9</Blur__kernel__size>
@@ -15,7 +15,7 @@
 </WATER>
 <TRANSFORM>
     <Transform>
-        <position x="0" y="2" z="0"/>
+        <position x="0" y="0" z="0"/>
         <orientation x="0" y="-0" z="0"/>
         <scale x="1" y="1" z="1"/>
     </Transform>
@@ -115,7 +115,7 @@
         <texture>
             <NORMALMAP>
                 <name>terrain_water_NM_old.jpg</name>
-                <path>assets/misc_images/</path>
+                <path>Assets/MiscImages</path>
                 <usage>REPLACE</usage>
                 <Sampler>
                     <id>1</id>

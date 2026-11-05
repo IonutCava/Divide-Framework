@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -185,10 +185,12 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void setTransformDirty(TransformType type) noexcept;
      void setTransformDirty(U32 typeMask) noexcept;
 
-     void onParentTransformDirty(U32 transformMask) noexcept;
      void onParentUsageChanged(NodeUsageContext context) noexcept;
 
-     void onParentChanged(const SceneGraphNode* oldParent, const SceneGraphNode* newParent);
+     [[nodiscard]] TransformValues pendingWorldValues() const;
+     [[nodiscard]] bool prepareParentChange(const SceneGraphNode* oldParent,
+                                            const SceneGraphNode* newParent,
+                                            TransformValues& localOut) const;
 
      void getScale(float3& scaleOut) const override;
      void getPosition(float3& posOut) const override;
@@ -209,6 +211,7 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
 
     NodeUsageContext _parentUsageContext;
 
+    U64 _worldResolutionEpoch = 0u;
     U32 _broadcastMask = 0u;
     bool _uniformScaled = true;
 
@@ -221,19 +224,15 @@ namespace Attorney
 {
     class TransformComponentSGN
     {
-        static void onParentTransformDirty(TransformComponent& comp, const U32 transformMask) noexcept
-        {
-            comp.onParentTransformDirty(transformMask);
-        }
-
         static void onParentUsageChanged(TransformComponent& comp, const NodeUsageContext context) noexcept
         {
             comp.onParentUsageChanged(context);
         }
         
-        static void onParentChanged(TransformComponent& comp, const SceneGraphNode* oldParent, const SceneGraphNode* newParent) noexcept
+        [[nodiscard]] static bool prepareParentChange(const TransformComponent& comp, const SceneGraphNode* oldParent,
+                                                      const SceneGraphNode* newParent, TransformValues& localOut)
         {
-            comp.onParentChanged(oldParent, newParent);
+            return comp.prepareParentChange(oldParent, newParent, localOut);
         }
         friend class Divide::SceneGraphNode;
     };

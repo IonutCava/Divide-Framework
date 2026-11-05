@@ -10,17 +10,25 @@
 #define VEGETATION_INSTANCE_INDEX uint(dvd_InstanceIndex)
 #endif
 
+#if defined(VEGETATION_TREE_DRAW)
+uniform uint dvd_instanceDataIndex = 0u;
+#else
 uniform uint dvd_terrainChunkOffset = 0u;
+#endif
 
 struct VegetationData {
     vec4 positionAndScale;
     vec4 orientationQuad;
-    //x - array index, y - lod z - render flag, w - height scale
+    // x - grass layer/tree species, y - grass LoD/tree cull radius, z - visibility/fade, w - camera distance
     vec4 data;
 };
 
 #if defined(MAX_TREE_INSTANCES)
+#if defined(VEGETATION_TREE_DRAW)
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 13, std430) coherent COMP_ONLY_RW buffer dvd_treeTransformBlock {
+#else
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 5, std430) coherent COMP_ONLY_RW buffer dvd_treeTransformBlock {
+#endif
     VegetationData treeData[];
 };
 

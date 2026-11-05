@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -44,31 +44,6 @@ inline void BoundingSphere::fromBoundingBox(const BoundingBox& bBox) noexcept
 inline void BoundingSphere::fromBoundingSphere(const BoundingSphere& bSphere) noexcept
 {
     _sphere = bSphere._sphere;
-}
-
-// https://code.google.com/p/qe3e/source/browse/trunk/src/BoundingSphere.h?r=28
-inline void BoundingSphere::add(const BoundingSphere& bSphere) noexcept
-{
-    const F32 dist = (bSphere._sphere.center - _sphere.center).length();
-
-    if (_sphere.radius >= dist + bSphere._sphere.radius)
-    {
-        return;
-    }
-
-    if (bSphere._sphere.radius >= dist + _sphere.radius)
-    {
-        _sphere = bSphere._sphere;
-    }
-
-    if (dist > EPSILON_F32)
-    {
-        const F32 nRadius = (_sphere.radius + dist + bSphere._sphere.radius) * 0.5f;
-        const F32 ratio = (nRadius - _sphere.radius) / dist;
-        _sphere.center += (bSphere._sphere.center - _sphere.center) * ratio;
-
-        _sphere.radius = nRadius;
-    }
 }
 
 inline void BoundingSphere::addRadius(const BoundingSphere& bSphere) noexcept
@@ -160,12 +135,6 @@ inline void BoundingSphere::setCenter(const float3& center) noexcept
 inline F32 BoundingSphere::getDistanceFromPoint(const float3& point) const noexcept
 {
     return _sphere.center.distance(point) - _sphere.radius;
-}
-
-inline F32 BoundingSphere::getDistanceSQFromPoint(const float3& point) const noexcept
-{
-    // If this is negative, than the sphere contains the point, so we clamp min distance
-    return std::max(_sphere.center.distanceSquared(point) - SQUARED(_sphere.radius), 0.f);
 }
 
 }  // namespace Divide
