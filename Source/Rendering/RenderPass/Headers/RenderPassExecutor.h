@@ -199,7 +199,7 @@ private:
                        size_t visibleNodeCount,
                        const RenderTargetID& sourceDepthBuffer,
                        const RenderTargetID& targetHiZBuffer,
-                       GFX::CommandBuffer& bufferInOut) const;
+                       GFX::CommandBuffer& bufferInOut);
 
     void mainPass(const RenderPassParams& params,
                   const CameraSnapshot& cameraSnapshot,
@@ -273,6 +273,7 @@ private:
     RenderQueuePackages _renderQueuePackages{};
     vector<std::pair<RenderingComponent*, RenderPackage*>> _preparationOwners{};
     vector<RenderPackage*> _preparedPackages{};
+    BufferLocks _computeBatchRanges{};
 
     ShaderBuffer_uptr _cmdBuffer;
 

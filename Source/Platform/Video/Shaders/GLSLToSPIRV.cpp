@@ -168,6 +168,8 @@ void SpirvHelper::InitResources( TBuiltInResource& Resources )
 
 bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* pshader, std::vector<unsigned int>& spirv, const Divide::RenderAPI renderAPI )
 {
+    PROFILE_SCOPE( "Shader GLSL to SPIR-V", Divide::Profiler::Category::Streaming );
+
     const EShLanguage stage = FindLanguage( shader_type );
     glslang::TShader shader( stage );
     glslang::TProgram program;
@@ -259,6 +261,71 @@ bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* p
     return !spirv.empty();
 }
 
+bool SpirvHelper::UsesDrawIndex( const std::vector<unsigned int>& spirv, bool& usesDrawIndexOut ) noexcept
+{
+    usesDrawIndexOut = false;
+    if ( spirv.size() < 5u || spirv[0] != 0x07230203u )
+    {
+        return false;
+    }
+
+    bool hasEntryPoint = false;
+    for ( size_t index = 5u; index < spirv.size(); )
+    {
+        const unsigned int instruction = spirv[index];
+        const size_t wordCount = instruction >> 16u;
+        const unsigned int opcode = instruction & 0xFFFFu;
+        if ( wordCount == 0u || wordCount > spirv.size() - index )
+        {
+            return false;
+        }
+
+        if ( opcode == SpvOpEntryPoint )
+        {
+            if ( wordCount < 4u )
+            {
+                return false;
+            }
+            hasEntryPoint = true;
+        }
+        else if ( opcode == SpvOpDecorate || opcode == SpvOpDecorateId || opcode == SpvOpDecorateString )
+        {
+            if ( wordCount < 3u )
+            {
+                return false;
+            }
+            if ( spirv[index + 2u] == SpvDecorationBuiltIn )
+            {
+                if ( wordCount < 4u )
+                {
+                    return false;
+                }
+                usesDrawIndexOut = usesDrawIndexOut || opcode != SpvOpDecorate ||
+                                   spirv[index + 3u] == SpvBuiltInDrawIndex;
+            }
+        }
+        else if ( opcode == SpvOpMemberDecorate || opcode == SpvOpMemberDecorateString )
+        {
+            if ( wordCount < 4u )
+            {
+                return false;
+            }
+            if ( spirv[index + 3u] == SpvDecorationBuiltIn )
+            {
+                if ( wordCount < 5u )
+                {
+                    return false;
+                }
+                usesDrawIndexOut = usesDrawIndexOut || opcode != SpvOpMemberDecorate ||
+                                   spirv[index + 4u] == SpvBuiltInDrawIndex;
+            }
+        }
+        index += wordCount;
+    }
+
+    return hasEntryPoint;
+}
+
 namespace
 {
     using namespace Divide;
@@ -348,6 +415,8 @@ namespace
 
 bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, const std::vector<unsigned int>& spirv, const Divide::RenderAPI renderAPI, Divide::Reflection::Data& reflectionDataInOut )
 {
+    PROFILE_SCOPE( "Shader SPIR-V reflection", Divide::Profiler::Category::Streaming );
+
     SpvReflectShaderModule module;
     SpvReflectResult result = spvReflectCreateShaderModule( spirv.size() * sizeof( unsigned int ), spirv.data(), &module );
     if ( result != SPV_REFLECT_RESULT_SUCCESS )

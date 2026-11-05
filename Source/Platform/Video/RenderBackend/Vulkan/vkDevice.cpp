@@ -410,9 +410,16 @@ namespace Divide
         // "fence" will now block until the graphic commands finish execution
         VkResult submitResult = VK_SUCCESS;
         {
-            LockGuard<Mutex> w_lock( queueLock( queue ) );
+            UniqueLock<Mutex> w_lock( queueLock( queue ), std::defer_lock );
+            {
+                PROFILE_SCOPE( "Vulkan queue lock", Profiler::Category::Graphics );
+                w_lock.lock();
+            }
             s_smokeFailureState._queueSubmitActive = RenderSmokeTest::Enabled();
-            submitResult = vkQueueSubmit( _queues[to_base( queue )]._queue, 1, &submitInfo, fence );
+            {
+                PROFILE_SCOPE( "vkQueueSubmit", Profiler::Category::Graphics );
+                submitResult = vkQueueSubmit( _queues[to_base( queue )]._queue, 1, &submitInfo, fence );
+            }
             s_smokeFailureState._queueSubmitActive = false;
         }
         std::FILE* deferredFailure = s_smokeFailureState._deviceLossFailure;

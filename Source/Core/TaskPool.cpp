@@ -14,6 +14,21 @@ namespace Divide
 
         NO_DESTROY thread_local Task g_taskAllocator[Config::MAX_POOLED_TASKS];
         thread_local U32 g_allocatedTasks = 0u;
+
+        void WaitForChildren( Mutex& mutex, std::condition_variable& finished, const Task& task )
+        {
+            const U32 pendingJobs = task._unfinishedJobs.load();
+            if ( pendingJobs <= 1u )
+            {
+                return;
+            }
+
+            UniqueLock<Mutex> lock( mutex );
+            finished.wait_for( lock, std::chrono::milliseconds( 2 ), [&task, pendingJobs]() noexcept
+            {
+                return task._unfinishedJobs.load() != pendingJobs;
+            } );
+        }
     }
 
     TaskPool::TaskPool( const std::string_view workerName )
@@ -152,14 +167,14 @@ namespace Divide
                 if (Runtime::isMainThread())
                 {
                     PlatformContextIdleCall();
-                    if (flushCallbackQueue() == 0u)
+                    if (flushCallbackQueue() == 0u && !threadWaiting())
                     {
-                        threadWaiting();
+                        WaitForChildren( _taskFinishedMutex, _taskFinishedCV, task );
                     }
                 }
                 else if (!threadWaiting())
                 {
-                    std::this_thread::yield();
+                    WaitForChildren( _taskFinishedMutex, _taskFinishedCV, task );
                 }
             }
 
@@ -209,7 +224,7 @@ namespace Divide
                 // Else, we wait until our child tasks finish running. We also try and do some other work while waiting
                 if ( !threadWaiting() )
                 {
-                    std::this_thread::yield();
+                    WaitForChildren( _taskFinishedMutex, _taskFinishedCV, task );
                 }
             }
 
@@ -263,7 +278,10 @@ namespace Divide
         while ( !Finished( task ) )
         {
             PlatformContextIdleCall();
-            threadWaiting();
+            if ( threadWaiting() )
+            {
+                continue;
+            }
 
             UniqueLock<Mutex> lock( _taskFinishedMutex );
             _taskFinishedCV.wait_for( lock, 2ms, [&task]() noexcept
@@ -385,27 +403,14 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
-        if ( isIdleCall || priorityIn == TaskPriority::HIGH )
-        {
-            if ( getQueue(priorityIn).try_dequeue( taskOut ) )
-            {
-                return true;
-            }
-
-            if (priorityIn == TaskPriority::HIGH)
-            {
-                return false;
-            }
-        }
-
         if constexpr (IsBlocking)
         {
-            return getQueue(priorityIn).wait_dequeue_timed(taskOut, Time::MillisecondsToMicroseconds(2));
+            if ( TaskPoolDetail::DequeueMayBlock( isIdleCall, priorityIn ) )
+            {
+                return getQueue(priorityIn).wait_dequeue_timed(taskOut, Time::MillisecondsToMicroseconds(2));
+            }
         }
-        else
-        {
-            return getQueue(priorityIn).try_dequeue(taskOut);
-        }
+        return getQueue(priorityIn).try_dequeue(taskOut);
     }
 
     void Parallel_For( TaskPool& pool, const ParallelForDescriptor& descriptor, const DELEGATE<void, const Task*, U32/*start*/, U32/*end*/>& cbk )
@@ -475,7 +480,18 @@ namespace Divide
                 while ( jobCount.load() > 0 )
                 {
                     PlatformContextIdleCall();
-                    pool.threadWaiting();
+                    if ( !pool.threadWaiting() )
+                    {
+                        const U32 pendingJobs = jobCount.load();
+                        if ( pendingJobs > 0u )
+                        {
+                            UniqueLock<Mutex> lock( pool._taskFinishedMutex );
+                            pool._taskFinishedCV.wait_for( lock, std::chrono::milliseconds( 2 ), [&jobCount, pendingJobs]() noexcept
+                            {
+                                return jobCount.load() != pendingJobs;
+                            } );
+                        }
+                    }
                 }
             }
             else

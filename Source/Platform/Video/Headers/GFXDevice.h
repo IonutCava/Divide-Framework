@@ -82,6 +82,7 @@ class SceneShaderData;
 class SceneRenderState;
 class KernelApplication;
 class ShaderComputeQueue;
+class UniformUploadArena;
 
 struct SizeChangeParams;
 struct ShaderBufferDescriptor;
@@ -408,6 +409,9 @@ public:
     /// The OpenGL implementation creates either an 'Uniform Buffer Object' if unbound is false
     /// or a 'Shader Storage Block Object' otherwise
     [[nodiscard]] ShaderBuffer_uptr     newShaderBuffer(const ShaderBufferDescriptor& descriptor);
+    [[nodiscard]] UniformUploadArena& uniformUploadArena() noexcept { return *_uniformUploadArena; }
+    [[nodiscard]] bool uniformUploadFailed() const noexcept { return _uniformUploadFailed; }
+    void reportUniformUploadFailure( std::string_view shaderName, std::string_view blockName ) noexcept;
     /// Create and return a new graphics pipeline. This is only used for caching and doesn't use the object arena
     [[nodiscard]] Pipeline*             newPipeline(const PipelineDescriptor& descriptor);
 
@@ -512,12 +516,15 @@ private:
 
     [[nodiscard]] ErrorCode createAPIInstance(RenderAPI api);
 
+    void releaseRenderingResources();
     void renderThread();
     void addRenderWork(DELEGATE<void>&& work);
 
 private:
     RenderAPIWrapper_uptr _api;
     Renderer_uptr _renderer;
+    std::unique_ptr<UniformUploadArena> _uniformUploadArena;
+    bool _uniformUploadFailed{ false };
 
     std::unique_ptr<ShaderComputeQueue> _shaderComputeQueue;
 

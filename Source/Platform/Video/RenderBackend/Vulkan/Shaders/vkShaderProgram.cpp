@@ -5,6 +5,7 @@
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
+#include "Platform/Video/Shaders/Headers/GLSLToSPIRV.h"
 
 #include "Utility/Headers/Localization.h"
 
@@ -69,6 +70,7 @@ namespace Divide {
         _loadData = data;
 
         _valid = false;
+        _multiDrawCompatible = false;
 
         reset();
 
@@ -79,6 +81,14 @@ namespace Divide {
             assert(_handle == VK_NULL_HANDLE);
 
             assert(!data._sourceCodeSpirV.empty());
+
+            bool usesDrawIndex = false;
+            if ( !SpirvHelper::UsesDrawIndex( data._sourceCodeSpirV, usesDrawIndex ) )
+            {
+                Console::errorfn( "Invalid SPIR-V instruction stream for Vulkan shader '{}'", name().c_str() );
+                return false;
+            }
+            _multiDrawCompatible = !usesDrawIndex;
 
             //create a new shader module, using the buffer we loaded
             const VkShaderModuleCreateInfo createInfo = vk::shaderModuleCreateInfo(data._sourceCodeSpirV.size() * sizeof(SpvWord), data._sourceCodeSpirV.data());

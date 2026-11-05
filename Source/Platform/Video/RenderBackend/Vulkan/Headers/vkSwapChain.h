@@ -52,6 +52,9 @@ namespace Divide {
         VkSemaphore _presentSemaphore{VK_NULL_HANDLE};
         VkCommandBuffer _commandBuffer{VK_NULL_HANDLE};
         Fence _renderFence;
+        // A failed reset or submission can leave the fence unsignaled indefinitely.
+        VkResult _frameError{ VK_SUCCESS };
+        bool _submissionPending{ false };
     };
 
     class VKSwapChain final : NonCopyable, NonMovable {
@@ -62,6 +65,7 @@ namespace Divide {
         ErrorCode create(bool vSync, bool adaptiveSync, VkSurfaceKHR targetSurface);
         void destroy();
 
+        [[nodiscard]] VkResult waitForFrameSlot( U64 frameNumber ) noexcept;
         [[nodiscard]] VkResult beginFrame();
         [[nodiscard]] VkResult endFrame( const VKSubmitSempahore::Container& semaphores );
         [[nodiscard]] VkFence activeFrameFence() const noexcept;
@@ -75,6 +79,52 @@ namespace Divide {
         [[nodiscard]] static constexpr size_t FrameSlotIndex( const U64 frameNumber ) noexcept
         {
             return to_size( frameNumber % FrameSlotCount() );
+        }
+
+        template<typename WaitForFence>
+        [[nodiscard]] static VkResult WaitForFrameSlot( const std::span<FrameData> frames, const U64 frameNumber,
+                                                         const VkDevice device, WaitForFence&& waitForFence ) noexcept
+        {
+            if ( frames.empty() )
+            {
+                return VK_SUCCESS;
+            }
+
+            for ( const FrameData& frame : frames )
+            {
+                if ( frame._frameError != VK_SUCCESS )
+                {
+                    return frame._frameError;
+                }
+            }
+
+            if ( frames.size() != FrameSlotCount() )
+            {
+                return VK_ERROR_INITIALIZATION_FAILED;
+            }
+
+            FrameData& frame = frames[FrameSlotIndex( frameNumber )];
+            if ( device == VK_NULL_HANDLE || frame._renderFence._handle == VK_NULL_HANDLE )
+            {
+                frame._frameError = VK_ERROR_INITIALIZATION_FAILED;
+                return frame._frameError;
+            }
+
+            if ( !frame._submissionPending )
+            {
+                return VK_SUCCESS;
+            }
+
+            const VkResult result = waitForFence( device, frame._renderFence._handle );
+            if ( result == VK_SUCCESS )
+            {
+                frame._submissionPending = false;
+            }
+            else
+            {
+                frame._frameError = result;
+            }
+            return result;
         }
 
         [[nodiscard]] static constexpr bool SupportsSmokeReadback( const VkFormat format ) noexcept

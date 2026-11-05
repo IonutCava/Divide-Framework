@@ -22,6 +22,13 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 `ShaderProgram` loads/reparses GLSL, loads/builds GLSL cache, loads/builds SPIR-V, loads/builds reflection, and hands shared results to the backend.
 OpenGL still consumes GLSL; Vulkan consumes SPIR-V. Reflection is shared, not duplicated per backend.
+CPU profiling separates cache lookup/write and their lock waits, source and
+include/macro processing, push-constant detection, SPIR-V compilation,
+reflection, and OpenGL upload. Capture asset-worker events as well as the main
+thread; these scopes measure wall time and do not establish GPU execution time.
+Push-constant detection skips regular-expression matching for lines without a
+`PushData` token while retaining backend-specific declaration and identifier
+checks; cached GLSL is still checked rather than trusting unverified metadata.
 `GFXDevice` preloads the regular and linear-depth framebuffer preview programs
 during rendering initialization. The depth-preview load participates in the
 startup task barrier and failure stops initialization; debug-view registration
@@ -97,8 +104,25 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
 - Include directives may end with whitespace or a single-line comment. Malformed, missing, cyclic, or nested includes beyond 64 levels stop source loading instead of being silently dropped by the macro preprocessor. Expansion uses an explicit stack; cached atoms retain their dependency depth so cache hits cannot bypass the limit. Only successfully expanded atoms are cached, and changing a dependency invalidates every cached parent.
 - A missing GLSW section or failed macro preprocessing aborts source loading before uniform extraction, shader compilation, or cache writes.
 - Loose uniforms are collected into generated `std140` blocks at `PER_DRAW` slots `s_uniformsStartOffset` and `s_uniformsStartOffset + 1`; a third distinct layout fails shader loading. Equal layouts reuse their original slot even when other stages intervene. Stage processing follows descriptor file order, and cache/module names include the preceding stage descriptors so incompatible program contexts do not share compiled modules. Reflection-cache version 7 preserves each stage's loose-uniform declarations. Cache hits restore and check those declarations against the current program's assigned slots. Missing or incompatible SPIR-V or reflection causes the stage to be regenerated; OpenGL also requires cached GLSL. Regeneration writes all three cache entries.
+- `UniformBlockUploader` retains a CPU copy and commits loose-uniform data
+  immediately before a draw or dispatch. Identical bytes keep the existing
+  immutable GPU snapshot across frames; changed bytes receive a different arena
+  slot. Each consumer records its frame slot, even without a new uniform
+  command. Recompile, unload, and replacement retire the old allocation only
+  after every frame slot that used it has completed on every submitting window.
+  Generation-checked slots reject stale or duplicate releases. Arena pages are
+  retained to their high-water mark, independent of shader lifetime; see
+  [GPU resources](gpu-resources.md) and [threading](threading.md) before
+  changing their synchronization or teardown.
 - Cached SPIR-V must contain whole, nonempty words; incomplete binary reads are regenerated rather than passed to a backend.
 - SPIR-V reflection records vertex input locations, including matrix columns and array elements, and the reflection cache persists them. Built-in inputs are excluded; unsupported input types or locations fail reflection. Vulkan uses the reflected locations to omit unused vertex attributes from pipeline descriptions without inventing missing attributes. Shader reloads clear and rebuild this mask.
+- `SpirvHelper::UsesDrawIndex` scans each actual Vulkan shader module for
+  `DrawIndex` decorations, including member and decoration-group forms.
+  Alternative built-in decoration encodings conservatively disable batching;
+  malformed instruction lengths reject the module. Each compiled pipeline
+  aggregates compatibility from its loaded stages, so shader reloads cannot
+  reuse compatibility from a different module generation. See
+  [rendering](rendering.md#command-flow) for the adjacent-draw restrictions.
 - Prefer GLSL expression defines over helper functions so preprocessed shaders stay as inline as practical. Parenthesize macro arguments, keep bodies expression-only, and do not pass side-effecting or expensive expressions to macros that evaluate an argument more than once.
 - `GLSLToSPIRV` targets Vulkan 1.4 / SPIR-V 1.6 for Vulkan and the OpenGL 4.5 environment / SPIR-V 1.0 for OpenGL (`debug.renderer.useSPIRVForOpenGL` ingests the latter directly). Compiled-binary and reflection cache paths include `s_compiledShaderCacheVersion`; bump it whenever compiler targets change.
 - `Source/UnitTests/Test-Engine/ShaderCompilerTests.cpp` exercises engine include expansion across the shader sources, loose-uniform cache restoration, OIT composition output and sampler variants, and representative terrain, water, vegetation, alpha-discard and shadow variants for both APIs. It links terrain display/prepass stages and grass OIT/prepass/shadow stages with and without overridden node indices. Shadow variants check that moment calculation precedes discard; alpha-discard variants check that surface and gradient preparation happens first. Terrain variants verify that their existing `NO_REFLECTIONS` configuration does not generate an IBL lookup. These CPU checks do not replace GPU execution or image-based rendering checks.
@@ -160,13 +184,31 @@ The local-array, flag-aware cache, and push-descriptor limit notes were checked 
 ## Binding and cache lifetime
 
 `VK_API::bindShaderResources` caches resolved shared-set contents. New descriptor sets are allocated/written when resources change; otherwise only dynamic offsets change.
-Bound sets/offsets are tracked per bind point (graphics/compute) and command buffer. `PER_DRAW` is re-pushed when contents or pipeline layout change.
+Bound sets/offsets are tracked per bind point (graphics/compute) and command buffer.
+`PER_DRAW` push descriptors retain unchanged slots when the same pipeline layout
+is used; changed slots alone are written. Layout changes conservatively
+invalidate every pushed slot, and a new command recording resets both bind-point
+caches. Binding shared sets does not disturb the push set because their layouts
+and push-constant range are compatible across all pipeline layouts.
 `frameStarted` invalidates cached sets as descriptor pools flip.
 Vulkan descriptor-pool and descriptor-set allocation failures are logged and
 propagated; the affected draw or dispatch is skipped rather than binding an
 invalid or stale set. A later submission retries dirty descriptor state.
 
-Both OpenGL and Vulkan resolve null and omitted active combined image samplers through `ShaderProgram::resolveSampledImages`. Shared-set bindings remain persistent; missing per-draw slots cannot inherit stale textures.
+OpenGL rebinds only uniform buffers when a clean `PER_DRAW` set changes solely
+because loose-uniform snapshots were committed. Dirty sets, shader pipeline
+changes, and changed sampler fallbacks still replay all bindings. Command-buffer
+boundaries mark sets dirty, renewing cached texture-view lifetimes before the
+next buffer is submitted.
+
+Both OpenGL and Vulkan resolve null and omitted active combined image samplers through `ShaderProgram::resolveSampledImages`. Descriptor updates merge slots, including `PER_DRAW`, until the command buffer is flushed: a non-null omitted slot can retain a previous draw's binding, so callers must explicitly replace slots whose old contents are not valid.
+Resolution borrows the source set when no fallback is needed; otherwise it copies
+into reusable per-thread, per-usage scratch storage. The scratch set is consumed
+synchronously and must not escape the binding call. The fallback snapshot is
+refreshed for dirty sets, and a transition from a borrowed set to a fallback
+forces an update even if an older fallback snapshot happens to match.
+Standard two-stage material and depth programs with fragment-only texture access share albedo and opacity sampler declarations. `Material` supplies a real or default 2D-array texture at each of those slots for every draw package; their packed operations are `NONE` when the corresponding texture is absent. Material colour, prepass and shadow alpha keep the opacity-map, albedo-texture, base-colour priority, excluding disabled operations. Custom shader programs, raw shader text and programs with non-fragment texture access keep their existing texture defines and bindings. The cached material descriptor is copied and completed for the actual ready program rather than assuming all programs in a pass category share the same layout.
+The common texture-selection branches are uniform for the current per-material draw. A future multi-draw or instancing design that varies materials within a draw must also ensure valid texture-coordinate derivatives and per-draw resource indexing.
 When an OpenGL shader bind fails, ordinary descriptor updates still run without
 sampler resolution; a null active shader must not turn the existing draw-skip
 path into an assertion or dereference.

@@ -946,7 +946,6 @@ namespace Divide
             RenderingComponent* owner = Attorney::RenderingCompRenderPass::preparationOwner( *rComp );
             if ( owner == nullptr )
             {
-                AppendPreparationCommands( *pkg, bufferInOut );
                 _preparedPackages.push_back( pkg );
             }
             else
@@ -960,9 +959,9 @@ namespace Divide
             {
                 prepared = &Attorney::RenderingCompRenderPass::prepareDependency( owner, cameraSnapshot, stagePass, memCmdInOut );
             }
-            AppendPreparationCommands( *prepared, bufferInOut );
             _preparedPackages.push_back( prepared );
         } );
+        AppendPreparationCommands( { _preparedPackages.data(), _preparedPackages.size() }, bufferInOut, _computeBatchRanges );
 
         return queueSize;
     }
@@ -1080,7 +1079,7 @@ namespace Divide
                                             [[maybe_unused]] const size_t visibleNodeCount,
                                             const RenderTargetID& sourceDepthBuffer,
                                             const RenderTargetID& targetHiZBuffer,
-                                            GFX::CommandBuffer& bufferInOut ) const
+                                            GFX::CommandBuffer& bufferInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -1099,10 +1098,7 @@ namespace Divide
             auto bindHiZ = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             bindHiZ->_usage = DescriptorSetUsage::PER_DRAW;
             Set( AddBinding( bindHiZ->_set, 0u, ShaderStageVisibility::COMPUTE )._data, hizTexture, hizSampler );
-            for ( const RenderPackage* package : _preparedPackages )
-            {
-                AppendOcclusionCommands( *package, bufferInOut );
-            }
+            AppendOcclusionCommands( { _preparedPackages.data(), _preparedPackages.size() }, bufferInOut, _computeBatchRanges );
         }
         // Run occlusion culling CS
         _context.occlusionCull( _parent.getPassForStage( _stage ).getPassData(),

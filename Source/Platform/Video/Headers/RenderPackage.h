@@ -1,6 +1,6 @@
 /*
 Copyright (c) 2018-2026 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -34,6 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DVD_RENDER_PACKAGE_H_
 
 #include "Platform/Video/Headers/Commands.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/BufferLocks.h"
 
 namespace Divide {
 
@@ -58,13 +59,17 @@ struct RenderPackage
     PROPERTY_RW(U32, drawCmdOffset, INVALID_CMD_OFFSET);
     PROPERTY_RW(U8,  stagePassBaseIndex, INVALID_STAGE_INDEX);
     PROPERTY_RW(const GenericDrawCommandContainer*, drawCommandsOverride, nullptr);
+    // Opt in only when the boundary barriers cover all writes and other packages are independent.
+    PROPERTY_RW(bool, independentCompute, false);
 
 private:
     friend Handle<GFX::CommandBuffer> GetCommandBuffer( RenderPackage& pkg );
     friend Handle<GFX::CommandBuffer> GetPreparationCommandBuffer( RenderPackage& pkg );
     friend void AppendPreparationCommands( const RenderPackage& pkg, GFX::CommandBuffer& buffer );
+    friend void AppendPreparationCommands( std::span<RenderPackage* const> packages, GFX::CommandBuffer& buffer, BufferLocks& scratch );
     friend Handle<GFX::CommandBuffer> GetOcclusionCommandBuffer( RenderPackage& pkg );
     friend void AppendOcclusionCommands( const RenderPackage& pkg, GFX::CommandBuffer& buffer );
+    friend void AppendOcclusionCommands( std::span<RenderPackage* const> packages, GFX::CommandBuffer& buffer, BufferLocks& scratch );
     friend void Clear( RenderPackage& pkg ) noexcept;
 
     Handle<GFX::CommandBuffer> _additionalCommands =  INVALID_HANDLE<GFX::CommandBuffer>;
@@ -78,8 +83,10 @@ void Clear(RenderPackage& pkg) noexcept;
 Handle<GFX::CommandBuffer> GetCommandBuffer(RenderPackage& pkg);
 Handle<GFX::CommandBuffer> GetPreparationCommandBuffer(RenderPackage& pkg);
 void AppendPreparationCommands(const RenderPackage& pkg, GFX::CommandBuffer& buffer);
+void AppendPreparationCommands(std::span<RenderPackage* const> packages, GFX::CommandBuffer& buffer, BufferLocks& scratch);
 Handle<GFX::CommandBuffer> GetOcclusionCommandBuffer(RenderPackage& pkg);
 void AppendOcclusionCommands(const RenderPackage& pkg, GFX::CommandBuffer& buffer);
+void AppendOcclusionCommands(std::span<RenderPackage* const> packages, GFX::CommandBuffer& buffer, BufferLocks& scratch);
 }; // namespace Divide
 
 #endif //DVD_RENDER_PACKAGE_H_

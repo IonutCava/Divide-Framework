@@ -153,6 +153,63 @@ namespace Divide
         CHECK( callbackOnMain.load() );
     }
 
+    TEST_CASE( "Render task waits service main-thread completion callbacks", "[threading][render_smoke]" )
+    {
+        platformInitRunListener::PlatformInit();
+
+        const bool samePool = GENERATE( true, false );
+        Application app;
+        PlatformContext context{ app };
+        TaskPool& renderPool = context.taskPool( TaskPoolType::RENDERER );
+        TaskPool& otherPool = context.taskPool( TaskPoolType::ASSET_LOADER );
+        REQUIRE( renderPool.init( 2u ) );
+        SCOPE_EXIT
+        {
+            renderPool.shutdown();
+        };
+        REQUIRE( otherPool.init( 1u ) );
+        SCOPE_EXIT
+        {
+            otherPool.shutdown();
+        };
+        InitConditionalWait( context );
+
+        std::atomic_bool callbackExecuted{ false };
+        std::atomic_bool callbackOnMain{ false };
+        std::atomic_bool workerOnMain{ false };
+        std::atomic_bool workerTimedOut{ false };
+        std::atomic_bool childFinished{ false };
+        Task* parent = CreateTask( TASK_NOP );
+        Task* child = CreateTask( parent, [&]( Task& )
+        {
+            workerOnMain = Runtime::isMainThread();
+            TaskPool& completionPool = samePool ? renderPool : otherPool;
+            completionPool.enqueue( *CreateTask( []( Task& ) {} ), TaskPriority::HIGH, [&]
+            {
+                callbackOnMain = Runtime::isMainThread();
+                callbackExecuted = true;
+            } );
+
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds( 5 );
+            while ( !callbackExecuted.load() && std::chrono::steady_clock::now() < deadline )
+            {
+                std::this_thread::yield();
+            }
+            workerTimedOut = !callbackExecuted.load();
+            childFinished = true;
+        } );
+        renderPool.enqueue( *child, TaskPriority::DONT_CARE_NO_IDLE );
+        renderPool.enqueue( *parent );
+        renderPool.wait( *parent );
+
+        CHECK( Finished( *parent ) );
+        CHECK( childFinished.load() );
+        CHECK_FALSE( workerOnMain.load() );
+        CHECK_FALSE( workerTimedOut.load() );
+        CHECK( callbackExecuted.load() );
+        CHECK( callbackOnMain.load() );
+    }
+
     TEST_CASE( "Parallel terrain chunk jobs visit every distinct chunk once", "[threading][terrain][render_smoke]" )
     {
         platformInitRunListener::PlatformInit();

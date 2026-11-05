@@ -52,6 +52,8 @@ namespace Divide
     void GLStateTracker::setDefaultState()
     {
         _activeState = {};
+        // Zero is not a valid patch size; force the first pipeline to set GL_PATCH_VERTICES.
+        _activeState._tessControlPoints = 0u;
         _attributeHash = 0u;
         _activePipeline = nullptr;
         _activeShaderProgram = nullptr;

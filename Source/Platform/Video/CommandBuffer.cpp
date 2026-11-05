@@ -128,13 +128,23 @@ namespace
 
     void CommandBuffer::add( const CommandBuffer& other )
     {
+        add( other, 0u, other._commands.size() );
+    }
+
+    void CommandBuffer::add( const CommandBuffer& other, const size_t first, const size_t count )
+    {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        _commands.reserve( _commands.size() + other._commands.size() );
-
-        for ( CommandBase* cmd : other._commands )
+        if ( !DIVIDE_ASSERT( this != &other && first <= other._commands.size() &&
+                            count <= other._commands.size() - first, "Invalid command-buffer range" ) )
         {
-            cmd->addToBuffer( this );
+            return;
+        }
+        _commands.reserve( _commands.size() + count );
+
+        for ( size_t i = first; i < first + count; ++i )
+        {
+            other._commands[i]->addToBuffer( this );
         }
         _batched = false;
     }
@@ -725,6 +735,122 @@ namespace
         out.append( "\n\n\n\n" );
 
         return out;
+    }
+
+    namespace
+    {
+        [[nodiscard]] bool SamePushData( const SendPushConstantsCommand& lhs,
+                                         const SendPushConstantsCommand& rhs ) noexcept
+        {
+            if ( lhs._fastData.dataFlags() != rhs._fastData.dataFlags() ||
+                 std::memcmp( lhs._fastData.data, rhs._fastData.data, PushConstantsStruct::MaxSize() ) != 0 )
+            {
+                return false;
+            }
+            if ( lhs._uniformData == rhs._uniformData )
+            {
+                return true;
+            }
+            if ( lhs._uniformData == nullptr || rhs._uniformData == nullptr )
+            {
+                return false;
+            }
+
+            const auto& lhsEntries = lhs._uniformData->entries();
+            const auto& rhsEntries = rhs._uniformData->entries();
+            if ( lhsEntries.size() != rhsEntries.size() )
+            {
+                return false;
+            }
+            for ( size_t i = 0u; i < lhsEntries.size(); ++i )
+            {
+                const UniformData::Entry& a = lhsEntries[i];
+                const UniformData::Entry& b = rhsEntries[i];
+                if ( a._bindingHash != b._bindingHash || a._type != b._type ||
+                     a._range._length != b._range._length )
+                {
+                    return false;
+                }
+                if ( a._range._length > 0u &&
+                     std::memcmp( lhs._uniformData->data( a._range._startOffset ),
+                                  rhs._uniformData->data( b._range._startOffset ), a._range._length ) != 0 )
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        [[nodiscard]] bool CanBatchIndirectDraw( const GenericDrawCommand& draw ) noexcept
+        {
+            constexpr U16 requiredOptions = to_base( CmdRenderOptions::RENDER_GEOMETRY ) |
+                                            to_base( CmdRenderOptions::RENDER_INDIRECT );
+            return draw._renderOptions == requiredOptions && draw._drawCount == 1u &&
+                   draw._cmd.instanceCount == 1u && draw._cmd.indexCount > 0u &&
+                   draw._sourceBuffersCount == 2u && draw._sourceBuffers != nullptr;
+        }
+    }
+
+    size_t CollectIndirectDrawBatch( const CommandBuffer::CommandList& commands,
+                                     const size_t drawIndex,
+                                     const bool shaderCompatible,
+                                     const U32 maxDrawCount,
+                                     GenericDrawCommand& batchOut ) noexcept
+    {
+        if ( !shaderCompatible || maxDrawCount <= 2u || drawIndex == 0u ||
+             drawIndex >= commands.size() || commands[drawIndex] == nullptr ||
+             commands[drawIndex - 1u] == nullptr ||
+             commands[drawIndex]->type() != CommandType::DRAW_COMMANDS ||
+             commands[drawIndex - 1u]->type() != CommandType::SEND_PUSH_CONSTANTS )
+        {
+            return 0u;
+        }
+
+        const DrawCommand* firstDraw = commands[drawIndex]->As<DrawCommand>();
+        if ( firstDraw->_drawCommands.size() != 1u || !CanBatchIndirectDraw( firstDraw->_drawCommands.front() ) )
+        {
+            return 0u;
+        }
+
+        const SendPushConstantsCommand* firstPush = commands[drawIndex - 1u]->As<SendPushConstantsCommand>();
+        GenericDrawCommand batch = firstDraw->_drawCommands.front();
+        size_t consumed = 0u;
+        while ( commands.size() - drawIndex - consumed > 2u && batch._drawCount < maxDrawCount - 1u )
+        {
+            const CommandBase* pushBase = commands[drawIndex + consumed + 1u];
+            const CommandBase* drawBase = commands[drawIndex + consumed + 2u];
+            if ( pushBase == nullptr || drawBase == nullptr ||
+                 pushBase->type() != CommandType::SEND_PUSH_CONSTANTS ||
+                 drawBase->type() != CommandType::DRAW_COMMANDS )
+            {
+                break;
+            }
+
+            const auto* push = static_cast<const SendPushConstantsCommand*>( pushBase );
+            const auto* draw = static_cast<const DrawCommand*>( drawBase );
+            if ( draw->_drawCommands.size() != 1u )
+            {
+                break;
+            }
+
+            const GenericDrawCommand& next = draw->_drawCommands.front();
+            if ( !CanBatchIndirectDraw( next ) || !Compatible( batch, next ) ||
+                 next._commandOffset <= batch._commandOffset ||
+                 next._commandOffset - batch._commandOffset != batch._drawCount ||
+                 !SamePushData( *firstPush, *push ) )
+            {
+                break;
+            }
+
+            ++batch._drawCount;
+            consumed += 2u;
+        }
+
+        if ( consumed > 0u )
+        {
+            batchOut = batch;
+        }
+        return consumed;
     }
 
     bool BatchDrawCommands( GenericDrawCommand& previousGDC, GenericDrawCommand& currentGDC ) noexcept

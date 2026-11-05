@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -45,6 +45,7 @@ namespace Divide {
         ~vkShaderBuffer();
 
         [[nodiscard]] LockableBuffer* getBufferImpl() override final;
+        [[nodiscard]] bool supportsPersistentWrites() const noexcept override;
 
     protected:
         BufferLock writeBytesInternal(BufferRange<> range, const bufferPtr data) noexcept override;

@@ -11,6 +11,7 @@
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/DisplayManager.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
@@ -31,6 +32,7 @@
 #include "Platform/File/Headers/FileManagement.h"
 
 #include "Platform/Headers/PlatformRuntime.h"
+#include "Platform/Video/Headers/GPUCompletionGuard.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
@@ -43,6 +45,8 @@
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 
 #include "Headers/CommandBufferPool.h"
+
+#include <cstdlib>
 
 namespace Divide
 {
@@ -447,6 +451,8 @@ namespace Divide
             }
         }
 
+        _uniformUploadArena = std::make_unique<UniformUploadArena>( *this );
+        _uniformUploadFailed = false;
         _rtPool = std::make_unique<GFXRTPool>( *this );
 
         const I32 configuredLightsPerCluster = config.rendering.numLightsPerCluster;
@@ -1350,6 +1356,23 @@ namespace Divide
             s_renderThread._thread.join();
         }
 
+        if ( !TeardownAfterGPUCompletion( _uniformUploadArena != nullptr,
+                                          [this] { return _api->waitForGPUIdle(); },
+                                          [this] { releaseRenderingResources(); } ) )
+        {
+            Console::errorfn( "Renderer: GPU completion failed during uniform upload arena teardown" );
+            if ( RenderSmokeTest::Enabled() )
+            {
+                RenderSmokeTest::Fail( "gpu_completion", "GPU completion failed during uniform upload arena teardown",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            Console::Flush();
+            std::_Exit( EXIT_FAILURE );
+        }
+    }
+
+    void GFXDevice::releaseRenderingResources()
+    {
         _debugLines.reset();
         _debugBoxes.reset();
         _debugOBBs.reset();
@@ -1388,6 +1411,7 @@ namespace Divide
         Texture::OnShutdown();
         ShaderProgram::DestroyStaticData();
         assert( ShaderProgram::ShaderProgramCount() == 0 );
+        _uniformUploadArena.reset();
         // Close the rendering API
         _api->closeRenderingAPI();
         _api.reset();
@@ -1477,8 +1501,21 @@ namespace Divide
         return true;
     }
 
+    void GFXDevice::reportUniformUploadFailure( const std::string_view shaderName, const std::string_view blockName ) noexcept
+    {
+        if ( !_uniformUploadFailed )
+        {
+            Console::errorfn( "Renderer: uniform upload failed for shader '{}' block '{}'", shaderName, blockName );
+        }
+        _uniformUploadFailed = true;
+    }
+
     bool GFXDevice::frameStarted( [[maybe_unused]] const FrameEvent& evt )
     {
+        if ( _uniformUploadFailed )
+        {
+            return false;
+        }
         for ( GFXDescriptorSet& set : _descriptorSets )
         {
             set.clear();
@@ -1498,10 +1535,12 @@ namespace Divide
             }
         }
 
-        ShaderProgram::OnBeginFrame( *this );
-
         if ( _api->frameStarted() )
         {
+            if ( !_uniformUploadArena->beginFrame( FrameCount() ) )
+            {
+                return false;
+            }
             _context.app().windowManager().drawToWindow(context().mainWindow());
             return true;
         }
@@ -1590,9 +1629,12 @@ namespace Divide
         }
 
         _gfxBuffers.onEndFrame();
-        ShaderProgram::OnEndFrame( *this );
-        
-        DIVIDE_EXPECTED_CALL( _api->frameEnded() );
+        _performanceMetrics._uniformBufferVRAMUsage = _uniformUploadArena->totalBufferSize();
+
+        if ( !_api->frameEnded() || _uniformUploadFailed )
+        {
+            return false;
+        }
 
         {
             PROFILE_SCOPE( "Lifetime updates", Profiler::Category::Graphics );
@@ -2238,6 +2280,11 @@ namespace Divide
 #pragma region Command buffers, occlusion culling, etc
     bool GFXDevice::validateAndUploadDescriptorSets()
     {
+        if ( _uniformUploadFailed )
+        {
+            return false;
+        }
+
         if (!uploadGPUBlock())
         {
             NOP();
@@ -2287,11 +2334,35 @@ namespace Divide
         _api->preFlushCommandBuffer( commandBuffer );
 
         const GFX::CommandBuffer::CommandList& commands = GFX::Get(commandBuffer)->commands();
-        for ( GFX::CommandBase* cmd : commands )
+        for ( size_t commandIndex = 0u; commandIndex < commands.size(); ++commandIndex )
         {
+            GFX::CommandBase* cmd = commands[commandIndex];
             if ( IsSubmitCommand( cmd->type() ) && !validateAndUploadDescriptorSets() )
             {
                 continue;
+            }
+
+            if ( cmd->type() == GFX::CommandType::DRAW_COMMANDS &&
+                 commandIndex > 0u && commands.size() - commandIndex > 2u &&
+                 commands[commandIndex - 1u]->type() == GFX::CommandType::SEND_PUSH_CONSTANTS &&
+                 commands[commandIndex + 1u]->type() == GFX::CommandType::SEND_PUSH_CONSTANTS &&
+                 commands[commandIndex + 2u]->type() == GFX::CommandType::DRAW_COMMANDS )
+            {
+                const GFX::DrawCommand& draw = *cmd->As<GFX::DrawCommand>();
+                if ( draw._drawCommands.size() == 1u && _api->supportsIndirectDrawBatching( draw._drawCommands.front() ) )
+                {
+                    GenericDrawCommand batch{};
+                    const size_t consumed = GFX::CollectIndirectDrawBatch( commands, commandIndex, true,
+                                                                            GetDeviceInformation()._maxDrawIndirectCount, batch );
+                    if ( consumed > 0u )
+                    {
+                        PROFILE_SCOPE( "Batched indirect draw", Profiler::Category::Graphics );
+                        GFX::DrawCommand combined{ MOV( batch ) };
+                        _api->flushCommand( &combined );
+                        commandIndex += consumed;
+                        continue;
+                    }
+                }
             }
 
             switch ( cmd->type() )

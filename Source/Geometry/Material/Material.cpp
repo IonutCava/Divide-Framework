@@ -21,6 +21,60 @@ namespace Divide
     namespace
     {
         constexpr size_t g_materialXMLVersion = 1u;
+
+        [[nodiscard]] bool HasDefine( const ModuleDefines& defines, const std::string_view name ) noexcept
+        {
+            return std::ranges::any_of( defines, [name]( const ModuleDefine& define )
+            {
+                const std::string_view text{ define._define.c_str() };
+                return define._addPrefix && text.starts_with( name ) &&
+                       ( text.size() == name.size() || text[name.size()] == ' ' || text[name.size()] == '\t' );
+            } );
+        }
+
+        [[nodiscard]] bool HasShaderDefine( const ShaderProgramDescriptor& descriptor, const std::string_view name ) noexcept
+        {
+            if ( HasDefine( descriptor._globalDefines, name ) )
+            {
+                return true;
+            }
+
+            return std::ranges::any_of( descriptor._modules, [name]( const ShaderModuleDescriptor& module )
+            {
+                return HasDefine( module._defines, name );
+            } );
+        }
+
+        [[nodiscard]] bool HasRawShaderText( const ShaderProgramDescriptor& descriptor ) noexcept
+        {
+            const auto hasRaw = []( const ModuleDefines& defines )
+            {
+                return std::ranges::any_of( defines, []( const ModuleDefine& define )
+                {
+                    return !define._addPrefix && define._define != "DEFINE_PLACEHOLDER";
+                } );
+            };
+            if ( hasRaw( descriptor._globalDefines ) )
+            {
+                return true;
+            }
+            return std::ranges::any_of( descriptor._modules, [&hasRaw]( const ShaderModuleDescriptor& module )
+            {
+                return hasRaw( module._defines );
+            } );
+        }
+
+        [[nodiscard]] bool HasBinding( const DescriptorSet& descriptor, const U8 slot ) noexcept
+        {
+            for ( U8 i = 0u; i < descriptor._bindingCount; ++i )
+            {
+                if ( descriptor._bindings[i]._slot == slot )
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
     };
 
     namespace TypeUtil
@@ -350,7 +404,15 @@ namespace Divide
         if ( properties()._transparencyUpdated )
         {
             ret |= to_base( MaterialUpdateResult::NEW_TRANSPARENCY );
-            updateTransparency();
+            {
+                LockGuard<SharedMutex> w_lock( _textureLock );
+                const TranslucencySource previousSource = properties().translucencySource();
+                updateTransparency();
+                if ( previousSource != properties().translucencySource() )
+                {
+                    invalidateDescriptorSets();
+                }
+            }
             properties()._transparencyUpdated = false;
         }
         if ( properties()._cullUpdated )
@@ -429,11 +491,7 @@ namespace Divide
 
     bool Material::setTextureLocked( const TextureSlot textureUsageSlot, const Handle<Texture> texture, const SamplerDescriptor sampler, const TextureOperation op, const bool useInGeometryPasses )
     {
-        // Invalidate our descriptor sets
-        _descriptorSetMainPass._bindingCount = {0u};
-        _descriptorSetSecondaryPass._bindingCount = { 0u };
-        _descriptorSetPrePass._bindingCount = { 0u };
-        _descriptorSetShadow._bindingCount = { 0u };
+        invalidateDescriptorSets();
 
         const U32 slot = to_U32( textureUsageSlot );
 
@@ -456,7 +514,9 @@ namespace Divide
         if ( textureUsageSlot == TextureSlot::UNIT0 ||
              textureUsageSlot == TextureSlot::OPACITY )
         {
+            const TranslucencySource previousSource = properties().translucencySource();
             updateTransparency();
+            properties()._transparencyUpdated |= previousSource != properties().translucencySource();
         }
 
         properties()._needsNewShader = true;
@@ -493,6 +553,10 @@ namespace Divide
         {
             crtOp = op;
             properties()._needsNewShader = true;
+            if ( textureUsageSlot == TextureSlot::UNIT0 || textureUsageSlot == TextureSlot::OPACITY )
+            {
+                properties()._transparencyUpdated = true;
+            }
         }
     }
 
@@ -911,19 +975,74 @@ namespace Divide
             shaderDescriptor._globalDefines.emplace_back( "NEED_TEXTURE_DATA_ALL_STAGES", true );
         }
 
-        for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
-        {
-            if ( usesTextureInShader( static_cast<TextureSlot>(i), isPrePass, isShadowPass ) )
-            {
-                shaderDescriptor._globalDefines.emplace_back( Util::StringFormat( "USE_{}_TEXTURE", Names::textureSlot[i] ), true );
-            }
-        }
-
         for ( ShaderModuleDescriptor& module : shaderDescriptor._modules )
         {
             module._defines.insert( eastl::end( module._defines ), eastl::begin( moduleDefines[to_base( module._moduleType )] ), eastl::end( moduleDefines[to_base( module._moduleType )] ) );
             module._defines.insert( eastl::end( module._defines ), eastl::begin( _extraShaderDefines[to_base( module._moduleType )] ), eastl::end( _extraShaderDefines[to_base( module._moduleType )] ) );
             module._defines.emplace_back( "DEFINE_PLACEHOLDER", false );
+        }
+
+        appendTextureShaderDefines( shaderDescriptor, isPrePass, isShadowPass );
+    }
+
+    bool Material::UsesStandardMaterialStages( const ShaderProgramDescriptor& shaderDescriptor ) noexcept
+    {
+        if ( shaderDescriptor._modules.size() != 2u )
+        {
+            return false;
+        }
+
+        const ShaderModuleDescriptor* vertex = nullptr;
+        const ShaderModuleDescriptor* fragment = nullptr;
+        for ( const ShaderModuleDescriptor& module : shaderDescriptor._modules )
+        {
+            if ( module._moduleType == ShaderType::VERTEX )
+            {
+                vertex = &module;
+            }
+            else if ( module._moduleType == ShaderType::FRAGMENT )
+            {
+                fragment = &module;
+            }
+        }
+        if ( vertex == nullptr || fragment == nullptr )
+        {
+            return false;
+        }
+
+        const bool standardVertex = vertex->_sourceFile == "baseVertexShaders.glsl" ||
+                                    vertex->_sourceFile == "tree.glsl";
+        const bool standardColour = fragment->_sourceFile == "material.glsl" && fragment->_variant.empty();
+        const bool standardDepth = fragment->_sourceFile == "depthPass.glsl" &&
+                                   ( fragment->_variant == "PrePass" ||
+                                     fragment->_variant == "Shadow" ||
+                                     fragment->_variant == "Shadow.VSM" );
+        return standardVertex && ( standardColour || standardDepth );
+    }
+
+    bool Material::HasCommonMaterialInputs( const ShaderProgramDescriptor& shaderDescriptor ) noexcept
+    {
+        return UsesStandardMaterialStages( shaderDescriptor ) &&
+               !HasShaderDefine( shaderDescriptor, "NEED_TEXTURE_DATA_ALL_STAGES" ) &&
+               !HasRawShaderText( shaderDescriptor ) &&
+               HasDefine( shaderDescriptor._globalDefines, "USE_UNIT0_TEXTURE" ) &&
+               HasDefine( shaderDescriptor._globalDefines, "USE_OPACITY_TEXTURE" );
+    }
+
+    void Material::appendTextureShaderDefines( ShaderProgramDescriptor& shaderDescriptor, const bool isPrePass, const bool isShadowPass ) const
+    {
+        const bool commonInputs = properties().texturesInFragmentStageOnly() &&
+                                   UsesStandardMaterialStages( shaderDescriptor ) &&
+                                   !HasShaderDefine( shaderDescriptor, "NEED_TEXTURE_DATA_ALL_STAGES" ) &&
+                                   !HasRawShaderText( shaderDescriptor );
+        for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
+        {
+            const TextureSlot slot = static_cast<TextureSlot>(i);
+            if ( ( commonInputs && ( slot == TextureSlot::UNIT0 || slot == TextureSlot::OPACITY ) ) ||
+                 usesTextureInShader( slot, isPrePass, isShadowPass ) )
+            {
+                shaderDescriptor._globalDefines.emplace_back( Util::StringFormat( "USE_{}_TEXTURE", Names::textureSlot[i] ), true );
+            }
         }
     }
 
@@ -1084,38 +1203,59 @@ namespace Divide
         }
     }
 
+    TranslucencySource Material::SelectTranslucencySource( const TransparencyInputs& inputs ) noexcept
+    {
+        TranslucencySource source = TranslucencySource::COUNT;
+        if ( inputs._enabled )
+        {
+            const bool useAlbedo = inputs._hasAlbedo && inputs._albedoOperation != TextureOperation::NONE;
+            if ( inputs._baseAlpha < 0.95f && ( !useAlbedo || inputs._albedoOperation != TextureOperation::REPLACE ) )
+            {
+                source = TranslucencySource::ALBEDO_COLOUR;
+            }
+            if ( useAlbedo && inputs._albedoHasTransparency && !inputs._ignoreAlbedoAlpha )
+            {
+                source = TranslucencySource::ALBEDO_TEX;
+            }
+            if ( inputs._hasOpacity && inputs._opacityOperation != TextureOperation::NONE )
+            {
+                source = inputs._opacityUsesAlpha ? TranslucencySource::OPACITY_MAP_A : TranslucencySource::OPACITY_MAP_R;
+            }
+        }
+        return source;
+    }
+
     void Material::updateTransparency()
     {
         const TranslucencySource oldSource = properties()._translucencySource;
-        properties()._translucencySource = TranslucencySource::COUNT;
-        if ( properties().overrides().transparencyEnabled() )
-        {
-            // In order of importance (less to more)!
-            // diffuse channel alpha
-            if ( properties().baseColour().a < 0.95f && _textures[to_base( TextureSlot::UNIT0 )]._operation != TextureOperation::REPLACE )
-            {
-                properties()._translucencySource = TranslucencySource::ALBEDO_COLOUR;
-            }
+        const TextureInfo& albedo = _textures[to_base( TextureSlot::UNIT0 )];
+        const TextureInfo& opacity = _textures[to_base( TextureSlot::OPACITY )];
+        const bool hasAlbedo = albedo._ptr != INVALID_HANDLE<Texture>;
+        const bool hasOpacity = opacity._ptr != INVALID_HANDLE<Texture>;
 
-            // base texture is translucent
-            const Handle<Texture> albedo = _textures[to_base( TextureSlot::UNIT0 )]._ptr;
-            if ( albedo != INVALID_HANDLE<Texture> && Get(albedo)->hasTransparency() && !properties().overrides().ignoreTexDiffuseAlpha() )
-            {
-                properties()._translucencySource = TranslucencySource::ALBEDO_TEX;
-            }
+        TransparencyInputs inputs{};
+        inputs._baseAlpha = properties().baseColour().a;
+        inputs._albedoOperation = albedo._operation;
+        inputs._opacityOperation = opacity._operation;
+        inputs._enabled = properties().overrides().transparencyEnabled();
+        inputs._ignoreAlbedoAlpha = properties().overrides().ignoreTexDiffuseAlpha();
+        inputs._hasAlbedo = hasAlbedo;
+        inputs._albedoHasTransparency = hasAlbedo && Get( albedo._ptr )->hasTransparency();
+        inputs._hasOpacity = hasOpacity;
+        inputs._opacityUsesAlpha = hasOpacity &&
+                                   NumChannels( Get( opacity._ptr )->descriptor()._baseFormat ) == 4u &&
+                                   Get( opacity._ptr )->hasTransparency();
 
-            // opacity map
-            const Handle<Texture> opacity = _textures[to_base( TextureSlot::OPACITY )]._ptr;
-            if ( opacity != INVALID_HANDLE<Texture>)
-            {
-                const U8 channelCount = NumChannels( Get(opacity)->descriptor()._baseFormat );
-                properties()._translucencySource = (channelCount == 4 && Get(opacity)->hasTransparency())
-                    ? TranslucencySource::OPACITY_MAP_A
-                    : TranslucencySource::OPACITY_MAP_R;
-            }
-        }
+        properties()._translucencySource = SelectTranslucencySource( inputs );
+        properties()._needsNewShader |= oldSource != properties().translucencySource();
+    }
 
-        properties()._needsNewShader = oldSource != properties().translucencySource();
+    void Material::invalidateDescriptorSets() noexcept
+    {
+        _descriptorSetMainPass._bindingCount = 0u;
+        _descriptorSetSecondaryPass._bindingCount = 0u;
+        _descriptorSetPrePass._bindingCount = 0u;
+        _descriptorSetShadow._bindingCount = 0u;
     }
 
     const RenderStateBlock& Material::getOrCreateRenderStateBlock( const RenderStagePass renderStagePass )
@@ -1288,14 +1428,19 @@ namespace Divide
                                                0u );
         dataOut._data.w = bestProbeID;
 
-        dataOut._textureOperations.x = Util::PACK_UNORM4x8( to_U8( _textures[to_base( TextureSlot::UNIT0 )]._operation ),
+        const TextureInfo& albedoTexture = _textures[to_base( TextureSlot::UNIT0 )];
+        const TextureInfo& opacityTexture = _textures[to_base( TextureSlot::OPACITY )];
+        const TextureOperation albedoOperation = albedoTexture._ptr != INVALID_HANDLE<Texture> ? albedoTexture._operation : TextureOperation::NONE;
+        const TextureOperation opacityOperation = opacityTexture._ptr != INVALID_HANDLE<Texture> ? opacityTexture._operation : TextureOperation::NONE;
+
+        dataOut._textureOperations.x = Util::PACK_UNORM4x8( to_U8( albedoOperation ),
                                                             to_U8( _textures[to_base( TextureSlot::UNIT1 )]._operation ),
                                                             to_U8( _textures[to_base( TextureSlot::SPECULAR )]._operation ),
                                                             to_U8( _textures[to_base( TextureSlot::EMISSIVE )]._operation ) );
         dataOut._textureOperations.y = Util::PACK_UNORM4x8( to_U8( _textures[to_base( TextureSlot::OCCLUSION )]._operation ),
                                                             to_U8( _textures[to_base( TextureSlot::METALNESS )]._operation ),
                                                             to_U8( _textures[to_base( TextureSlot::ROUGHNESS )]._operation ),
-                                                            to_U8( _textures[to_base( TextureSlot::OPACITY )]._operation ) );
+                                                            to_U8( opacityOperation ) );
         dataOut._textureOperations.z = Util::PACK_UNORM4x8( useAlbedoTexAlphachannel ? 1.f : 0.f,
                                                             useOpacityAlphaChannel ? 1.f : 0.f,
                                                             properties().specGloss().x,
@@ -1303,11 +1448,25 @@ namespace Divide
         dataOut._textureOperations.w = Util::PACK_UNORM4x8( properties().receivesShadows() ? 1.f : 0.f, 0.f, 0.f, 0.f );
     }
 
-    DescriptorSet Material::getDescriptorSet( const RenderStagePass& renderStagePass )
+    void Material::AddMissingCommonMaterialBindings( DescriptorSet& descriptor, const ImageView& fallback, const SamplerDescriptor sampler )
+    {
+        for ( const TextureSlot slot : { TextureSlot::UNIT0, TextureSlot::OPACITY } )
+        {
+            if ( !HasBinding( descriptor, to_U8( slot ) ) )
+            {
+                DescriptorSetBinding& binding = AddBinding( descriptor, to_U8( slot ), ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, fallback, sampler );
+            }
+        }
+    }
+
+    bool Material::getDescriptorSet( const RenderStagePass& renderStagePass,
+                                     const ShaderProgramDescriptor& shaderDescriptor,
+                                     DescriptorSet& descriptorOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        ShaderStageVisibility texVisibility = properties().texturesInFragmentStageOnly() ? ShaderStageVisibility::FRAGMENT : ShaderStageVisibility::ALL_DRAW;
+        const ShaderStageVisibility texVisibility = properties().texturesInFragmentStageOnly() ? ShaderStageVisibility::FRAGMENT : ShaderStageVisibility::ALL_DRAW;
         const bool isPrePass = renderStagePass._passType == RenderPassType::PRE_PASS;
         const bool isShadowPass = renderStagePass._stage == RenderStage::SHADOW;
         auto& descriptor = isShadowPass
@@ -1318,28 +1477,50 @@ namespace Divide
                                                                 ? _descriptorSetMainPass
                                                                 : _descriptorSetSecondaryPass;
 
+        descriptorOut._bindingCount = 0u;
         {
             SharedLock<SharedMutex> r_lock( _textureLock );
             if ( descriptor._bindingCount != 0u )
             {
-                return descriptor;
+                descriptorOut = descriptor;
             }
         }
 
-        ScopedLock<SharedMutex> w_lock( _textureLock );
-        if ( descriptor._bindingCount == 0u )
+        if ( descriptorOut._bindingCount == 0u )
         {
-            for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
+            ScopedLock<SharedMutex> w_lock( _textureLock );
+            if ( descriptor._bindingCount == 0u )
             {
-                if ( usesTextureInShader( static_cast<TextureSlot>(i), isPrePass, isShadowPass ) )
+                for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
                 {
-                    DescriptorSetBinding& binding = AddBinding( descriptor, i, texVisibility );
-                    Set( binding._data, _textures[i]._ptr, _textures[i]._sampler );
+                    if ( usesTextureInShader( static_cast<TextureSlot>(i), isPrePass, isShadowPass ) )
+                    {
+                        DescriptorSetBinding& binding = AddBinding( descriptor, i, texVisibility );
+                        Set( binding._data, _textures[i]._ptr, _textures[i]._sampler );
+                    }
                 }
             }
+            descriptorOut = descriptor;
         }
 
-        return descriptor;
+        for ( U8 i = 0u; i < descriptorOut._bindingCount; ++i )
+        {
+            descriptorOut._bindings[i]._shaderStageVisibility = to_U16( texVisibility );
+        }
+
+        if ( HasCommonMaterialInputs( shaderDescriptor ) &&
+             ( !HasBinding( descriptorOut, to_U8( TextureSlot::UNIT0 ) ) ||
+               !HasBinding( descriptorOut, to_U8( TextureSlot::OPACITY ) ) ) )
+        {
+            const Texture* fallback = Get( Texture::DefaultTexture2DArray() );
+            if ( fallback == nullptr )
+            {
+                Console::errorfn( LOCALE_STR( "MATERIAL_DEFAULT_TEXTURE_MISSING" ), resourceName().c_str() );
+                return false;
+            }
+            AddMissingCommonMaterialBindings( descriptorOut, fallback->getView(), Texture::DefaultSampler() );
+        }
+        return true;
     }
 
     void Material::rebuild()

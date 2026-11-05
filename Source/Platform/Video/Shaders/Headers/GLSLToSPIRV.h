@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -61,6 +61,7 @@ struct SpirvHelper
 
     static bool GLSLtoSPV(Divide::ShaderType shader_type, const char* pshader, std::vector<unsigned int>& spirv, Divide::RenderAPI renderAPI);
     static bool BuildReflectionData(Divide::ShaderType shader_type, const std::vector<unsigned int>& spirv, Divide::RenderAPI renderAPI, Divide::Reflection::Data& reflectionDataInOut);
+    [[nodiscard]] static bool UsesDrawIndex( const std::vector<unsigned int>& spirv, bool& usesDrawIndexOut ) noexcept;
     static bool s_isInit;
 };
 

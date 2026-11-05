@@ -2,6 +2,7 @@
 
 #include "Headers/ShaderProgram.h"
 #include "Headers/GLSLToSPIRV.h"
+#include "Headers/SampledImageResolver.h"
 
 #include "Managers/Headers/ProjectManager.h"
 
@@ -71,7 +72,6 @@ namespace Divide
     NO_DESTROY ShaderProgram::ShaderQueue ShaderProgram::s_recompileQueue;
     NO_DESTROY ShaderProgram::ShaderQueue ShaderProgram::s_recompileFailedQueue;
     ShaderProgram::ShaderProgramMap ShaderProgram::s_shaderPrograms;
-    fixed_vector<ShaderProgram*, U16_MAX> ShaderProgram::s_usedShaderPrograms;
     ShaderProgram::LastRequestedShader ShaderProgram::s_lastRequestedShaderProgram = {};
 
     SharedMutex ShaderProgram::s_programLock;
@@ -237,6 +237,8 @@ namespace Divide
 
         static bool PreProcessMacros( const std::string_view fileName, string& sourceInOut )
         {
+            PROFILE_SCOPE( "Shader macro preprocessing", Profiler::Category::Streaming );
+
             if ( sourceInOut.empty() )
             {
                 return false;
@@ -1326,29 +1328,6 @@ namespace Divide
         return count;
     }
 
-    void ShaderProgram::OnBeginFrame([[maybe_unused]] GFXDevice& gfx )
-    {
-        s_usedShaderPrograms.resize(0);
-    }
-
-    void ShaderProgram::OnEndFrame( GFXDevice& gfx )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        size_t& totalUniformBufferSize = gfx.getPerformanceMetrics()._uniformBufferVRAMUsage;
-        totalUniformBufferSize = 0u;
-
-        for ( ShaderProgram* program : s_usedShaderPrograms )
-        {
-            for ( UniformBlockUploader& block : program->_uniformBlockBuffers )
-            {
-                block.onFrameEnd();
-                totalUniformBufferSize += block.totalBufferSize();
-            }
-        }
-        
-    }
-
     /// Whenever a new program is created, it's registered with the manager
     void ShaderProgram::RegisterShaderProgram( ShaderProgram* shaderProgram )
     {
@@ -1426,6 +1405,8 @@ namespace Divide
                                             string& sourceInOut,
                                             eastl::set<U64>& foundAtomIDsInOut )
     {
+        PROFILE_SCOPE( "Shader include preprocessing", Profiler::Category::Streaming );
+
         struct Frame
         {
             Frame( const std::string_view frameName, const string& source, const U64 atomID )
@@ -1620,9 +1601,15 @@ namespace Divide
 
     bool ShaderProgram::SaveToCache( const LoadData::ShaderCacheType cache, const LoadData& dataIn, const eastl::set<U64>& atomIDsIn )
     {
+        PROFILE_SCOPE( "Shader cache write", Profiler::Category::Streaming );
+
         bool ret = false;
 
-        LockGuard<Mutex> rw_lock( g_cacheLock );
+        UniqueLock<Mutex> rw_lock( g_cacheLock, std::defer_lock );
+        {
+            PROFILE_SCOPE( "Shader cache write lock wait", Profiler::Category::Streaming );
+            rw_lock.lock();
+        }
         FileError err = FileError::FILE_EMPTY;
         switch ( cache )
         {
@@ -1714,12 +1701,18 @@ namespace Divide
 
     bool ShaderProgram::LoadFromCache( const LoadData::ShaderCacheType cache, LoadData& dataInOut, eastl::set<U64>& atomIDsOut )
     {
+        PROFILE_SCOPE( "Shader cache lookup", Profiler::Category::Streaming );
+
         if ( !s_useShaderCache )
         {
             return false;
         }
 
-        LockGuard<Mutex> rw_lock( g_cacheLock );
+        UniqueLock<Mutex> rw_lock( g_cacheLock, std::defer_lock );
+        {
+            PROFILE_SCOPE( "Shader cache lookup lock wait", Profiler::Category::Streaming );
+            rw_lock.lock();
+        }
         if ( !ValidateCacheLocked( cache, dataInOut._sourceFile, dataInOut._shaderName ) )
         {
             if ( !DeleteCacheLocked( cache, dataInOut._shaderName ) )
@@ -1855,29 +1848,32 @@ namespace Divide
         return true;
     }
 
-    bool ShaderProgram::resolveSampledImages( const DescriptorSetEntry& entry, DescriptorSet& resolvedSet ) const
+    bool ResolveSampledImages( const DescriptorSetEntry& entry,
+                               const vector<Reflection::ImageEntry>& images,
+                               DescriptorSet& scratch,
+                               const SampledImageFallback applyFallback )
     {
         bool changed = false;
-        resolvedSet = *entry._set;
-        for ( const Reflection::ImageEntry& image : _sampledImages )
+        const DescriptorSet* current = entry._set;
+        for ( const Reflection::ImageEntry& image : images )
         {
             if ( image._bindingSet != to_base(entry._usage) )
             {
                 continue;
             }
-            DescriptorSetBinding* binding = nullptr;
-            for ( U8 i = 0u; i < resolvedSet._bindingCount; ++i )
+            U8 bindingIndex = 0u;
+            for ( ; bindingIndex < current->_bindingCount; ++bindingIndex )
             {
-                if ( resolvedSet._bindings[i]._slot == image._bindingSlot )
+                if ( current->_bindings[bindingIndex]._slot == image._bindingSlot )
                 {
-                    binding = &resolvedSet._bindings[i];
                     break;
                 }
             }
-            if ( binding != nullptr )
+            if ( bindingIndex < current->_bindingCount )
             {
-                DIVIDE_GPU_ASSERT( binding->_data._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER );
-                if ( binding->_data._sampledImage._image._srcTexture != nullptr )
+                const DescriptorSetBindingData& data = current->_bindings[bindingIndex]._data;
+                DIVIDE_GPU_ASSERT( data._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER );
+                if ( data._sampledImage._image._srcTexture != nullptr )
                 {
                     continue;
                 }
@@ -1887,20 +1883,41 @@ namespace Divide
             {
                 continue;
             }
-            if ( binding == nullptr )
+
+            if ( !changed )
             {
-                DIVIDE_GPU_ASSERT( resolvedSet._bindingCount < MAX_BINDINGS_PER_DESCRIPTOR_SET );
-                binding = &AddBinding( resolvedSet, image._bindingSlot, image._stageVisibility );
+                scratch = *entry._set;
+                current = &scratch;
+                changed = true;
             }
+
+            DescriptorSetBinding* binding = nullptr;
+            if ( bindingIndex < scratch._bindingCount )
+            {
+                binding = &scratch._bindings[bindingIndex];
+            }
+            else
+            {
+                DIVIDE_GPU_ASSERT( scratch._bindingCount < MAX_BINDINGS_PER_DESCRIPTOR_SET );
+                binding = &AddBinding( scratch, image._bindingSlot, image._stageVisibility );
+            }
+            applyFallback( binding->_data, image );
+        }
+        return changed;
+    }
+
+    bool ShaderProgram::resolveSampledImages( const DescriptorSetEntry& entry, DescriptorSet& resolvedSet ) const
+    {
+        const auto ApplyFallback = []( DescriptorSetBindingData& data, const Reflection::ImageEntry& image )
+        {
             SamplerDescriptor sampler = Texture::DefaultSampler();
             if ( image._isDepth )
             {
                 sampler._depthCompareFunc = ComparisonFunction::LEQUAL;
             }
-            Set( binding->_data, Texture::DefaultTexture( image._textureType, image._sampledDataType, image._isDepth ), sampler );
-            changed = true;
-        }
-        return changed;
+            Set( data, Texture::DefaultTexture( image._textureType, image._sampledDataType, image._isDepth ), sampler );
+        };
+        return ResolveSampledImages( entry, _sampledImages, resolvedSet, ApplyFallback );
     }
 
     void ShaderProgram::initDrawDescriptorSetLayout( const PerFileShaderData& loadData )
@@ -2031,18 +2048,23 @@ namespace Divide
         }
     }
 
-    bool ShaderProgram::uploadUniformData( const UniformData& data, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut )
+    void ShaderProgram::uploadUniformData( const UniformData& data ) noexcept
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        bool ret = false;
         for ( auto& blockBuffer : _uniformBlockBuffers )
         {
             blockBuffer.uploadUniformData( data );
+        }
+    }
 
-            if ( blockBuffer.commit( set, memCmdInOut ) )
+    bool ShaderProgram::commitUniformData( DescriptorSet& set )
+    {
+        bool ret = false;
+        for ( auto& blockBuffer : _uniformBlockBuffers )
+        {
+            if ( blockBuffer.commit( set ) )
             {
-                s_usedShaderPrograms.emplace_back(this );
                 ret = true;
             }
         }
@@ -2050,53 +2072,52 @@ namespace Divide
         return ret;
     }
 
-    namespace
+    Reflection::PushConstantsState ShaderProgram::DetectPushConstantsUsage( const string& source, const RenderAPI renderAPI ) noexcept
     {
-        [[nodiscard]] static Reflection::PushConstantsState DetectPushConstantsUsage(const string& source) noexcept
-        {
-            bool use0 = false;
-            bool use1 = false;
+        PROFILE_SCOPE( "Shader push-constant detection", Profiler::Category::Streaming );
 
-            string line;
-            istringstream input(source);
-            while (Util::GetLine(input, line))
+        bool use0 = false;
+        bool use1 = false;
+
+        string line;
+        istringstream input(source);
+        while (Util::GetLine(input, line))
+        {
+            // ignore engine defines (all other comments should be stripped at this point)
+            if (line.starts_with("/*Engine define:") || line.find("PushData") == string::npos)
             {
-                // ignore engine defines (all other comments should be stripped at this point)
-                if (line.starts_with("/*Engine define:"))
+                continue;
+            }
+            // ignore uniform declarations
+            if (renderAPI == RenderAPI::OpenGL)
+            {
+                if (ctre::match<R"(^\s*layout\s*\([^)]*\)\s*uniform\s+\w+\s+PushData[01]\s*;\s*$)">(line))
                 {
                     continue;
                 }
-                // ignore uniform declarations
-                if (s_renderAPI == RenderAPI::OpenGL)
+            }
+            else //(Vulkan)
+            {
+                if (ctre::match<R"(^\s*\w+\s+PushData[01]\s*;\s*$)">(line))
                 {
-                    if (ctre::match<R"(^\s*layout\s*\([^)]*\)\s*uniform\s+\w+\s+PushData[01]\s*;\s*$)">(line))
-                    {
-                        continue;
-                    }
-                }
-                else //(Vulkan)
-                {
-                    if (ctre::match<R"(^\s*\w+\s+PushData[01]\s*;\s*$)">(line))
-                    {
-                        continue;
-                    }
-                }
-
-                use0 = use0 || ctre::search<R"((^|[^A-Za-z0-9_])PushData0([^A-Za-z0-9_]|$))">(line);
-                use1 = use1 || ctre::search<R"((^|[^A-Za-z0-9_])PushData1([^A-Za-z0-9_]|$))">(line);
-
-                if (use0 && use1)
-                {
-                    return Reflection::PushConstantsState::USED_BOTH;
+                    continue;
                 }
             }
 
-            if (use0)
-                return Reflection::PushConstantsState::USED_SLOT_1;
-            if (use1)
-                return Reflection::PushConstantsState::USED_SLOT_2;
-            return Reflection::PushConstantsState::NOT_USED;
+            use0 = use0 || ctre::search<R"((^|[^A-Za-z0-9_])PushData0([^A-Za-z0-9_]|$))">(line);
+            use1 = use1 || ctre::search<R"((^|[^A-Za-z0-9_])PushData1([^A-Za-z0-9_]|$))">(line);
+
+            if (use0 && use1)
+            {
+                return Reflection::PushConstantsState::USED_BOTH;
+            }
         }
+
+        if (use0)
+            return Reflection::PushConstantsState::USED_SLOT_1;
+        if (use1)
+            return Reflection::PushConstantsState::USED_SLOT_2;
+        return Reflection::PushConstantsState::NOT_USED;
     }
 
     U8 ShaderProgram::FindUniformBlockIndex( const UniformBlockLayouts& uniformBlocks,
@@ -2138,6 +2159,8 @@ namespace Divide
     bool ShaderProgram::loadSourceCode( const ModuleDefines& defines, const bool reloadExisting,
                                         LoadData& loadDataInOut, UniformBlockLayouts& uniformBlocksInOut )
     {
+        PROFILE_SCOPE( "Shader source loading", Profiler::Category::Streaming );
+
         loadDataInOut._sourceCodeGLSL.clear();
         loadDataInOut._sourceCodeSpirV.clear();
         loadDataInOut._uniforms.clear();
@@ -2163,7 +2186,7 @@ namespace Divide
                 }
                 if ( !loadDataInOut._sourceCodeGLSL.empty() )
                 {
-                    loadDataInOut._reflectionData._pushConstantsState = DetectPushConstantsUsage( loadDataInOut._sourceCodeGLSL );
+                    loadDataInOut._reflectionData._pushConstantsState = DetectPushConstantsUsage( loadDataInOut._sourceCodeGLSL, s_renderAPI );
                 }
                 _usedAtomIDs.insert( begin( atomIDs ), end( atomIDs ) );
                 return true;
@@ -2199,7 +2222,7 @@ namespace Divide
             Console::errorfn( LOCALE_STR( "ERROR_SHADER_REFLECTION_SPIRV_FAILED" ), loadDataInOut._shaderName.c_str() );
             return false;
         }
-        loadDataInOut._reflectionData._pushConstantsState = DetectPushConstantsUsage( loadDataInOut._sourceCodeGLSL );
+        loadDataInOut._reflectionData._pushConstantsState = DetectPushConstantsUsage( loadDataInOut._sourceCodeGLSL, s_renderAPI );
         SaveToCache( LoadData::ShaderCacheType::REFLECTION, loadDataInOut, atomIDs );
 
         _usedAtomIDs.insert( begin( atomIDs ), end( atomIDs ) );
@@ -2213,6 +2236,8 @@ namespace Divide
                                           UniformBlockLayouts& uniformBlocksInOut,
                                           eastl::set<U64>& atomIDsInOut )
     {
+        PROFILE_SCOPE( "Shader GLSL loading and parsing", Profiler::Category::Streaming );
+
         auto& glslCodeOut = loadDataInOut._sourceCodeGLSL;
         glslCodeOut.resize( 0 );
 

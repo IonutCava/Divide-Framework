@@ -1,6 +1,7 @@
 // Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/VKWrapper.h"
+#include "Headers/vkDescriptorState.h"
 #include "Headers/vkToolProperties.h"
 
 #include "Core/Headers/Application.h"
@@ -20,6 +21,7 @@
 #include "Platform/Video/Headers/LockManager.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
+#include "Platform/Video/Shaders/Headers/SampledImageResolver.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
 #include "Buffers/Headers/vkRenderTarget.h"
@@ -318,49 +320,11 @@ namespace Divide
             return ret;
         }
 
-        // Resolved contents of a single descriptor slot. Used to detect if a shared (non PER_DRAW) set actually changed
-        // so that we only allocate + write a new VkDescriptorSet when the bound resources differ.
-        struct DescriptorSlotState
-        {
-            VkDescriptorBufferInfo _bufferInfo{};
-            VkDescriptorImageInfo _imageInfo{};
-            VkDescriptorType _type{ VK_DESCRIPTOR_TYPE_MAX_ENUM };
-
-            [[nodiscard]] bool isImage() const noexcept
-            {
-                return _type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER || _type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            }
-
-            [[nodiscard]] bool operator==( const DescriptorSlotState& other ) const noexcept
-            {
-                if ( _type != other._type )
-                {
-                    return false;
-                }
-                if ( _type == VK_DESCRIPTOR_TYPE_MAX_ENUM )
-                {
-                    return true;
-                }
-                if ( isImage() )
-                {
-                    return _imageInfo.sampler == other._imageInfo.sampler &&
-                           _imageInfo.imageView == other._imageInfo.imageView &&
-                           _imageInfo.imageLayout == other._imageInfo.imageLayout;
-                }
-
-                return _bufferInfo.buffer == other._bufferInfo.buffer &&
-                       _bufferInfo.offset == other._bufferInfo.offset &&
-                       _bufferInfo.range == other._bufferInfo.range;
-            }
-        };
-
-        using DescriptorSlotStates = std::array<DescriptorSlotState, MAX_BINDINGS_PER_DESCRIPTOR_SET>;
-
         // One entry per shared DescriptorSetUsage (PER_FRAME/PER_PASS/PER_BATCH). PER_DRAW uses push descriptors instead.
         // Sets are allocated from per-frame pools, so the cache is invalidated every frame (see VK_API::frameStarted).
         struct SharedDescriptorSetCache
         {
-            DescriptorSlotStates _slots{};
+            VKDescriptorSlotStates _slots{};
             VkDescriptorSet _set{ VK_NULL_HANDLE };
             bool _pendingUpdate{ true };
         };
@@ -368,18 +332,14 @@ namespace Divide
         // What is currently bound on the active command buffer for a given bind point (graphics/compute).
         // Indexed by DescriptorSetUsage (which is also the Vulkan set index).
         //
-        // Both this and SharedDescriptorSetCache compare raw Vulkan handles (image views, samplers, buffers, pipeline layouts).
-        // That is safe because every such object is destroyed via VK_API::RegisterCustomAPIDelete(..., true) which defers the
-        // actual vkDestroy* call by MAX_FRAMES_IN_FLIGHT + 1 frames (s_transientDeleteQueue), while these caches are reset at least
-        // once per frame (InvalidateSharedDescriptorSets() in frameStarted, ResetBoundDescriptorState() on command buffer change and in
-        // setDefaultState). A handle can therefore never be recycled by the driver while a cache entry still references it.
-        // Destroying any of these objects immediately (mid-frame) would break this invariant.
+        // These caches compare raw handles. Runtime resource and shader-reload pipeline destruction is deferred,
+        // and the caches reset at frame start or on a command-buffer change. Teardown invalidates them before
+        // destroying the pipeline cache immediately. Reusing handles during a recording would break this invariant.
         struct BoundDescriptorState
         {
             std::array<VkDescriptorSet, to_base( DescriptorSetUsage::COUNT )> _sets{};
             std::array<std::array<U32, MAX_BINDINGS_PER_DESCRIPTOR_SET>, to_base( DescriptorSetUsage::COUNT )> _dynamicOffsets{};
-            VkPipelineLayout _perDrawLayout{ VK_NULL_HANDLE };
-            U64 _perDrawVersion{ U64_MAX };
+            VKPushDescriptorState _perDraw{};
         };
 
         std::array<SharedDescriptorSetCache, to_base( DescriptorSetUsage::COUNT )> s_sharedDescriptorSets{};
@@ -739,10 +699,21 @@ namespace Divide
         return result;
     }
 
+    VKPipelineCacheKey VKPipelineCacheKey::From( const Pipeline& pipeline, const VKRenderingSignature& rendering, const bool dynamicBlendState ) noexcept
+    {
+        return
+        {
+            ._pipelineStateHash = pipeline.compiledPipelineHash(),
+            ._blendStateHash = dynamicBlendState ? 0u : pipeline.blendStateHash(),
+            ._colourWrite = dynamicBlendState ? 0u : pipeline.descriptor()._stateBlock._colourWrite.i,
+            ._rendering = rendering
+        };
+    }
+
     size_t VKPipelineCacheKeyHash::operator()( const VKPipelineCacheKey& key ) const noexcept
     {
         size_t hash = key._pipelineStateHash;
-        Util::Hash_combine( hash, key._blendStateHash, key._rendering._colourAttachmentCount,
+        Util::Hash_combine( hash, key._blendStateHash, key._colourWrite, key._rendering._colourAttachmentCount,
                             key._rendering._viewMask, key._rendering._depthFormat,
                             key._rendering._stencilFormat, key._rendering._sampleCount );
         for ( U32 i = 0u; i < key._rendering._colourAttachmentCount; ++i )
@@ -871,6 +842,23 @@ namespace Divide
         NOP();
     }
 
+    bool VK_API::waitForGPUIdle() noexcept
+    {
+        if ( _device == nullptr || _device->getVKDevice() == VK_NULL_HANDLE )
+        {
+            return true;
+        }
+
+        const VkResult result = _device->waitIdle();
+        if ( result != VK_SUCCESS )
+        {
+            Console::errorfn( "Vulkan device idle wait failed: {} ({})", VKErrorString( result ).c_str(), to_I32( result ) );
+            return false;
+        }
+
+        return true;
+    }
+
     bool VK_API::queueBufferReadback( BufferReadbackRequest&& request ) noexcept
     {
         VKPerWindowState* activeWindow = GetStateTracker()._activeWindow;
@@ -982,7 +970,7 @@ namespace Divide
         {
             if ( result == VK_ERROR_DEVICE_LOST && RenderSmokeTest::Enabled() )
             {
-                ReportVulkanDeviceLost( "vkAcquireNextImageKHR" );
+                ReportVulkanDeviceLost( "Vulkan frame startup", _device.get() );
             }
             if ( result == VK_ERROR_OUT_OF_DATE_KHR )
             {
@@ -1001,6 +989,7 @@ namespace Divide
             return false;
         }
 
+        windowState._bufferBindings.reset();
         windowState._frameInProgress = true;
         windowState._recreateAfterPresent = result == VK_SUBOPTIMAL_KHR;
         pollBufferReadbacks( windowState._swapChain->activeFrameFence(), window.getGUID() );
@@ -1147,7 +1136,7 @@ namespace Divide
         {
             if ( result == VK_ERROR_DEVICE_LOST )
             {
-                ReportVulkanDeviceLost( "frame submission or presentation during capture" );
+                ReportVulkanDeviceLost( "frame finalization, submission, or presentation during capture", _device.get() );
             }
             if ( result != VK_SUCCESS || recreateAfterPresent || RenderSmokeTest::PresentCount() <= presentsBeforeCapture )
             {
@@ -1251,7 +1240,7 @@ namespace Divide
         {
             if ( result == VK_ERROR_DEVICE_LOST && RenderSmokeTest::Enabled() )
             {
-                ReportVulkanDeviceLost( "frame submission or presentation" );
+                ReportVulkanDeviceLost( "frame finalization, submission, or presentation", _device.get() );
             }
             Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( result ).c_str() );
             if ( result != VK_ERROR_DEVICE_LOST )
@@ -1271,6 +1260,28 @@ namespace Divide
             return false;
         }
 
+        const U64 frameNumber = GFXDevice::FrameCount();
+        for ( const auto& [windowGUID, windowState] : _perWindowState )
+        {
+            if ( windowState._swapChain == nullptr )
+            {
+                continue;
+            }
+
+            const VkResult result = windowState._swapChain->waitForFrameSlot( frameNumber );
+            if ( result != VK_SUCCESS )
+            {
+                if ( result == VK_ERROR_DEVICE_LOST && RenderSmokeTest::Enabled() )
+                {
+                    ReportVulkanDeviceLost( "Vulkan frame-slot reuse", _device.get() );
+                }
+                Console::errorfn( "Vulkan frame-slot reuse failed [window={}, requestedSlot={}]: {} ({})",
+                                  windowGUID, VKSwapChain::FrameSlotIndex( frameNumber ),
+                                  VKErrorString( result ).c_str(), to_I32( result ) );
+                return false;
+            }
+        }
+
         for ( U8 i = 0u; i < to_base(DescriptorSetUsage::COUNT); ++i )
         {
             PROFILE_SCOPE( "Flip descriptor pools", Profiler::Category::Graphics);
@@ -1283,7 +1294,7 @@ namespace Divide
         }
         // Pools were flipped (and potentially reset), so any cached shared set from a previous frame may be recycled
         InvalidateSharedDescriptorSets();
-        LockManager::CleanExpiredSyncObjects( RenderAPI::Vulkan, GFXDevice::FrameCount() );
+        LockManager::CleanExpiredSyncObjects( RenderAPI::Vulkan, frameNumber );
 
         return true;
     }
@@ -1808,6 +1819,7 @@ namespace Divide
         }
 
         deviceInformation._offsetAlignmentBytesUBO = deviceProperties.limits.minUniformBufferOffsetAlignment;
+        deviceInformation._nonCoherentAtomSize = to_size( deviceProperties.limits.nonCoherentAtomSize );
         deviceInformation._maxSizeBytesUBO = deviceProperties.limits.maxUniformBufferRange;
         deviceInformation._offsetAlignmentBytesSSBO = deviceProperties.limits.minStorageBufferOffsetAlignment;
         deviceInformation._maxSizeBytesSSBO = deviceProperties.limits.maxStorageBufferRange;
@@ -2043,6 +2055,34 @@ namespace Divide
     }
 
 
+    bool VK_API::supportsIndirectDrawBatching( const GenericDrawCommand& draw ) const noexcept
+    {
+        const CompiledPipeline& pipeline = GetStateTracker()._pipeline;
+        if ( !pipeline._isValid || pipeline._vkPipeline == VK_NULL_HANDLE ||
+             pipeline._bindPoint != VK_PIPELINE_BIND_POINT_GRAPHICS || !pipeline._multiDrawCompatible ||
+             draw._sourceBuffers == nullptr || draw._sourceBuffersCount != 2u )
+        {
+            return false;
+        }
+
+        std::array<BufferUsageType, 2u> usages{};
+        for ( size_t i = 0u; i < draw._sourceBuffersCount; ++i )
+        {
+            GPUBuffer* buffer = GPUBuffer::s_BufferPool.find( draw._sourceBuffers[i] );
+            if ( buffer == nullptr )
+            {
+                return false;
+            }
+            const auto* vkBuffer = static_cast<const vkGPUBuffer*>( buffer );
+            if ( vkBuffer->_internalBuffer == nullptr )
+            {
+                return false;
+            }
+            usages[i] = vkBuffer->_internalBuffer->_params._usageType;
+        }
+        return IndexedIndirectBatchBuffersCompatible( usages[0], usages[1] );
+    }
+
     bool VK_API::Draw( GenericDrawCommand cmd, VkCommandBuffer cmdBuffer )
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
@@ -2084,39 +2124,50 @@ namespace Divide
         bool ret = true;
         bool hasIndexBuffer = false;
         U32 firstIndex = cmd._cmd.firstIndex;
+        VKBufferBindingState& bufferBindings = GetStateTracker()._activeWindow->_bufferBindings;
 
-        for (size_t i = 0u; i < cmd._sourceBuffersCount; ++i)
         {
-            GPUBuffer* buffer = GPUBuffer::s_BufferPool.find(cmd._sourceBuffers[i]);
-            
-            DIVIDE_GPU_ASSERT(buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
-            auto vkBuffer = static_cast<vkGPUBuffer*>(buffer);
-            vkBufferImpl* impl = vkBuffer->_internalBuffer.get();
-            DIVIDE_GPU_ASSERT(impl != nullptr, "GL_API::Draw - GPU buffer has no internal implementation!");
-
-            const VkDeviceSize elementSizeInBytes = impl->_params._elementSize;
-            VkDeviceSize offset = 0u;
-
-            if (vkBuffer->queueLength() > 1)
+            PROFILE_SCOPE( "Resolve Vulkan draw buffers", Profiler::Category::Graphics );
+            for (size_t i = 0u; i < cmd._sourceBuffersCount; ++i)
             {
-                offset += impl->_params._elementCount * elementSizeInBytes * vkBuffer->queueIndex();
-            }
+                GPUBuffer* buffer = GPUBuffer::s_BufferPool.find(cmd._sourceBuffers[i]);
 
-            if ( impl->_params._usageType == BufferUsageType::VERTEX_BUFFER )
-            {
-                VK_PROFILE(vkCmdBindVertexBuffers, cmdBuffer, vkBuffer->_bindConfig._bindIdx, 1, &impl->_buffer, &offset);
-            }
-            else if ( impl->_params._usageType == BufferUsageType::INDEX_BUFFER )
-            {
-                DIVIDE_GPU_ASSERT(vkBuffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
-                
-                DIVIDE_GPU_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
-                hasIndexBuffer = true;
+                DIVIDE_GPU_ASSERT(buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
+                auto vkBuffer = static_cast<vkGPUBuffer*>(buffer);
+                vkBufferImpl* impl = vkBuffer->_internalBuffer.get();
+                DIVIDE_GPU_ASSERT(impl != nullptr, "GL_API::Draw - GPU buffer has no internal implementation!");
 
-                firstIndex += vkBuffer->firstIndexOffsetCount();
+                const VkDeviceSize elementSizeInBytes = impl->_params._elementSize;
+                VkDeviceSize offset = 0u;
 
-                VK_PROFILE(vkCmdBindIndexBuffer, cmdBuffer, impl->_buffer, offset, elementSizeInBytes == sizeof(U16) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
-                cmd._cmd.firstIndex = firstIndex;
+                if (vkBuffer->queueLength() > 1)
+                {
+                    offset += impl->_params._elementCount * elementSizeInBytes * vkBuffer->queueIndex();
+                }
+
+                if ( impl->_params._usageType == BufferUsageType::VERTEX_BUFFER )
+                {
+                    if ( bufferBindings.updateVertexBinding( vkBuffer->_bindConfig._bindIdx, impl->_buffer, offset ) )
+                    {
+                        VK_PROFILE(vkCmdBindVertexBuffers, cmdBuffer, vkBuffer->_bindConfig._bindIdx, 1, &impl->_buffer, &offset);
+                    }
+                }
+                else if ( impl->_params._usageType == BufferUsageType::INDEX_BUFFER )
+                {
+                    DIVIDE_GPU_ASSERT(vkBuffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
+
+                    DIVIDE_GPU_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
+                    hasIndexBuffer = true;
+
+                    firstIndex += vkBuffer->firstIndexOffsetCount();
+
+                    const VkIndexType indexType = elementSizeInBytes == sizeof(U16) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
+                    if ( bufferBindings.updateIndexBinding( impl->_buffer, offset, indexType ) )
+                    {
+                        VK_PROFILE(vkCmdBindIndexBuffer, cmdBuffer, impl->_buffer, offset, indexType);
+                    }
+                    cmd._cmd.firstIndex = firstIndex;
+                }
             }
         }
 
@@ -2167,6 +2218,11 @@ namespace Divide
             return false;
         }
         auto& program = pipeline._program;
+        const bool uniformBindingsChanged = program->commitUniformData( _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl() );
+        if ( _context.uniformUploadFailed() )
+        {
+            return false;
+        }
         auto& drawDescriptor = program->perDrawDescriptorSetLayout();
         const bool targetDescriptorEmpty = IsEmpty( drawDescriptor );
         const auto& setUsageData = program->setUsage();
@@ -2208,7 +2264,7 @@ namespace Divide
         };
 
         // Resolves a single binding into a VK descriptor. Returns false if nothing should be written for this slot.
-        const auto resolveSlot = [&]( const DescriptorSetBinding& srcBinding, const DescriptorSetBindingType layoutBindingType, DescriptorSlotState& slotOut, U32& dynamicOffsetOut ) -> bool
+        const auto resolveSlot = [&]( const DescriptorSetBinding& srcBinding, const DescriptorSetBindingType layoutBindingType, VKDescriptorSlotState& slotOut, U32& dynamicOffsetOut ) -> bool
         {
             switch ( srcBinding._data._type )
             {
@@ -2228,7 +2284,7 @@ namespace Divide
                     slotOut._bufferInfo.buffer = static_cast<vkBufferImpl*>(bufferEntry._buffer->getBufferImpl())->_buffer;
                     slotOut._bufferInfo.offset = isDynamicBuffer ? 0u : offset;
                     slotOut._bufferInfo.range = bufferEntry._range._length * bufferEntry._buffer->getPrimitiveSize();
-                    dynamicOffsetOut = to_U32( offset );
+                    dynamicOffsetOut = isDynamicBuffer ? to_U32( offset ) : 0u;
                     return true;
                 }
                 case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
@@ -2303,17 +2359,20 @@ namespace Divide
         };
 
         thread_local fixed_vector<VkWriteDescriptorSet, MAX_BINDINGS_PER_DESCRIPTOR_SET> descriptorWrites;
-        thread_local DescriptorSlotStates perDrawSlots;
-        thread_local std::array<DescriptorSet, to_base(DescriptorSetUsage::COUNT)> resolvedSets;
+        thread_local VKDescriptorSlotStates perDrawSlots;
+        thread_local std::array<SampledImageResolutionCache, to_base(DescriptorSetUsage::COUNT)> resolvedSets;
 
         for ( DescriptorSetEntry entry : descriptorSetEntries )
         {
-            DescriptorSet resolvedSet{};
-            const bool hasFallback = program->resolveSampledImages( entry, resolvedSet );
-            DescriptorSet& previousSet = resolvedSets[to_base(entry._usage)];
-            entry._isDirty = entry._isDirty || (hasFallback && previousSet != resolvedSet);
-            previousSet = resolvedSet;
-            entry._set = &resolvedSet;
+            SampledImageResolutionCache& resolutionCache = resolvedSets[to_base(entry._usage)];
+            const bool hasFallback = program->resolveSampledImages( entry, resolutionCache._resolvedSet );
+            const bool alreadyDirty = entry._isDirty ||
+                                      (entry._usage == DescriptorSetUsage::PER_DRAW && uniformBindingsChanged);
+            entry._isDirty = resolutionCache.update( hasFallback, alreadyDirty ) || alreadyDirty;
+            if ( hasFallback )
+            {
+                entry._set = &resolutionCache._resolvedSet;
+            }
             const BaseType<DescriptorSetUsage> usageIdx = to_base( entry._usage );
 
             // Indirect command buffers are not descriptors (vkCmdDraw*Indirect source), but are specified in the same way as any other
@@ -2346,12 +2405,13 @@ namespace Divide
                     continue;
                 }
 
-                if ( boundState._perDrawLayout == pipeline._vkPipelineLayout && boundState._perDrawVersion == s_perDrawDescriptorVersion )
+                if ( !boundState._perDraw.needsUpdate( pipeline._vkPipelineLayout, s_perDrawDescriptorVersion ) )
                 {
                     continue;
                 }
 
                 PROFILE_SCOPE( "Push per draw descriptors", Profiler::Category::Graphics );
+                boundState._perDraw.beginUpdate( pipeline._vkPipelineLayout );
 
                 for ( U8 i = 0u; i < entry._set->_bindingCount; ++i )
                 {
@@ -2364,14 +2424,17 @@ namespace Divide
 
                     DIVIDE_GPU_ASSERT( areCompatibleBindingTypes( layoutBindingType, srcBinding._data._type ) );
 
-                    DescriptorSlotState& slot = perDrawSlots[srcBinding._slot];
+                    VKDescriptorSlotState& slot = perDrawSlots[srcBinding._slot];
                     U32 dynamicOffset = 0u;
                     if ( resolveSlot( srcBinding, layoutBindingType, slot, dynamicOffset ) )
                     {
                         DIVIDE_GPU_ASSERT( !IsDescriptorSetBindingTypeDynamic( layoutBindingType ) );
-                        descriptorWrites.push_back( slot.isImage()
-                                                        ? vk::writeDescriptorSet( slot._type, srcBinding._slot, &slot._imageInfo, 1u )
-                                                        : vk::writeDescriptorSet( slot._type, srcBinding._slot, &slot._bufferInfo, 1u ) );
+                        if ( boundState._perDraw.updateSlot( srcBinding._slot, slot ) )
+                        {
+                            descriptorWrites.push_back( slot.isImage()
+                                                            ? vk::writeDescriptorSet( slot._type, srcBinding._slot, &slot._imageInfo, 1u )
+                                                            : vk::writeDescriptorSet( slot._type, srcBinding._slot, &slot._bufferInfo, 1u ) );
+                        }
                     }
                 }
 
@@ -2386,8 +2449,7 @@ namespace Divide
                     descriptorWrites.reset_lose_memory();
                 }
 
-                boundState._perDrawLayout = pipeline._vkPipelineLayout;
-                boundState._perDrawVersion = s_perDrawDescriptorVersion;
+                boundState._perDraw.finishUpdate( s_perDrawDescriptorVersion );
                 continue;
             }
 
@@ -2403,7 +2465,7 @@ namespace Divide
             PROFILE_SCOPE( "Update shared descriptor set", Profiler::Category::Graphics );
             PROFILE_TAG( "Usage IDX", usageIdx );
 
-            DescriptorSlotStates desiredSlots{};
+            VKDescriptorSlotStates desiredSlots{};
             for ( U8 i = 0u; i < entry._set->_bindingCount; ++i )
             {
                 const DescriptorSetBinding& srcBinding = entry._set->_bindings[i];
@@ -2460,7 +2522,7 @@ namespace Divide
 
             for ( U8 slotIdx = 0u; slotIdx < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slotIdx )
             {
-                const DescriptorSlotState& slot = cache._slots[slotIdx];
+                const VKDescriptorSlotState& slot = cache._slots[slotIdx];
                 if ( slot._type == VK_DESCRIPTOR_TYPE_MAX_ENUM )
                 {
                     continue;
@@ -2565,29 +2627,31 @@ namespace Divide
 
         auto& activeState = GetStateTracker()._activeWindow->_activeState;
 
+        if ( activeState.needsStencilTestUpdate( currentState._stencilEnabled ) )
+        {
+            vkCmdSetStencilTestEnable( cmdBuffer, currentState._stencilEnabled ? VK_TRUE : VK_FALSE );
+            ret = true;
+        }
+
         if ( currentState._stencilEnabled )
         {
-            if ( !activeState._isSet || !activeState._block._stencilEnabled )
-            {
-                vkCmdSetStencilTestEnable( cmdBuffer, VK_TRUE );
-                ret = true;
-            }
-            if ( !activeState._isSet || activeState._block._stencilMask != currentState._stencilMask )
+            const bool resetStencilValues = activeState.needsStencilValuesReset();
+            if ( resetStencilValues || activeState._block._stencilMask != currentState._stencilMask )
             {
                 vkCmdSetStencilCompareMask( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilMask );
                 ret = true;
             }
-            if ( !activeState._isSet || activeState._block._stencilWriteMask != currentState._stencilWriteMask )
+            if ( resetStencilValues || activeState._block._stencilWriteMask != currentState._stencilWriteMask )
             {
                 vkCmdSetStencilWriteMask( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilWriteMask );
                 ret = true;
             }
-            if ( !activeState._isSet || activeState._block._stencilRef != currentState._stencilRef )
+            if ( resetStencilValues || activeState._block._stencilRef != currentState._stencilRef )
             {
                 vkCmdSetStencilReference( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilRef );
                 ret = true;
             }
-            if ( !activeState._isSet || 
+            if ( resetStencilValues ||
                   activeState._block._stencilFailOp != currentState._stencilFailOp ||
                   activeState._block._stencilPassOp != currentState._stencilPassOp ||
                   activeState._block._stencilZFailOp != currentState._stencilZFailOp ||
@@ -2601,11 +2665,6 @@ namespace Divide
                                   vkCompareFuncTable[to_base( currentState._stencilFunc )]);
                 ret = true;
             }
-        }
-        else if ( !activeState._isSet || !activeState._block._stencilEnabled )
-        {
-            vkCmdSetStencilTestEnable( cmdBuffer, VK_FALSE );
-            ret = true;
         }
 
         if ( !activeState._isSet || activeState._block._zFunc != currentState._zFunc )
@@ -2742,12 +2801,7 @@ namespace Divide
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         VKStateTracker& stateTracker = GetStateTracker();
-        const VKPipelineCacheKey key
-        {
-            ._pipelineStateHash = pipeline.stateHash(),
-            ._blendStateHash = s_hasDynamicBlendStateSupport ? 0u : pipeline.blendStateHash(),
-            ._rendering = stateTracker._renderingSignature
-        };
+        const VKPipelineCacheKey key = VKPipelineCacheKey::From( pipeline, stateTracker._renderingSignature, s_hasDynamicBlendStateSupport );
         CompiledPipeline& compiledPipeline = _compiledPipelines[key];
         if ( !compiledPipeline._isValid )
         {
@@ -2804,12 +2858,17 @@ namespace Divide
             PipelineBuilder pipelineBuilder;
 
             bool isGraphicsPipeline = false;
+            bool hasVertexStage = false;
+            bool multiDrawCompatible = true;
             for ( const auto& stage : shaderStages )
             {
                 pipelineBuilder._shaderStages.push_back( vk::pipelineShaderStageCreateInfo( stage._shader->stageMask(), stage._shader->handle() ) );
                 isGraphicsPipeline = isGraphicsPipeline || stage._shader->stageMask() != VK_SHADER_STAGE_COMPUTE_BIT;
+                hasVertexStage = hasVertexStage || stage._shader->stageMask() == VK_SHADER_STAGE_VERTEX_BIT;
+                multiDrawCompatible = multiDrawCompatible && stage._shader->multiDrawCompatible();
             }
             compiledPipeline._bindPoint = isGraphicsPipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
+            compiledPipeline._multiDrawCompatible = isGraphicsPipeline && hasVertexStage && multiDrawCompatible;
 
             pipelineBuilder._vertexInputInfo = vk::pipelineVertexInputStateCreateInfo();
             const VertexInputDescription vertexDescription = getVertexDescription( pipelineDescriptor._vertexFormat,
@@ -2933,18 +2992,6 @@ namespace Divide
         return compiledPipeline._program->validatePreBind(_context.context().config(), false);
     }
 
-    void VK_API::flushPushConstantsLocks()
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        if ( _uniformsNeedLock )
-        {
-            _uniformsNeedLock = false;
-            flushCommand( &_uniformsMemCommand );
-            _uniformsMemCommand._bufferLocks.clear();
-        }
-    }
-
     void VK_API::SubmitTransferRequest( const VKTransferQueue::TransferRequest& request, VkCommandBuffer cmd )
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
@@ -3056,11 +3103,6 @@ namespace Divide
         if ( GFXDevice::IsSubmitCommand( cmd->type() ) )
         {
             FlushBufferTransferRequests( cmdBuffer );
-        }
-
-        if ( stateTracker._activeRenderTargetID == SCREEN_TARGET_ID )
-        {
-            flushPushConstantsLocks();
         }
 
         switch ( cmd->type() )
@@ -3316,11 +3358,7 @@ namespace Divide
                     UniformData* uniforms = pushConstantsCmd->_uniformData;
                     if ( uniforms != nullptr )
                     {
-                        if ( stateTracker._pipeline._program->uploadUniformData( *uniforms, _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl(), _uniformsMemCommand ) )
-                        {
-                            _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).dirty( true );
-                            _uniformsNeedLock = _uniformsNeedLock || _uniformsMemCommand._bufferLocks.empty();
-                        }
+                        stateTracker._pipeline._program->uploadUniformData( *uniforms );
                     }
                     if ( pushConstantsCmd->_fastData.dataFlags() != PushConstantsStruct::DataFlags::NONE )
                     {
@@ -3371,7 +3409,7 @@ namespace Divide
 
                 const auto& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
 
-                if ( stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
+                if ( !_context.uniformUploadFailed() && stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
                     if ( !stateTracker._pushConstantsValid && _hasLastPushConstants )
                     {
@@ -3414,7 +3452,7 @@ namespace Divide
             case GFX::CommandType::DISPATCH_SHADER_TASK:
             {
                 PROFILE_SCOPE( "DISPATCH_SHADER_TASK", Profiler::Category::Graphics );
-                if (stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE)
+                if ( !_context.uniformUploadFailed() && stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
                     if ( !stateTracker._pushConstantsValid && _hasLastPushConstants )
                     {
@@ -3802,7 +3840,6 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        flushPushConstantsLocks();
         s_transientDeleteQueue.flush( _device->getDevice() );
         GetStateTracker()._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
         GetStateTracker()._activeRenderTargetColourAttachmentCount = 1u;

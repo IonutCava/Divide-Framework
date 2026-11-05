@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/glShaderBuffer.h"
 
@@ -92,6 +93,11 @@ namespace Divide
     LockableBuffer* glShaderBuffer::getBufferImpl()
     {
         return _bufferImpl.get();
+    }
+
+    bool glShaderBuffer::supportsPersistentWrites() const noexcept
+    {
+        return _bufferImpl != nullptr && _bufferImpl->hasPersistentMapping();
     }
 
 }  // namespace Divide

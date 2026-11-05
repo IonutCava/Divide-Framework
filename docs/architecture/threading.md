@@ -32,7 +32,16 @@ workers; they must not synchronously depend on the main thread while holding
 locks that the main thread may need.
 Callback dispatch releases its lock and dequeues one callback at a time, so a
 callback can safely wait for another callback. Main-thread task waits and
-shutdown waits service pending callbacks as well.
+shutdown waits service pending callbacks as well. The render-pass manager waits
+for its parent task through `TaskPool::wait`, which services callbacks and
+eligible tasks while using a bounded condition-variable wait between checks;
+render-stage tasks marked `DONT_CARE_NO_IDLE` remain on pool workers.
+Idle task checks poll both priority queues without blocking. A task wait
+continues helping immediately after executing eligible work and only waits
+when no work was executed. Parent and `Parallel_For` waits use bounded
+completion notifications when no eligible task is available, so they continue
+servicing main-thread callbacks without busy-polling. Workers may still wait
+briefly on the normal queue between priority checks.
 Resource creation without an external task counter does not retain a pointer
 to a temporary counter; supplied counters must outlive their asynchronous work.
 Resource states use release/acquire ordering to publish completed resource data.
@@ -117,6 +126,8 @@ Vegetation preparation is recorded per view and submitted before that view's
 draw passes. Shared instance-buffer ranges have GPU read/write and write/read
 barriers between views; do not move the compute dispatch into a render pass or
 reuse another reflector's Hi-Z results.
+Within one phase, explicitly independent packages with disjoint declared writes
+share boundary barriers; overlaps and other packages remain ordered individually.
 Tree components' non-owning preparation and buffer references point to their
 vegetation ancestor, whose graph children are destroyed before the ancestor's
 resources. The shared billboard geometry commit is serialized across chunks and
@@ -129,6 +140,19 @@ workers without a context.
 
 Audit dirty-range locks, allocator free-list locks, command-buffer queue locks, and background asset work that can race render/main-thread resource finalization.
 Separate CPU work completion from GPU submission and completion: recorded commands execute later at window flush, as described in [rendering](rendering.md).
+The renderer-owned uniform arena serializes allocation, retirement, and
+frame-slot recycling with its mutex; unchanged draw consumers only update their
+program's usage record and do not take that lock. Shader unload or reload may
+retire an allocation from an asset worker, so pages outlive programs and the
+arena is destroyed only after shader shutdown and successful GPU completion.
+If completion fails, teardown reports the failure and terminates rather than
+destroying resources that could still be in use.
+Frame-slot completion is established for every submitting window before
+retirement processing, not inferred from elapsed frame numbers alone.
+Arena writes retain the underlying buffer's range-wait checks, but the
+`LockManager` pool and a write-time fence do not replace that all-window
+completion proof. Unchanged uniform consumers neither write nor register
+per-draw range fences.
 Particle sorting and upload-cache selection are serialized per emitter.
 Frame-local uploads and their handle arrays have stable addresses even when
 another camera grows the cache. Render packages reference immutable draw

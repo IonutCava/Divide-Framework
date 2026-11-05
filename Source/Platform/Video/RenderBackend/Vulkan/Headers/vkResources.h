@@ -110,8 +110,16 @@ struct CompiledPipeline
     PrimitiveTopology _topology{ PrimitiveTopology::COUNT };
     VkShaderStageFlags _stageFlags{ VK_FLAGS_NONE };
     VkDescriptorSetLayout* _descriptorSetlayout{ nullptr };
+    bool _multiDrawCompatible{ false };
     bool _isValid{false};
 };
+
+[[nodiscard]] constexpr bool IndexedIndirectBatchBuffersCompatible( const BufferUsageType first,
+                                                                    const BufferUsageType second ) noexcept
+{
+    return ( first == BufferUsageType::VERTEX_BUFFER && second == BufferUsageType::INDEX_BUFFER ) ||
+           ( first == BufferUsageType::INDEX_BUFFER && second == BufferUsageType::VERTEX_BUFFER );
+}
 
 struct VKRenderingSignature
 {
@@ -130,8 +138,10 @@ struct VKPipelineCacheKey
 {
     size_t _pipelineStateHash{ 0u };
     size_t _blendStateHash{ 0u };
+    U32 _colourWrite{ 0u };
     VKRenderingSignature _rendering{};
 
+    [[nodiscard]] static VKPipelineCacheKey From( const Pipeline& pipeline, const VKRenderingSignature& rendering, bool dynamicBlendState ) noexcept;
     bool operator==( const VKPipelineCacheKey& ) const noexcept = default;
 };
 
@@ -237,6 +247,56 @@ struct DescriptorAllocator
     vke::DescriptorAllocatorPool_uptr _allocatorPool{ nullptr };
 };
 
+struct VKBufferBindingState
+{
+    struct VertexBinding
+    {
+        VkBuffer _buffer{ VK_NULL_HANDLE };
+        VkDeviceSize _offset{ 0u };
+        bool _valid{ false };
+    };
+
+    [[nodiscard]] bool updateVertexBinding( const U16 binding, const VkBuffer buffer, const VkDeviceSize offset ) noexcept
+    {
+        if ( binding >= _vertexBindings.size() )
+        {
+            return true;
+        }
+
+        VertexBinding& current = _vertexBindings[binding];
+        if ( current._valid && current._buffer == buffer && current._offset == offset )
+        {
+            return false;
+        }
+
+        current = { buffer, offset, true };
+        return true;
+    }
+
+    [[nodiscard]] bool updateIndexBinding( const VkBuffer buffer, const VkDeviceSize offset, const VkIndexType type ) noexcept
+    {
+        if ( _indexValid && _indexBuffer == buffer && _indexOffset == offset && _indexType == type )
+        {
+            return false;
+        }
+
+        _indexBuffer = buffer;
+        _indexOffset = offset;
+        _indexType = type;
+        _indexValid = true;
+        return true;
+    }
+
+    void reset() noexcept { *this = {}; }
+
+private:
+    std::array<VertexBinding, to_base( AttribLocation::COUNT )> _vertexBindings{};
+    VkBuffer _indexBuffer{ VK_NULL_HANDLE };
+    VkDeviceSize _indexOffset{ 0u };
+    VkIndexType _indexType{ VK_INDEX_TYPE_UINT16 };
+    bool _indexValid{ false };
+};
+
 struct VKPerWindowState
 {
     DisplayWindow* _window{ nullptr };
@@ -248,6 +308,7 @@ struct VKPerWindowState
     bool _frameInProgress{ false };
     bool _recreateAfterPresent{ false };
     bool _needsRecreate{ false };
+    VKBufferBindingState _bufferBindings{};
 
     struct VKDynamicState
     {
@@ -255,6 +316,16 @@ struct VKPerWindowState
         RTBlendStates _blendStates{};
         bool _frontFaceInverted{ false };
         bool _isSet{ false };
+
+        [[nodiscard]] bool needsStencilTestUpdate( const bool enabled ) const noexcept
+        {
+            return !_isSet || _block._stencilEnabled != enabled;
+        }
+
+        [[nodiscard]] bool needsStencilValuesReset() const noexcept
+        {
+            return !_isSet || !_block._stencilEnabled;
+        }
 
     } _activeState;
 };

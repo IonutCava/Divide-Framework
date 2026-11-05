@@ -295,10 +295,15 @@ namespace Divide
         if ( !_isMemoryMappable || !_isMemoryCoherent )
         {
             LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
-            VK_CHECK( vmaFlushAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator,
-                                          _isMemoryMappable ? _allocation : _stagingBuffer->_allocation,
-                                          mappedOffset,
-                                          range._length ) );
+            const VkResult flushResult = vmaFlushAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator,
+                                                             _isMemoryMappable ? _allocation : _stagingBuffer->_allocation,
+                                                             mappedOffset,
+                                                             range._length );
+            if ( flushResult != VK_SUCCESS )
+            {
+                VK_CHECK( flushResult );
+                return {};
+            }
         }
 
         BufferLock ret = {

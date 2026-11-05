@@ -17,6 +17,12 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 - `Source/Platform/Video/RenderBackend/OpenGL/glLockManager.cpp`: buffer synchronization.
 - `Source/Platform/Video/RenderBackend/OpenGL/Textures/glTexture.cpp`: immutable texture storage/upload.
 
+`VKDevice::submitToQueue` profiles queue-lock acquisition separately from the
+`vkQueueSubmit` call. Both are CPU wall times; neither alone measures GPU execution.
+Vulkan draw profiling separates source-buffer resolution from the individual
+direct and indirect draw API calls. Their CPU wall times can include validation
+and driver work and are not GPU execution times.
+
 ## Vulkan capabilities
 
 Device extension/feature notes below were checked in `vkDevice.cpp` at commit `1508b95`; recheck on later branches.
@@ -55,6 +61,18 @@ can wait on it. Buffer-fence waits require a current GL context, and a failed
 wait prevents a mapped write instead of treating the range as unlocked.
 `GLStateTracker` reapplies blend factors and equations when switching between
 combined and separate alpha blending, even if the colour settings are unchanged.
+Its reset marks the cached tessellation patch size unknown, so the first state
+block sets `GL_PATCH_VERTICES` instead of assuming OpenGL's three-vertex default
+matches the engine's four-control-point terrain patches.
+Shared uniform pages use coherent persistent mappings. Before recycling a
+frame slot, `GL_API::frameStarted` waits for the main frame fence and the
+flushed completion fences of separately submitted window contexts. A failure
+stops frame reuse. During teardown, bounded waits must complete every secondary
+context fence and a newly flushed main-context fence before any tracked fences
+are released. A missing or failed fence leaves completion unproven;
+`GFXDevice` does not continue its renderer teardown. A reported GL reset is
+classified as device loss in smoke mode so the supervisor verifies same-GPU
+recovery.
 
 Logical buffers are not normally one-to-one with GL allocations. Update frequency and host visibility affect allocation/sync strategy.
 For GL-only performance issues, inspect allocation churn, contention, sync, and unnecessary buffer recreation.
@@ -87,6 +105,21 @@ initialization to enable it; this does not disable VMA assertions or leak report
 - Non-mappable buffers and initial allocations without VMA host-access flags use staging allocations and explicit transfer commands. Initial and later staged writes flush the staging range before the transfer. Inspect mapping assumptions, staging lifetime, copies, and synchronization separately.
 - `vkTexture` derives image usage flags from engine `ImageUsage`, requests device-preferred VMA allocations without forcing dedicated memory, flushes mapped staging writes before uploads, explicitly transitions layouts, and can generate mipmaps on the GPU. VMA may suballocate small images or choose dedicated memory when appropriate or required.
 
+The shared uniform arena requires direct persistent mapping and rejects a
+staging-only allocation. Its slot stride is aligned to both the uniform-buffer
+offset alignment and `nonCoherentAtomSize`, so flushing one changed snapshot
+cannot touch another in-flight snapshot. The requested descriptor range is the
+logical block size; OpenGL may round its bound range up to its offset alignment.
+Host writes and non-coherent flushes precede queue submission. Page writes still
+honor the buffer's `LockManager` range waits, including worker-context setup.
+The arena does not enqueue a write-time `BufferLock` as its lifetime proof:
+immutable snapshots are retired against all consuming frame slots instead.
+Vulkan's base `LockManager` resets a range's sync bookkeeping rather than
+waiting on a GPU fence, so it cannot establish that final-consumer completion.
+Pages stay alive until GPU completion is established during teardown. A failed
+wait reports a smoke failure or terminates an interactive process with a flushed
+error, without continuing resource destruction or claiming completion.
+
 CPU-readable buffers (`_hostVisible`, required by `ShaderBuffer::readBytes`) request `HOST_ACCESS_RANDOM | MAPPED`. VMA therefore places them in host-visible, preferably cached memory and keeps them persistently mapped. `vkBufferImpl::readBytes` invalidates non-coherent ranges before copying. If a mapping is missing, it maps temporarily. It rejects non-host-visible memory instead of mapping it. Reads are bounded to the selected logical ring slot before the slot offset is applied. GPU writers must record a `GPU_WRITE_TO_CPU_READ` lock, which becomes a shader-write to host-read barrier; the barrier alone does not wait for GPU completion. `READ_BUFFER_DATA` requests are queued for deferred host reads: OpenGL inserts a fence and polls it with a zero timeout, while Vulkan associates the request with the active frame fence and reads it after that fence has been waited during frame reuse. Neither backend blocks the render thread for an individual readback.
 
 The occlusion counter initializes every ring slot, serializes slot selection
@@ -107,8 +140,10 @@ transfer semaphores claimed for that submission. A suboptimal acquisition
 still consumes and presents the acquired image before recreation.
 Each window has exactly `Config::MAX_FRAMES_IN_FLIGHT` command-buffer and fence
 slots, independent of swapchain image count; render-finished semaphores remain
-per image. Waiting on the main window's recycled slot before scene preparation
-bounds in-flight uses of the per-node buffer ring.
+per image. `VK_API::frameStarted` waits for the recycled slot of every retained
+window before the uniform arena releases retired slots. Waiting on the main
+window's recycled slot before scene preparation bounds in-flight uses of the
+per-node buffer ring.
 Particle uploads use the same frame-slot index, with independently allocated,
 single-slot position/colour buffers for every distinct view in that frame.
 They are reused only when the main-window frame fence has been waited, not
@@ -119,8 +154,10 @@ the upload range locks so OpenGL waits for the final consumer before reuse.
 Swapchain recreation waits for device idle for every window, with queue
 operations synchronized by Vulkan queue handle. Image views and frame command
 buffers are released during teardown, and a failed recreation is retried
-before another acquisition. A queue-submission failure after fence reset is
-not yet recovered: it can leave an unsignaled fence.
+before another acquisition. A failed reset, submission, or fence wait latches
+the frame error and stops further slot reuse; the backend does not wait on a
+fence left unsignaled by a failed submission. Device loss still requires the
+external same-GPU recovery procedure before another smoke attempt.
 An immediate upload submission failure is logged and latches the Vulkan backend
 into a stopping state instead of publishing its unsignaled completion semaphore
 or waiting on its fence. Pending semaphores are destroyed during device teardown
@@ -147,14 +184,25 @@ to shader-read after a pass and back to attachment use before a later resolve,
 regardless of whether the multisampled attachment contents are retained.
 Vulkan pipeline variants are keyed by the complete dynamic-rendering signature:
 colour attachment count and formats, depth and stencil formats, view mask, and
-sample count. A graphics pipeline retained across passes is rebound for the new
-signature before descriptors and draw submission. Swapchain passes begin with a
+sample count. The compiled-pipeline key excludes dynamic render state; blend
+and colour-write state remain in the key when extended dynamic blend state is
+unavailable. The logical pipeline hash still includes those states so command
+submission reapplies changes. Enabling stencil also reapplies its masks,
+reference and operations after a disabled interval. A graphics pipeline retained
+across passes is rebound for the new signature before descriptors and draw
+submission. Swapchain passes begin with a
 fresh rendering-create-info, so offscreen depth formats cannot leak into them.
 Offscreen colour attachment counts stop at the highest enabled slot. Disabled
 slots before it remain undefined, preserving fragment output locations; trailing
 disabled slots are omitted from both rendering and pipeline creation.
 Vertex attribute descriptions are filtered against the vertex shader's reflected
 input locations; binding descriptions and missing-input validation are unchanged.
+Vulkan tracks vertex buffer handles and offsets per binding, plus index buffer
+handle, offset and type, for each window's active command recording. Identical
+bindings are not reissued; a new recording resets the cache, while resuming a
+nested window preserves its own state. Vertex binding indices outside the
+tracked attribute range are always bound. Buffer destruction remains deferred
+so a cached handle cannot be reused during its recording.
 Transitions requested from or to shader-read use the same layouts for resolve
 images as other textures; being a resolve image does not imply its current layout.
 Blits of retained depth and colour attachments transition to transfer layouts

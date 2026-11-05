@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/ResourceCache.h"
 
@@ -24,9 +24,9 @@ ResourceLoadLock::ResourceLoadLock(const size_t hash, PlatformContext& context)
         {
             PlatformContextIdleCall();
         }
-        else
+        else if ( !context.taskPool( TaskPoolType::ASSET_LOADER ).threadWaiting() )
         {
-            context.taskPool( TaskPoolType::ASSET_LOADER ).threadWaiting();
+            std::this_thread::yield();
         }
     }
 }
