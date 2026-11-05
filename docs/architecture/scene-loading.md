@@ -149,5 +149,5 @@ must finish before concurrent readers use these published bounds.
 
 Reaching the first present does not establish that the scene loaded correctly;
 inspect a captured image for the expected content. The
-[rendering guide](rendering.md#vulkan-smoke-diagnosis) describes the smoke
+[rendering guide](rendering.md#framework-smoke-diagnosis) describes the smoke
 runner's validation and capture criteria.

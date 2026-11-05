@@ -67,11 +67,11 @@
 - On runtime failures (asserts, crashes, GPU/device-loss, startup issues), inspect `Logs/errors.log` and `Logs/console.log` before concluding root cause. If files are locked while debugging, stop the process and re-read them immediately after exit.
 - Documentation-only changes require no build unless they affect an executable example or have a dedicated documentation check.
 
-### Local Vulkan smoke diagnosis
+### Local framework smoke diagnosis
 
 The opt-in Windows runner and its safety contract are described in
-[Rendering](docs/architecture/rendering.md#vulkan-smoke-diagnosis). Run
-`powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tools\VulkanSmokeTest.ps1 -OutputRoot <absolute-directory-outside-checkout>`
+[Rendering](docs/architecture/rendering.md#framework-smoke-diagnosis). Run
+`powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tools\FrameworkSmokeTest.ps1 -OutputRoot <absolute-directory-outside-checkout>`
 for one build/test/renderer attempt; use `-PreflightOnly` to check the local
 probe, debugger and process watchdog without launching the renderer. The runner
 chooses build parallelism from available CPU and memory; `-BuildJobs` overrides it.

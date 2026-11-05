@@ -140,15 +140,31 @@ namespace Divide::RenderSmokeTest
 
         for ( const std::string_view argument : arguments )
         {
-            if ( argument == "--vulkanSmokeTest" || argument == "--openGLSmokeTest" )
+            const bool frameworkMode = argument.starts_with( "--frameworkSmokeTest=" );
+            if ( frameworkMode || argument == "--frameworkSmokeTest" ||
+                 argument == "--vulkanSmokeTest" || argument == "--openGLSmokeTest" )
             {
                 if ( mode )
                 {
                     errorOut = "Only one render smoke backend can be selected";
                     return ParseResult::ERROR;
                 }
+                if ( argument == "--frameworkSmokeTest" )
+                {
+                    errorOut = "--frameworkSmokeTest requires =Vulkan or =OpenGL";
+                    return ParseResult::ERROR;
+                }
+
+                const std::string_view backend = frameworkMode
+                    ? argument.substr( std::string_view{ "--frameworkSmokeTest=" }.size() )
+                    : ( argument == "--vulkanSmokeTest" ? "Vulkan" : "OpenGL" );
+                if ( backend != "Vulkan" && backend != "OpenGL" )
+                {
+                    errorOut = "Invalid --frameworkSmokeTest backend";
+                    return ParseResult::ERROR;
+                }
                 mode = true;
-                options._backend = argument == "--vulkanSmokeTest" ? Backend::VULKAN : Backend::OPENGL;
+                options._backend = backend == "Vulkan" ? Backend::VULKAN : Backend::OPENGL;
             }
             else if ( argument.starts_with( "--smokeOutput=" ) )
             {

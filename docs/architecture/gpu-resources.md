@@ -270,7 +270,7 @@ top-down origin. It contains neither window decorations nor detached windows.
 `Tools/VulkanRecoveryProbe.cpp` identifies the same device UUID, creates a new
 logical device, submits an empty valid command buffer and waits for its fence.
 The runner backs off between bounded probe processes; enumeration alone is not
-recovery. See [Vulkan smoke diagnosis](rendering.md#vulkan-smoke-diagnosis).
+recovery. See [Framework smoke diagnosis](rendering.md#framework-smoke-diagnosis).
 
 ### OpenGL smoke readback
 

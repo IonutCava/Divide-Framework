@@ -20,8 +20,8 @@ Source paths below and in the guides are relative to the repository root.
 ## Debugging routes
 
 - Both GL and Vulkan fail: start in shared `GFXDevice`, `ShaderProgram`, `RenderPassExecutor`, and descriptor setup.
-- GL only: inspect persistent mapped buffers, locks/sync, allocation churn, and GL binding/state translation; the [smoke runner](rendering.md#vulkan-smoke-diagnosis) can capture a same-GPU comparison.
-- Vulkan only: inspect usage flags, image layouts, staging lifetimes, and descriptor/push-descriptor state; the opt-in [smoke runner](rendering.md#vulkan-smoke-diagnosis) captures first-failure evidence.
+- GL only: inspect persistent mapped buffers, locks/sync, allocation churn, and GL binding/state translation; the [smoke runner](rendering.md#framework-smoke-diagnosis) can capture a same-GPU comparison.
+- Vulkan only: inspect usage flags, image layouts, staging lifetimes, and descriptor/push-descriptor state; the opt-in [smoke runner](rendering.md#framework-smoke-diagnosis) captures first-failure evidence.
 - Imported assets only: inspect cache formats, attribute presence, LoD/index partitions, and array/cubemap ordering.
 
 ## Maintaining these notes

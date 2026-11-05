@@ -97,10 +97,10 @@ switch the rendered frame between the current animation frame and frame zero.
   and representative non-instrumented builds. Investigate backend-specific
   costs without assuming exact parity.
 
-## Vulkan smoke diagnosis
+## Framework smoke diagnosis
 
 `RenderSmokeTest`, `Kernel`, the Vulkan and OpenGL `flushWindow` implementations, and
-`Tools/VulkanSmokeTest.ps1` provide an opt-in local Windows diagnostic loop.
+`Tools/FrameworkSmokeTest.ps1` provide an opt-in local Windows diagnostic loop.
 The runner builds the instrumented editor, runs focused engine tests and
 launches one protected attempt; a coding agent diagnoses and changes code
 between invocations. It snapshots logs and source state, uses an owned Windows
@@ -169,6 +169,8 @@ completed present or image does not prove correct pixels. See
 [GPU resources](gpu-resources.md#vulkan-smoke-readback-and-recovery) for
 readback and device-loss handling.
 
+The runner selects its backend with `--frameworkSmokeTest=Vulkan` or
+`--frameworkSmokeTest=OpenGL`; the older backend-specific switches remain valid.
 The editor image contains the main framebuffer, not OS window decorations or
 detached editor windows. OpenGL mode requires `XML/config.xml` to select
 OpenGL and `-ExpectedGPU` to match a device UUID exposed by the active GL
