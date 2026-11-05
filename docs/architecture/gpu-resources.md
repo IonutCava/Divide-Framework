@@ -251,6 +251,7 @@ OpenGL is the reference. Client code does not branch on the API for Y: projectio
 
 - Lighting is linear HDR: `RGBA16F` for `SCREEN`, reflection/refraction, and probes; bloom is `R11G11B10F`. Tonemapping produces linear LDR.
 - `BACK_BUFFER` is `RGBA8` sRGB storage: hardware write encoding/read decoding reduces banding; UI blends in linear space.
+- `SceneViewWindow` samples the composed `BACK_BUFFER` rather than `SCREEN`, so its game view includes in-game text, CEGUI and debug overlays.
 - `DeviceInformation::_screenSRGB` reports default framebuffer/swapchain encoding. GL queries colour encoding and disables screen `GL_FRAMEBUFFER_SRGB` if unsupported; Vulkan uses `*_SRGB` format detection.
 - Without screen encoding, final screen blit, editor ImGui, and splash shaders encode/skip linearisation appropriately.
 - `Assets/Shaders/GLSL/IMGUI.glsl` linearises vertex colours and only plain UNORM non-render-target textures. `lineariseTexture` is set per texture bind by `Editor::renderDrawList`; render targets, sRGB, and float textures are sampled as linear.

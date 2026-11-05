@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/SceneViewWindow.h"
 #include "Editor/Headers/Utils.h"
@@ -21,6 +21,11 @@ namespace Divide
         : NodePreviewWindow(parent, descriptor)
     {
         _originalName = descriptor.name;
+    }
+
+    RenderTargetID SceneViewWindow::GameViewRenderTarget() noexcept
+    {
+        return RenderTargetNames::BACK_BUFFER;
     }
 
     void SceneViewWindow::drawInternal()
@@ -159,7 +164,7 @@ namespace Divide
             readOnly = false;
         }
 
-        const RenderTarget* rt = _parent.context().gfx().renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN);
+        const RenderTarget* rt = _parent.context().gfx().renderTargetPool().getRenderTarget(GameViewRenderTarget());
         const Handle<Texture> gameView = rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture();
 
         NodePreviewWindow::drawInternal(gameView);
