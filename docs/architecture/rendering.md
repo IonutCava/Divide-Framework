@@ -25,6 +25,27 @@ Buttons retain independent references to their event sounds, release replaced
 sounds and release their remaining references on destruction. Callers keep
 ownership of the handles passed to `GUIButton::setEventSound`.
 
+## Cross-system boundaries
+
+Rendering owns generic mechanisms, not scene/game policy. Callers translate
+feature-specific changes into bounds, layer masks and pass capabilities; do not
+add feature names or feature-specific dirty reasons to lights, render passes or
+backend APIs.
+
+`LightPool::invalidateShadowLayers` accepts a caster volume, layer mask, light
+type and optional influence volume. Matching requests accumulate in
+`Light::shadowLayersDirty`; the existing movement snapshot preserves requests
+for lights skipped this frame. Bits index CSM cascades; point and spot lights
+each have one logical layer (a point layer contains all six cube faces).
+Missing cache content or ordinary camera/light/geometry invalidation overrides
+the mask with a complete refresh. CSM rendering updates only selected matrices
+and layers, and blur/mipmap commands use contiguous selected-layer ranges.
+
+`RenderPassParams::_enableDeformation` supplies `dvd_enableDeformation` to
+shaders opting into optional procedural deformation. It defaults to enabled;
+CSM enables it only for cascade 0, and world AO disables it. This does not
+disable skeletal animation or implicitly classify objects by scene type.
+
 ## Command flow
 
 Systems record backend-neutral rendering commands, then `GFXDevice` translates them through the active backend wrapper at flush time.
@@ -91,6 +112,14 @@ alpha discard without emitting the display G-buffer outputs. View prepasses
 exclude the translucent bin so opaque geometry behind translucent surfaces
 supplies the depth and colour used by forward or OIT compositing. Shadow passes
 still include translucent casters and use their alpha-discard shadow shaders.
+
+SSR is applied only to the opaque surface represented by the display depth and
+normal prepass. OIT and sorted-transparent material variants retain probe/sky
+IBL and direct lighting but do not reuse that opaque surface's SSR result.
+Applying it to overlapping transparent layers introduces incorrect reflections
+and temporal feedback through the previous composited screen, including black
+foliage and water pixels. Transparent SSR requires its own compatible depth and
+normal representation; it is not implemented.
 Hi-Z, SSAO and other prepass consumers therefore see opaque depth, not a
 depth-correct representation of transparent surfaces. Translucent grass can
 receive the resulting screen-space occlusion, but does not contribute its
@@ -345,8 +374,12 @@ texel spacing, vertical amplitude and the terrain/node transforms. Terrain
 shading itself uses geometric screen-space derivatives for its tangent frame.
 Particle geometry without indices uses an equivalent sequential index buffer,
 and each emitter has its own material template using instanced indirection.
-Each initial render preparation sorts and uploads the current live particles
-before building draw commands.
+Particle preparation sorts and uploads live particles once per distinct eye
+position per frame. Depth, colour and transparency passes retain the same
+immutable upload through `RenderPackage::drawCommandsOverride`, including the
+instance counts used to build indirect commands. Different views cannot change
+queued buffer handles or select a later mutable ring index. Geometry and indices
+are shared; position/colour storage grows only to the per-frame view high-water mark.
 Particle bounds enclose the world-space centres and billboard extents, including
 under singular node transforms. Particle emitters require nonzero capacity and
 position, acceleration, colour and misc arrays; empty geometry skips geometry
@@ -354,9 +387,7 @@ buffer allocation and drawing. Explicit geometry indices must reference a
 vertex or use the `U32_MAX` primitive-restart marker with primitive restart
 enabled. Simulation uses the elapsed update time, and
 each source tracks fractional emission separately for each particle-data
-instance without accumulating whole-particle backlog while full. Queued
-particle draws still need per-draw
-buffer-ring capture and GPU-safe slot reuse for multiple cameras or passes.
+instance without accumulating whole-particle backlog while full.
 
 ### Custom-pass Hi-Z
 
@@ -368,7 +399,31 @@ Preparation commands execute before each view's depth and colour
 passes, outside render-pass scope. The shared instance buffers are synchronized
 between views, and culling uses the current camera's frustum and distance rather
 than another reflector's Hi-Z history or an unconditional underwater exclusion.
-This conservative path does not currently perform per-instance occlusion culling.
+After the same view's depth prepass and Hi-Z construction, a separate package
+phase performs per-instance occlusion before colour/transparency draws. It only
+removes already prepared instances and preserves their LoD/fade data; the next
+view resets visibility in its normal preparation phase. Views without a depth
+prepass/Hi-Z, including shadows, retain frustum/distance culling only. Bounds
+crossing the near plane or viewport remain visible. Four exact max-depth texels
+must cover the entire projected footprint, and equal-depth bounds remain visible
+to prevent self-occlusion. Grass bounds include wind, camera displacement and
+fade offsets; tree bounds use the species radius plus the maximum wind offset.
+Near-tree vertices above the scaled 0.85-unit trunk threshold receive the
+original inexpensive sinusoidal wind sway in depth and colour, the nearest CSM
+cascade (index 0), and close-up local shadow views. Farther CSM cascades and
+world AO use undeformed silhouettes.
+The height check uses the already scaled/rotated vertex, not a second scale.
+The existing far-tree LoD cutoff remains. Wind and culling read the same
+frame's scene wind data; vegetation motion vectors are still not implemented.
+Tree placements remain static, but their materials are dynamic. Vegetation
+coalesces wind changes once per resource per frame, including the transition to
+still air, and submits generic shadow invalidations with mask `1` (cascade 0).
+For local lights it supplies both the vegetation bounds and a camera-centred
+influence sphere with 33% of the effective tree visibility radius; this policy
+stays in `Vegetation::sceneUpdate`, not the light pool. No new distance setting
+is introduced. Ordinary invalidations and pending casters still force complete
+updates. Paused, unchanged wind does not force shadow refreshes. Aggregate
+vegetation bounds retain high-water wind padding.
 Tree-only chunks still run culling, and chunks with trees remain eligible through
 the larger of the grass and tree visibility distances. Visible tree submeshes
 schedule their owning chunk's preparation even when that chunk is absent from
@@ -417,8 +472,12 @@ Upsampling compares depth and normals across the same clamped texels used by
 the bilinear AO footprint. Its full-resolution output and blur scratch target
 resize together; the half-resolution output and depth/normal target round up
 odd dimensions, with a minimum of one pixel, so no source edge is omitted.
-Half-resolution generation still reconstructs positions at normalized target
-pixel centers, so their alignment to odd-sized source blocks is approximate.
+Downsampling stores the selected source offset alongside depth and normal.
+Half-resolution generation reconstructs that full-resolution pixel center and
+maps projected samples back to their actual 2x2 blocks. Upsampling uses the
+same block grid for its depth/normal footprint and linear AO lookup, including
+the shorter final interval at odd image edges; it does not stretch the grid
+over the rounded-up half-resolution target.
 Generation noise scaling uses the actual target dimensions, and full- and
 half-resolution modes retain their configured blur
 kernel sizes independently. Each mode also owns a separate generation uniform

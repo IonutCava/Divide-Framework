@@ -127,6 +127,24 @@ struct VegetationTreeRange
     SceneGraphNode* _parentNode = nullptr;
 };
 
+struct VegetationWindState
+{
+    U64 _frame = U64_MAX;
+    float3 _wind{};
+
+    [[nodiscard]] bool update(const U64 frame, const U64 deltaTimeUS, const float3& wind) noexcept
+    {
+        if (_frame == frame)
+        {
+            return false;
+        }
+        _frame = frame;
+        const bool changed = _wind != wind;
+        _wind = wind;
+        return changed || (deltaTimeUS > 0u && wind.z != 0.f && (wind.x != 0.f || wind.y != 0.f));
+    }
+};
+
 class VegetationInstance;
 
 /// Generates grass on the terrain.
@@ -180,9 +198,8 @@ DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
   private:
     const VegetationDescriptor _descriptor;
 
-    F32 _windX = 0.0f, _windZ = 0.0f, _windS = 0.0f;
-    U64 _stateRefreshIntervalUS = Time::SecondsToMicroseconds<D64>(1);
-    U64 _stateRefreshIntervalBufferUS = 0ULL;
+    VegetationWindState _windShadowState;
+    F32 _windBoundsPadding = 0.f;
     float4 _grassExtents = VECTOR4_UNIT;
     Mutex _sceneUpdateLock;
     Mutex _geometryLock;
@@ -197,6 +214,8 @@ DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
 
     Pipeline* _cullPipelineGrass = nullptr;
     Pipeline* _cullPipelineTrees = nullptr;
+    Pipeline* _occlusionPipelineGrass = nullptr;
+    Pipeline* _occlusionPipelineTrees = nullptr;
 
     std::array<U16, 3> _lodPartitions;
     VertexBuffer_uptr _buffer;
@@ -210,6 +229,8 @@ DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
 
     Handle<ShaderProgram> _cullShaderGrass = INVALID_HANDLE<ShaderProgram>;
     Handle<ShaderProgram> _cullShaderTrees = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _occlusionShaderGrass = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _occlusionShaderTrees = INVALID_HANDLE<ShaderProgram>;
     Handle<Material> _vegetationMaterial = INVALID_HANDLE<Material>;
 };
 

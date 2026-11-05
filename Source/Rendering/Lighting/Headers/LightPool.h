@@ -126,6 +126,16 @@ class LightPool final : public FrameListener,
     struct MovingVolume {
         BoundingSphere _volume;
         bool _staticSource = false;
+        U32 _layerMask = 0u; // Zero denotes an ordinary full-cache geometry change.
+        LightType _lightType = LightType::COUNT;
+        std::optional<BoundingSphere> _influenceBounds;
+
+        [[nodiscard]] bool affectsLight(const LightType type, const BoundingSphere& lightBounds) const noexcept
+        {
+            return (_lightType == LightType::COUNT || _lightType == type) &&
+                   ShadowVolumeAffectsLight(type == LightType::DIRECTIONAL, _volume, lightBounds) &&
+                   (!_influenceBounds.has_value() || _influenceBounds->collision(lightBounds));
+        }
     };
     using LightList = fixed_vector<Light*, 32u, true>;
 
@@ -161,6 +171,8 @@ class LightPool final : public FrameListener,
     void preRenderAllPasses(const Camera* playerCamera);
 
     void onVolumeMoved(const BoundingSphere& volume, bool staticSource);
+    void invalidateShadowLayers(const BoundingSphere& volume, U32 layerMask, LightType lightType,
+                                const std::optional<BoundingSphere>& influenceBounds = std::nullopt);
     void onVolumeChanged(const BoundingSphere& previous, bool previousStatic,
                          const BoundingSphere& current, bool currentStatic);
 

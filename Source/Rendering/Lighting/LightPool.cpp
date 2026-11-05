@@ -251,6 +251,14 @@ namespace Divide
         AppendShadowVolumeChange( _movedSceneVolumes, previous, previousStatic, current, currentStatic );
     }
 
+    void LightPool::invalidateShadowLayers(const BoundingSphere& volume, const U32 layerMask, const LightType lightType,
+                                           const std::optional<BoundingSphere>& influenceBounds)
+    {
+        assert(layerMask != 0u);
+        LockGuard<SharedMutex> w_lock(_movedSceneVolumesLock);
+        _movedSceneVolumes.push_back({volume, false, layerMask, lightType, influenceBounds});
+    }
+
     //ToDo: Generate shadow maps in parallel - Ionut
     void LightPool::generateShadowMaps( const Camera& playerCamera, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
@@ -318,9 +326,12 @@ namespace Divide
                 continue;
             }
 
-            const bool reuseCached = !cacheInvalidated && ShadowMap::tryReuseShadowMaps( *light );
+            const bool cacheValid = ShadowMap::tryReuseShadowMaps( *light );
+            const U8 layerCount = to_U8(ShadowMap::getLightLayerRequirements(*light));
+            const U32 updateMask = ShadowLayerUpdateMask(layerCount, light->shadowLayersDirty(), cacheValid, cacheInvalidated);
+            const bool reuseCached = updateMask == 0u;
             bool pendingCasters = false;
-            if ( !reuseCached && !ShadowMap::generateShadowMaps( playerCamera, *light, pendingCasters, bufferInOut, memCmdInOut ) )
+            if ( !reuseCached && !ShadowMap::generateShadowMaps( playerCamera, *light, pendingCasters, bufferInOut, memCmdInOut, updateMask ) )
             {
                 continue;
             }
@@ -377,8 +388,11 @@ namespace Divide
                 GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
                 computeMipMapsCommand._texture = ShadowMap::getShadowMap( lType )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
                 computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
-                computeMipMapsCommand._layerRange = { light->getShadowArrayOffset(), to_U16( ShadowMap::getLightLayerRequirements( *light ) ) };
-                GFX::EnqueueCommand( bufferInOut, computeMipMapsCommand );
+                ForEachShadowLayerRange(updateMask, layerCount, [&](const U8 first, const U8 count)
+                {
+                    computeMipMapsCommand._layerRange = {to_U16(light->getShadowArrayOffset() + first), count};
+                    GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
+                });
             }
         }
 
@@ -609,13 +623,20 @@ namespace Divide
         if ( movedVolumeCount > 0u )
         {
             const BoundingSphere& lightBounds = light->boundingVolume();
-            const bool directional = light->getLightType() == LightType::DIRECTIONAL;
             SharedLock<SharedMutex> r_lock( _movedSceneVolumesLock );
             assert( movedVolumeCount <= _movedSceneVolumes.size() );
             for ( size_t i = 0u; i < movedVolumeCount; ++i )
             {
                 const MovingVolume& volume = _movedSceneVolumes[i];
-                if ( ShadowVolumeAffectsLight( directional, volume._volume, lightBounds ) )
+                if (!volume.affectsLight(light->getLightType(), lightBounds))
+                {
+                    continue;
+                }
+                if (volume._layerMask != 0u)
+                {
+                    light->shadowLayersDirty(light->shadowLayersDirty() | volume._layerMask);
+                }
+                else
                 {
                     if ( volume._staticSource )
                     {

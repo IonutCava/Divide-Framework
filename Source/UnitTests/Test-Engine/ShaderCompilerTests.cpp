@@ -916,10 +916,13 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             const char* _name;
             U8 _firstSlot;
             U8 _slotCount;
+            bool _halfGeneration = false;
         };
         constexpr std::array variants{
             Variant{ "SSAOPass.Fragment.SSAODownsample", 1u, 2u },
-            Variant{ "SSAOPass.Fragment.SSAOUpsample", 0u, 4u }
+            Variant{ "SSAOPass.Fragment.SSAOUpsample", 0u, 4u },
+            Variant{ "SSAOPass.Fragment.SSAOCalc", 0u, 3u, false },
+            Variant{ "SSAOPass.Fragment.SSAOCalc", 0u, 3u, true }
         };
 
         Configuration config{};
@@ -949,7 +952,12 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 data._shaderName = data._sourceName;
                 eastl::set<U64> atoms{};
                 diagnostics.clear();
-                ShaderProgramTestAccess::Parse( api, {}, data, atoms );
+                ModuleDefines defines{ { "SSAO_SAMPLE_COUNT 8" } };
+                if ( variant._halfGeneration )
+                {
+                    defines.emplace_back( "COMPUTE_HALF_RES" );
+                }
+                ShaderProgramTestAccess::Parse( api, defines, data, atoms );
                 INFO( diagnostics.c_str() );
                 REQUIRE_FALSE( data._sourceCodeGLSL.empty() );
                 CHECK( atoms.contains( _ID( "ssaoResampling.cmn" ) ) );
@@ -1395,16 +1403,28 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             bool _pbr = false;
             bool _disableIBL = false;
             bool _disableSSAO = false;
+            bool _occlusion = false;
+            bool _sortedTransparency = false;
         };
         constexpr std::array variants{
             Variant{ ShaderType::COMPUTE, "instanceCullVegetation.glsl", "instanceCullVegetation.Compute", false, false, false, DescriptorSetUsage::PER_PASS, 6u },
             Variant{ ShaderType::COMPUTE, "instanceCullVegetation.glsl", "instanceCullVegetation.Compute", true, false, false, DescriptorSetUsage::PER_PASS, 5u },
+            Variant{ ._stage = ShaderType::COMPUTE, ._file = "instanceCullVegetation.glsl", ._source = "instanceCullVegetation.Compute",
+                     ._tree = false, ._prePass = false, ._display = false, ._bufferSet = DescriptorSetUsage::PER_PASS, ._bufferSlot = 6u, ._occlusion = true },
+            Variant{ ._stage = ShaderType::COMPUTE, ._file = "instanceCullVegetation.glsl", ._source = "instanceCullVegetation.Compute",
+                     ._tree = true, ._prePass = false, ._display = false, ._bufferSet = DescriptorSetUsage::PER_PASS, ._bufferSlot = 5u, ._occlusion = true },
             Variant{ ShaderType::VERTEX, "grass.glsl", "grass.Vertex", false, true, true, DescriptorSetUsage::PER_PASS, 6u },
             Variant{ ShaderType::VERTEX, "grass.glsl", "grass.Vertex", false, true, false, DescriptorSetUsage::PER_PASS, 6u },
             Variant{ ShaderType::VERTEX, "tree.glsl", "tree.Vertex", true, true, false, DescriptorSetUsage::PER_DRAW, 13u },
+            Variant{ ShaderType::VERTEX, "tree.glsl", "tree.Vertex", true, false, true, DescriptorSetUsage::PER_DRAW, 13u },
+            Variant{ ShaderType::VERTEX, "tree.glsl", "tree.Vertex", true, false, false, DescriptorSetUsage::PER_DRAW, 13u, false, true },
             Variant{ ShaderType::FRAGMENT, "grass.glsl", "grass.Fragment.PrePass", false, true, true, DescriptorSetUsage::COUNT, 0u },
             Variant{ ShaderType::FRAGMENT, "grass.glsl", "grass.Fragment.PrePass", false, true, false, DescriptorSetUsage::COUNT, 0u },
             Variant{ ShaderType::FRAGMENT, "grass.glsl", "grass.Fragment.Colour.OIT", false, false, false, DescriptorSetUsage::COUNT, 0u },
+            Variant{ ShaderType::FRAGMENT, "material.glsl", "material.Fragment", false, false, true, DescriptorSetUsage::COUNT, 0u },
+            Variant{ ._stage = ShaderType::FRAGMENT, ._file = "material.glsl", ._source = "material.Fragment",
+                     ._tree = false, ._prePass = false, ._display = true, ._bufferSet = DescriptorSetUsage::COUNT,
+                     ._bufferSlot = 0u, ._sortedTransparency = true },
             Variant{ ShaderType::FRAGMENT, "material.glsl", "material.Fragment", false, false, true, DescriptorSetUsage::COUNT, 0u, true },
             Variant{ ShaderType::FRAGMENT, "material.glsl", "material.Fragment", false, false, true, DescriptorSetUsage::COUNT, 0u, true, false, false, true },
             Variant{ ShaderType::FRAGMENT, "material.glsl", "material.Fragment", false, false, false, DescriptorSetUsage::COUNT, 0u, true, false, false, true },
@@ -1438,7 +1458,8 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             for ( const Variant& variant : variants )
             {
                 CAPTURE( api, variant._source, variant._tree, variant._prePass, variant._display, variant._alphaDiscard,
-                         variant._shadow, variant._orthographic, variant._pbr, variant._disableIBL, variant._disableSSAO );
+                         variant._shadow, variant._orthographic, variant._pbr, variant._disableIBL, variant._disableSSAO,
+                         variant._sortedTransparency );
                 ModuleDefines defines;
                 for ( const char* define : {
                           "MAX_TREE_INSTANCES 64", "MAX_GRASS_INSTANCES 64", "WORK_GROUP_SIZE 64",
@@ -1457,7 +1478,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                     defines.emplace_back( "HAS_VELOCITY" );
                 }
                 if ( !variant._prePass && !variant._shadow && !variant._alphaDiscard && variant._stage == ShaderType::FRAGMENT )
-                    defines.emplace_back( "OIT_PASS" );
+                    defines.emplace_back( variant._sortedTransparency ? "TRANSPARENCY_PASS" : "OIT_PASS" );
                 if ( variant._alphaDiscard )
                 {
                     defines.emplace_back( "HAS_TRANSPARENCY" );
@@ -1467,6 +1488,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 if ( variant._orthographic ) defines.emplace_back( "ORTHO_PROJECTION" );
                 if ( variant._disableIBL ) defines.emplace_back( "NO_ENV_MAPPING" );
                 if ( variant._disableSSAO ) defines.emplace_back( "NO_SSAO" );
+                if ( variant._occlusion ) defines.emplace_back( "OCCLUSION_PASS" );
                 if ( std::string_view{ variant._file } == "particles.glsl" ) defines.emplace_back( "HAS_TEXTURE" );
 
                 ShaderProgram::LoadData data{};
@@ -1482,9 +1504,25 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                     CHECK( atoms.contains( _ID( "frustumCulling.cmn" ) ) );
                     CHECK( data._sourceCodeGLSL.find( "IsUnderWater" ) == string::npos );
                 }
+                if ( variant._tree && variant._stage == ShaderType::VERTEX )
+                {
+                    CHECK( atoms.contains( _ID("treeWind.cmn") ) );
+                    CHECK( data._sourceCodeGLSL.find("const float amplitude") != string::npos );
+                    CHECK( data._sourceCodeGLSL.find("dvd_Vertex.y * scale") == string::npos );
+                    if (variant._shadow)
+                    {
+                        CHECK(data._sourceCodeGLSL.find("dvd_enableDeformation") != string::npos);
+                    }
+                }
                 if ( variant._stage == ShaderType::FRAGMENT && variant._prePass )
                 {
                     CHECK( data._sourceCodeGLSL.find( "discard" ) != string::npos );
+                }
+                if ( std::string_view{ variant._file } == "material.glsl" && !variant._alphaDiscard )
+                {
+                    CHECK( data._sourceCodeGLSL.find( "ApplySSR(" ) == string::npos );
+                    CHECK( data._sourceCodeGLSL.find( "ApplyIBL(" ) != string::npos );
+                    CHECK( data._sourceCodeGLSL.find( "getLightContribution(" ) != string::npos );
                 }
                 if ( variant._alphaDiscard && variant._display && !variant._disableIBL )
                 {
@@ -1517,7 +1555,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                         CHECK( ( nextSSAO == string::npos || nextSSAO > fog ) );
                     }
                 }
-                if ( variant._shadow || variant._alphaDiscard )
+                if ( variant._stage == ShaderType::FRAGMENT && (variant._shadow || variant._alphaDiscard) )
                 {
                     const size_t main = data._sourceCodeGLSL.rfind( "void main" );
                     REQUIRE( main != string::npos );
@@ -1557,6 +1595,13 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                     {
                         return entry._bindingSet == to_base( variant._bufferSet ) && entry._bindingSlot == variant._bufferSlot;
                     } ) );
+                    if ( variant._occlusion )
+                    {
+                        CHECK( std::ranges::any_of( reflection._images, []( const Reflection::ImageEntry& image )
+                        {
+                            return image._bindingSet == to_base(DescriptorSetUsage::PER_DRAW) && image._bindingSlot == 0u;
+                        } ) );
+                    }
                 }
             }
 

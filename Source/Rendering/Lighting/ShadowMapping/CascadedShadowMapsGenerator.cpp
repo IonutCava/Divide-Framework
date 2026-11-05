@@ -238,7 +238,7 @@ namespace Divide
         return depths;
     }
 
-    void CascadedShadowMapsGenerator::applyFrustumSplits( DirectionalLightComponent& light, const Camera& shadowCamera, U8 numSplits ) const
+    void CascadedShadowMapsGenerator::applyFrustumSplits( DirectionalLightComponent& light, const Camera& shadowCamera, U8 numSplits, const U32 layerMask ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -356,12 +356,15 @@ namespace Divide
 
             const mat4<F32> lightVP = mat4<F32>::Multiply( lightOrthoMatrix, lightViewMatrix );
 
-            light.setShadowLightPos( cascadeIterator, lightPosition );
-            light.setShadowVPMatrix( cascadeIterator, mat4<F32>::Multiply( MAT4_BIAS_ZERO_ONE_Z, lightVP ) );
+            if (ShadowLayerSelected(layerMask, cascadeIterator))
+            {
+                light.setShadowLightPos( cascadeIterator, lightPosition );
+                light.setShadowVPMatrix( cascadeIterator, mat4<F32>::Multiply( MAT4_BIAS_ZERO_ONE_Z, lightVP ) );
+            }
         }
     }
 
-    void CascadedShadowMapsGenerator::render( const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+    void CascadedShadowMapsGenerator::render( const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, const U32 layerMask )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -369,7 +372,7 @@ namespace Divide
 
         const U8 numSplits = dirLight.csmSplitCount();
         dirLight.cascadeBoundsFeedback().resize( numSplits );
-        applyFrustumSplits( dirLight, playerCamera, numSplits );
+        applyFrustumSplits( dirLight, playerCamera, numSplits, layerMask );
 
         RenderPassParams params = {};
         params._sourceNode = light.sgn();
@@ -391,13 +394,17 @@ namespace Divide
 
         RenderPassManager* rpm = _context.context().kernel().renderPassManager().get();
         const U16 layerOffset = dirLight.getShadowArrayOffset();
-        const U8 layerCount = dirLight.csmSplitCount();
         const RenderTargetHandle& rtHandle = ShadowMap::getShadowMap( _type );
 
         for ( I8 i = numSplits - 1; i >= 0 && i < numSplits; i-- )
         {
+            if (!ShadowLayerSelected(layerMask, to_U8(i)))
+            {
+                continue;
+            }
             Util::StringFormatTo( params._passName, "CSM_PASS_{}", i );
             params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
+            params._enableDeformation = i == 0;
             params._minExtents.set( g_minExtentsFactors[i] );
             params._shadowBoundsFeedback = SelectCascadeBoundsFeedback(
                 dirLight.cascadeBoundsFeedback()[i], to_U8( i ), dirLight.csmUseSceneAABBFit()[i] );
@@ -416,7 +423,10 @@ namespace Divide
         // Now we can either blur our target or just skip to mipmap computation
         if ( g_shadowSettings.csm.enableBlurring )
         {
-            blurTarget( layerOffset, layerCount, bufferInOut );
+            ForEachShadowLayerRange(layerMask, numSplits, [&](const U8 first, const U8 count)
+            {
+                blurTarget(to_U16(layerOffset + first), count, bufferInOut, first);
+            });
         }
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
@@ -450,6 +460,7 @@ namespace Divide
         params._maxLoD = -1;
         params._refreshLightData = false;
         params._passName = "WorldAOPass";
+        params._enableDeformation = false;
         params._minExtents.set( g_minExtentsFactors[1] );
         params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
         params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
@@ -484,10 +495,19 @@ namespace Divide
         return mat4<F32>::Multiply( MAT4_BIAS_ZERO_ONE_Z, worldAOVP );
     }
 
-    void CascadedShadowMapsGenerator::blurTarget( const U16 layerOffset, const U16 layerCount, GFX::CommandBuffer & bufferInOut )
+    void CascadedShadowMapsGenerator::blurTarget( const U16 layerOffset, const U16 layerCount, GFX::CommandBuffer & bufferInOut, const U8 firstLayer )
     {
         const RenderTargetHandle& rtHandle = ShadowMap::getShadowMap( _type );
         const auto& shadowAtt = rtHandle._rt->getAttachment( RTAttachmentType::COLOUR );
+
+        auto constants = _shaderConstants;
+        const F32 blurScale = ShadowBlurTexelScale(firstLayer);
+        constants.data[0]._vec[2] *= blurScale;
+        constants.data[0]._vec[3] *= blurScale;
+        for (auto& offsets : constants.data[1]._vec)
+        {
+            offsets *= blurScale;
+        }
 
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
         beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
@@ -507,12 +527,12 @@ namespace Divide
             Set( binding._data, shadowAtt->texture(), shadowAtt->_descriptor._sampler );
         }
 
-        _shaderConstants.data[0]._vec[1].x = 0.f;
-        _shaderConstants.data[0]._vec[1].y = to_F32( layerCount );
-        _shaderConstants.data[0]._vec[1].z = to_F32( layerOffset );
-        _shaderConstants.data[0]._vec[1].w = 0.f;
+        constants.data[0]._vec[1].x = 0.f;
+        constants.data[0]._vec[1].y = to_F32( layerCount );
+        constants.data[0]._vec[1].z = to_F32( layerOffset );
+        constants.data[0]._vec[1].w = 0.f;
 
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = _shaderConstants;
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = constants;
 
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
 
@@ -532,12 +552,12 @@ namespace Divide
             Set( binding._data, blurAtt->texture(), blurAtt->_descriptor._sampler );
         }
 
-        _shaderConstants.data[0]._vec[1].x = 1.f;
-        _shaderConstants.data[0]._vec[1].y = to_F32( layerCount );
-        _shaderConstants.data[0]._vec[1].z = 0.f;
-        _shaderConstants.data[0]._vec[1].w = to_F32( layerOffset );
+        constants.data[0]._vec[1].x = 1.f;
+        constants.data[0]._vec[1].y = to_F32( layerCount );
+        constants.data[0]._vec[1].z = 0.f;
+        constants.data[0]._vec[1].w = to_F32( layerOffset );
 
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = _shaderConstants;
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = constants;
 
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
 

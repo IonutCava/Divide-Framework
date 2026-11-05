@@ -4,7 +4,11 @@
 #define _SSAO_RESAMPLING_CMN_
 
 #define SSAO_DOWNSAMPLE_SOURCE_PIXEL(PIXEL, OFFSET, MAX_COORD) min((PIXEL) * 2 + (OFFSET), (MAX_COORD))
-#define SSAO_UPSAMPLE_SOURCE_POSITION(UV, SIZE) floor((UV) * (SIZE) - 0.5f)
+#define SSAO_SOURCE_UV(PIXEL, SIZE) (((PIXEL) + 0.5f) / (SIZE))
+#define SSAO_HALF_SAMPLE_POSITION(UV, FULL_SIZE) floor((UV) * (FULL_SIZE) * 0.5f)
+// The final block of an odd-sized image is one pixel wide, not two.
+#define SSAO_HALF_GRID_POSITION(PIXEL_CENTER, FULL_SIZE, ODD_EDGE) \
+    ((PIXEL_CENTER) * 0.5f - 0.5f + max((PIXEL_CENTER) - ((FULL_SIZE) - 2.f), 0.f) * (ODD_EDGE) / 6.f)
 #define SSAO_CLAMP_SOURCE_PIXEL(BASE, OFFSET, MIN_COORD, MAX_COORD) clamp((BASE) + (OFFSET), (MIN_COORD), (MAX_COORD))
 
 #endif //_SSAO_RESAMPLING_CMN_

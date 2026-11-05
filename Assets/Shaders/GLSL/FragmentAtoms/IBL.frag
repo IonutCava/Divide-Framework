@@ -185,7 +185,8 @@ vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV
 
 #endif //!NO_ENV_MAPPING && !NO_IBL
 
-#if defined(NO_SSR) || defined(NO_IBL)
+// SSR rays belong to the opaque depth/normal surface, not overlapping transparent fragments.
+#if defined(NO_SSR) || defined(NO_IBL) || defined(OIT_PASS) || defined(TRANSPARENCY_PASS)
 
 #define ApplySSR(Mr,R) (R)
 

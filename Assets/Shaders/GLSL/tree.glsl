@@ -7,6 +7,12 @@
 #define VEGETATION_TREE_DRAW
 #include "vegetationData.cmn"
 #include "lightingDefaults.vert"
+#include "treeWind.cmn"
+#if defined(SHADOW_PASS)
+uniform uint dvd_enableDeformation;
+#else
+#define dvd_enableDeformation 1u
+#endif
 
 VegetationData TreeData(in uint instanceID) {
     return treeData[dvd_instanceDataIndex + instanceID];
@@ -15,15 +21,6 @@ VegetationData TreeData(in uint instanceID) {
 vec3 rotate_vertex_position(vec3 position, vec4 q) {
     const vec3 v = position.xyz;
     return v + 2.0f * cross(q.xyz, cross(q.xyz, v) + q.w * v);
-}
-
-void computeFoliageMovementTree(inout vec4 vertex, in float heightExtent) {
-    float time = dvd_windDetails.w * MSToSeconds(dvd_GameTimeMS) * 0.25f;
-    float cosX = cos(vertex.x);
-    float sinX = sin(vertex.x);
-    float halfScale = 0.5f * heightExtent;
-    vertex.x += (halfScale * cos(time) * cosX * sinX) * dvd_windDetails.x;
-    vertex.z += (halfScale * sin(time) * cosX * sinX) * dvd_windDetails.z;
 }
 
 void main(void){
@@ -47,8 +44,10 @@ void main(void){
 
 
     dvd_Vertex.xyz = rotate_vertex_position(dvd_Vertex.xyz * scale, data.orientationQuad);
-    if (VAR._LoDLevel < 2u && dvd_Vertex.y * scale > 0.85f) {
-        //computeFoliageMovementTree(dvd_Vertex, dvd_Vertex.y * 0.5f);
+    if (dvd_enableDeformation != 0u && TREE_WIND_ANIMATED(VAR._LoDLevel, dvd_Vertex.y)) {
+        const float time = dvd_windDetails.w * MSToSeconds(dvd_GameTimeMS) * 0.25f;
+        const float amplitude = TREE_WIND_AMPLITUDE(dvd_Vertex.x, dvd_Vertex.y);
+        dvd_Vertex.xz += amplitude * vec2(cos(time) * dvd_windDetails.x, sin(time) * dvd_windDetails.z);
     }
 
     VAR._vertexW = (dvd_Vertex + vec4(data.positionAndScale.xyz, 0.0f));

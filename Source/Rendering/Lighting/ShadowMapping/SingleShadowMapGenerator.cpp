@@ -170,7 +170,7 @@ SingleShadowMapGenerator::~SingleShadowMapGenerator()
     DestroyResource( _blurDepthMapShader );
 }
 
-void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut)
+void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, [[maybe_unused]] const U32 layerMask)
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 

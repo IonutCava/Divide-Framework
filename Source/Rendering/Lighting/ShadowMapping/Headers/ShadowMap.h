@@ -74,7 +74,7 @@ protected:
     explicit ShadowMapGenerator(GFXDevice& context, ShadowType type) noexcept;
 
     friend class ShadowMap;
-    virtual void render(const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) = 0;
+    virtual void render(const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, U32 layerMask) = 0;
 
     virtual void updateMSAASampleCount([[maybe_unused]] const U8 sampleCount) { }
 
@@ -115,7 +115,7 @@ NOINITVTABLE_CLASS(ShadowMap)
     static bool freeShadowMapOffset(const Light& light);
     static bool tryReuseShadowMaps(const Light& light);
     static bool markShadowMapsUsed(Light& light);
-    static bool generateShadowMaps(const Camera& playerCamera, Light& light, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
+    static bool generateShadowMaps(const Camera& playerCamera, Light& light, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, U32 layerMask);
 
     static ShadowType getShadowTypeForLightType(LightType type) noexcept;
     static LightType getLightTypeForShadowType(ShadowType type) noexcept;

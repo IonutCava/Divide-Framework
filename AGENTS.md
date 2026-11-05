@@ -32,6 +32,7 @@
 ## Conventions and safe changes
 
 - Start with a data-oriented design: favor batch processing, cache-friendly access, parallelism, and minimal overhead. Keep OOP, virtual dispatch, and large objects minimal; they are acceptable for high-level orchestration, not the default for performance-sensitive engine code.
+- Keep cross-system contracts generic. Scene/game features own their policy and translate it into bounds, masks, capabilities or invalidation requests; rendering infrastructure must not know feature names such as trees or wind. See [Rendering](docs/architecture/rendering.md#cross-system-boundaries).
 - Avoid unnecessary memory allocations. Prefer appropriately sized arrays, reusable capacity/high-water-mark allocations, and existing arena allocators. Keep `new`/`delete` and `malloc`/`free` out of the main rendering loop except where unavoidable and explicitly justified; reuse or preallocate storage instead.
 - Keep code cross-platform across Windows, Linux, and macOS on both x64 and arm64. Avoid unguarded platform APIs or architecture-specific assumptions; provide appropriate portable paths for SIMD, alignment, and platform functionality.
 - Reuse target variables in `Source/CMakeLists.txt`: `APP_LIB_DIVIDE`, `APP_EXE_DIVIDE`, `APP_EXE_PROJECT_MANAGER`.

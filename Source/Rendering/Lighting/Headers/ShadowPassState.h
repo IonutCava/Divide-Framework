@@ -16,6 +16,50 @@
 
 namespace Divide
 {
+    [[nodiscard]] constexpr U32 ShadowLayerMask(const U8 layerCount) noexcept
+    {
+        assert(layerCount <= 32u);
+        return layerCount == 32u ? ~U32{0u} : (U32{1u} << layerCount) - 1u;
+    }
+
+    [[nodiscard]] constexpr bool ShadowLayerSelected(const U32 mask, const U8 layer) noexcept
+    {
+        return layer < 32u && (mask & (U32{1u} << layer)) != 0u;
+    }
+
+    [[nodiscard]] constexpr U32 ShadowLayerUpdateMask(const U8 layerCount, const U32 dirtyLayers,
+                                                      const bool cacheValid, const bool fullInvalidation) noexcept
+    {
+        const U32 allLayers = ShadowLayerMask(layerCount);
+        return !cacheValid || fullInvalidation ? allLayers : dirtyLayers & allLayers;
+    }
+
+    [[nodiscard]] constexpr F32 ShadowBlurTexelScale(const U8 firstLayer) noexcept
+    {
+        assert(firstLayer < 32u);
+        return 1.f / static_cast<F32>(U32{1u} << firstLayer);
+    }
+
+    template<typename Callback>
+    void ForEachShadowLayerRange(const U32 mask, const U8 layerCount, Callback&& callback)
+    {
+        assert(layerCount <= 32u);
+        for (U8 layer = 0u; layer < layerCount;)
+        {
+            if (!ShadowLayerSelected(mask, layer))
+            {
+                ++layer;
+                continue;
+            }
+            const U8 first = layer++;
+            while (layer < layerCount && ShadowLayerSelected(mask, layer))
+            {
+                ++layer;
+            }
+            callback(first, static_cast<U8>(layer - first));
+        }
+    }
+
     [[nodiscard]] constexpr size_t ShadowReservationCount(const size_t contentCount,
                                                            const size_t maxCascades,
                                                            const bool directional) noexcept
