@@ -58,7 +58,7 @@ void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera,
     {
         light.setShadowLightPos(  i, lightPos);
         light.setShadowFloatValue(i, light.range() * 1.1f );
-        light.setShadowVPMatrix(  i, mat4<F32>::Multiply( MAT4_BIAS_ZERO_ONE_Z, viewProjMatrix[i] ));
+        light.setShadowVPMatrix(  i, ShadowMap::BiasedViewProjection( viewProjMatrix[i] ));
     }
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);

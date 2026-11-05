@@ -186,7 +186,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     mat4<F32>::Multiply(projectionMatrix, viewMatrix, lightVP);
     light.setShadowLightPos(0, lightPos);
     light.setShadowFloatValue(0, shadowCameras[0]->snapshot()._zPlanes.max);
-    light.setShadowVPMatrix(0, mat4<F32>::Multiply( MAT4_BIAS_ZERO_ONE_Z, lightVP ));
+    light.setShadowVPMatrix(0, ShadowMap::BiasedViewProjection( lightVP ));
 
     RenderPassParams params = {};
     params._sourceNode = light.sgn();

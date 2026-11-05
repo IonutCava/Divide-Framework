@@ -9,6 +9,7 @@
 #include "UnitTests/unitTestCommon.h"
 #include "EngineConfig.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
+#include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/ClusteredLighting.h"
 #include "Rendering/Lighting/Headers/LightUploadState.h"
 #include "Rendering/Lighting/Headers/ShadowCasterBounds.h"
@@ -27,6 +28,31 @@
 
 namespace Divide
 {
+    TEST_CASE( "Shadow matrices apply the XY bias after projection", "[lighting][shadows]" )
+    {
+        const mat4<F32> view = Camera::LookAt( float3{ 4.f, 3.f, 6.f }, float3{ 0.f, 0.f, 0.f }, float3{ 0.f, 1.f, 0.f } );
+        const mat4<F32> projection = Camera::Perspective( 90.f, 1.f, 0.1f, 100.f );
+        const mat4<F32> viewProjection = mat4<F32>::Multiply( projection, view );
+        const mat4<F32> biased = ShadowMap::BiasedViewProjection( viewProjection );
+        const mat4<F32> wrongOrder = mat4<F32>::Multiply( viewProjection, MAT4_BIAS_ZERO_ONE_Z );
+
+        for ( const float4& world : std::array<float4, 3>{ float4{ 0.f, 0.f, 0.f, 1.f },
+                                                          float4{ 1.f, 0.f, 0.f, 1.f },
+                                                          float4{ 0.f, 1.f, 1.f, 1.f } } )
+        {
+            const float4 clip = viewProjection * world;
+            const float4 result = biased * world;
+            REQUIRE( clip.w > 0.f );
+            CHECK( result.x == Catch::Approx( 0.5f * ( clip.x + clip.w ) ).margin( 0.0001f ) );
+            CHECK( result.y == Catch::Approx( 0.5f * ( clip.y + clip.w ) ).margin( 0.0001f ) );
+            CHECK( result.z == Catch::Approx( clip.z ).margin( 0.0001f ) );
+            CHECK( result.w == Catch::Approx( clip.w ).margin( 0.0001f ) );
+        }
+
+        const float4 reference{ 0.f, 0.f, 0.f, 1.f };
+        CHECK( ( wrongOrder * reference ).x != Catch::Approx( ( biased * reference ).x ) );
+    }
+
     TEST_CASE("Shadow strength attenuates occlusion without dimming lit pixels", "[lighting][shadows]")
     {
         const auto visibility = [](const F32 shadow, const F32 strength)

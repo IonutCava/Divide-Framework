@@ -1,6 +1,7 @@
 // Copyright (c) 2026 DIVIDE-Studio
 #include "UnitTests/unitTestCommon.h"
 
+#include "Core/Headers/Configuration.h"
 #include "Core/Headers/WindowManager.h"
 #include "Core/Headers/ErrorCodes.h"
 #include "Core/Headers/RingBuffer.h"
@@ -1509,6 +1510,68 @@ namespace Divide
         CHECK( info.usage == VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE );
         CHECK( ( info.flags & VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT ) == 0u );
         CHECK( info.priority == 1.f );
+    }
+
+    TEST_CASE( "VMA debug logging defaults off and survives configuration round trips", "[render_smoke][allocation][configuration]" )
+    {
+        platformInitRunListener::PlatformInit();
+        const platformInitRunListener::LocalizationScope localization{};
+        const auto suffix = std::chrono::steady_clock::now().time_since_epoch().count();
+        const std::filesystem::path directory = std::filesystem::temp_directory_path() /
+                                                ( "divide-vma-config-" + std::to_string( suffix ) );
+        REQUIRE( std::filesystem::create_directory( directory ) );
+        SCOPE_EXIT
+        {
+            std::error_code error;
+            std::filesystem::remove_all( directory, error );
+        };
+        const ResourcePath path{ directory.string() };
+        {
+            std::ofstream missing{ directory / "missing.xml" };
+            missing << "<config><debug><renderer/></debug></config>";
+            REQUIRE( missing.good() );
+        }
+        {
+            std::ofstream enabled{ directory / "enabled.xml" };
+            enabled << "<config><debug><renderer><enableVMADebugLogging>true</enableVMADebugLogging>"
+                       "</renderer></debug></config>";
+            REQUIRE( enabled.good() );
+        }
+
+        Configuration defaults{};
+        CHECK_FALSE( defaults.debug.renderer.enableVMADebugLogging );
+        REQUIRE( XML::loadFromXML( defaults, path, "missing.xml" ) );
+        CHECK_FALSE( defaults.debug.renderer.enableVMADebugLogging );
+
+        Configuration config{};
+        REQUIRE( XML::loadFromXML( config, path, "enabled.xml" ) );
+        REQUIRE( config.debug.renderer.enableVMADebugLogging );
+        config.debug.renderer.enableVMADebugLogging = false;
+        REQUIRE( XML::saveToXML( config, path, "saved-disabled.xml" ) );
+        Configuration savedDisabled{};
+        REQUIRE( XML::loadFromXML( savedDisabled, path, "saved-disabled.xml" ) );
+        CHECK_FALSE( savedDisabled.debug.renderer.enableVMADebugLogging );
+
+        config.debug.renderer.enableVMADebugLogging = true;
+        REQUIRE( XML::saveToXML( config, path, "saved-enabled.xml" ) );
+        Configuration savedEnabled{};
+        REQUIRE( XML::loadFromXML( savedEnabled, path, "saved-enabled.xml" ) );
+        CHECK( savedEnabled.debug.renderer.enableVMADebugLogging );
+    }
+
+    TEST_CASE( "VMA trace arguments are evaluated only while logging is enabled", "[render_smoke][allocation]" )
+    {
+        const bool previous = g_enableVMADebugLogging.exchange( false, std::memory_order_relaxed );
+        SCOPE_EXIT
+        {
+            g_enableVMADebugLogging.store( previous, std::memory_order_relaxed );
+        };
+        I32 evaluations = 0;
+        VMA_DEBUG_LOG( "VMA logging gate {}", ++evaluations );
+        CHECK( evaluations == 0 );
+        g_enableVMADebugLogging.store( true, std::memory_order_relaxed );
+        VMA_DEBUG_LOG( "VMA logging gate {}", ++evaluations );
+        CHECK( evaluations == 1 );
     }
 
     TEST_CASE( "Device-fault capture requires smoke mode, its extension and feature", "[render_smoke][device_fault]" )

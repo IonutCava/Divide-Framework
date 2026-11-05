@@ -4,9 +4,120 @@
 #include "ECS/Components/Headers/BoundsUpdateState.h"
 #include "ECS/Systems/Headers/TransformHierarchy.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
+#include "Rendering/Camera/Headers/Camera.h"
 
 namespace Divide
 {
+    TEST_CASE( "Camera lookAt preserves a world-space eye and orientation", "[camera][render_smoke]" )
+    {
+        Camera camera{ "camera-look-at-test", Camera::Mode::STATIC };
+        const float3 eye{ 17.f, 3.f, -11.f };
+        const float3 target{ 22.f, 5.f, -4.f };
+        const float3 up{ 0.f, 1.f, 0.f };
+        const mat4<F32> expected = Camera::LookAt( eye, target, up );
+        const mat4<F32> actual = camera.lookAt( eye, target, up );
+
+        CHECK( camera.snapshot()._eye.x == Catch::Approx( eye.x ).margin( 0.0001f ) );
+        CHECK( camera.snapshot()._eye.y == Catch::Approx( eye.y ).margin( 0.0001f ) );
+        CHECK( camera.snapshot()._eye.z == Catch::Approx( eye.z ).margin( 0.0001f ) );
+        for ( size_t i = 0u; i < 16u; ++i )
+        {
+            CAPTURE( i );
+            CHECK( actual.mat[i] == Catch::Approx( expected.mat[i] ).margin( 0.0001f ) );
+        }
+
+        const float4 viewEye = actual * float4{ eye.x, eye.y, eye.z, 1.f };
+        const float4 viewTarget = actual * float4{ target.x, target.y, target.z, 1.f };
+        CHECK( viewEye.x == Catch::Approx( 0.f ).margin( 0.0001f ) );
+        CHECK( viewEye.y == Catch::Approx( 0.f ).margin( 0.0001f ) );
+        CHECK( viewEye.z == Catch::Approx( 0.f ).margin( 0.0001f ) );
+        CHECK( viewTarget.x == Catch::Approx( 0.f ).margin( 0.0001f ) );
+        CHECK( viewTarget.y == Catch::Approx( 0.f ).margin( 0.0001f ) );
+        CHECK( viewTarget.z < 0.f );
+
+        const float3 offset{ -2.f, 4.f, 1.f };
+        camera.setEye( eye + offset );
+        const mat4<F32> moved = camera.viewMatrix();
+        const mat4<F32> expectedMoved = Camera::LookAt( eye + offset, target + offset, up );
+        for ( size_t i = 0u; i < 16u; ++i )
+        {
+            CAPTURE( i );
+            CHECK( moved.mat[i] == Catch::Approx( expectedMoved.mat[i] ).margin( 0.0001f ) );
+        }
+    }
+
+    TEST_CASE( "Mutable camera view projection refreshes before frustum updates", "[camera][render_smoke]" )
+    {
+        Camera camera{ "camera-view-projection-test", Camera::Mode::STATIC };
+        camera.lookAt( float3{ 2.f, 3.f, 8.f }, float3{ 0.f, 0.f, 0.f }, float3{ 0.f, 1.f, 0.f } );
+        camera.setProjection( 1.f, 60.f, float2{ 0.1f, 100.f } );
+        REQUIRE( camera.updateLookAt() );
+
+        const auto checkCombined = [&]()
+        {
+            const mat4<F32> actual = camera.viewProjectionMatrix();
+            const mat4<F32> expected = mat4<F32>::Multiply( camera.projectionMatrix(), camera.viewMatrix() );
+            for ( size_t i = 0u; i < 16u; ++i )
+            {
+                CAPTURE( i );
+                CHECK( actual.mat[i] == Catch::Approx( expected.mat[i] ).margin( 0.0001f ) );
+            }
+            return actual;
+        };
+
+        const mat4<F32> initial = checkCombined();
+        camera.setEye( float3{ 5.f, 4.f, 7.f } );
+        const mat4<F32> afterView = checkCombined();
+        CHECK( afterView.mat[12] != Catch::Approx( initial.mat[12] ) );
+
+        REQUIRE( camera.updateLookAt() );
+        camera.setProjection( 1.6f, 45.f, float2{ 0.2f, 250.f } );
+        const mat4<F32> afterProjection = checkCombined();
+        CHECK( afterProjection.mat[0] != Catch::Approx( afterView.mat[0] ) );
+
+        REQUIRE( camera.updateLookAt() );
+        camera.lookAt( float3{ -6.f, 4.f, 9.f }, float3{ 1.f, 1.f, 0.f }, float3{ 0.f, 1.f, 0.f } );
+        camera.setProjection( 1.2f, 75.f, float2{ 0.5f, 500.f } );
+        const mat4<F32> afterBoth = checkCombined();
+        CHECK( afterBoth.mat[0] != Catch::Approx( afterProjection.mat[0] ) );
+    }
+
+    TEST_CASE( "Frustum classification checks later planes after intersections", "[camera][frustum][render_smoke]" )
+    {
+        Frustum frustum;
+        frustum.computePlanes( MAT4_IDENTITY );
+
+        for ( const I8 cached : std::array<I8, 6>{{ -1, to_I8( FrustumPlane::PLANE_LEFT ),
+                                                    to_I8( FrustumPlane::PLANE_TOP ),
+                                                    to_I8( FrustumPlane::PLANE_FAR ),
+                                                    to_I8( FrustumPlane::COUNT ), -99 }} )
+        {
+            CAPTURE( cached );
+            I8 planeCache = cached;
+            CHECK( frustum.ContainsSphere( float3{ -0.9f, 0.f, 1.4f }, 0.2f, planeCache ) == FrustumCollision::FRUSTUM_OUT );
+            CHECK( planeCache == to_I8( FrustumPlane::PLANE_FAR ) );
+
+            planeCache = cached;
+            const BoundingBox box{ -1.1f, -0.1f, 1.2f, -0.8f, 0.1f, 1.4f };
+            CHECK( frustum.ContainsBoundingBox( box, planeCache ) == FrustumCollision::FRUSTUM_OUT );
+            CHECK( planeCache == to_I8( FrustumPlane::PLANE_FAR ) );
+        }
+
+        I8 planeCache = to_I8( FrustumPlane::PLANE_FAR );
+        CHECK( frustum.ContainsSphere( float3{ 0.f, 0.f, 0.5f }, 0.1f, planeCache ) == FrustumCollision::FRUSTUM_IN );
+        CHECK( planeCache == -1 );
+        CHECK( frustum.ContainsSphere( float3{ -0.9f, 0.f, 0.5f }, 0.2f, planeCache ) == FrustumCollision::FRUSTUM_INTERSECT );
+        CHECK( planeCache == to_I8( FrustumPlane::PLANE_LEFT ) );
+        CHECK( frustum.ContainsSphere( float3{ 0.f, 0.f, -0.5f }, 0.1f, planeCache ) == FrustumCollision::FRUSTUM_OUT );
+        CHECK( planeCache == to_I8( FrustumPlane::PLANE_NEAR ) );
+        CHECK( frustum.ContainsSphere( float3{ 0.f, 0.f, 0.05f }, 0.1f, planeCache ) == FrustumCollision::FRUSTUM_INTERSECT );
+        CHECK( planeCache == to_I8( FrustumPlane::PLANE_NEAR ) );
+
+        const BoundingBox nearOutside{ -0.1f, -0.1f, -0.3f, 0.1f, 0.1f, -0.2f };
+        CHECK( frustum.ContainsBoundingBox( nearOutside, planeCache ) == FrustumCollision::FRUSTUM_OUT );
+        CHECK( planeCache == to_I8( FrustumPlane::PLANE_NEAR ) );
+    }
+
     TEST_CASE( "Shadow bounds detect even small sphere changes", "[bounds][lighting][shadows]" )
     {
         const BoundingSphere previous{ float3{ 10.f, 20.f, 30.f }, 4.f };

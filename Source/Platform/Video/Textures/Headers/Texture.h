@@ -47,6 +47,7 @@ namespace Divide
 
 class Kernel;
 class ResourceCache;
+class PlatformContext;
 
 namespace Attorney
 {
@@ -117,6 +118,10 @@ struct TextureTransparencyInfo
     bool _hasVisiblePixel{ false };
     bool _hasTranslucentPixel{ false };
 };
+
+[[nodiscard]] bool CheckTextureTransparency( PlatformContext& context, bool inspectAlpha, const ResourcePath& path,
+                                             std::string_view name, const ImageTools::ImageData& fileData,
+                                             U16 firstLayer, TextureTransparencyInfo& transparency );
 
 /// An API-independent representation of a texture
 NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
@@ -203,8 +208,6 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
      protected:
         /// Use STB to load a file into a Texture Object
         bool loadFile( const ResourcePath& path, std::string_view name, ImageTools::ImageData& fileData, TextureTransparencyInfo& transparency );
-        bool checkTransparency( const ResourcePath& path, std::string_view name, const ImageTools::ImageData& fileData,
-                                U16 firstLayer, TextureTransparencyInfo& transparency );
         /// Load texture data using the specified file name
         bool loadInternal();
 

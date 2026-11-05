@@ -359,7 +359,7 @@ namespace Divide
             if (ShadowLayerSelected(layerMask, cascadeIterator))
             {
                 light.setShadowLightPos( cascadeIterator, lightPosition );
-                light.setShadowVPMatrix( cascadeIterator, mat4<F32>::Multiply( MAT4_BIAS_ZERO_ONE_Z, lightVP ) );
+                light.setShadowVPMatrix( cascadeIterator, ShadowMap::BiasedViewProjection( lightVP ) );
             }
         }
     }
@@ -492,7 +492,7 @@ namespace Divide
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
         const mat4<F32> worldAOVP = mat4<F32>::Multiply( projMatrix, viewMatrix );
-        return mat4<F32>::Multiply( MAT4_BIAS_ZERO_ONE_Z, worldAOVP );
+        return ShadowMap::BiasedViewProjection( worldAOVP );
     }
 
     void CascadedShadowMapsGenerator::blurTarget( const U16 layerOffset, const U16 layerCount, GFX::CommandBuffer & bufferInOut, const U8 firstLayer )
