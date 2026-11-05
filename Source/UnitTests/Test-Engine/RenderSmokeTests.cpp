@@ -136,7 +136,7 @@ namespace Divide
         CHECK_FALSE( IsValidContentName( ".." ) );
     }
 
-    TEST_CASE( "Vulkan smoke options require an isolated output and valid inputs", "[render_smoke][options]" )
+    TEST_CASE( "Framework smoke options require an isolated output and valid inputs", "[render_smoke][options]" )
     {
         using namespace RenderSmokeTest;
 
@@ -195,6 +195,9 @@ namespace Divide
                                             std::string_view{ "--smokeRenderDocCapture" } };
         CHECK( ParseOptions( duplicateRenderDoc, options, error ) == ParseResult::ERROR );
         const std::array glRenderDoc{ std::string_view{ "--openGLSmokeTest" },
+                                     std::string_view{ "--smokeOutput=C:\\smoke" },
+                                     std::string_view{ "--smokeRun=attempt-01" },
+                                     std::string_view{ "--smokeExpectedGPU=00000000030000000000000000000000" },
                                      std::string_view{ "--smokeSupervisorGate" },
                                      std::string_view{ "--smokeRenderDocCapture" } };
         CHECK( ParseOptions( glRenderDoc, options, error ) == ParseResult::ERROR );
@@ -238,6 +241,43 @@ namespace Divide
                                        std::string_view{ "--smokeRun=attempt" },
                                        std::string_view{ "--smokeExpectedGPU=00000000030000000000000000000000" } };
         CHECK( ParseOptions( vulkanWithGPU, options, error ) == ParseResult::ERROR );
+    }
+
+    TEST_CASE( "Framework smoke mode selects one supported backend", "[render_smoke][options]" )
+    {
+        using namespace RenderSmokeTest;
+
+        Options options;
+        std::string error;
+        const std::array vulkan{ std::string_view{ "--frameworkSmokeTest=Vulkan" },
+                                 std::string_view{ "--smokeOutput=C:\\smoke" },
+                                 std::string_view{ "--smokeRun=attempt" } };
+        REQUIRE( ParseOptions( vulkan, options, error ) == ParseResult::ENABLED );
+        CHECK( options._backend == Backend::VULKAN );
+
+        const std::array gl{ std::string_view{ "--frameworkSmokeTest=OpenGL" },
+                            std::string_view{ "--smokeOutput=C:\\smoke" },
+                            std::string_view{ "--smokeRun=attempt" },
+                            std::string_view{ "--smokeExpectedGPU=00000000030000000000000000000000" } };
+        REQUIRE( ParseOptions( gl, options, error ) == ParseResult::ENABLED );
+        CHECK( options._backend == Backend::OPENGL );
+
+        const std::array glWithoutGPU{ std::string_view{ "--frameworkSmokeTest=OpenGL" },
+                                      std::string_view{ "--smokeOutput=C:\\smoke" },
+                                      std::string_view{ "--smokeRun=attempt" } };
+        CHECK( ParseOptions( glWithoutGPU, options, error ) == ParseResult::ERROR );
+        const std::array missingBackend{ std::string_view{ "--frameworkSmokeTest" } };
+        CHECK( ParseOptions( missingBackend, options, error ) == ParseResult::ERROR );
+        const std::array invalidBackend{ std::string_view{ "--frameworkSmokeTest=Metal" } };
+        CHECK( ParseOptions( invalidBackend, options, error ) == ParseResult::ERROR );
+        const std::array emptyBackend{ std::string_view{ "--frameworkSmokeTest=" } };
+        CHECK( ParseOptions( emptyBackend, options, error ) == ParseResult::ERROR );
+        const std::array duplicateBackend{ std::string_view{ "--frameworkSmokeTest=Vulkan" },
+                                           std::string_view{ "--frameworkSmokeTest=Vulkan" } };
+        CHECK( ParseOptions( duplicateBackend, options, error ) == ParseResult::ERROR );
+        const std::array conflictingAlias{ std::string_view{ "--frameworkSmokeTest=OpenGL" },
+                                          std::string_view{ "--vulkanSmokeTest" } };
+        CHECK( ParseOptions( conflictingAlias, options, error ) == ParseResult::ERROR );
     }
 
     TEST_CASE( "Render smoke options validate the requested material debug view", "[render_smoke][options]" )

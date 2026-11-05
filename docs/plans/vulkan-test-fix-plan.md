@@ -4,7 +4,7 @@
 
 Status: implemented. This document preserves the approved design and initial
 investigation context; it is not the current repair log. The maintained runner
-contract and usage are in [Rendering](../architecture/rendering.md#vulkan-smoke-diagnosis),
+contract and usage are in [Rendering](../architecture/rendering.md#framework-smoke-diagnosis),
 with [readback and recovery](../architecture/gpu-resources.md#vulkan-smoke-readback-and-recovery)
 and [scene selection](../architecture/scene-loading.md) documented separately.
 Both backends support supervised capture and start in Play mode. Rendering fixes

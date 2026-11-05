@@ -697,7 +697,7 @@ exit $LASTEXITCODE
                                 'Source\Core\Headers\VulkanRecoveryPolicy.h',
                                 'Source\Core\RenderSmokeTest.cpp',
                                 'Source\UnitTests\Test-Engine\RenderSmokeTests.cpp',
-                                'Tools\VulkanRecoveryProbe.cpp', 'Tools\VulkanSmokeTest.ps1', 'XML\config.xml'))
+                                'Tools\VulkanRecoveryProbe.cpp', 'Tools\FrameworkSmokeTest.ps1', 'XML\config.xml'))
         {
             $source = Join-Path $script:Repo $relative
             if ([IO.File]::Exists($source))
@@ -2047,11 +2047,11 @@ int main(int argc, char** argv)
             throw 'The focused engine tests failed; no renderer was started.'
         }
     }
-    else { Write-Timeline 'Unit tests are deferred until the Vulkan smoke test passes.' }
+    else { Write-Timeline 'Unit tests are deferred until the framework smoke test passes.' }
 
     Assert-NoConflictingRenderer $engine.Executable
     $runID = 'attempt-{0:D2}' -f $script:State.attempts
-    $smokeMode = if ($Backend -eq 'OpenGL') { '--openGLSmokeTest' } else { '--vulkanSmokeTest' }
+    $smokeMode = if ($Backend -eq 'OpenGL') { '--frameworkSmokeTest=OpenGL' } else { '--frameworkSmokeTest=Vulkan' }
     $arguments = @($smokeMode, '--smokeWindowCapture', '--smokeSupervisorGate',
                    "--smokeOutput=$attempt", "--smokeRun=$runID", "--smokeFrames=$script:TargetPresents")
     if ($Backend -eq 'OpenGL') { $arguments += "--smokeExpectedGPU=$ExpectedGPU" }
