@@ -322,7 +322,8 @@ orientation from the inverse view rotation. CSM, spot and cubemap shadow
 cameras, as well as world AO, depend on this shared camera transform.
 The mutable `viewProjectionMatrix()` accessor also refreshes the combined
 matrix when the frustum is dirty, even before a full `updateLookAt()`.
-Stored shadow view-projection matrices apply the XY bias after projection.
+`ShadowMap::BiasedViewProjection` applies the XY bias after projection for
+directional, spot, point and world-AO shadow matrices.
 Point-shadow sampling currently uses a cube direction, not these stored matrices.
 Frustum extraction uses the shared zero-to-one depth convention. Sphere and box
 classification checks every remaining plane after an intersection; the cached
@@ -636,9 +637,11 @@ near plane, ray endpoint and screen rectangle, and reconstructs hit positions
 with the same perspective-correct progress used by the march. It reconstructs
 scene depth from the current projection and uses a parallel camera direction for
 orthographic views. Previous-frame colour is sampled only for valid clip-space
-reprojections and stored unweighted; the material pass applies the SSR blend
-weight once. There is no previous-depth disocclusion test, so temporal
-reflections remain approximate. SSR is applied only in the display pass; other
+reprojections whose expected view depth matches the valid previous-depth
+history within a distance-dependent tolerance. The colour is stored unweighted;
+the material pass applies the SSR blend weight once. The depth test reduces
+disocclusion artifacts but does not track motion of individual objects, so
+temporal reflections remain approximate. SSR is applied only in the display pass; other
 views always sample an explicitly initialized transparent-black texture.
 The display pass and PostFX debug view use the same fallback when SSR is disabled,
 and `ApplySSR` returns its input unchanged for zero confidence. Scene and editor

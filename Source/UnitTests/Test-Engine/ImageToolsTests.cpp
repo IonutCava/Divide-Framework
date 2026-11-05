@@ -2,6 +2,7 @@
 #include "UnitTests/unitTestCommon.h"
 #include "Core/Headers/Application.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/TaskPool.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Utility/Headers/DDSCache.h"
@@ -327,6 +328,228 @@ namespace Divide
         }
     }
 #endif
+
+    TEST_CASE( "Texture alpha inspection combines layers and validates cached source data", "[image_data][texture][render_smoke]" )
+    {
+        platformInitRunListener::PlatformInit();
+        const platformInitRunListener::LocalizationScope localization{};
+        ImageTools::OnStartup( false );
+        SCOPE_EXIT
+        {
+            ImageTools::OnShutdown();
+        };
+
+        const auto suffix = std::chrono::steady_clock::now().time_since_epoch().count();
+        const std::filesystem::path directory = std::filesystem::temp_directory_path() /
+                                                ( "divide-alpha-layers-" + std::to_string( suffix ) );
+        REQUIRE( std::filesystem::create_directory( directory ) );
+        SCOPE_EXIT
+        {
+            std::error_code error;
+            std::filesystem::remove_all( directory, error );
+        };
+        const ResourcePath path{ directory.string() };
+
+        constexpr U16 width = 80u;
+        constexpr U16 height = 2u;
+        constexpr size_t pixelCount = width * height;
+        using Alpha = std::array<U8, pixelCount>;
+        const auto writeTga = [&]( const char* name, const Alpha& alpha, const bool addTrailingByte = false )
+        {
+            std::array<U8, 18> header{};
+            header[2] = 2u;
+            header[12] = to_U8( width & 0xFFu );
+            header[13] = to_U8( width >> 8u );
+            header[14] = to_U8( height & 0xFFu );
+            header[15] = to_U8( height >> 8u );
+            header[16] = 32u;
+            header[17] = 0x28u;
+            std::ofstream output{ directory / name, std::ios::binary };
+            output.write( reinterpret_cast<const char*>( header.data() ), to_I64( header.size() ) );
+            for ( const U8 value : alpha )
+            {
+                const std::array<U8, 4> pixel{{ 40u, 80u, 120u, value }};
+                output.write( reinterpret_cast<const char*>( pixel.data() ), to_I64( pixel.size() ) );
+            }
+            if ( addTrailingByte )
+            {
+                output.put( '\0' );
+            }
+            output.close();
+            return output.good();
+        };
+
+        Alpha opaque{};
+        opaque.fill( 255u );
+        Alpha early = opaque;
+        for ( const size_t x : { 1u, 17u, 33u, 49u } )
+        {
+            early[x] = 0u;
+        }
+        Alpha late = opaque;
+        late[65u] = 128u;
+        Alpha invisible{};
+        REQUIRE( writeTga( "early.tga", early ) );
+        REQUIRE( writeTga( "late.tga", late ) );
+        REQUIRE( writeTga( "invisible.tga", invisible ) );
+        REQUIRE( writeTga( "opaque.tga", opaque ) );
+
+        Application app;
+        PlatformContext context{ app };
+        TaskPool& pool = context.taskPool( TaskPoolType::HIGH_PRIORITY );
+        REQUIRE( pool.init( 2u ) );
+        SCOPE_EXIT
+        {
+            pool.shutdown();
+        };
+        const auto load = [&]( ImageTools::ImageData& data, const char* name )
+        {
+            return data.loadFromFile( context, false, 0u, 0u, path, name );
+        };
+        const auto check = [&]( const ImageTools::ImageData& data, const char* name, const U16 firstLayer,
+                                TextureTransparencyInfo& info )
+        {
+            return CheckTextureTransparency( context, true, path, name, data, firstLayer, info );
+        };
+        const auto findCache = [&]( const std::string_view name )
+        {
+            const std::string prefix = std::string{ name } + ".alpha-2-";
+            for ( const auto& entry : std::filesystem::directory_iterator{ directory } )
+            {
+                if ( entry.path().filename().string().starts_with( prefix ) )
+                {
+                    return entry.path();
+                }
+            }
+            return std::filesystem::path{};
+        };
+
+        SECTION( "Non-opaque pixels accumulate across partitions and source layers" )
+        {
+            ImageTools::ImageData data;
+            TextureTransparencyInfo info{};
+            REQUIRE( load( data, "early.tga" ) );
+            REQUIRE( data.format() == GFXImageFormat::RGBA );
+            REQUIRE( check( data, "early.tga", 0u, info ) );
+            CHECK( info._nonOpaquePixels == 4u );
+            CHECK_FALSE( info.hasTransparency() );
+            CHECK_FALSE( info.hasTranslucency() );
+
+            const U16 firstLayer = data.layerCount();
+            REQUIRE( load( data, "late.tga" ) );
+            REQUIRE( data.layerCount() == 2u );
+            TextureTransparencyInfo lateOnly{};
+            REQUIRE( check( data, "late.tga", firstLayer, lateOnly ) );
+            CHECK( lateOnly._nonOpaquePixels == 1u );
+            CHECK_FALSE( lateOnly.hasTransparency() );
+            REQUIRE( check( data, "late.tga", firstLayer, info ) );
+            CHECK( info._nonOpaquePixels == TextureTransparencyInfo::PIXEL_THRESHOLD );
+            CHECK( info.hasTransparency() );
+            CHECK( info.hasTranslucency() );
+            CHECK_FALSE( findCache( "early.tga" ).empty() );
+            CHECK_FALSE( findCache( "late.tga" ).empty() );
+        }
+
+        SECTION( "Invisible alpha is meaningful only when another layer is visible" )
+        {
+            ImageTools::ImageData data;
+            TextureTransparencyInfo info{};
+            REQUIRE( load( data, "invisible.tga" ) );
+            REQUIRE( check( data, "invisible.tga", 0u, info ) );
+            CHECK_FALSE( info.hasTransparency() );
+            CHECK_FALSE( info.hasTranslucency() );
+
+            const U16 firstLayer = data.layerCount();
+            REQUIRE( load( data, "opaque.tga" ) );
+            REQUIRE( check( data, "opaque.tga", firstLayer, info ) );
+            CHECK( info.hasTransparency() );
+            CHECK_FALSE( info.hasTranslucency() );
+        }
+
+        SECTION( "Cache hits, corrupt entries and changed sources retain correct classifications" )
+        {
+            ImageTools::ImageData cold;
+            TextureTransparencyInfo coldInfo{};
+            REQUIRE( load( cold, "late.tga" ) );
+            REQUIRE( check( cold, "late.tga", 0u, coldInfo ) );
+            REQUIRE( coldInfo._nonOpaquePixels == 1u );
+            const std::filesystem::path cache = findCache( "late.tga" );
+            REQUIRE_FALSE( cache.empty() );
+
+            ImageTools::ImageData warm;
+            REQUIRE( load( warm, "late.tga" ) );
+            auto* decoded = static_cast<U8*>( warm.data( 0u, 0u ) );
+            REQUIRE( decoded != nullptr );
+            for ( size_t pixel = 0u; pixel < pixelCount; ++pixel )
+            {
+                decoded[pixel * 4u + 3u] = 255u;
+            }
+            TextureTransparencyInfo warmInfo{};
+            REQUIRE( check( warm, "late.tga", 0u, warmInfo ) );
+            CHECK( warmInfo._nonOpaquePixels == 1u );
+            CHECK( warmInfo._hasTranslucentPixel );
+
+            {
+                std::ofstream corrupt{ cache, std::ios::binary | std::ios::trunc };
+                corrupt.put( '\0' );
+                REQUIRE( corrupt.good() );
+            }
+            ImageTools::ImageData repaired;
+            TextureTransparencyInfo repairedInfo{};
+            REQUIRE( load( repaired, "late.tga" ) );
+            REQUIRE( check( repaired, "late.tga", 0u, repairedInfo ) );
+            CHECK( repairedInfo._nonOpaquePixels == 1u );
+            CHECK( repairedInfo._hasTranslucentPixel );
+            CHECK( std::filesystem::file_size( cache ) == sizeof( U16 ) + sizeof( U64 ) + sizeof( U8 ) * 4u );
+
+            const auto originalSize = std::filesystem::file_size( directory / "late.tga" );
+            REQUIRE( writeTga( "late.tga", opaque, true ) );
+            REQUIRE( std::filesystem::file_size( directory / "late.tga" ) > originalSize );
+            ImageTools::ImageData changed;
+            TextureTransparencyInfo changedInfo{};
+            REQUIRE( load( changed, "late.tga" ) );
+            REQUIRE( check( changed, "late.tga", 0u, changedInfo ) );
+            CHECK( changedInfo._nonOpaquePixels == 0u );
+            CHECK_FALSE( changedInfo.hasTransparency() );
+            CHECK_FALSE( changedInfo.hasTranslucency() );
+        }
+
+        SECTION( "Alpha inspection can be disabled for data textures" )
+        {
+            ImageTools::ImageData empty;
+            TextureTransparencyInfo info{};
+            CHECK( CheckTextureTransparency( context, false, path, "unused", empty, 0u, info ) );
+            CHECK_FALSE( info.hasTransparency() );
+        }
+    }
+
+    TEST_CASE( "Texture alpha summaries preserve threshold and visibility boundaries", "[image_data][texture]" )
+    {
+        TextureTransparencyInfo summary{};
+        for ( U8 i = 0u; i < 4u; ++i )
+        {
+            summary.add( 0u );
+        }
+        summary.add( 251u );
+        CHECK( summary._nonOpaquePixels == 4u );
+        CHECK_FALSE( summary.hasTransparency() );
+        summary.add( 250u );
+        CHECK( summary.hasTransparency() );
+        CHECK( summary.hasTranslucency() );
+
+        TextureTransparencyInfo invisible{};
+        for ( U8 i = 0u; i < 5u; ++i )
+        {
+            invisible.add( 1u );
+        }
+        CHECK_FALSE( invisible.hasTransparency() );
+        TextureTransparencyInfo visible{};
+        visible.add( 2u );
+        invisible.merge( visible );
+        CHECK( invisible._nonOpaquePixels == TextureTransparencyInfo::PIXEL_THRESHOLD );
+        CHECK( invisible.hasTransparency() );
+        CHECK( invisible.hasTranslucency() );
+    }
 
     TEST_CASE( "Image layers require compatible, complete mip chains", "[image_data][render_smoke]" )
     {

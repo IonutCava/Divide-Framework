@@ -456,7 +456,8 @@ namespace Divide
             }
         }
 
-        return checkTransparency( path, name, fileData, firstLayer, transparency );
+        return CheckTextureTransparency( _context.context(), _descriptor._textureOptions._alphaChannelTransparency,
+                                         path, name, fileData, firstLayer, transparency );
     }
 
     ImageUsage Texture::prepareTextureData( const vec3<U16>& dimensions, const U16 layers, const bool makeImmutable, const U16 suppliedMipCount )
@@ -685,12 +686,13 @@ namespace Divide
         }
     }
 
-    bool Texture::checkTransparency( const ResourcePath& path, const std::string_view name, const ImageTools::ImageData& fileData,
-                                     const U16 firstLayer, TextureTransparencyInfo& transparency )
+    bool CheckTextureTransparency( PlatformContext& context, const bool inspectAlpha, const ResourcePath& path,
+                                   const std::string_view name, const ImageTools::ImageData& fileData,
+                                   const U16 firstLayer, TextureTransparencyInfo& transparency )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( !_descriptor._textureOptions._alphaChannelTransparency )
+        if ( !inspectAlpha )
         {
             return true;
         }
@@ -783,7 +785,7 @@ namespace Divide
 
                 Parallel_For
                 (
-                    _context.context().taskPool( TaskPoolType::HIGH_PRIORITY ),
+                    context.taskPool( TaskPoolType::HIGH_PRIORITY ),
                     ParallelForDescriptor
                     {
                         ._iterCount = dimensions.width,

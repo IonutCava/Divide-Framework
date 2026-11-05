@@ -100,6 +100,11 @@ NOINITVTABLE_CLASS(ShadowMap)
         };
     }
 
+    [[nodiscard]] static mat4<F32> BiasedViewProjection( const mat4<F32>& viewProjection ) noexcept
+    {
+        return mat4<F32>::Multiply( MAT4_BIAS_ZERO_ONE_Z, viewProjection );
+    }
+
   public:
     // Init and destroy buffers, shaders, etc
     static void initShadowMaps(GFXDevice& context);

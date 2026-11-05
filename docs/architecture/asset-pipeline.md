@@ -55,7 +55,7 @@ Before changing geometry upload, check cache compatibility, attribute-presence t
 
 ## Texture flow
 
-`Texture::loadInternal()` treats comma-separated asset lists as layers or cubemap faces, accumulates bytes into `ImageTools::ImageData`, and inspects/caches transparency and translucency.
+`Texture::loadInternal()` treats comma-separated asset lists as layers or cubemap faces, accumulates bytes into `ImageTools::ImageData`, and calls `CheckTextureTransparency` to inspect/cache transparency and translucency for each source.
 `Texture::Texture()` requires a single asset directory for every entry in the
 list. Serialized material paths must therefore name that one current directory,
 not a comma-separated list of directories.
