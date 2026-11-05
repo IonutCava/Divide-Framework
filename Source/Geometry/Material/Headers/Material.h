@@ -307,7 +307,9 @@ class Material final : public CachedResource {
     [[nodiscard]] const TextureInfo& getTextureInfo(TextureSlot usage) const;
     [[nodiscard]] const RenderStateBlock& getOrCreateRenderStateBlock(RenderStagePass renderStagePass);
     [[nodiscard]] Handle<Texture> getTexture(TextureSlot textureUsage) const;
-    [[nodiscard]] DescriptorSet getDescriptorSet(const RenderStagePass& renderStagePass);
+    [[nodiscard]] bool getDescriptorSet(const RenderStagePass& renderStagePass,
+                                        const ShaderProgramDescriptor& shaderDescriptor,
+                                        DescriptorSet& descriptorOut);
     [[nodiscard]] Handle<ShaderProgram> getProgramHandle(RenderStagePass renderStagePass) const;
     [[nodiscard]] Handle<ShaderProgram> computeAndGetProgramHandle(RenderStagePass renderStagePass);
     [[nodiscard]] bool hasTransparency() const noexcept;
@@ -339,10 +341,25 @@ class Material final : public CachedResource {
     PROPERTY_R_IW(AttributeMap, shaderAttributes);
     PROPERTY_R_IW(PrimitiveTopology, topology, PrimitiveTopology::COUNT);
    private:
+    struct TransparencyInputs
+    {
+        F32 _baseAlpha{ 1.f };
+        TextureOperation _albedoOperation{ TextureOperation::NONE };
+        TextureOperation _opacityOperation{ TextureOperation::NONE };
+        bool _enabled{ true };
+        bool _ignoreAlbedoAlpha{ false };
+        bool _hasAlbedo{ false };
+        bool _albedoHasTransparency{ false };
+        bool _hasOpacity{ false };
+        bool _opacityUsesAlpha{ false };
+    };
+
     void getSortKeys(RenderStagePass renderStagePass, I64& shaderKey, I64& textureKey, bool& transparencyFlag) const;
     void addShaderDefineInternal(ShaderType type, const string& define, bool addPrefix);
 
+    [[nodiscard]] static TranslucencySource SelectTranslucencySource(const TransparencyInputs& inputs) noexcept;
     void updateTransparency();
+    void invalidateDescriptorSets() noexcept;
 
     void recomputeShaders();
 
@@ -351,6 +368,10 @@ class Material final : public CachedResource {
     [[nodiscard]] bool prepareShader(RenderStagePass stagePass, bool& shaderJustFinishedLoading, bool consumeNotification);
 
     void computeAndAppendShaderDefines( ShaderProgramDescriptor& shaderDescriptor, RenderStagePass renderStagePass) const;
+    void appendTextureShaderDefines(ShaderProgramDescriptor& shaderDescriptor, bool isPrePass, bool isShadowPass) const;
+    [[nodiscard]] static bool UsesStandardMaterialStages(const ShaderProgramDescriptor& shaderDescriptor) noexcept;
+    [[nodiscard]] static bool HasCommonMaterialInputs(const ShaderProgramDescriptor& shaderDescriptor) noexcept;
+    static void AddMissingCommonMaterialBindings(DescriptorSet& descriptor, const ImageView& fallback, SamplerDescriptor sampler);
 
     [[nodiscard]] ShaderProgramInfo& shaderInfo(RenderStagePass renderStagePass);
 

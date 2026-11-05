@@ -583,6 +583,7 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/Headers/IMPrimitive.h
                              Platform/Video/Headers/IMPrimitiveDescriptors.h
                              Platform/Video/Headers/IMPrimitiveDrawSnapshots.h
+                             Platform/Video/Headers/GPUCompletionGuard.h
                              Platform/Video/Headers/LockManager.h
                              Platform/Video/Headers/Pipeline.h
                              Platform/Video/Headers/PushConstants.h
@@ -602,11 +603,13 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glGenericVertexData.h
                              Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h
                              Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glShaderBuffer.h
+                             Platform/Video/RenderBackend/OpenGL/Headers/glDescriptorUpdate.h
                              Platform/Video/RenderBackend/OpenGL/Headers/glHardwareQuery.h
                              Platform/Video/RenderBackend/OpenGL/Headers/glLockManager.h
                              Platform/Video/RenderBackend/OpenGL/Headers/glResources.h
                              Platform/Video/RenderBackend/OpenGL/Headers/glResources.inl
                              Platform/Video/RenderBackend/OpenGL/Headers/glStateTracker.h
+                             Platform/Video/RenderBackend/OpenGL/Headers/glUniformFences.h
                              Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h
                              Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShader.h
                              Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShaderProgram.h
@@ -618,6 +621,7 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkShaderBuffer.h
                              Platform/Video/RenderBackend/Vulkan/Headers/vkDescriptors.h
                              Platform/Video/RenderBackend/Vulkan/Headers/vkDevice.h
+                             Platform/Video/RenderBackend/Vulkan/Headers/vkDescriptorState.h
                              Platform/Video/RenderBackend/Vulkan/Headers/vkIMPrimitive.h
                              Platform/Video/RenderBackend/Vulkan/Headers/vkInitializers.h
                              Platform/Video/RenderBackend/Vulkan/Headers/vkMemAllocatorInclude.h
@@ -632,10 +636,12 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/Shaders/glsw/Headers/bstrlib.h
                              Platform/Video/Shaders/glsw/Headers/glsw.h
                              Platform/Video/Shaders/Headers/GLSLToSPIRV.h
+                             Platform/Video/Shaders/Headers/SampledImageResolver.h
                              Platform/Video/Shaders/Headers/ShaderDataUploader.h
                              Platform/Video/Shaders/Headers/ShaderProgram.h
                              Platform/Video/Shaders/Headers/ShaderProgramFwd.h
                              Platform/Video/Shaders/Headers/ShaderProgramFwd.inl
+                             Platform/Video/Shaders/Headers/UniformUploadPageCursor.h
                              Platform/Video/Textures/Headers/SamplerDescriptor.h
                              Platform/Video/Textures/Headers/SamplerDescriptor.inl
                              Platform/Video/Textures/Headers/Texture.h
@@ -882,6 +888,7 @@ set( TEST_ENGINE_SOURCE UnitTests/unitTestCommon.h
                         UnitTests/Test-Engine/TaskPoolTests.cpp
                         UnitTests/Test-Engine/TerrainTests.cpp
                         UnitTests/Test-Engine/UndoManagerTests.cpp
+                        UnitTests/Test-Engine/UniformUploadPageCursorTests.cpp
                         UnitTests/Test-Engine/SunTests.cpp
                         UnitTests/Test-Engine/WaterTests.cpp
 )

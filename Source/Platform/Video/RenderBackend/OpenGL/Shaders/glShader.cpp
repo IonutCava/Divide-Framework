@@ -72,6 +72,8 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
 {
     if (!_valid)
     {
+        PROFILE_SCOPE( "OpenGL shader upload", Profiler::Category::Graphics );
+
         const auto getTimerAndReset = [](Time::ProfileTimer& timer)
         {
             timer.stop();

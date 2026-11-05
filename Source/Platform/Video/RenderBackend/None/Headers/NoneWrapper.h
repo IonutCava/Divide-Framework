@@ -54,6 +54,7 @@ class NONE_API final : public RenderAPIWrapper {
                     void flushWindow( DisplayWindow& window ) override;
       [[nodiscard]] bool frameStarted() override;
       [[nodiscard]] bool frameEnded() override;
+      [[nodiscard]] bool waitForGPUIdle() noexcept override { return true; }
 
       ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) noexcept override;
       void closeRenderingAPI() noexcept override;

@@ -177,7 +177,7 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
     for ( const U8 i : taskOrder )
     {
         _renderPassData[i]._workTask = CreateTask( parentTask,
-                                        [&, i](const Task& parentTask) {
+                                        [&, i](const Task& stageTask) {
                                            PROFILE_SCOPE("RenderPass: BuildCommandBuffer", Profiler::Category::Scene );
                                            PROFILE_TAG("Pass IDX", i);
 
@@ -198,22 +198,27 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
                                            {
                                                if ( !pool.threadWaiting() )
                                                {
+                                                   PROFILE_SCOPE( "RenderPass: Dependency sleep", Profiler::Category::Scene );
                                                    UniqueLock<Mutex> lock( _waitForDependenciesLock );
                                                    _waitForDependencies.wait_for( lock, std::chrono::milliseconds( 2 ), dependenciesComplete );
                                                }
                                            }
 
-                                           Handle<GFX::CommandBuffer> cmdBufferHandle = GFX::AllocateCommandBuffer( TypeUtil::RenderStageToString( static_cast<RenderStage>(i) ), 1024 );
-                                           GFX::CommandBuffer* cmdBuffer = GFX::Get(cmdBufferHandle);
+                                           {
+                                               PROFILE_SCOPE( "RenderPass: Record stage commands", Profiler::Category::Scene );
+                                               Handle<GFX::CommandBuffer> cmdBufferHandle = GFX::AllocateCommandBuffer( TypeUtil::RenderStageToString( static_cast<RenderStage>(i) ), 1024 );
+                                               GFX::CommandBuffer* cmdBuffer = GFX::Get(cmdBufferHandle);
 
-                                           passData._memCmd = {};
-                                           passData._pass->render(params._playerPass, parentTask, *params._sceneRenderState, *cmdBuffer, passData._memCmd);
+                                               passData._memCmd = {};
+                                               passData._pass->render(params._playerPass, stageTask, *params._sceneRenderState, *cmdBuffer, passData._memCmd);
 
-                                           Time::ScopedTimer timeGPUFlush( *_processCommandBufferTimer[i] );
-                                           cmdBuffer->batch();
+                                               Time::ScopedTimer timeGPUFlush( *_processCommandBufferTimer[i] );
+                                               cmdBuffer->batch();
 
-                                            _context.flushCommandBuffer( MOV(cmdBufferHandle) );
-                                            _renderPassCompleted[i].store(true);
+                                               _context.flushCommandBuffer( MOV(cmdBufferHandle) );
+                                           }
+
+                                           _renderPassCompleted[i].store(true);
 
                                            LockGuard<Mutex> w_lock( _waitForDependenciesLock );
                                            _waitForDependencies.notify_all();
@@ -344,7 +349,7 @@ void RenderPassManager::render(const RenderParams& params)
 
         gfx.flushCommandBuffer(MOV(skyLightRenderBufferHandle));
 
-        WAIT_FOR_CONDITION( Finished( *renderTask ) );
+        pool.wait( *renderTask );
         RenderPassExecutor::FlushBuffersToGPU(flushMemCmd);
 
         if constexpr ( Config::Build::ENABLE_EDITOR )

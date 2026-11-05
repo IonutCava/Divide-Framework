@@ -765,6 +765,7 @@ namespace Divide
         Handle<GFX::CommandBuffer> preparationHandle = INVALID_HANDLE<GFX::CommandBuffer>;
         if ( refreshData )
         {
+            pkg.independentCompute( false );
             preparationHandle = GetPreparationCommandBuffer( pkg );
             DIVIDE_ASSERT( preparationHandle != INVALID_HANDLE<GFX::CommandBuffer> );
             GFX::Get( preparationHandle )->clear();
@@ -868,11 +869,11 @@ namespace Divide
 
                 const auto recordCull = [&]( GFX::CommandBuffer& commands, const bool occlusion )
                 {
-                    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( commands )->_scopeName = occlusion ? "Occlude Vegetation" : "Cull Vegetation";
-                    bindVegetationData( commands );
                     auto beforeCull = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( commands );
                     addInstanceLocks( *beforeCull, BufferSyncUsage::GPU_READ_TO_GPU_WRITE );
                     addInstanceLocks( *beforeCull, BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE );
+                    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( commands )->_scopeName = occlusion ? "Occlude Vegetation" : "Cull Vegetation";
+                    bindVegetationData( commands );
                     GFX::DispatchShaderTaskCommand computeCmd = {};
                     if ( cullGrass )
                     {
@@ -889,14 +890,18 @@ namespace Divide
                         GFX::EnqueueCommand( commands, computeCmd );
                     }
 
+                    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( commands );
                     auto afterCull = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( commands );
                     addInstanceLocks( *afterCull, BufferSyncUsage::GPU_WRITE_TO_GPU_READ );
-                    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( commands );
                 };
-                recordCull( preparation, false );
-                if ( renderStagePass._stage != RenderStage::SHADOW )
+                if ( cullGrass || instance->_drawState._treeInstanceCount > 0u )
                 {
-                    recordCull( *GFX::Get( GetOcclusionCommandBuffer( pkg ) ), true );
+                    recordCull( preparation, false );
+                    if ( renderStagePass._stage != RenderStage::SHADOW )
+                    {
+                        recordCull( *GFX::Get( GetOcclusionCommandBuffer( pkg ) ), true );
+                    }
+                    pkg.independentCompute( true );
                 }
             }
         }

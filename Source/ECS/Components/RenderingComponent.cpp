@@ -35,6 +35,8 @@
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
 #include "Rendering/RenderPass/Headers/RenderPassExecutor.h"
 
+#include "Utility/Headers/Localization.h"
+
 namespace Divide
 {
 
@@ -502,10 +504,23 @@ namespace Divide
                     ResourcePtr<Material> mat = Get(_materialInstance);
                     pipelineDescriptor._stateBlock = mat->getOrCreateRenderStateBlock( renderStagePass );
                     pipelineDescriptor._shaderProgramHandle = mat->getProgramHandle( renderStagePass );
+                    if ( pipelineDescriptor._shaderProgramHandle == INVALID_HANDLE<ShaderProgram> )
+                    {
+                        return false;
+                    }
+                    const ShaderProgram* const program = Get( pipelineDescriptor._shaderProgramHandle );
+                    if ( program == nullptr )
+                    {
+                        Console::errorfn( LOCALE_STR( "MATERIAL_SHADER_RESOURCE_MISSING" ), mat->resourceName().c_str() );
+                        return false;
+                    }
                     pipelineDescriptor._primitiveTopology = mat->topology();
                     pipelineDescriptor._vertexFormat = mat->shaderAttributes();
                     pkg.descriptorSetCmd()._usage = DescriptorSetUsage::PER_DRAW;
-                    pkg.descriptorSetCmd()._set = mat->getDescriptorSet( renderStagePass );
+                    if ( !mat->getDescriptorSet( renderStagePass, program->descriptor(), pkg.descriptorSetCmd()._set ) )
+                    {
+                        return false;
+                    }
                 }
                 else
                 {

@@ -35,6 +35,7 @@
 
 #include "Platform/Video/Headers/PushConstants.h"
 #include "Platform/Video/Headers/DescriptorSetsFwd.h"
+#include "UniformUploadPageCursor.h"
 
 namespace Divide
 {
@@ -155,10 +156,75 @@ namespace Divide
     }; //namespace Reflection
 
 
+class UniformUploadSnapshotState
+{
+public:
+    [[nodiscard]] bool needsUpload() const noexcept { return _dirty; }
+    void markDirty() noexcept { _dirty = true; }
+    void updateBytes( Byte* destination, const Byte* source, const size_t byteCount ) noexcept
+    {
+        if ( byteCount != 0u && std::memcmp( destination, source, byteCount ) != 0 )
+        {
+            std::memcpy( destination, source, byteCount );
+            markDirty();
+        }
+    }
+    void markUploaded() noexcept { _dirty = false; _usage = {}; }
+    void markUsed( const U64 frameNumber ) noexcept { _usage.markUsed( frameNumber ); }
+    [[nodiscard]] const UniformUploadPageCursor::Usage& usage() const noexcept { return _usage; }
+
+private:
+    UniformUploadPageCursor::Usage _usage{};
+    bool _dirty{ true };
+};
+
+class UniformUploadArena
+{
+public:
+    struct Allocation
+    {
+        ShaderBuffer* _buffer{ nullptr };
+        size_t _sizeClassIndex{ 0u };
+        size_t _page{ 0u };
+        U16 _slot{ 0u };
+        U64 _generation{ 0u };
+    };
+
+    explicit UniformUploadArena( GFXDevice& context ) noexcept;
+    ~UniformUploadArena();
+
+    [[nodiscard]] static bool CalculateSlotStride( size_t byteCount, size_t maxRange, size_t offsetAlignment,
+                                                   size_t nonCoherentAtomSize, size_t& strideOut ) noexcept;
+    [[nodiscard]] bool beginFrame( U64 frameNumber );
+    [[nodiscard]] bool upload( Byte* data, size_t byteCount, Allocation& allocationOut );
+    [[nodiscard]] bool release( Allocation allocation, const UniformUploadPageCursor::Usage& usage );
+    [[nodiscard]] size_t totalBufferSize() const noexcept { return _totalBufferSize; }
+
+private:
+    struct SizeClass
+    {
+        explicit SizeClass( size_t stride ) noexcept;
+        ~SizeClass();
+        SizeClass( const SizeClass& ) = delete;
+        SizeClass& operator=( const SizeClass& ) = delete;
+        SizeClass( SizeClass&& ) noexcept;
+        SizeClass& operator=( SizeClass&& ) noexcept;
+
+        size_t _stride;
+        UniformUploadPageCursor _cursor;
+        vector<ShaderBuffer_uptr> _pages;
+    };
+
+    GFXDevice& _context;
+    Mutex _mutex;
+    vector<SizeClass> _sizeClasses;
+    U64 _frameNumber{ 0u };
+    size_t _totalBufferSize{ 0u };
+};
+
 class UniformBlockUploader
 {
 public:
-    constexpr static U16 RingBufferLength = 6u;
 
     struct BlockMember
     {
@@ -172,19 +238,20 @@ public:
     };
 
     explicit UniformBlockUploader( GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock, const U16 shaderStageVisibilityMask );
+    ~UniformBlockUploader();
+    UniformBlockUploader( const UniformBlockUploader& ) = delete;
+    UniformBlockUploader& operator=( const UniformBlockUploader& ) = delete;
+    UniformBlockUploader( UniformBlockUploader&& other ) noexcept;
+    UniformBlockUploader& operator=( UniformBlockUploader&& ) = delete;
 
     void uploadUniformData( const UniformData& uniforms ) noexcept;
-    [[nodiscard]] bool commit( DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut );
-    void onFrameEnd() noexcept;
+    [[nodiscard]] bool commit( DescriptorSet& set );
     void toggleStageVisibility( U16 visibilityMask, bool state);
     void toggleStageVisibility( ShaderStageVisibility visibility, bool state);
-
-    [[nodiscard]] size_t totalBufferSize() const noexcept;
 
     PROPERTY_R_IW( Reflection::BufferEntry, uniformBlock );
 
 private:
-    void resizeBlockBuffer( bool increaseSize );
     [[nodiscard]] bool prepare( DescriptorSet& set );
 
 private:
@@ -194,14 +261,8 @@ private:
     vector<Byte> _localDataCopy;
     vector<BlockMember> _blockMembers;
     eastl::string _parentShaderName;
-    ShaderBuffer_uptr _buffer{ nullptr };
-    size_t _uniformBlockSizeAligned{ 0u };
-    bool _uniformBlockDirty{ false };
-    bool _needsQueueIncrement{ false };
-
-    bool _needsResize{ false };
-    U16 _bufferWritesThisFrame{ 0u };
-    U16 _bufferSizeFactor{ 0u };
+    UniformUploadArena::Allocation _allocation{};
+    UniformUploadSnapshotState _snapshot;
 };
 
 }; // namespace Divide

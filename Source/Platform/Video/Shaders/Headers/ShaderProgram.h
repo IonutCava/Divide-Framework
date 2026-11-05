@@ -203,7 +203,9 @@ namespace Divide
 
         virtual ShaderResult validatePreBind( const Configuration& config, bool rebind = true );
 
-        [[nodiscard]] bool uploadUniformData( const UniformData& data, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut );
+        void uploadUniformData( const UniformData& data ) noexcept;
+        [[nodiscard]] bool commitUniformData( DescriptorSet& set );
+        // On false, the caller must use entry._set rather than resolvedSet.
         [[nodiscard]] bool resolveSampledImages( const DescriptorSetEntry& entry, DescriptorSet& resolvedSet ) const;
 
         //==================== static methods ===============================//
@@ -213,8 +215,6 @@ namespace Divide
 
         [[nodiscard]] static ErrorCode OnStartup( PlatformContext& context);
         [[nodiscard]] static bool OnShutdown();
-        static void OnBeginFrame( GFXDevice& gfx );
-        static void OnEndFrame( GFXDevice& gfx );
 
         /// Queue a shaderProgram recompile request
         static bool RecompileShaderProgram( const std::string_view name );
@@ -270,7 +270,6 @@ namespace Divide
         static ShaderQueue s_recompileFailedQueue;
         /// Shader program cache
         static ShaderProgramMap s_shaderPrograms;
-        static fixed_vector<ShaderProgram*, U16_MAX> s_usedShaderPrograms;
 
         struct LastRequestedShader
         {
@@ -310,6 +309,7 @@ namespace Divide
         static bool InitGLSW( RenderAPI renderingAPI, const Configuration& config );
         static bool InitShaderThread( RenderAPI renderingAPI, const Configuration& config );
         static void InitAtomLocations();
+        [[nodiscard]] static Reflection::PushConstantsState DetectPushConstantsUsage( const string& source, RenderAPI renderAPI ) noexcept;
 
         static void EraseAtom(const U64 atomHash);
         static void EraseAtomLocked(const U64 atomHash);

@@ -94,6 +94,7 @@ private:
                   void flushWindow( DisplayWindow& window) override;
     [[nodiscard]] bool frameStarted() override;
     [[nodiscard]] bool frameEnded() override;
+    [[nodiscard]] bool waitForGPUIdle() noexcept override;
 
     void endPerformanceQueries();
 
@@ -124,8 +125,6 @@ private:
     [[nodiscard]] gl46core::GLuint getGLTextureView(ImageView srcView, size_t srcViewHash, U8 lifetimeInFrames) const;
 
     void initDescriptorSets() override;
-
-    void flushPushConstantsLocks();
 
     [[nodiscard]] RenderTarget_uptr  newRenderTarget( const RenderTargetDescriptor& descriptor ) const override;
     [[nodiscard]] GPUBuffer_uptr     newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const override;
@@ -238,11 +237,12 @@ private:
     eastl::stack<HardwareQueryContext> _queryContext;
     bool _runQueries{false};
     bool _screenPassRecorded{false};
+    bool _deviceInitialized{false};
+    bool _uniformContextFenceFailed{false};
+    std::array<vector<gl46core::GLsync>, Config::MAX_FRAMES_IN_FLIGHT> _uniformContextFences;
 
-    bool _uniformsNeedLock{false};
     bool _supportsParallelShaderCompilation{false};
     bool _meshShadersSupported{false};
-    GFX::MemoryBarrierCommand _uniformsMemCommand{};
     PushConstantsStruct _lastPushConstants{};
     gl46core::GLuint _dummyVAO{ GL_NULL_HANDLE };
     vector<PendingBufferReadback> _pendingBufferReadbacks;

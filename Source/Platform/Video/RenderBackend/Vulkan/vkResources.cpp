@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/vkResources.h"
 #include "Headers/VKWrapper.h"
@@ -94,10 +94,12 @@ namespace Divide
                 if ( useIndirectBuffer )
                 {
                     const size_t offset = (drawCommand._commandOffset * sizeof( IndirectIndexedDrawCommand )) + VK_API::GetStateTracker()._drawIndirectBufferOffset;
+                    PROFILE_SCOPE( "Vulkan indexed indirect draw", Profiler::Category::Graphics );
                     vkCmdDrawIndexedIndirect( commandBuffer, VK_API::GetStateTracker()._drawIndirectBuffer, offset, drawCommand._drawCount, sizeof( IndirectIndexedDrawCommand ) );
                 }
                 else
                 {
+                    PROFILE_SCOPE( "Vulkan indexed draw", Profiler::Category::Graphics );
                     vkCmdDrawIndexed( commandBuffer, drawCommand._cmd.indexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.firstIndex, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
                 }
             }
@@ -106,10 +108,12 @@ namespace Divide
                 if ( useIndirectBuffer )
                 {
                     const size_t offset = (drawCommand._commandOffset * sizeof( IndirectNonIndexedDrawCommand )) + VK_API::GetStateTracker()._drawIndirectBufferOffset;
+                    PROFILE_SCOPE( "Vulkan indirect draw", Profiler::Category::Graphics );
                     vkCmdDrawIndirect( commandBuffer, VK_API::GetStateTracker()._drawIndirectBuffer, offset, drawCommand._drawCount, sizeof( IndirectNonIndexedDrawCommand ) );
                }
                 else
                 {
+                    PROFILE_SCOPE( "Vulkan draw", Profiler::Category::Graphics );
                     vkCmdDraw( commandBuffer, drawCommand._cmd.vertexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
                 }
             }

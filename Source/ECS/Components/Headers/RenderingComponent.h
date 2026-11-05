@@ -35,6 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "SGNComponent.h"
 
+#include "Core/Headers/PoolHandle.h"
 #include "Geometry/Material/Headers/MaterialEnums.h"
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Platform/Video/Headers/RenderStagePass.h"
@@ -398,6 +399,22 @@ class RenderingCompRenderBin
     {
         const RenderPackage& pkg = getDrawPackage( renderable, renderStagePass );
         return pkg.pipelineCmd()._pipeline->stateHash();
+    }
+
+    [[nodiscard]] static std::array<PoolHandle, 2u> getGeometrySortKey(RenderingComponent* renderable)
+    {
+        SharedLock<SharedMutex> r_lock(renderable->_drawCommands._dataLock);
+        const auto& commands = renderable->_drawCommands._data;
+        if (!commands.empty())
+        {
+            const GenericDrawCommand& command = commands.front();
+            if (command._sourceBuffers != nullptr && command._sourceBuffersCount == 2u)
+            {
+                return { command._sourceBuffers[0], command._sourceBuffers[1] };
+            }
+        }
+
+        return {};
     }
 
     friend class Divide::RenderBin;

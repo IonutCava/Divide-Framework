@@ -57,6 +57,7 @@ class ResourceCache;
 class DisplayWindow;
 
 struct Configuration;
+struct GenericDrawCommand;
 struct TextElementBatch;
 struct RenderTargetDescriptor;
 struct ShaderBufferDescriptor;
@@ -109,7 +110,7 @@ struct PerformanceMetrics
     U32 _syncObjectsInFlight[3]{};
     /// Scratch buffer queue usage
     U32 _scratchBufferQueueUsage[2]{};
-    /// Total VRAM used for shader uniform storage across all used shader programs
+    /// Total retained bytes allocated for shader uniform upload pages
     size_t _uniformBufferVRAMUsage{0u};
     /// Total VRAM usage for all shader buffers
     size_t _bufferVRAMUsage{ 0u };
@@ -137,6 +138,7 @@ struct DeviceInformation
     size_t _offsetAlignmentBytesIBO = sizeof(U32);
     size_t _offsetAlignmentBytesUBO = 256u;
     size_t _offsetAlignmentBytesSSBO = 16u;
+    size_t _nonCoherentAtomSize = 1u;
     U32 _maxVertAttributeBindings = 16u;
     U32 _maxVertAttributes = 16u;
     U32 _maxVertOutputComponents = 16u;
@@ -239,6 +241,7 @@ protected:
                   virtual void flushWindow(DisplayWindow& window) = 0;
     [[nodiscard]] virtual bool frameStarted() = 0;
     [[nodiscard]] virtual bool frameEnded() = 0;
+    [[nodiscard]] virtual bool waitForGPUIdle() noexcept = 0;
 
     virtual void idle(bool fast) = 0;
     [[nodiscard]] virtual bool queueBufferReadback( BufferReadbackRequest&& request ) = 0;
@@ -249,6 +252,7 @@ protected:
     virtual void preFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) = 0;
     virtual void flushCommand(GFX::CommandBase* cmd) = 0;
     virtual void postFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) = 0;
+    [[nodiscard]] virtual bool supportsIndirectDrawBatching( const GenericDrawCommand& ) const noexcept { return false; }
 
     virtual bool setViewportInternal(const Rect<I32>& newViewport) = 0;
     virtual bool setScissorInternal(const Rect<I32>& newScissor) = 0;

@@ -85,6 +85,7 @@ protected:
     [[nodiscard]] static VkCommandBuffer GetCurrentCommandBuffer() noexcept;
 
     void idle(bool fast) noexcept override;
+    [[nodiscard]] bool waitForGPUIdle() noexcept override;
     [[nodiscard]] bool queueBufferReadback( BufferReadbackRequest&& request ) noexcept override;
 
     [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
@@ -100,6 +101,7 @@ protected:
     void preFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer) override;
     void flushCommand( GFX::CommandBase* cmd ) noexcept override;
     void postFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer ) noexcept override;
+    [[nodiscard]] bool supportsIndirectDrawBatching( const GenericDrawCommand& draw ) const noexcept override;
     bool setViewportInternal(const Rect<I32>& newViewport) noexcept override;
     bool setScissorInternal(const Rect<I32>& newScissor) noexcept override;
 
@@ -121,7 +123,6 @@ private:
     bool setScissorInternal( const Rect<I32>& newScissor, VkCommandBuffer cmdBuffer ) noexcept;
     void destroyPipelineCache();
     void destroyPipeline( CompiledPipeline& pipeline, bool defer );
-    void flushPushConstantsLocks();
     VkDescriptorSetLayout createLayoutFromBindings( const DescriptorSetUsage usage, const ShaderProgram::BindingsPerSetArray& bindings, DynamicBindings& dynamicBindings );
 
     ShaderResult bindPipeline(const Pipeline& pipeline, VkCommandBuffer cmdBuffer);
@@ -157,7 +158,6 @@ private:
     VmaAllocator _allocator{VK_NULL_HANDLE};
     VkPipelineCache _pipelineCache{ VK_NULL_HANDLE };
 
-    GFX::MemoryBarrierCommand _uniformsMemCommand{};
     struct PendingBufferReadback
     {
         VkFence _fence{ VK_NULL_HANDLE };
@@ -173,7 +173,6 @@ private:
     std::array<DynamicBindings, to_base( DescriptorSetUsage::COUNT )> _descriptorDynamicBindings;
     std::array<VkDescriptorSetLayout, to_base( DescriptorSetUsage::COUNT )> _descriptorSetLayouts;
 
-    bool _uniformsNeedLock{ false };
     PushConstantsStruct _lastPushConstants{};
     bool _hasLastPushConstants{ false };
 

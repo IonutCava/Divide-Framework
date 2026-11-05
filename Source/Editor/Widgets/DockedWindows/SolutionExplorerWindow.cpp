@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/SolutionExplorerWindow.h"
 #include "Editor/Headers/Utils.h"
@@ -554,7 +555,7 @@ namespace Divide {
             ImGui::NewLine();
             ImGui::Text("Queued GPU Frames: %d", perfMetrics._queuedGPUFrames);
             ImGui::NewLine();  
-            ImGui::Text("Per Frame shader uniforms VRAM usage: %.2f Kb", (perfMetrics._uniformBufferVRAMUsage / 1024.f));
+            ImGui::Text("Shader uniform upload arena allocation: %.2f KiB", (perfMetrics._uniformBufferVRAMUsage / 1024.f));
             ImGui::NewLine();
             ImGui::Text("Total buffers VRAM usage: %.2f Mb", (perfMetrics._bufferVRAMUsage / 1024.f / 1024.f));
             ImGui::NewLine();

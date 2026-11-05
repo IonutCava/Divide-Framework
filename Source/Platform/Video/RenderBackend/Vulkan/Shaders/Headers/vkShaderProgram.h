@@ -63,6 +63,7 @@ namespace Divide {
 
         PROPERTY_R_IW(VkShaderStageFlagBits, stageMask, VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM);
         PROPERTY_R_IW(VkShaderModule, handle, VK_NULL_HANDLE);
+        PROPERTY_R_IW(bool, multiDrawCompatible, false);
 
     private:
         void reset();

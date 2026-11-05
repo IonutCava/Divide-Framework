@@ -7,8 +7,10 @@
 #include "Core/Headers/RingBuffer.h"
 #include "GUI/Headers/FontVertexFormat.h"
 #include "Dynamics/Entities/Particles/Headers/ParticleEmitter.h"
+#include "Platform/Video/RenderBackend/OpenGL/Headers/glDescriptorUpdate.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
+#include "Platform/Video/RenderBackend/Vulkan/Headers/vkDescriptorState.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkSwapChain.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkToolProperties.h"
@@ -16,6 +18,7 @@
 #include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkRenderTarget.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Shaders/Headers/GLSLToSPIRV.h"
+#include "Platform/Video/Shaders/Headers/SampledImageResolver.h"
 #include "Platform/Video/Shaders/Headers/ShaderDataUploader.h"
 #include "Platform/Video/RenderBackend/Vulkan/Textures/Headers/vkTexture.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkDevice.h"
@@ -31,11 +34,143 @@
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
 #include "Rendering/RenderPass/Headers/RenderPassExecutor.h"
 #include "Rendering/RenderPass/Headers/RenderQueue.h"
+#include "Rendering/RenderPass/Headers/RenderBin.h"
 #include "../../../Assets/Shaders/GLSL/Common/ssaoResampling.cmn"
 #include "../../../Assets/Shaders/GLSL/Common/hizConservative.cmn"
 
+#include <bit>
+
 namespace Divide
 {
+    namespace
+    {
+        void SetTestSampledImageFallback( DescriptorSetBindingData& data, const Reflection::ImageEntry& image )
+        {
+            ImageView view{};
+            view._targetType = image._textureType;
+            SamplerDescriptor sampler{};
+            if ( image._isDepth )
+            {
+                sampler._depthCompareFunc = ComparisonFunction::LEQUAL;
+            }
+            Set( data, view, sampler );
+        }
+    }
+
+    TEST_CASE("Sampled image fallback resolution copies only when needed", "[renderer][descriptors][sampled-images]")
+    {
+        DescriptorSet source{};
+        DescriptorSetBinding& buffer = AddBinding(source, 1u, ShaderStageVisibility::VERTEX);
+        buffer._data._type = DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC;
+        buffer._data._buffer._range = { 3u, 5u };
+        DescriptorSetBinding& missing = AddBinding(source, 3u, ShaderStageVisibility::FRAGMENT);
+        Set(missing._data, ImageView{}, SamplerDescriptor{});
+
+        DescriptorSet scratch{};
+        Set(AddBinding(scratch, 15u, ShaderStageVisibility::FRAGMENT)._data, ImageView{}, ImageUsage::SHADER_READ);
+        const DescriptorSet originalScratch = scratch;
+        const DescriptorSetEntry entry{ &source, DescriptorSetUsage::PER_DRAW, false };
+        vector<Reflection::ImageEntry> images{};
+        Reflection::ImageEntry otherSet{};
+        otherSet._bindingSet = to_base(DescriptorSetUsage::PER_FRAME);
+        otherSet._bindingSlot = 3u;
+        images.push_back(otherSet);
+        CHECK_FALSE(ResolveSampledImages(entry, images, scratch, SetTestSampledImageFallback));
+        CHECK_FALSE(scratch != originalScratch);
+        CHECK(source._bindingCount == 2u);
+
+        Reflection::ImageEntry existing{};
+        existing._bindingSet = to_base(DescriptorSetUsage::PER_DRAW);
+        existing._bindingSlot = 3u;
+        existing._stageVisibility = to_U16(ShaderStageVisibility::FRAGMENT);
+        existing._textureType = TextureType::TEXTURE_2D;
+        images.push_back(existing);
+        Reflection::ImageEntry omitted = existing;
+        omitted._bindingSlot = 7u;
+        omitted._textureType = TextureType::TEXTURE_2D_ARRAY;
+        omitted._isDepth = true;
+        images.push_back(omitted);
+
+        REQUIRE(ResolveSampledImages(entry, images, scratch, SetTestSampledImageFallback));
+        CHECK(source._bindingCount == 2u);
+        CHECK(source._bindings[1]._data._sampledImage._image._targetType == TextureType::COUNT);
+        REQUIRE(scratch._bindingCount == 3u);
+        CHECK(scratch._bindings[0]._data._buffer._range == BufferRange<>{3u, 5u});
+        CHECK(scratch._bindings[1]._slot == 3u);
+        CHECK(scratch._bindings[1]._data._sampledImage._image._targetType == TextureType::TEXTURE_2D);
+        CHECK(scratch._bindings[2]._slot == 7u);
+        CHECK(scratch._bindings[2]._shaderStageVisibility == to_U16(ShaderStageVisibility::FRAGMENT));
+        CHECK(scratch._bindings[2]._data._sampledImage._image._targetType == TextureType::TEXTURE_2D_ARRAY);
+        CHECK(scratch._bindings[2]._data._sampledImage._sampler._depthCompareFunc == ComparisonFunction::LEQUAL);
+
+        DescriptorSet nextSource{};
+        const DescriptorSetEntry nextEntry{ &nextSource, DescriptorSetUsage::PER_DRAW, false };
+        REQUIRE(ResolveSampledImages(nextEntry, images, scratch, SetTestSampledImageFallback));
+        CHECK(nextSource._bindingCount == 0u);
+        REQUIRE(scratch._bindingCount == 2u);
+        CHECK(scratch._bindings[0]._slot == 3u);
+        CHECK(scratch._bindings[1]._slot == 7u);
+        CHECK(scratch._bindings[2]._data._type == DescriptorSetBindingType::COUNT);
+    }
+
+    TEST_CASE("Sampled image fallback cache tracks transitions and dirty snapshots", "[renderer][descriptors][sampled-images]")
+    {
+        SampledImageResolutionCache cache{};
+        AddBinding(cache._resolvedSet, 2u, ShaderStageVisibility::FRAGMENT)._data._type =
+            DescriptorSetBindingType::UNIFORM_BUFFER_STATIC;
+
+        CHECK_FALSE(cache.update(false, false));
+        CHECK(cache.update(true, false));
+        CHECK_FALSE(cache.update(true, false));
+        cache._resolvedSet._bindings[0]._slot = 3u;
+        CHECK(cache.update(true, false));
+        CHECK_FALSE(cache.update(true, false));
+
+        cache._resolvedSet._bindings[15]._slot = 9u;
+        CHECK(cache.update(true, false));
+        cache._resolvedSet._bindings[0]._slot = 4u;
+        CHECK_FALSE(cache.update(true, true));
+        CHECK_FALSE(cache.update(true, false));
+
+        CHECK_FALSE(cache.update(false, false));
+        CHECK(cache.update(true, false));
+        CHECK_FALSE(cache.update(true, false));
+        CHECK_FALSE(cache.update(false, true));
+        CHECK(cache.update(true, true));
+        CHECK_FALSE(cache.update(true, false));
+    }
+
+    TEST_CASE("Render bin geometry keys order both buffer handles", "[renderer][render-bin]")
+    {
+        const RenderBinGeometrySortKey first{
+            PoolHandle{1u, 1u, 0u},
+            PoolHandle{3u, 2u, 0u}
+        };
+        const RenderBinGeometrySortKey same{
+            PoolHandle{1u, 1u, 0u},
+            PoolHandle{3u, 2u, 0u}
+        };
+        const RenderBinGeometrySortKey laterVertex{
+            PoolHandle{2u, 1u, 0u},
+            PoolHandle{1u, 1u, 0u}
+        };
+        const RenderBinGeometrySortKey laterIndex{
+            PoolHandle{1u, 1u, 0u},
+            PoolHandle{4u, 2u, 0u}
+        };
+        const RenderBinGeometrySortKey laterGeneration{
+            PoolHandle{1u, 2u, 0u},
+            PoolHandle{1u, 1u, 0u}
+        };
+
+        CHECK_FALSE(RenderBinGeometrySortKeyLess(first, same));
+        CHECK_FALSE(RenderBinGeometrySortKeyLess(same, first));
+        CHECK(RenderBinGeometrySortKeyLess(first, laterVertex));
+        CHECK(RenderBinGeometrySortKeyLess(first, laterIndex));
+        CHECK(RenderBinGeometrySortKeyLess(first, laterGeneration));
+        CHECK_FALSE(RenderBinGeometrySortKeyLess(laterVertex, first));
+    }
+
     TEST_CASE("Shadow invalidation selects layers without hiding full cache changes", "[renderer][shadow]")
     {
         CHECK(ShadowLayerUpdateMask(4u, 1u, true, false) == 1u);
@@ -701,6 +836,106 @@ namespace Divide
         CHECK( VKPipelineCacheKeyHash{}( colourOnly ) == VKPipelineCacheKeyHash{}( colourOnly ) );
     }
 
+    TEST_CASE( "Vulkan pipeline keys share dynamic state without merging baked state", "[render_smoke][pipeline]" )
+    {
+        PipelineDescriptor descriptor{};
+        descriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+        const Pipeline baseline{ descriptor };
+        VKRenderingSignature rendering{};
+        rendering._sampleCount = 1u;
+        const VKPipelineCacheKey dynamicKey = VKPipelineCacheKey::From( baseline, rendering, true );
+        const VKPipelineCacheKey staticKey = VKPipelineCacheKey::From( baseline, rendering, false );
+
+        std::array<PipelineDescriptor, 18u> dynamicStates;
+        dynamicStates.fill( descriptor );
+        dynamicStates[0]._stateBlock._cullMode = CullMode::NONE;
+        dynamicStates[1]._stateBlock._frontFaceCCW = false;
+        dynamicStates[2]._stateBlock._scissorTestEnabled = true;
+        dynamicStates[3]._stateBlock._depthTestEnabled = false;
+        dynamicStates[4]._stateBlock._depthWriteEnabled = false;
+        dynamicStates[5]._stateBlock._zFunc = ComparisonFunction::LESS;
+        dynamicStates[6]._stateBlock._zBias = 1.f;
+        dynamicStates[7]._stateBlock._zUnits = 1.f;
+        dynamicStates[8]._stateBlock._stencilEnabled = true;
+        dynamicStates[9]._stateBlock._stencilRef = 7u;
+        dynamicStates[10]._stateBlock._stencilMask = 7u;
+        dynamicStates[11]._stateBlock._stencilWriteMask = 7u;
+        dynamicStates[12]._stateBlock._stencilFailOp = StencilOperation::REPLACE;
+        dynamicStates[13]._stateBlock._stencilPassOp = StencilOperation::REPLACE;
+        dynamicStates[14]._stateBlock._stencilZFailOp = StencilOperation::REPLACE;
+        dynamicStates[15]._stateBlock._stencilFunc = ComparisonFunction::ALWAYS;
+        dynamicStates[16]._stateBlock._primitiveRestartEnabled = true;
+        dynamicStates[17]._stateBlock._rasterizationEnabled = false;
+        for ( size_t i = 0u; i < dynamicStates.size(); ++i )
+        {
+            CAPTURE( i );
+            const Pipeline changed{ dynamicStates[i] };
+            CHECK( changed.stateHash() != baseline.stateHash() );
+            CHECK( VKPipelineCacheKey::From( changed, rendering, true ) == dynamicKey );
+            CHECK( VKPipelineCacheKey::From( changed, rendering, false ) == staticKey );
+        }
+
+        PipelineDescriptor changedColour = descriptor;
+        changedColour._stateBlock._colourWrite.b[0] = false;
+        const Pipeline colourPipeline{ changedColour };
+        CHECK( colourPipeline.stateHash() != baseline.stateHash() );
+        CHECK( VKPipelineCacheKey::From( colourPipeline, rendering, true ) == dynamicKey );
+        CHECK( VKPipelineCacheKey::From( colourPipeline, rendering, false ) != staticKey );
+
+        PipelineDescriptor changedBlend = descriptor;
+        changedBlend._blendStates._settings[0].enabled( true );
+        const Pipeline blendPipeline{ changedBlend };
+        CHECK( blendPipeline.stateHash() != baseline.stateHash() );
+        CHECK( VKPipelineCacheKey::From( blendPipeline, rendering, true ) == dynamicKey );
+        CHECK( VKPipelineCacheKey::From( blendPipeline, rendering, false ) != staticKey );
+
+        std::array<PipelineDescriptor, 7u> bakedStates;
+        bakedStates.fill( descriptor );
+        bakedStates[0]._primitiveTopology = PrimitiveTopology::LINES;
+        bakedStates[1]._stateBlock._fillMode = FillMode::WIREFRAME;
+        bakedStates[2]._stateBlock._tessControlPoints = 3u;
+        bakedStates[3]._multiSampleCount = 4u;
+        bakedStates[4]._alphaToCoverage = true;
+        bakedStates[5]._shaderProgramHandle = Handle<ShaderProgram>{ ._generation = 1u, ._index = 1u };
+        bakedStates[6]._vertexFormat._attributes[0]._strideInBytes = 4u;
+        bakedStates[6]._vertexFormat._attributes[0]._dataType = GFXDataFormat::FLOAT_32;
+        for ( size_t i = 0u; i < bakedStates.size(); ++i )
+        {
+            CAPTURE( i );
+            const Pipeline changed{ bakedStates[i] };
+            CHECK( VKPipelineCacheKey::From( changed, rendering, true ) != dynamicKey );
+            CHECK( VKPipelineCacheKey::From( changed, rendering, false ) != staticKey );
+        }
+        CHECK( descriptor != bakedStates[4] );
+        CHECK_FALSE( descriptor == bakedStates[4] );
+
+        rendering._depthFormat = VK_FORMAT_D32_SFLOAT;
+        CHECK( VKPipelineCacheKey::From( baseline, rendering, true ) != dynamicKey );
+    }
+
+    TEST_CASE( "Vulkan stencil state is reissued across disable and enable transitions", "[render_smoke][pipeline]" )
+    {
+        VKPerWindowState::VKDynamicState state{};
+        CHECK( state.needsStencilTestUpdate( false ) );
+        CHECK( state.needsStencilTestUpdate( true ) );
+        CHECK( state.needsStencilValuesReset() );
+
+        state._isSet = true;
+        CHECK_FALSE( state.needsStencilTestUpdate( false ) );
+        CHECK( state.needsStencilTestUpdate( true ) );
+        CHECK( state.needsStencilValuesReset() );
+
+        state._block._stencilEnabled = true;
+        CHECK( state.needsStencilTestUpdate( false ) );
+        CHECK_FALSE( state.needsStencilTestUpdate( true ) );
+        CHECK_FALSE( state.needsStencilValuesReset() );
+
+        state._block._stencilEnabled = false;
+        state._block._stencilMask = 7u;
+        CHECK( state.needsStencilTestUpdate( true ) );
+        CHECK( state.needsStencilValuesReset() );
+    }
+
     TEST_CASE( "Vulkan rebinds retained graphics pipelines when pass compatibility changes", "[render_smoke][pipeline]" )
     {
         PipelineDescriptor descriptor{};
@@ -724,6 +959,161 @@ namespace Divide
         tracker._pipeline._bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         tracker._logicalPipeline = nullptr;
         CHECK_FALSE( tracker.needsGraphicsPipelineRebind() );
+    }
+
+    TEST_CASE( "Vulkan buffer bindings track each recording and window independently", "[render_smoke][vulkan_bindings]" )
+    {
+        const VkBuffer bufferA = std::bit_cast<VkBuffer>( U64{ 1u } );
+        const VkBuffer bufferB = std::bit_cast<VkBuffer>( U64{ 2u } );
+        VKPerWindowState mainWindow{};
+        VKPerWindowState nestedWindow{};
+        VKBufferBindingState& main = mainWindow._bufferBindings;
+        VKBufferBindingState& nested = nestedWindow._bufferBindings;
+
+        CHECK( main.updateVertexBinding( 0u, bufferA, 0u ) );
+        CHECK_FALSE( main.updateVertexBinding( 0u, bufferA, 0u ) );
+        CHECK( main.updateVertexBinding( 1u, bufferA, 0u ) );
+        CHECK_FALSE( main.updateVertexBinding( 0u, bufferA, 0u ) );
+        CHECK( main.updateVertexBinding( 0u, bufferA, 64u ) );
+        CHECK_FALSE( main.updateVertexBinding( 0u, bufferA, 64u ) );
+        CHECK( main.updateVertexBinding( 0u, bufferB, 64u ) );
+        CHECK_FALSE( main.updateVertexBinding( 0u, bufferB, 64u ) );
+
+        CHECK( main.updateIndexBinding( bufferA, 0u, VK_INDEX_TYPE_UINT16 ) );
+        CHECK_FALSE( main.updateIndexBinding( bufferA, 0u, VK_INDEX_TYPE_UINT16 ) );
+        CHECK( main.updateIndexBinding( bufferA, 64u, VK_INDEX_TYPE_UINT16 ) );
+        CHECK( main.updateIndexBinding( bufferA, 64u, VK_INDEX_TYPE_UINT32 ) );
+        CHECK( main.updateIndexBinding( bufferB, 64u, VK_INDEX_TYPE_UINT32 ) );
+        CHECK_FALSE( main.updateIndexBinding( bufferB, 64u, VK_INDEX_TYPE_UINT32 ) );
+
+        CHECK( nested.updateVertexBinding( 0u, bufferB, 64u ) );
+        CHECK( nested.updateIndexBinding( bufferB, 64u, VK_INDEX_TYPE_UINT32 ) );
+        CHECK_FALSE( main.updateVertexBinding( 0u, bufferB, 64u ) );
+        CHECK_FALSE( main.updateIndexBinding( bufferB, 64u, VK_INDEX_TYPE_UINT32 ) );
+
+        const U16 untrackedBinding = to_U16( to_base( AttribLocation::COUNT ) );
+        CHECK( main.updateVertexBinding( untrackedBinding, bufferA, 0u ) );
+        CHECK( main.updateVertexBinding( untrackedBinding, bufferA, 0u ) );
+        CHECK_FALSE( main.updateVertexBinding( 0u, bufferB, 64u ) );
+
+        main.reset();
+        CHECK( main.updateVertexBinding( 0u, bufferB, 64u ) );
+        CHECK( main.updateIndexBinding( bufferB, 64u, VK_INDEX_TYPE_UINT32 ) );
+        CHECK_FALSE( nested.updateVertexBinding( 0u, bufferB, 64u ) );
+        CHECK_FALSE( nested.updateIndexBinding( bufferB, 64u, VK_INDEX_TYPE_UINT32 ) );
+    }
+
+    TEST_CASE( "OpenGL uniform-only descriptor updates preserve other bindings", "[render_smoke][opengl_bindings]" )
+    {
+        using Scope = GLDescriptorUpdateScope;
+        for ( U8 flags = 0u; flags < 16u; ++flags )
+        {
+            const bool descriptorDirty = ( flags & 1u ) != 0u;
+            const bool fallbackChanged = ( flags & 2u ) != 0u;
+            const bool perDraw = ( flags & 4u ) != 0u;
+            const bool uniformsChanged = ( flags & 8u ) != 0u;
+            const Scope expected = descriptorDirty || fallbackChanged ? Scope::ALL :
+                                   perDraw && uniformsChanged ? Scope::UNIFORM_BUFFERS : Scope::NONE;
+            CAPTURE( flags );
+            CHECK( SelectGLDescriptorUpdateScope( descriptorDirty, fallbackChanged, perDraw, uniformsChanged ) == expected );
+        }
+
+        for ( const DescriptorSetBindingType type : {
+                  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, DescriptorSetBindingType::IMAGE,
+                  DescriptorSetBindingType::UNIFORM_BUFFER_STATIC, DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,
+                  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC, DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC,
+                  DescriptorSetBindingType::INDIRECT_BUFFER, DescriptorSetBindingType::COUNT } )
+        {
+            CAPTURE( to_base( type ) );
+            CHECK_FALSE( ShouldUpdateGLDescriptor( Scope::NONE, type ) );
+            CHECK( ShouldUpdateGLDescriptor( Scope::ALL, type ) );
+            const bool expected = type == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC ||
+                                  type == DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC ||
+                                  type == DescriptorSetBindingType::COUNT;
+            CHECK( ShouldUpdateGLDescriptor( Scope::UNIFORM_BUFFERS, type ) == expected );
+        }
+    }
+
+    TEST_CASE( "Vulkan push descriptors update only changed slots within a recording and layout", "[render_smoke][vulkan_bindings]" )
+    {
+        const VkPipelineLayout layoutA = std::bit_cast<VkPipelineLayout>( U64{ 1u } );
+        const VkPipelineLayout layoutB = std::bit_cast<VkPipelineLayout>( U64{ 2u } );
+        const VkBuffer bufferA = std::bit_cast<VkBuffer>( U64{ 3u } );
+        const VkBuffer bufferB = std::bit_cast<VkBuffer>( U64{ 4u } );
+        const VkImageView viewA = std::bit_cast<VkImageView>( U64{ 5u } );
+        const VkImageView viewB = std::bit_cast<VkImageView>( U64{ 6u } );
+        const VkSampler samplerA = std::bit_cast<VkSampler>( U64{ 7u } );
+        const VkSampler samplerB = std::bit_cast<VkSampler>( U64{ 8u } );
+
+        VKDescriptorSlotState buffer{};
+        buffer._type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        buffer._bufferInfo = { bufferA, 16u, 32u };
+        VKDescriptorSlotState image{};
+        image._type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        image._imageInfo = { samplerA, viewA, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL };
+
+        VKPushDescriptorState graphics{};
+        VKPushDescriptorState compute{};
+        REQUIRE( graphics.needsUpdate( layoutA, 1u ) );
+        graphics.beginUpdate( layoutA );
+        CHECK( graphics.updateSlot( 0u, buffer ) );
+        CHECK( graphics.updateSlot( 1u, image ) );
+        graphics.finishUpdate( 1u );
+        CHECK_FALSE( graphics.needsUpdate( layoutA, 1u ) );
+        CHECK( graphics.needsUpdate( layoutA, 2u ) );
+
+        graphics.beginUpdate( layoutA );
+        CHECK_FALSE( graphics.updateSlot( 0u, buffer ) );
+        CHECK_FALSE( graphics.updateSlot( 1u, image ) );
+        graphics.finishUpdate( 2u );
+
+        VKDescriptorSlotState changed = buffer;
+        changed._bufferInfo.buffer = bufferB;
+        CHECK( graphics.updateSlot( 0u, changed ) );
+        changed._bufferInfo.offset += 1u;
+        CHECK( graphics.updateSlot( 0u, changed ) );
+        changed._bufferInfo.range += 1u;
+        CHECK( graphics.updateSlot( 0u, changed ) );
+        changed._type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        CHECK( graphics.updateSlot( 0u, changed ) );
+        CHECK_FALSE( graphics.updateSlot( 0u, changed ) );
+        CHECK_FALSE( graphics.updateSlot( 1u, image ) );
+
+        changed = image;
+        changed._imageInfo.sampler = samplerB;
+        CHECK( graphics.updateSlot( 1u, changed ) );
+        changed._imageInfo.imageView = viewB;
+        CHECK( graphics.updateSlot( 1u, changed ) );
+        changed._imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        CHECK( graphics.updateSlot( 1u, changed ) );
+        changed._type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        CHECK( graphics.updateSlot( 1u, changed ) );
+        CHECK_FALSE( graphics.updateSlot( 1u, changed ) );
+
+        compute.beginUpdate( layoutA );
+        CHECK( compute.updateSlot( 0u, buffer ) );
+        CHECK( compute.updateSlot( 1u, image ) );
+        compute.finishUpdate( 2u );
+        CHECK_FALSE( graphics.updateSlot( 1u, changed ) );
+
+        CHECK( graphics.needsUpdate( layoutB, 2u ) );
+        graphics.beginUpdate( layoutB );
+        CHECK( graphics.updateSlot( 0u, buffer ) );
+        CHECK( graphics.updateSlot( 1u, image ) );
+        graphics.finishUpdate( 2u );
+        CHECK_FALSE( graphics.needsUpdate( layoutB, 2u ) );
+        CHECK_FALSE( compute.updateSlot( 0u, buffer ) );
+        CHECK_FALSE( compute.updateSlot( 1u, image ) );
+
+        graphics.beginUpdate( layoutA );
+        CHECK( graphics.updateSlot( 0u, buffer ) );
+        CHECK( graphics.updateSlot( 1u, image ) );
+        graphics.finishUpdate( 2u );
+        graphics = {};
+        CHECK( graphics.needsUpdate( layoutA, 2u ) );
+        graphics.beginUpdate( layoutA );
+        CHECK( graphics.updateSlot( 0u, buffer ) );
+        CHECK( graphics.updateSlot( 1u, image ) );
     }
 
     TEST_CASE( "FontStash vertex format matches its uploaded vertices", "[render_smoke][font]" )
@@ -1008,6 +1398,221 @@ namespace Divide
         GFX::CommandBuffer afterClear;
         AppendOcclusionCommands(package, afterClear);
         CHECK(afterClear.commands().empty());
+    }
+
+    namespace
+    {
+        void RecordIndependentCompute( RenderPackage& package, LockableBuffer& buffer,
+                                       const BufferRange<> range, const U32 dispatch, const bool occlusion = false )
+        {
+            package.independentCompute( true );
+            GFX::CommandBuffer& commands = *GFX::Get( occlusion ? GetOcclusionCommandBuffer( package )
+                                                               : GetPreparationCommandBuffer( package ) );
+            auto* before = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( commands );
+            before->_bufferLocks.push_back( { range, BufferSyncUsage::GPU_READ_TO_GPU_WRITE, &buffer } );
+            before->_bufferLocks.push_back( { range, BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE, &buffer } );
+            GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( commands )->_workGroupSize.set( dispatch, 1u, 1u );
+            auto* after = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( commands );
+            after->_bufferLocks.push_back( { range, BufferSyncUsage::GPU_WRITE_TO_GPU_READ, &buffer } );
+        }
+    }
+
+    TEST_CASE( "Independent compute batches retain every disjoint range and dispatch", "[render_smoke][vegetation][compute_batch]" )
+    {
+        GFX::InitPools( 4u );
+        SCOPE_EXIT { GFX::DestroyPools(); };
+        LockableBuffer grass;
+        LockableBuffer trees;
+        RenderPackage first;
+        RenderPackage second;
+        RenderPackage gap;
+        RenderPackage otherBuffer;
+        RenderPackage empty;
+        RecordIndependentCompute( first, grass, { 0u, 16u }, 1u );
+        RecordIndependentCompute( second, grass, { 24u, 8u }, 2u );
+        RecordIndependentCompute( gap, grass, { 16u, 8u }, 3u );
+        RecordIndependentCompute( otherBuffer, trees, { 0u, 16u }, 4u );
+        const std::array packages{ &first, &empty, &second, &gap, &otherBuffer };
+        BufferLocks scratch;
+        GFX::CommandBuffer view;
+        AppendPreparationCommands( packages, view, scratch );
+
+        REQUIRE( view.commands().size() == 6u );
+        REQUIRE( view.commands().front()->type() == GFX::CommandType::MEMORY_BARRIER );
+        REQUIRE( view.commands().back()->type() == GFX::CommandType::MEMORY_BARRIER );
+        for ( U32 i = 1u; i <= 4u; ++i )
+        {
+            REQUIRE( view.commands()[i]->type() == GFX::CommandType::DISPATCH_SHADER_TASK );
+            CHECK( view.commands()[i]->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize.x == i );
+        }
+        const auto* before = view.commands().front()->As<GFX::MemoryBarrierCommand>();
+        const auto* after = view.commands().back()->As<GFX::MemoryBarrierCommand>();
+        REQUIRE( before->_bufferLocks.size() == 4u );
+        REQUIRE( after->_bufferLocks.size() == 2u );
+        for ( const BufferLock& lock : before->_bufferLocks )
+        {
+            CHECK( (lock._type == BufferSyncUsage::GPU_READ_TO_GPU_WRITE ||
+                    lock._type == BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE) );
+            CHECK( lock._range == (lock._buffer == &grass ? BufferRange<>{ 0u, 32u } : BufferRange<>{ 0u, 16u }) );
+        }
+        for ( const BufferLock& lock : after->_bufferLocks )
+        {
+            CHECK( lock._type == BufferSyncUsage::GPU_WRITE_TO_GPU_READ );
+            CHECK( lock._range == (lock._buffer == &grass ? BufferRange<>{ 0u, 32u } : BufferRange<>{ 0u, 16u }) );
+        }
+        CHECK( scratch.empty() );
+        GFX::Get( GetPreparationCommandBuffer( first ) )->clear();
+        CHECK( view.commands().size() == 6u );
+
+        Clear( first );
+        CHECK_FALSE( first.independentCompute() );
+    }
+
+    TEST_CASE( "Command-buffer range copies participate in batching", "[render_smoke][vegetation][compute_batch]" )
+    {
+        LockableBuffer buffer;
+        GFX::CommandBuffer source;
+        for ( size_t i = 0u; i < 2u; ++i )
+        {
+            auto* barrier = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( source );
+            barrier->_bufferLocks.push_back( { { i * 16u, 16u }, BufferSyncUsage::GPU_WRITE_TO_GPU_READ, &buffer } );
+        }
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( source )->_workGroupSize.x = 1u;
+        GFX::CommandBuffer copy;
+        copy.add( source, 0u, 2u );
+        source.clear();
+        REQUIRE( copy.commands().size() == 2u );
+        copy.batch();
+        REQUIRE( copy.commands().size() == 1u );
+        CHECK( copy.commands().front()->As<GFX::MemoryBarrierCommand>()->_bufferLocks.front()._range ==
+               (BufferRange<>{ 0u, 32u }) );
+    }
+
+    TEST_CASE( "Overlapping and ordinary compute packages retain their ordering", "[render_smoke][vegetation][compute_batch]" )
+    {
+        GFX::InitPools( 4u );
+        SCOPE_EXIT { GFX::DestroyPools(); };
+        LockableBuffer buffer;
+        RenderPackage first;
+        RenderPackage second;
+        RenderPackage third;
+        RecordIndependentCompute( first, buffer, { 0u, 16u }, 1u );
+        RecordIndependentCompute( second, buffer, { 8u, 16u }, 2u );
+        RecordIndependentCompute( third, buffer, { 24u, 8u }, 3u );
+        BufferLocks scratch;
+        GFX::CommandBuffer view;
+
+        SECTION( "overlap separates batches but adjacent later ranges can share barriers" )
+        {
+            const std::array packages{ &first, &second, &third };
+            AppendPreparationCommands( packages, view, scratch );
+            REQUIRE( view.commands().size() == 7u );
+            CHECK( view.commands()[0]->type() == GFX::CommandType::MEMORY_BARRIER );
+            CHECK( view.commands()[1]->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize.x == 1u );
+            CHECK( view.commands()[2]->type() == GFX::CommandType::MEMORY_BARRIER );
+            CHECK( view.commands()[3]->type() == GFX::CommandType::MEMORY_BARRIER );
+            CHECK( view.commands()[4]->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize.x == 2u );
+            CHECK( view.commands()[5]->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize.x == 3u );
+            CHECK( view.commands()[6]->type() == GFX::CommandType::MEMORY_BARRIER );
+            CHECK( view.commands()[6]->As<GFX::MemoryBarrierCommand>()->_bufferLocks.front()._range == (BufferRange<>{ 8u, 24u }) );
+        }
+
+        SECTION( "a non-independent command is not crossed" )
+        {
+            second.independentCompute( false );
+            const std::array packages{ &first, &second, &third };
+            AppendPreparationCommands( packages, view, scratch );
+            REQUIRE( view.commands().size() == 9u );
+            for ( size_t i = 0u; i < 3u; ++i )
+            {
+                CHECK( view.commands()[i * 3u]->type() == GFX::CommandType::MEMORY_BARRIER );
+                CHECK( view.commands()[i * 3u + 1u]->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize.x == i + 1u );
+                CHECK( view.commands()[i * 3u + 2u]->type() == GFX::CommandType::MEMORY_BARRIER );
+            }
+        }
+    }
+
+    TEST_CASE( "Independent occlusion stays after the current view's Hi-Z", "[render_smoke][vegetation][compute_batch]" )
+    {
+        GFX::InitPools( 4u );
+        SCOPE_EXIT { GFX::DestroyPools(); };
+        LockableBuffer buffer;
+        RenderPackage first;
+        RenderPackage second;
+        RecordIndependentCompute( first, buffer, { 0u, 16u }, 1u );
+        RecordIndependentCompute( second, buffer, { 16u, 16u }, 2u );
+        RecordIndependentCompute( first, buffer, { 0u, 16u }, 3u, true );
+        RecordIndependentCompute( second, buffer, { 16u, 16u }, 4u, true );
+        const std::array packages{ &first, &second };
+        BufferLocks scratch;
+        GFX::CommandBuffer view;
+        AppendPreparationCommands( packages, view, scratch );
+        GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( view );
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>( view );
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( view )->_workGroupSize.x = 5u;
+        AppendOcclusionCommands( packages, view, scratch );
+        GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( view );
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>( view );
+
+        REQUIRE( view.commands().size() == 13u );
+        CHECK( view.commands()[1]->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize.x == 1u );
+        CHECK( view.commands()[2]->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize.x == 2u );
+        CHECK( view.commands()[4]->type() == GFX::CommandType::BEGIN_RENDER_PASS );
+        CHECK( view.commands()[5]->type() == GFX::CommandType::END_RENDER_PASS );
+        CHECK( view.commands()[6]->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize.x == 5u );
+        CHECK( view.commands()[7]->type() == GFX::CommandType::MEMORY_BARRIER );
+        CHECK( view.commands()[8]->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize.x == 3u );
+        CHECK( view.commands()[9]->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize.x == 4u );
+        CHECK( view.commands()[10]->type() == GFX::CommandType::MEMORY_BARRIER );
+        CHECK( view.commands()[11]->type() == GFX::CommandType::BEGIN_RENDER_PASS );
+        CHECK( view.commands()[12]->type() == GFX::CommandType::END_RENDER_PASS );
+    }
+
+    TEST_CASE( "Unbatchable compute barriers preserve their original commands", "[renderer][vegetation][compute_batch]" )
+    {
+        platformInitRunListener::PlatformInit();
+        const platformInitRunListener::LocalizationScope localization{};
+        GFX::InitPools( 4u );
+        SCOPE_EXIT { GFX::DestroyPools(); };
+        LockableBuffer buffer;
+        RenderPackage invalid;
+        RenderPackage valid;
+        RecordIndependentCompute( invalid, buffer, { 0u, 16u }, 1u );
+        RecordIndependentCompute( valid, buffer, { 32u, 16u }, 2u );
+        auto* source = GFX::Get( GetPreparationCommandBuffer( invalid ) );
+        auto* before = source->commands().front()->As<GFX::MemoryBarrierCommand>();
+        auto* after = source->commands().back()->As<GFX::MemoryBarrierCommand>();
+        SECTION( "a whole-buffer sentinel is not widened" )
+        {
+            for ( BufferLock& lock : before->_bufferLocks )
+            {
+                lock._range = { 0u, U32_MAX };
+            }
+            after->_bufferLocks.front()._range = { 0u, U32_MAX };
+        }
+        SECTION( "an overflowing range is not merged" )
+        {
+            for ( BufferLock& lock : before->_bufferLocks )
+            {
+                lock._range = { SIZE_MAX - 4u, 8u };
+            }
+            after->_bufferLocks.front()._range = { SIZE_MAX - 4u, 8u };
+        }
+        SECTION( "unmatched post-compute ranges are not reordered" )
+        {
+            after->_bufferLocks.front()._range = { 0u, 8u };
+        }
+        const std::array packages{ &invalid, &valid };
+        BufferLocks scratch;
+        GFX::CommandBuffer view;
+        AppendPreparationCommands( packages, view, scratch );
+        REQUIRE( view.commands().size() == 6u );
+        CHECK( view.commands()[0]->As<GFX::MemoryBarrierCommand>()->_bufferLocks.front()._range ==
+               before->_bufferLocks.front()._range );
+        CHECK( view.commands()[1]->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize.x == 1u );
+        CHECK( view.commands()[2]->As<GFX::MemoryBarrierCommand>()->_bufferLocks.front()._range ==
+               after->_bufferLocks.front()._range );
+        CHECK( view.commands()[4]->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize.x == 2u );
     }
 
     TEST_CASE("Hi-Z occlusion keeps near-plane intersections and equal-depth surfaces", "[renderer][vegetation][hiz]")
@@ -2068,6 +2673,170 @@ namespace Divide
         for ( const auto& weak : weakViews )
         {
             CHECK( weak.expired() );
+        }
+    }
+
+    TEST_CASE( "Vulkan indexed indirect batches require one vertex and one index buffer", "[renderer][indirect_batch]" )
+    {
+        using enum BufferUsageType;
+        CHECK( IndexedIndirectBatchBuffersCompatible( VERTEX_BUFFER, INDEX_BUFFER ) );
+        CHECK( IndexedIndirectBatchBuffersCompatible( INDEX_BUFFER, VERTEX_BUFFER ) );
+        for ( U8 first = 0u; first < to_base( COUNT ); ++first )
+        {
+            for ( U8 second = 0u; second < to_base( COUNT ); ++second )
+            {
+                const auto a = static_cast<BufferUsageType>( first );
+                const auto b = static_cast<BufferUsageType>( second );
+                const bool expected = ( a == VERTEX_BUFFER && b == INDEX_BUFFER ) ||
+                                      ( a == INDEX_BUFFER && b == VERTEX_BUFFER );
+                CHECK( IndexedIndirectBatchBuffersCompatible( a, b ) == expected );
+            }
+        }
+    }
+
+    TEST_CASE( "Indirect draw batches preserve adjacent submission state", "[renderer][indirect_batch]" )
+    {
+        std::array<UniformData, 3u> uniforms;
+        std::array<PoolHandle, 2u> buffers{ PoolHandle{ 1u, 1u }, PoolHandle{ 2u, 1u } };
+        std::array<PoolHandle, 2u> otherBuffers{ PoolHandle{ 1u, 1u }, PoolHandle{ 3u, 1u } };
+        std::array<GFX::SendPushConstantsCommand*, 3u> pushes{};
+        std::array<GFX::DrawCommand*, 3u> commandsByDraw{};
+        std::array<GenericDrawCommand*, 3u> draws{};
+        GFX::CommandBuffer commands;
+        for ( size_t i = 0u; i < draws.size(); ++i )
+        {
+            uniforms[i].set( 7u, PushConstantType::UINT, 5u );
+            pushes[i] = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( commands );
+            pushes[i]->_uniformData = &uniforms[i];
+            commandsByDraw[i] = GFX::EnqueueCommand<GFX::DrawCommand>( commands );
+            GenericDrawCommand& draw = commandsByDraw[i]->_drawCommands.emplace_back();
+            draw._sourceBuffers = buffers.data();
+            draw._sourceBuffersCount = to_U16( buffers.size() );
+            draw._commandOffset = 10u + to_U32( i );
+            draw._cmd.indexCount = 3u;
+            draw._cmd.baseInstance = 100u + to_U32( i );
+            enableOption( draw, CmdRenderOptions::RENDER_INDIRECT );
+            draws[i] = &draw;
+        }
+
+        GenericDrawCommand batch{};
+        const auto collect = [&]( const bool shaderCompatible = true, const U32 maxDrawCount = 16u )
+        {
+            return GFX::CollectIndirectDrawBatch( commands.commands(), 1u, shaderCompatible, maxDrawCount, batch );
+        };
+
+        SECTION( "matching draws use their original indirect records without modifying queued commands" )
+        {
+            REQUIRE( collect() == 4u );
+            CHECK( batch._drawCount == 3u );
+            CHECK( batch._commandOffset == 10u );
+            CHECK( batch._sourceBuffers == buffers.data() );
+            for ( const GenericDrawCommand* draw : draws )
+            {
+                CHECK( draw->_drawCount == 1u );
+            }
+        }
+        SECTION( "a later mismatch ends the batch without skipping the rest" )
+        {
+            draws[2]->_sourceBuffers = otherBuffers.data();
+            REQUIRE( collect() == 2u );
+            CHECK( batch._drawCount == 2u );
+        }
+        SECTION( "a shader that reads draw index is never batched" )
+        {
+            CHECK( collect( false ) == 0u );
+        }
+        SECTION( "buffer handles and indirect offsets must match" )
+        {
+            draws[1]->_sourceBuffers = otherBuffers.data();
+            CHECK( collect() == 0u );
+            draws[1]->_sourceBuffers = buffers.data();
+            draws[1]->_sourceBuffersCount = 1u;
+            CHECK( collect() == 0u );
+            draws[1]->_sourceBuffersCount = 2u;
+            draws[1]->_commandOffset = 12u;
+            CHECK( collect() == 0u );
+            draws[0]->_commandOffset = U32_MAX;
+            draws[1]->_commandOffset = 0u;
+            CHECK( collect() == 0u );
+        }
+        SECTION( "render options and draw shape must be eligible" )
+        {
+            enableOption( *draws[1], CmdRenderOptions::RENDER_WIREFRAME );
+            CHECK( collect() == 0u );
+            disableOption( *draws[1], CmdRenderOptions::RENDER_WIREFRAME );
+            disableOption( *draws[1], CmdRenderOptions::RENDER_INDIRECT );
+            CHECK( collect() == 0u );
+            enableOption( *draws[1], CmdRenderOptions::RENDER_INDIRECT );
+            draws[1]->_cmd.instanceCount = 2u;
+            CHECK( collect() == 0u );
+            draws[1]->_cmd.instanceCount = 0u;
+            CHECK( collect() == 0u );
+            draws[1]->_cmd.instanceCount = 1u;
+            draws[1]->_drawCount = 2u;
+            CHECK( collect() == 0u );
+            draws[1]->_drawCount = 1u;
+            draws[1]->_cmd.indexCount = 0u;
+            CHECK( collect() == 0u );
+        }
+        SECTION( "device limits retain the backend's strict draw-count bound" )
+        {
+            CHECK( collect( true, 2u ) == 0u );
+            REQUIRE( collect( true, 3u ) == 2u );
+            CHECK( batch._drawCount == 2u );
+            REQUIRE( collect( true, 4u ) == 4u );
+            CHECK( batch._drawCount == 3u );
+        }
+        SECTION( "uniform values are compared when the batch is collected" )
+        {
+            REQUIRE( collect() == 4u );
+            uniforms[1].set( 7u, PushConstantType::UINT, 6u );
+            CHECK( collect() == 0u );
+            uniforms[1].set( 7u, PushConstantType::UINT, 5u );
+            CHECK( collect() == 4u );
+            pushes[1]->_uniformData = nullptr;
+            CHECK( collect() == 0u );
+        }
+        SECTION( "uniform binding metadata and payload lengths must match" )
+        {
+            UniformData differentBinding;
+            differentBinding.set( 8u, PushConstantType::UINT, 5u );
+            pushes[1]->_uniformData = &differentBinding;
+            CHECK( collect() == 0u );
+
+            UniformData differentType;
+            differentType.set( 7u, PushConstantType::INT, 5u );
+            pushes[1]->_uniformData = &differentType;
+            CHECK( collect() == 0u );
+
+            UniformData differentLength;
+            const std::array<U32, 2u> values{ 5u, 5u };
+            differentLength.set( 7u, PushConstantType::UINT, values.data(), values.size() );
+            pushes[1]->_uniformData = &differentLength;
+            CHECK( collect() == 0u );
+        }
+        SECTION( "fast constants compare flags and exact bytes" )
+        {
+            pushes[0]->_fastData.data[0] = MAT4_ZERO;
+            pushes[1]->_fastData.data[0] = MAT4_ZERO;
+            pushes[0]->_fastData.computeFlags();
+            CHECK( collect() == 0u );
+            pushes[1]->_fastData.computeFlags();
+            pushes[1]->_fastData.data[0].mat[0] = -0.f;
+            CHECK( collect() == 0u );
+            pushes[1]->_fastData.data[0].mat[0] = 0.f;
+            REQUIRE( collect() == 2u );
+        }
+        SECTION( "an intervening command stops batching" )
+        {
+            GFX::MemoryBarrierCommand barrier;
+            GFX::CommandBuffer::CommandList interrupted;
+            interrupted.push_back( pushes[0] );
+            interrupted.push_back( commandsByDraw[0] );
+            interrupted.push_back( &barrier );
+            interrupted.push_back( pushes[1] );
+            interrupted.push_back( commandsByDraw[1] );
+            CHECK( GFX::CollectIndirectDrawBatch( interrupted, 1u, true, 16u, batch ) == 0u );
         }
     }
 

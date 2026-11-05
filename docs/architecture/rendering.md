@@ -54,7 +54,26 @@ Systems record backend-neutral rendering commands, then `GFXDevice` translates t
 - `GFXDevice::flushWindow()` executes queued buffers through `flushCommandBufferInternal()` before backend window flush.
 - `flushCommandBufferInternal()` walks commands, uploads descriptor state at submission boundaries, and dispatches backend operations.
 
+Vulkan submission can combine adjacent indexed indirect draws that use the same
+vertex/index buffer handles and consecutive records in the shared indirect
+buffer. Each draw must describe one non-instanced geometry command, with the
+same render options and byte-identical fast constants and loose-uniform values.
+The bound graphics pipeline and actual buffer usages must permit the batch;
+shaders that may read `DrawIndex` are excluded. The comparison occurs at
+submission because uniform storage can change after recording. Batches do not
+cross other commands or alter the original GPU records, and respect the
+backend's strict indirect-draw count limit. OpenGL keeps its existing submission
+path. This is not Vulkan geometry-buffer pooling: separate mesh buffers cannot
+be combined by this optimization. For `BY_STATE` render bins, matching shader,
+state and texture keys are secondarily ordered by the first draw command's
+vertex/index buffer handles before the distance tie-breaker. This keeps repeated
+meshes adjacent where their other sort keys match, without changing explicit
+depth or back-to-front ordering.
+
 For bugs before submission, inspect shared command generation and ordering first. Window/frame boundaries matter for missing output or stale state.
+Loose-uniform CPU updates are committed at draw/dispatch boundaries, including
+consumers without a new uniform command. Their immutable cross-frame lifetime
+and per-window completion contract are described in [shaders and descriptors](shader-descriptors.md).
 `AnimationSystem::Update` skips components without an animator individually;
 later animated components must still advance. Animation update events track
 changes to the rendered frame, not the evaluator's neighbouring frame index.
@@ -477,6 +496,12 @@ strips loose-uniform initializers.
 Materials that require instanced indirection must mark their rendering component instanced even for a single instance. Instanced draws upload `INDIRECT_DATA_IDX` and use base instance zero; ordinary draws encode the node indirection index plus one in the base instance. Grass and tree shaders use a draw-local instance index: OpenGL's `gl_InstanceID` is already local, while Vulkan's `gl_InstanceIndex` includes the base instance. Vegetation buffers accept CPU writes, and empty chunks do not issue zero-length uploads. A terrain can omit tree meshes when it only needs grass.
 
 Hi-Z culling queries select a mip level and use nearest texel and nearest-mip sampling with a minimum LOD of zero. This preserves the max-reduced depths used for conservative visibility; the reduction itself reads single-mip views with `texelFetch`. Vegetation culling records a buffer dependency for each written buffer after the compute dispatches and before the subsequent draw commands.
+Independent vegetation packages can combine their boundary barriers within one
+view when their written buffer ranges do not overlap. Their dispatch order is
+unchanged; overlapping or non-independent packages retain their original
+barriers. Preparation and occlusion are batched separately, on opposite sides
+of the same view's depth and Hi-Z work. Opt-in packages must declare every
+written range and have no hidden inter-package dependencies.
 Nonempty indirect-command lists are culled even when they occupy less than one
 workgroup; padding lanes never address a draw command.
 

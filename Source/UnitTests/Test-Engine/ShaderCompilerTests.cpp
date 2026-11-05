@@ -19,6 +19,7 @@
 
 #include <glslang/Include/ResourceLimits.h>
 #include <glslang/Public/ShaderLang.h>
+#include <spirv-reflect/spirv_reflect.h>
 
 #include <iostream>
 
@@ -64,6 +65,11 @@ struct ShaderProgramTestAccess
                                            const ShaderProgram::LoadData& data, U8& blockIndex )
     {
         return ShaderProgram::CachedUniformBlockMatches( uniformBlocks, data, blockIndex );
+    }
+
+    static Reflection::PushConstantsState DetectPushConstantsUsage( const string& source, const RenderAPI api )
+    {
+        return ShaderProgram::DetectPushConstantsUsage( source, api );
     }
 
     static bool ReadCachedSPIRV( std::istream& stream, std::vector<SpvWord>& spirv )
@@ -344,6 +350,90 @@ TEST_CASE( "Shader compilation uses the selected backend's SPIR-V environment", 
     REQUIRE( spirv.size() >= 5 );
     CHECK( spirv[0] == 0x07230203u );
     CHECK( spirv[1] == 0x00010600u );
+}
+
+TEST_CASE( "SPIR-V draw-index detection inspects compiled shader modules", "[shader][indirect_batch]" )
+{
+    const ShaderCompilerLifetime compilerLifetime{};
+    constexpr char withoutDrawIndex[] = R"(
+        #version 460
+        layout(location = 0) in vec3 position;
+        void main() { gl_Position = vec4(position, 1.f); }
+    )";
+    constexpr char withDrawIndex[] = R"(
+        #version 460
+        layout(location = 0) in vec3 position;
+        void main() { gl_Position = vec4(position + vec3(float(gl_DrawID)), 1.f); }
+    )";
+
+    std::vector<unsigned int> ordinary;
+    std::vector<unsigned int> drawIndex;
+    REQUIRE( SpirvHelper::GLSLtoSPV( ShaderType::VERTEX, withoutDrawIndex, ordinary, RenderAPI::Vulkan ) );
+    REQUIRE( SpirvHelper::GLSLtoSPV( ShaderType::VERTEX, withDrawIndex, drawIndex, RenderAPI::Vulkan ) );
+
+    bool usesDrawIndex = true;
+    REQUIRE( SpirvHelper::UsesDrawIndex( ordinary, usesDrawIndex ) );
+    CHECK_FALSE( usesDrawIndex );
+    REQUIRE( SpirvHelper::UsesDrawIndex( drawIndex, usesDrawIndex ) );
+    CHECK( usesDrawIndex );
+
+    SECTION( "member and decoration-group forms are conservative" )
+    {
+        auto member = ordinary;
+        member.insert( member.end(), { ( 5u << 16u ) | SpvOpMemberDecorate, 1u, 0u,
+                                       SpvDecorationBuiltIn, SpvBuiltInDrawIndex } );
+        REQUIRE( SpirvHelper::UsesDrawIndex( member, usesDrawIndex ) );
+        CHECK( usesDrawIndex );
+
+        auto group = ordinary;
+        group.insert( group.end(), { ( 4u << 16u ) | SpvOpDecorate, 1u,
+                                     SpvDecorationBuiltIn, SpvBuiltInDrawIndex } );
+        REQUIRE( SpirvHelper::UsesDrawIndex( group, usesDrawIndex ) );
+        CHECK( usesDrawIndex );
+    }
+    SECTION( "alternative built-in decoration forms cannot enable batching" )
+    {
+        for ( const auto opcode : { SpvOpDecorateId, SpvOpDecorateString } )
+        {
+            auto alternative = ordinary;
+            alternative.insert( alternative.end(), { ( 4u << 16u ) | opcode, 1u,
+                                                     SpvDecorationBuiltIn, 0u } );
+            REQUIRE( SpirvHelper::UsesDrawIndex( alternative, usesDrawIndex ) );
+            CHECK( usesDrawIndex );
+        }
+
+        auto member = ordinary;
+        member.insert( member.end(), { ( 5u << 16u ) | SpvOpMemberDecorateString, 1u, 0u,
+                                       SpvDecorationBuiltIn, 0u } );
+        REQUIRE( SpirvHelper::UsesDrawIndex( member, usesDrawIndex ) );
+        CHECK( usesDrawIndex );
+    }
+    SECTION( "truncated and malformed instruction streams are rejected" )
+    {
+        auto broken = ordinary;
+        broken.resize( 4u );
+        CHECK_FALSE( SpirvHelper::UsesDrawIndex( broken, usesDrawIndex ) );
+
+        broken = ordinary;
+        broken[0] = 0u;
+        CHECK_FALSE( SpirvHelper::UsesDrawIndex( broken, usesDrawIndex ) );
+
+        broken = ordinary;
+        broken.push_back( SpvOpNop );
+        CHECK_FALSE( SpirvHelper::UsesDrawIndex( broken, usesDrawIndex ) );
+
+        broken = ordinary;
+        broken.push_back( ( 4u << 16u ) | SpvOpDecorate );
+        CHECK_FALSE( SpirvHelper::UsesDrawIndex( broken, usesDrawIndex ) );
+
+        broken = ordinary;
+        broken.insert( broken.end(), { ( 3u << 16u ) | SpvOpDecorate, 1u, SpvDecorationBuiltIn } );
+        CHECK_FALSE( SpirvHelper::UsesDrawIndex( broken, usesDrawIndex ) );
+
+        broken = ordinary;
+        broken.insert( broken.end(), { ( 3u << 16u ) | SpvOpDecorateId, 1u, SpvDecorationBuiltIn } );
+        CHECK_FALSE( SpirvHelper::UsesDrawIndex( broken, usesDrawIndex ) );
+    }
 }
 
 TEST_CASE( "Shader thread preprocessing survives repeated initialization", "[shader][render_smoke]" )
@@ -1326,6 +1416,29 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         CHECK( blockIndex == Reflection::INVALID_BINDING_INDEX );
     }
 
+    TEST_CASE( "Push constant detection preserves declarations and identifier boundaries", "[shader][push_constants][render_smoke]" )
+    {
+        using State = Reflection::PushConstantsState;
+        const auto detect = []( const char* source, const RenderAPI api )
+        {
+            return ShaderProgramTestAccess::DetectPushConstantsUsage( source, api );
+        };
+
+        CHECK( detect( "", RenderAPI::OpenGL ) == State::NOT_USED );
+        CHECK( detect( "float unrelated = 0.0;\n/*Engine define: PushData0 PushData1 */\n", RenderAPI::OpenGL ) == State::NOT_USED );
+        CHECK( detect( "layout(location = 18) uniform vec4 PushData0;\r\nlayout(binding=19) uniform vec4 PushData1;\n",
+                       RenderAPI::OpenGL ) == State::NOT_USED );
+        CHECK( detect( "vec4 PushData0;\r\nvec4 PushData1;\n", RenderAPI::Vulkan ) == State::NOT_USED );
+        CHECK( detect( "vec4 PushData0;\n", RenderAPI::OpenGL ) == State::USED_SLOT_1 );
+        CHECK( detect( "layout(location=18) uniform vec4 PushData0;\n", RenderAPI::Vulkan ) == State::USED_SLOT_1 );
+        CHECK( detect( "PushData0[0].x;\n", RenderAPI::OpenGL ) == State::USED_SLOT_1 );
+        CHECK( detect( "PushData1[0].x;\n", RenderAPI::Vulkan ) == State::USED_SLOT_2 );
+        CHECK( detect( "PushData0[0] + PushData1[0];\n", RenderAPI::OpenGL ) == State::USED_BOTH );
+        CHECK( detect( "notPushData0; PushData0suffix; _PushData1; PushData1_;\n", RenderAPI::OpenGL ) == State::NOT_USED );
+        CHECK( detect( "/*Engine define: PushData0 */\n(PushData1);\n", RenderAPI::OpenGL ) == State::USED_SLOT_2 );
+        CHECK( detect( "PushDa\rta0[0];\r\n", RenderAPI::Vulkan ) == State::USED_SLOT_1 );
+    }
+
     TEST_CASE( "Cached SPIR-V rejects incomplete words", "[shader][cache][render_smoke]" )
     {
         const std::array<SpvWord, 2u> expected{ 0x07230203u, 0x00010600u };
@@ -1383,7 +1496,31 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         {
             for ( U8 slot = 0u; slot < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slot )
             {
-                ShaderProgramTestAccess::Bindings()[set][slot]._glBinding = to_U8( set * MAX_BINDINGS_PER_DESCRIPTOR_SET + slot );
+                auto& binding = ShaderProgramTestAccess::Bindings()[set][slot];
+                binding._glBinding = to_U8( set * MAX_BINDINGS_PER_DESCRIPTOR_SET + slot );
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                if ( set == to_base( DescriptorSetUsage::PER_DRAW ) && slot >= 12u )
+                {
+                    binding._type = slot == 12u ? DescriptorSetBindingType::IMAGE :
+                                    slot == 13u ? DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC :
+                                                  DescriptorSetBindingType::UNIFORM_BUFFER_STATIC;
+                }
+                else if ( set == to_base( DescriptorSetUsage::PER_BATCH ) )
+                {
+                    binding._type = slot == 0u ? DescriptorSetBindingType::INDIRECT_BUFFER :
+                                    slot == 1u ? DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC :
+                                                 DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC;
+                }
+                else if ( set == to_base( DescriptorSetUsage::PER_PASS ) && slot >= 5u )
+                {
+                    binding._type = slot == 8u ? DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC :
+                                                 DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC;
+                }
+                else if ( set == to_base( DescriptorSetUsage::PER_FRAME ) && slot >= 7u )
+                {
+                    binding._type = slot < 9u ? DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC :
+                                                DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC;
+                }
             }
         }
 
@@ -1430,6 +1567,8 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             Variant{ ShaderType::FRAGMENT, "material.glsl", "material.Fragment", false, false, false, DescriptorSetUsage::COUNT, 0u, true, false, false, true },
             Variant{ ShaderType::FRAGMENT, "material.glsl", "material.Fragment", false, false, true, DescriptorSetUsage::COUNT, 0u, true, false, false, true, true },
             Variant{ ShaderType::FRAGMENT, "material.glsl", "material.Fragment", false, false, true, DescriptorSetUsage::COUNT, 0u, true, false, false, true, false, true },
+            Variant{ ShaderType::FRAGMENT, "depthPass.glsl", "depthPass.Fragment.PrePass", false, true, true, DescriptorSetUsage::COUNT, 0u, true },
+            Variant{ ShaderType::FRAGMENT, "depthPass.glsl", "depthPass.Fragment.PrePass", false, true, false, DescriptorSetUsage::COUNT, 0u, true },
             Variant{ ShaderType::FRAGMENT, "depthPass.glsl", "depthPass.Fragment.Shadow.VSM", false, false, false, DescriptorSetUsage::COUNT, 0u, true, true },
             Variant{ ShaderType::FRAGMENT, "depthPass.glsl", "depthPass.Fragment.Shadow.VSM", false, false, false, DescriptorSetUsage::COUNT, 0u, true, true, true },
             Variant{ ShaderType::FRAGMENT, "grass.glsl", "grass.Fragment.Shadow.VSM", false, false, false, DescriptorSetUsage::COUNT, 0u, false, true },
@@ -1490,6 +1629,9 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 if ( variant._disableSSAO ) defines.emplace_back( "NO_SSAO" );
                 if ( variant._occlusion ) defines.emplace_back( "OCCLUSION_PASS" );
                 if ( std::string_view{ variant._file } == "particles.glsl" ) defines.emplace_back( "HAS_TEXTURE" );
+                const bool standardMaterial = std::string_view{ variant._file } == "material.glsl" ||
+                                              std::string_view{ variant._file } == "depthPass.glsl";
+                if ( standardMaterial ) defines.emplace_back( "USE_OPACITY_TEXTURE" );
 
                 ShaderProgram::LoadData data{};
                 data._type = variant._stage;
@@ -1524,7 +1666,8 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                     CHECK( data._sourceCodeGLSL.find( "ApplyIBL(" ) != string::npos );
                     CHECK( data._sourceCodeGLSL.find( "getLightContribution(" ) != string::npos );
                 }
-                if ( variant._alphaDiscard && variant._display && !variant._disableIBL )
+                if ( std::string_view{ variant._file } == "material.glsl" &&
+                     variant._alphaDiscard && variant._display && !variant._disableIBL )
                 {
                     const string& source = data._sourceCodeGLSL;
                     const size_t pixelColour = source.find( "vec4 getPixelColour" );
@@ -1567,7 +1710,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                         REQUIRE( moments != string::npos );
                         CHECK( moments < discard );
                     }
-                    else
+                    else if ( std::string_view{ variant._file } == "material.glsl" )
                     {
                         const size_t normal = data._sourceCodeGLSL.find( "getNormalWV", main );
                         const size_t material = data._sourceCodeGLSL.find( "initMaterialProperties", main );
@@ -1579,6 +1722,29 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                         CHECK( material < discard );
                         CHECK( gradients < discard );
                     }
+                    else if ( variant._prePass )
+                    {
+                        const size_t gbuffer = data._sourceCodeGLSL.find( "writeGBuffer", main );
+                        REQUIRE( gbuffer != string::npos );
+                        CHECK( discard < gbuffer );
+                    }
+                }
+                if ( standardMaterial && variant._alphaDiscard )
+                {
+                    const string& source = data._sourceCodeGLSL;
+                    const size_t alpha = source.find( "float getAlpha" );
+                    REQUIRE( alpha != string::npos );
+                    const size_t alphaEnd = source.find( "vec4 getAlbedo", alpha );
+                    const size_t opacity = source.find( "texOpacityMap", alpha );
+                    const size_t albedo = source.find( "texDiffuse0", alpha );
+                    REQUIRE( alphaEnd != string::npos );
+                    REQUIRE( opacity != string::npos );
+                    REQUIRE( albedo != string::npos );
+                    CHECK( opacity < albedo );
+                    CHECK( albedo < alphaEnd );
+                    const size_t baseAlphaReturn = source.find( "return", albedo );
+                    REQUIRE( baseAlphaReturn != string::npos );
+                    CHECK( baseAlphaReturn < alphaEnd );
                 }
 
                 std::vector<unsigned int> spirv;
@@ -1586,6 +1752,23 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 const bool compiled = SpirvHelper::GLSLtoSPV( variant._stage, data._sourceCodeGLSL.c_str(), spirv, api );
                 INFO( diagnostics.c_str() );
                 REQUIRE( compiled );
+
+                if ( standardMaterial && variant._alphaDiscard )
+                {
+                    Reflection::Data reflection{};
+                    REQUIRE( SpirvHelper::BuildReflectionData( variant._stage, spirv, api, reflection ) );
+                    for ( const U8 slot : { U8{ 0u }, U8{ 1u } } )
+                    {
+                        CAPTURE( slot );
+                        CHECK( std::ranges::any_of( reflection._images, [slot]( const Reflection::ImageEntry& image )
+                        {
+                            return image._bindingSet == to_base( DescriptorSetUsage::PER_DRAW ) &&
+                                   image._bindingSlot == slot &&
+                                   image._textureType == TextureType::TEXTURE_2D_ARRAY &&
+                                   image._combinedImageSampler;
+                        } ) );
+                    }
+                }
 
                 if ( api == RenderAPI::Vulkan && variant._bufferSet != DescriptorSetUsage::COUNT )
                 {
