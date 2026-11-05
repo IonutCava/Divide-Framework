@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -53,9 +53,27 @@ class RenderQueue final : public KernelComponent {
     struct PopulateQueueParams {
         RenderStagePass _stagePass;
         RenderBinType _binType = RenderBinType::COUNT;
-        ///_filterByBinType: if true, populate from bin, if false, populate from everything except bin
-        /// Combined with RenderBinType::COUNT, you get all 4 variants: all bins, no bins, just specified bin, all bins except for specified bin
+        /// When set, exclude the specified bin; COUNT selects all or no bins.
         bool _filterByBinType = false;
+
+        [[nodiscard]] static constexpr PopulateQueueParams ForPass( const RenderStagePass stagePass, const bool transparencyPass ) noexcept
+        {
+            if ( IsShadowPass( stagePass ) )
+            {
+                return { stagePass, RenderBinType::COUNT, false };
+            }
+            return { stagePass, RenderBinType::TRANSLUCENT, !transparencyPass };
+        }
+
+        [[nodiscard]] constexpr bool includes( const RenderBinType binType ) const noexcept
+        {
+            if ( binType == RenderBinType::COUNT )
+            {
+                return false;
+            }
+            return _binType == RenderBinType::COUNT ? !_filterByBinType
+                                                    : ( binType == _binType ) != _filterByBinType;
+        }
     };
 
   public:

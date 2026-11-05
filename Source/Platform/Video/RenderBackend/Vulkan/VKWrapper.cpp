@@ -1,6 +1,7 @@
 // Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/VKWrapper.h"
+#include "Headers/vkToolProperties.h"
 
 #include "Core/Headers/Application.h"
 #include "Core/Headers/DisplayManager.h"
@@ -126,11 +127,10 @@ namespace
                                                       to_string_message_type( messageType ).c_str(),
                                                       pCallbackData->pMessage );
 
-        const bool isConsoleImmediate = Console::IsFlagSet( Console::Flags::PRINT_IMMEDIATE );
-        const bool severityDecoration = Console::IsFlagSet( Console::Flags::DECORATE_SEVERITY );
-
-        Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, true );
-        Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, false );
+        const Console::ScopedFlags consoleFlags{
+            to_U32(to_base(Console::Flags::PRINT_IMMEDIATE)),
+            to_U32(to_base(Console::Flags::DECORATE_SEVERITY))
+        };
 
         if ( messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT ||
              messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT )
@@ -156,15 +156,14 @@ namespace
             DIVIDE_GPU_ASSERT( VK_API::GetStateTracker()._assertOnAPIError && !(*VK_API::GetStateTracker()._assertOnAPIError), outputError.c_str() );
         }
 
-        Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, severityDecoration );
-        Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, isConsoleImmediate );
-
         return VK_FALSE; // Applications must return false here
     }
 }
 
 namespace Divide
 {
+    std::atomic_bool g_enableVMADebugLogging{ false };
+
     static PFN_vkCmdSetColorBlendEnableEXT   vkCmdSetColorBlendEnableEXT   = VK_NULL_HANDLE;
     static PFN_vkCmdSetColorBlendEquationEXT vkCmdSetColorBlendEquationEXT = VK_NULL_HANDLE;
     static PFN_vkCmdSetColorWriteMaskEXT     vkCmdSetColorWriteMaskEXT     = VK_NULL_HANDLE;
@@ -1179,6 +1178,7 @@ namespace Divide
 
     ErrorCode VK_API::initRenderingAPI( [[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, Configuration& config ) noexcept
     {
+        g_enableVMADebugLogging.store( config.debug.renderer.enableVMADebugLogging, std::memory_order_relaxed );
         InvalidateSharedDescriptorSets();
 
         s_transientDeleteQueue.flags( s_transientDeleteQueue.flags() | to_base( VKDeletionQueue::Flags::TREAT_AS_TRANSIENT ) );
@@ -1417,18 +1417,22 @@ namespace Divide
                           deviceProperties.apiVersion );
 
         {
-            U32 toolCount = 0u;
-            VK_CHECK( vkGetPhysicalDeviceToolProperties( physicalDevice, &toolCount, NULL ) );
-
-            if ( toolCount > 0u )
+            std::vector<VkPhysicalDeviceToolProperties> tools;
+            const VkResult toolResult = EnumeratePhysicalDeviceTools(
+                [physicalDevice]( U32* count, VkPhysicalDeviceToolProperties* properties )
+                {
+                    return vkGetPhysicalDeviceToolProperties( physicalDevice, count, properties );
+                },
+                tools );
+            if ( toolResult != VK_SUCCESS )
             {
-                const VkPhysicalDeviceToolProperties toolTemplate{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES };
-                std::vector<VkPhysicalDeviceToolProperties> tools( toolCount, toolTemplate );
-                VK_CHECK( vkGetPhysicalDeviceToolProperties( physicalDevice, &toolCount, tools.data() ) );
-                tools.resize( toolCount );
+                Console::errorfn( "Vulkan tool enumeration failed: {} ({}).", VKErrorString( toolResult ), to_I32( toolResult ) );
+                return ErrorCode::PLATFORM_INIT_ERROR;
+            }
 
-                Console::printfn( LOCALE_STR( "VK_TOOL_INFO" ), toolCount );
-    
+            if ( !tools.empty() )
+            {
+                Console::printfn( LOCALE_STR( "VK_TOOL_INFO" ), to_U32( tools.size() ) );
                 for ( const VkPhysicalDeviceToolProperties& tool : tools )
                 {
                     Console::printfn( "\t{} {}\n", tool.name, tool.version );

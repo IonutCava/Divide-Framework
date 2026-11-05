@@ -286,6 +286,7 @@ namespace Divide
         cloneMat->_baseMaterial = src;
 
         cloneMat->_properties = srcMat->_properties;
+        cloneMat->_baseShaderData = srcMat->_baseShaderData;
         cloneMat->_extraShaderDefines = srcMat->_extraShaderDefines;
         cloneMat->_computeShaderCBK = srcMat->_computeShaderCBK;
         cloneMat->_computeRenderStateCBK = srcMat->_computeRenderStateCBK;
@@ -443,15 +444,7 @@ namespace Divide
 
         setTextureOperation( textureUsageSlot, texture != INVALID_HANDLE<Texture> ? op : TextureOperation::NONE );
 
-        if ( texInfo._ptr != INVALID_HANDLE<Texture> )
-        {
-            // Skip adding same texture
-            if ( texture != INVALID_HANDLE<Texture> && texInfo._ptr == texture )
-            {
-                return true;
-            }
-        }
-
+        DestroyResource( texInfo._ptr );
         texInfo._srgb = texture != INVALID_HANDLE<Texture> ? Get(texture)->descriptor()._packing == GFXImagePacking::NORMALIZED_SRGB : false;
         texInfo._useInGeometryPasses = texture != INVALID_HANDLE<Texture> ? useInGeometryPasses : false;
         texInfo._ptr = texture;
@@ -699,6 +692,12 @@ namespace Divide
 
         // Shader should be in the ready state
         return true;
+    }
+
+    bool Material::shaderPending( const RenderStagePass renderStagePass ) const
+    {
+        const ShaderBuildStage stage = shaderInfo( renderStagePass )._shaderCompStage;
+        return stage != ShaderBuildStage::READY && stage != ShaderBuildStage::FAILED;
     }
 
     void Material::addShaderDefineInternal(const ShaderType type, const string& define, const bool addPrefix)
@@ -1126,7 +1125,6 @@ namespace Divide
                 if ( IsShadowPass( renderStagePass ) ) //SHADOW
                 {
                     ret._colourWrite.b[2] = ret._colourWrite.b[3] = false;
-                    ret._cullMode = CullMode::BACK;
                     //ret.setZBias(1.1f, 4.f);
                 }
                 else if ( IsZPrePass( renderStagePass ) ) //Z-PRE_PASS
@@ -1147,7 +1145,6 @@ namespace Divide
             {
                 DIVIDE_ASSERT( renderStagePass._passType == RenderPassType::OIT_PASS ||
                                renderStagePass._passType == RenderPassType::TRANSPARENCY_PASS );
-                // We use alpha-discard in the prepass for transparent/translucent objects, so depth values for translucent pixels will be invalid
                 ret._zFunc = ComparisonFunction::LEQUAL;
                 ret._depthWriteEnabled = false;
                 ret._cullMode = CullMode::NONE;

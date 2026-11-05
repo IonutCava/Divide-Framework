@@ -33,28 +33,55 @@ Commit `7b09ed5` raises the minimum supported version to Vulkan 1.4: device sele
 
 Do not assume optional dynamic-state/mesh support just from extension presence. Audit feature chains and capability/fallback decisions.
 Descriptor-buffer and push-descriptor support are required assumptions; descriptor layout/cache rules are in [shaders and descriptors](shader-descriptors.md).
-`VK_API::initRenderingAPI` initializes the `sType` of every reported
-`VkPhysicalDeviceToolProperties` before querying attached Vulkan tools.
+`EnumeratePhysicalDeviceTools` initializes every tool-property `sType`, retries
+`VK_INCOMPLETE` with a fresh count, and reports errors or an unstable list
+instead of publishing partial properties. The Vulkan specification requires
+layers to respect the supplied array capacity; retries cannot undo an
+out-of-bounds write by a nonconforming layer.
 
 ## OpenGL memory
 
 `WindowManager::applyAPISettingsPreCreate` explicitly sets the no-error context
 attribute for every attempt. SDL retains attributes between retries; enabling a
 debug context must clear a previous non-debug no-error request.
+`GLUtil::OnStartup` caches the context's `GL_MAX_LABEL_LENGTH` for validation
+labels. `GLUtil::SetObjectLabel` passes an explicit bounded byte count, so
+long names and non-null-terminated views cannot produce invalid label calls.
 
 `glMemoryManager` creates large persistently mapped chunks, suballocates `Block`s, reuses compatible free blocks, and merges released free ranges.
 `glBufferImpl` chooses target alignment, requests pooled allocations, keeps mapped CPU pointers, and uses `glLockManager` sync for frequent updates. Copy/readback buffers are used when needed.
+Worker-context buffer initialization flushes its fence before another context
+can wait on it. Buffer-fence waits require a current GL context, and a failed
+wait prevents a mapped write instead of treating the range as unlocked.
+`GLStateTracker` reapplies blend factors and equations when switching between
+combined and separate alpha blending, even if the colour settings are unchanged.
 
 Logical buffers are not normally one-to-one with GL allocations. Update frequency and host visibility affect allocation/sync strategy.
 For GL-only performance issues, inspect allocation churn, contention, sync, and unnecessary buffer recreation.
 
 Textures use immutable `glTextureStorage*` storage and DSA mip/layer uploads; the driver manages residency, with no custom texture allocator.
+Both backends allocate the mip count selected by the shared texture policy and
+upload no more than those levels. OpenGL sets `GL_TEXTURE_MAX_LEVEL` to the last
+allocated level. The full mip count includes 3D texture depth; Vulkan mip blits
+halve the depth extent along with width and height while preserving array layers.
+Compressed partial-chain handling is described in the [asset pipeline](asset-pipeline.md#texture-flow).
+For uploads submitted from a shared worker context, `glTexture` flushes and
+waits for an upload fence, then calls `glFinish` to establish shared-object
+completion before publishing the texture. This also covers
+procedural uploads after resource creation and avoids requiring the main thread
+to finalize a synchronous worker load. The bounded wait reports failure rather
+than exposing incomplete uploads; main-context uploads remain ordered on that
+context. Fence counters are atomic because worker contexts also create and
+destroy sync objects.
 
 ## Vulkan memory
 
 `VKWrapper.cpp` creates a global VMA allocator after device creation; both buffers and images reuse it.
 At shutdown it logs detailed VMA allocation statistics before destroying a
 nonempty allocator, so leaked allocation names are available even if VMA asserts.
+VMA's routine call trace is disabled by default. Set
+`debug.renderer.enableVMADebugLogging` in `XML/config.xml` before Vulkan
+initialization to enable it; this does not disable VMA assertions or leak reports.
 
 - `vkBufferImpl` generally prefers device-local memory. Frequently updated buffers request persistent mapping; initial uploads temporarily map host-visible allocations when host access was requested. Initial and post-creation writes flush non-coherent mapped ranges before GPU use.
 - Non-mappable buffers and initial allocations without VMA host-access flags use staging allocations and explicit transfer commands. Initial and later staged writes flush the staging range before the transfer. Inspect mapping assumptions, staging lifetime, copies, and synchronization separately.
@@ -103,7 +130,11 @@ created or resized; it is not a per-frame clear.
 `vkRenderTarget::begin` resets the dynamic-rendering attachment information on
 every pass: a pass with automatic MSAA resolve disabled must not inherit the
 previous pass's resolve mode or image view. Colour clears copy all four channels
-from the requested clear value. Resolve-image usage trackers change
+from the requested clear value. Attachments use `LOAD` unless the pass explicitly
+clears them; the previous contents are available only if they were stored.
+`_keepMSAADataAfterResolve` controls the multisample store operation, not
+whether the current pass loads retained data.
+Resolve-image usage trackers change
 when their layout barriers are recorded. An enabled resolve target transitions
 to shader-read after a pass and back to attachment use before a later resolve,
 regardless of whether the multisampled attachment contents are retained.
@@ -119,6 +150,9 @@ Vertex attribute descriptions are filtered against the vertex shader's reflected
 input locations; binding descriptions and missing-input validation are unchanged.
 Transitions requested from or to shader-read use the same layouts for resolve
 images as other textures; being a resolve image does not imply its current layout.
+Blits of retained depth and colour attachments transition to transfer layouts
+and back; the return barriers include attachment reads as well as writes so a
+later pass can load the retained contents.
 The previous-screen blit relies on render-target transitions instead of a
 separate one-time barrier that bypasses the attachment tracker.
 Cubemap render-target selections identify a cube and one face when their layer

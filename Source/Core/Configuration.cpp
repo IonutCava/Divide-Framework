@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/Configuration.h"
 
@@ -14,6 +14,7 @@ bool Configuration::fromXML(const ResourcePath& xmlFilePath, const char* fileNam
         GET_PARAM(debug.renderer.enableRenderAPIDebugging);
         GET_PARAM(debug.renderer.enableRenderAPIBestPractices);
         GET_PARAM(debug.renderer.enableRenderAPIDebugGrouping);
+        GET_PARAM(debug.renderer.enableVMADebugLogging);
         GET_PARAM(debug.renderer.assertOnRenderAPIError);
         GET_PARAM(debug.renderer.useSPIRVForOpenGL);
         GET_PARAM(debug.cache.enabled);
@@ -68,6 +69,9 @@ bool Configuration::fromXML(const ResourcePath& xmlFilePath, const char* fileNam
         GET_PARAM(rendering.maxAnisotropicFilteringLevel);
         GET_PARAM(rendering.reflectionProbeResolution);
         GET_PARAM(rendering.reflectionPlaneResolution);
+        GET_PARAM(rendering.reflection.includeGrass);
+        GET_PARAM(rendering.reflection.includeTrees);
+        GET_PARAM(rendering.reflection.includeDynamicObjects);
         GET_PARAM(rendering.numLightsPerCluster);
         GET_PARAM(rendering.enableFog);
         GET_PARAM(rendering.fogDensity);
@@ -181,6 +185,7 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
     PUT_PARAM(debug.renderer.enableRenderAPIDebugging);
     PUT_PARAM(debug.renderer.enableRenderAPIBestPractices);
     PUT_PARAM(debug.renderer.enableRenderAPIDebugGrouping);
+    PUT_PARAM(debug.renderer.enableVMADebugLogging);
     PUT_PARAM(debug.renderer.assertOnRenderAPIError);
     PUT_PARAM(debug.renderer.useSPIRVForOpenGL);
     PUT_PARAM(debug.cache.enabled);
@@ -234,6 +239,9 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
     PUT_PARAM(rendering.MSAASamples);
     PUT_PARAM(rendering.maxAnisotropicFilteringLevel);
     PUT_PARAM(rendering.reflectionPlaneResolution);
+    PUT_PARAM(rendering.reflection.includeGrass);
+    PUT_PARAM(rendering.reflection.includeTrees);
+    PUT_PARAM(rendering.reflection.includeDynamicObjects);
     PUT_PARAM(rendering.numLightsPerCluster);
     PUT_PARAM(rendering.enableFog);
     PUT_PARAM(rendering.fogDensity);

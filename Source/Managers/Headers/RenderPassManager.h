@@ -47,6 +47,7 @@ namespace Divide
     struct NodeMaterialData;
     struct PerPassData;
     struct RTDrawDescriptor;
+    struct ShadowCasterBounds;
 
     class Camera;
     class SceneGraph;
@@ -70,7 +71,8 @@ namespace Divide
         // source node is used to determine if the current pass is triggered by a specific node:
         // e.g. a light node for shadow mapping, a reflector for reflection (or refraction), etc
         // safe to be set to null
-        FeedBackContainer* _feedBackContainer{ nullptr };
+        ShadowCasterBounds* _shadowBoundsFeedback{ nullptr };
+        bool* _pendingShaderOut{ nullptr };
         const SceneGraphNode* _sourceNode{ nullptr };
         Str<64> _passName{};
         I64 _singleNodeRenderGUID{ -1 };  //-1 = none;
@@ -141,8 +143,8 @@ namespace Divide
         private:
         GFXDevice& _context;
 
-        Handle<ShaderProgram> _oitCompositionShader = INVALID_HANDLE<ShaderProgram>;
-        Handle<ShaderProgram> _oitCompositionShaderMS = INVALID_HANDLE<ShaderProgram>;
+        RenderPassExecutor::OITCompositionShaders _oitCompositionShaders =
+            create_array<to_base( RenderPassExecutor::OITCompositionVariant::COUNT )>( INVALID_HANDLE<ShaderProgram> );
         Handle<ShaderProgram> _gbufferResolveShader = INVALID_HANDLE<ShaderProgram>;
 
         struct RenderPassData

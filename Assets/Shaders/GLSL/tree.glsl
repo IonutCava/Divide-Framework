@@ -4,11 +4,12 @@
 // Copyright (c) 2009-2026 Ionut Cava
 
 #include "vbInputData.vert"
+#define VEGETATION_TREE_DRAW
 #include "vegetationData.cmn"
 #include "lightingDefaults.vert"
 
 VegetationData TreeData(in uint instanceID) {
-    return treeData[dvd_terrainChunkOffset * MAX_TREE_INSTANCES + instanceID];
+    return treeData[dvd_instanceDataIndex + instanceID];
 }
 
 vec3 rotate_vertex_position(vec3 position, vec4 q) {

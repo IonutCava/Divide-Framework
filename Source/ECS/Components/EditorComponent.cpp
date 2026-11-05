@@ -62,7 +62,10 @@ namespace Divide {
     {
         if constexpr(Config::Build::ENABLE_EDITOR)
         {
-            Attorney::EditorEditorComponent::onRemoveComponent(context().editor(), *this);
+            if (context().hasEditor())
+            {
+                Attorney::EditorEditorComponent::onRemoveComponent(context().editor(), *this);
+            }
         }
     }
 
@@ -198,7 +201,7 @@ namespace Divide {
 
     void EditorComponent::loadFromXML(const boost::property_tree::ptree& pt)
     {
-        if (!pt.get(_name.c_str(), "").empty())
+        if (const auto component = pt.get_child_optional(_name.c_str()); component && !component->empty())
         {
             for (EditorComponentField& field : _fields)
             {

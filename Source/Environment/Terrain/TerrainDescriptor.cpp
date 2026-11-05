@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "Headers/TerrainDescriptor.h"
 
 #include "Platform/File/Headers/FileManagement.h"
@@ -7,6 +9,11 @@ namespace Divide
     {
         constexpr U8 g_minTerrainSideLength = 8u;
     }
+
+string BuildTerrainTileFactorArrayHeader( const U8 layerCount )
+{
+    return Util::StringFormat( "const vec2 CURRENT_TILE_FACTORS[{}] = {{\n", layerCount * 4 );
+}
 
 void Init( TerrainDescriptor& descriptor, const std::string_view name)
 {
@@ -61,6 +68,7 @@ bool LoadFromXML( TerrainDescriptor& descriptor, const boost::property_tree::ptr
         descriptor._altitudeRange.set( descTree.get<F32>( "altitudeRange.<xmlattr>.min", 0.0f ),
                                        descTree.get<F32>( "altitudeRange.<xmlattr>.max", 255.0f ) );
 
+        AddVariable( descriptor, "vegetationTextureLocation", descTree.get<string>( "vegetation.vegetationTextureLocation", "" ) );
         AddVariable( descriptor, "grassMap", descTree.get<string>( "vegetation.grassMap" ) );
         AddVariable( descriptor, "treeMap", descTree.get<string>( "vegetation.treeMap" ) );
 
@@ -70,6 +78,13 @@ bool LoadFromXML( TerrainDescriptor& descriptor, const boost::property_tree::ptr
             AddVariable( descriptor, Util::StringFormat( "treeMesh{}", j ), descTree.get<string>( Util::StringFormat( "vegetation.treeMesh{}", j ).c_str(), "" ) );
             AddVariableF( descriptor, Util::StringFormat( "grassScale{}", j ), descTree.get<F32>( Util::StringFormat( "vegetation.grassBillboard{}.<xmlattr>.scale", j ).c_str(), 1.0f ) );
             AddVariableF( descriptor, Util::StringFormat( "treeScale{}", j ), descTree.get<F32>( Util::StringFormat( "vegetation.treeMesh{}.<xmlattr>.scale", j ).c_str(), 1.0f ) );
+            const F32 density = descTree.get<F32>( Util::StringFormat( "vegetation.treeMesh{}.<xmlattr>.density", j ).c_str(), 1.0f );
+            if ( !std::isfinite( density ) || density < 0.f )
+            {
+                Console::errorfn( "Invalid tree density for treeMesh{} in terrain descriptor {}", j, terrainDescriptorPath.string().c_str() );
+                return false;
+            }
+            AddVariableF( descriptor, Util::StringFormat( "treeDensity{}", j ), density );
             AddVariableF( descriptor, Util::StringFormat( "treeRotationX{}", j ), descTree.get<F32>( Util::StringFormat( "vegetation.treeMesh{}.<xmlattr>.rotate_x", j ).c_str(), 0.0f ) );
             AddVariableF( descriptor, Util::StringFormat( "treeRotationY{}", j ), descTree.get<F32>( Util::StringFormat( "vegetation.treeMesh{}.<xmlattr>.rotate_y", j ).c_str(), 0.0f ) );
             AddVariableF( descriptor, Util::StringFormat( "treeRotationZ{}", j ), descTree.get<F32>( Util::StringFormat( "vegetation.treeMesh{}.<xmlattr>.rotate_z", j ).c_str(), 0.0f ) );

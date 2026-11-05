@@ -31,6 +31,9 @@ reference, moving a slot transfers it, and replacing a program releases the old
 reference after acquiring the replacement. Queued replacements retain the old
 program until processed but do not report the slot ready; material unload cancels
 queued writes and waits for in-flight shader loads before releasing slots.
+The shader queue dispatches queued asynchronous loads only while fewer than 15
+are in flight; remaining entries stay queued. Immediate high-priority processing
+can bypass that limit, and cache hits release their counter immediately.
 Vulkan shader-load and reload notifications are queued by program GUID under a
 mutex. The render thread swaps the pending IDs into reusable storage at frame
 end and invalidates matching compiled pipelines without retaining queued program
@@ -46,14 +49,26 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
 - Effect files are GLSW collections; `ShaderModuleDescriptor` selects a `file.Stage.variant` section, and module/global defines select material, pass, and debug variants.
 - Shader-thread initialization resets the thread-local preprocessor tag cursor;
   repeated initialization on the same thread must not append past its tag array.
+- Terrain's tessellation evaluation stage initializes the selection and LoD
+  varyings consumed by later stages; it reads selection from the same
+  per-node transform record as ordinary vertex shaders.
+- `waterComposite.cmn` contains expression-only Fresnel, wave-offset and planar
+  radiance mixing shared by the water shader and its CPU arithmetic regressions.
+- `ssaoResampling.cmn` shares half-resolution depth/normal block and AO
+  reconstruction coordinates with the CPU edge and footprint regressions.
+- `spotShadowProjection.cmn` shares the biased homogeneous clip-volume predicate
+  between spot-shadow sampling and its CPU boundary regression tests.
+- `shadowStrength.cmn` shares shadow-strength and variance light-bleed arithmetic
+  with CPU regressions, including the maximum-bias boundary.
 - `PreprocessIncludes` runs **before** `PreProcessMacros`, so every `#include` must resolve even inside a disabled `#if`.
 - Include directives may end with whitespace or a single-line comment. Malformed, missing, cyclic, or nested includes beyond 64 levels stop source loading instead of being silently dropped by the macro preprocessor. Expansion uses an explicit stack; cached atoms retain their dependency depth so cache hits cannot bypass the limit. Only successfully expanded atoms are cached, and changing a dependency invalidates every cached parent.
 - A missing GLSW section or failed macro preprocessing aborts source loading before uniform extraction, shader compilation, or cache writes.
-- Loose uniforms are collected into generated `std140` blocks at `PER_DRAW` slots `s_uniformsStartOffset` (+1 for a second distinct block; at most two per program).
-- SPIR-V reflection records vertex input locations, including matrix columns and array elements, and reflection-cache version 6 persists them. Built-in inputs are excluded; unsupported input types or locations fail reflection. Vulkan uses the reflected locations to omit unused vertex attributes from pipeline descriptions without inventing missing attributes. Shader reloads clear and rebuild this mask.
+- Loose uniforms are collected into generated `std140` blocks at `PER_DRAW` slots `s_uniformsStartOffset` and `s_uniformsStartOffset + 1`; a third distinct layout fails shader loading. Equal layouts reuse their original slot even when other stages intervene. Stage processing follows descriptor file order, and cache/module names include the preceding stage descriptors so incompatible program contexts do not share compiled modules. Reflection-cache version 7 preserves each stage's loose-uniform declarations. Cache hits restore and check those declarations against the current program's assigned slots. Missing or incompatible SPIR-V or reflection causes the stage to be regenerated; OpenGL also requires cached GLSL. Regeneration writes all three cache entries.
+- Cached SPIR-V must contain whole, nonempty words; incomplete binary reads are regenerated rather than passed to a backend.
+- SPIR-V reflection records vertex input locations, including matrix columns and array elements, and the reflection cache persists them. Built-in inputs are excluded; unsupported input types or locations fail reflection. Vulkan uses the reflected locations to omit unused vertex attributes from pipeline descriptions without inventing missing attributes. Shader reloads clear and rebuild this mask.
 - Prefer GLSL expression defines over helper functions so preprocessed shaders stay as inline as practical. Parenthesize macro arguments, keep bodies expression-only, and do not pass side-effecting or expensive expressions to macros that evaluate an argument more than once.
 - `GLSLToSPIRV` targets Vulkan 1.4 / SPIR-V 1.6 for Vulkan and the OpenGL 4.5 environment / SPIR-V 1.0 for OpenGL (`debug.renderer.useSPIRVForOpenGL` ingests the latter directly). Compiled-binary and reflection cache paths include `s_compiledShaderCacheVersion`; bump it whenever compiler targets change.
-- `Source/UnitTests/Test-Engine/ShaderCompilerTests.cpp` exercises repeated shader-thread initialization, diagnostics, and include expansion. CPU checks do not replace GPU execution or image-based rendering checks.
+- `Source/UnitTests/Test-Engine/ShaderCompilerTests.cpp` exercises engine include expansion across the shader sources, loose-uniform cache restoration, OIT composition output and sampler variants, and representative terrain, water, vegetation, alpha-discard and shadow variants for both APIs. It links terrain display/prepass stages and grass OIT/prepass/shadow stages with and without overridden node indices. Shadow variants check that moment calculation precedes discard; alpha-discard variants check that surface and gradient preparation happens first. Terrain variants verify that their existing `NO_REFLECTIONS` configuration does not generate an IBL lookup. These CPU checks do not replace GPU execution or image-based rendering checks.
 
 ## Descriptor ownership and invariants
 
@@ -77,6 +92,24 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
   transfer their live bindings only after all overlapping types and sizes pass
   validation; later values overwrite earlier ones, and successful transfers empty
   the source. Rejected transfers leave both sides unchanged.
+- `UniformData::set` rejects dynamic vector objects: upload their `data()` and
+  `size()` instead. A binding's stored range cannot grow or shrink in place, so
+  use distinct persistent payloads when shader variants require different array
+  lengths.
+- Additional commands recorded by a `RenderPackage` can use
+  `additionalPushConstantsCmd()` to share its persistent uniform storage. This
+  lets vegetation culling supply chunk-specific uniforms without referring to a
+  stack object that expires before deferred command submission. Preparation
+  commands are copied separately before the view's render passes; ordinary
+  additional commands remain part of the draw packet. Packages are non-copyable
+  and remain at stable addresses when a rendering component adds packages for
+  new passes; queued commands retain pointers into those packages.
+- Vegetation compute and grass draws use the shared `PER_PASS` instance-buffer
+  slots. Tree draws bind their own buffer at `PER_DRAW` slot 13 and supply a
+  per-node absolute instance offset for the mesh's contiguous range inside its
+  chunk, so draw ordering and multiple terrains cannot select another range.
+  Slot 13 is also used for bones; a rendering component must not request both
+  instance and animation buffers.
 - `DebugView` explicitly initializes `skipLinearisation` to zero so shared
   `fbPreview` programs do not inherit the splash screen's encoded-output mode.
 - OpenGL retains the same flagged-slot cache and replays known slots on pipeline

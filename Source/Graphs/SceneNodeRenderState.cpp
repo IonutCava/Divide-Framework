@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/SceneNodeRenderState.h"
 
@@ -21,7 +22,7 @@ bool SceneNodeRenderState::drawState(const RenderStagePass stagePass) const {
         const bool subIndexMatch = exclusion._pass == RenderStagePass::PassIndex::COUNT ||
             exclusion._pass == stagePass._pass; //Sub pass index 2 match or all index 2 sub pass indices
 
-        return mainIndexMatch || subIndexMatch;
+        return mainIndexMatch && subIndexMatch;
     };
 
     for (const RenderStagePass exclussionStagePass : _exclusionStagePasses) {

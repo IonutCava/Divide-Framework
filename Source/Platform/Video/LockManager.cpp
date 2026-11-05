@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/LockManager.h"
 
@@ -129,14 +129,18 @@ namespace Divide
             const BufferLockPoolEntry& syncLockInstance = s_bufferLockPool[lock._syncObjHandle._id];
             if ( syncLockInstance._generation != lock._syncObjHandle._generation )
             {
-                error = !(syncLockInstance._generation > lock._syncObjHandle._generation);
+                error |= !(syncLockInstance._generation > lock._syncObjHandle._generation);
                 DIVIDE_GPU_ASSERT( !error );
                 continue;
             }
 
-            if ( !Overlaps( testRange, lock._range ) ||
-                 !waitForLockedRangeLocked( syncLockInstance._ptr, testRange, lock ) )
+            if ( !Overlaps( testRange, lock._range ) )
             {
+                _swapLocks.push_back( lock );
+            }
+            else if ( !waitForLockedRangeLocked( syncLockInstance._ptr, testRange, lock ) )
+            {
+                error = true;
                 _swapLocks.push_back( lock );
             }
         }

@@ -6,6 +6,7 @@
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Editor/Headers/Editor.h"
 
@@ -24,10 +25,12 @@
 #include "Platform/Video/Headers/RenderStateBlock.h"
 
 #include "Rendering/Headers/Renderer.h"
+#include "Rendering/Lighting/Headers/ShadowCasterBounds.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
 #include "Rendering/Camera/Headers/Camera.h"
 
 #include "Scenes/Headers/SceneState.h"
+#include "Scenes/Headers/Scene.h"
 
 #include "ECS/Components/Headers/AnimationComponent.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
@@ -114,6 +117,14 @@ namespace Divide
             return executorBuffer._nodeProcessedThisFrame.insert(indirectionIDX).second;
         }
 
+        void MarkMaterialUsed( RenderPassExecutor::MaterialLookupInfo& material ) noexcept
+        {
+            static_assert( alignof( RenderPassExecutor::MaterialLookupInfo ) >= std::atomic_ref<size_t>::required_alignment );
+            static_assert( offsetof( RenderPassExecutor::MaterialLookupInfo, _framesSinceLastUsed ) %
+                           std::atomic_ref<size_t>::required_alignment == 0u );
+            std::atomic_ref{ material._framesSinceLastUsed }.store( 0u, std::memory_order_relaxed );
+        }
+
         template<typename DataContainer>
         void Reset(ExecutorBuffer<DataContainer>& executorBuffer)
         {
@@ -142,8 +153,7 @@ namespace Divide
     ExecutorBuffer<RenderPassExecutor::BufferTransformData>   RenderPassExecutor::s_transformBuffer;
     ExecutorBuffer<RenderPassExecutor::BufferIndirectionData> RenderPassExecutor::s_indirectionBuffer;
     
-    Pipeline* RenderPassExecutor::s_OITCompositionPipeline = nullptr;
-    Pipeline* RenderPassExecutor::s_OITCompositionMSPipeline = nullptr;
+    std::array<Pipeline*, to_base( RenderPassExecutor::OITCompositionVariant::COUNT )> RenderPassExecutor::s_OITCompositionPipelines{};
     Pipeline* RenderPassExecutor::s_ResolveGBufferPipeline = nullptr;
 
 
@@ -230,8 +240,7 @@ namespace Divide
     void RenderPassExecutor::OnShutdown( [[maybe_unused]] GFXDevice& gfx )
     {
         s_globalDataInit = false;
-        s_OITCompositionPipeline = nullptr;
-        s_OITCompositionMSPipeline = nullptr;
+        s_OITCompositionPipelines.fill( nullptr );
         s_ResolveGBufferPipeline = nullptr;
         Reset(s_materialBuffer);
         Reset(s_transformBuffer);
@@ -337,8 +346,7 @@ namespace Divide
     }
 
     void RenderPassExecutor::PostInit( GFXDevice& context,
-                                       const Handle<ShaderProgram> OITCompositionShader,
-                                       const Handle<ShaderProgram> OITCompositionShaderMS,
+                                       const OITCompositionShaders& OITShaders,
                                        const Handle<ShaderProgram> ResolveGBufferShaderMS )
     {
         if ( !s_globalDataInit )
@@ -358,9 +366,11 @@ namespace Divide
             state0.blendOp( BlendOperation::ADD );
             state0.blendSrc( BlendProperty::INV_SRC_ALPHA );
             state0.blendDest( BlendProperty::ONE );
+            state0.blendOpAlpha( BlendOperation::ADD );
+            state0.blendSrcAlpha( BlendProperty::ZERO );
+            state0.blendDestAlpha( BlendProperty::ONE );
 
             BlendingSettings& normalState = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::NORMALS )];
-            normalState.enabled( true );
             normalState.blendOp( BlendOperation::ADD );
             normalState.blendSrc( BlendProperty::SRC_ALPHA );
             normalState.blendDest( BlendProperty::INV_SRC_ALPHA );
@@ -368,11 +378,16 @@ namespace Divide
             normalState.blendSrcAlpha( BlendProperty::ZERO );
             normalState.blendDestAlpha( BlendProperty::ONE );
 
-            pipelineDescriptor._shaderProgramHandle = OITCompositionShader;
-            s_OITCompositionPipeline = context.newPipeline( pipelineDescriptor );
-
-            pipelineDescriptor._shaderProgramHandle = OITCompositionShaderMS;
-            s_OITCompositionMSPipeline = context.newPipeline( pipelineDescriptor );
+            for ( const bool writeNormals : { false, true } )
+            {
+                normalState.enabled( writeNormals );
+                for ( const bool useMSAA : { false, true } )
+                {
+                    const auto variant = SelectOITCompositionVariant( writeNormals, useMSAA );
+                    pipelineDescriptor._shaderProgramHandle = OITShaders[to_base( variant )];
+                    s_OITCompositionPipelines[to_base( variant )] = context.newPipeline( pipelineDescriptor );
+                }
+            }
         }
     }
 
@@ -489,13 +504,12 @@ namespace Divide
 
         ParseResult ret{};
         indirectionIDXOut = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry(rComp);
-        U32 materialIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionNodeData(rComp)._materialIDX;
 
         if (!NodeNeedsUpdate(s_materialBuffer, indirectionIDXOut))
         {
-            materialIDXOut = materialIDX;
             return ret;
         }
+        U32 materialIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionNodeData(rComp)._materialIDX;
 
         NodeMaterialData tempData{};
         // Get the colour matrix (base colour, metallic, etc)
@@ -512,6 +526,7 @@ namespace Divide
             if (materialIDX != NodeIndirectionData::INVALID_IDX &&
                 s_materialBuffer._data._freeList[materialIDX]._hash == materialHash)
             {
+                MarkMaterialUsed( s_materialBuffer._data._freeList[materialIDX] );
                 materialIDXOut = materialIDX;
                 return ret;
             }
@@ -520,11 +535,12 @@ namespace Divide
             // Otherwise, we have an updated material, so try to match against a different one first
             for ( size_t idx = 0u; idx < infoContainer.size(); ++idx )
             {
-                auto& [hash, framesSinceLastUsed ] = infoContainer[idx];
-                if ( hash == materialHash )
+                auto& entry = infoContainer[idx];
+                if ( entry._hash == materialHash )
                 {
-                    framesSinceLastUsed = 0u;
-                    Attorney::RenderingCompRenderPassExecutor::setMaterialIDX(rComp, to_U32(idx));
+                    MarkMaterialUsed( entry );
+                    materialIDX = to_U32( idx );
+                    Attorney::RenderingCompRenderPassExecutor::setMaterialIDX(rComp, materialIDX);
                     materialIDXOut = materialIDX;
 
                     ret._updateIndirection = true;
@@ -922,7 +938,30 @@ namespace Divide
         queueParams._filterByBinType = false;
         _renderQueue->populateRenderQueues( queueParams, _renderQueuePackages );
 
-        return buildDrawCommands( index, params, doPrePass, doOITPass, bufferInOut, memCmdInOut );
+        const size_t queueSize = buildDrawCommands( index, params, doPrePass, doOITPass, bufferInOut, memCmdInOut );
+        _preparationOwners.clear();
+        for ( const auto& [rComp, pkg] : _renderQueuePackages )
+        {
+            RenderingComponent* owner = Attorney::RenderingCompRenderPass::preparationOwner( *rComp );
+            if ( owner == nullptr )
+            {
+                AppendPreparationCommands( *pkg, bufferInOut );
+            }
+            else
+            {
+                _preparationOwners.emplace_back( owner, owner == rComp ? pkg : nullptr );
+            }
+        }
+        VisitPreparationOwners( _preparationOwners, [&]( RenderingComponent& owner, RenderPackage* prepared )
+        {
+            if ( prepared == nullptr )
+            {
+                prepared = &Attorney::RenderingCompRenderPass::prepareDependency( owner, cameraSnapshot, stagePass, memCmdInOut );
+            }
+            AppendPreparationCommands( *prepared, bufferInOut );
+        } );
+
+        return queueSize;
     }
 
     void RenderPassExecutor::prepareRenderQueues( const RenderPassParams& params,
@@ -941,12 +980,12 @@ namespace Divide
         _renderQueue->clear( targetBin );
 
         Mutex memCmdLock;
-        GFX::MemoryBarrierCommand postDrawMemCmd{};
 
         const U32 nodeCount = to_U32( _visibleNodesCache.size() );
 
         const auto cbk = [&]( const Task* /*parentTask*/, const U32 start, const U32 end )
         {
+            GFX::MemoryBarrierCommand postDrawMemCmd{};
             for ( U32 i = start; i < end; ++i )
             {
                 const VisibleNode& node = _visibleNodesCache.node( i );
@@ -979,21 +1018,7 @@ namespace Divide
 
         _renderQueuePackages.clear();
 
-        // Draw everything in the depth pass but only draw stuff from the translucent bin in the OIT Pass and everything else in the colour pass
-        RenderQueue::PopulateQueueParams queueParams{};
-
-        queueParams._stagePass = stagePass;
-        if ( IsDepthPass( stagePass ) )
-        {
-            queueParams._binType = RenderBinType::COUNT;
-            queueParams._filterByBinType = false;
-        }
-        else
-        {
-            queueParams._binType = RenderBinType::TRANSLUCENT;
-            queueParams._filterByBinType = !transparencyPass;
-        }
-
+        const RenderQueue::PopulateQueueParams queueParams = RenderQueue::PopulateQueueParams::ForPass( stagePass, transparencyPass );
         _renderQueue->populateRenderQueues( queueParams, _renderQueuePackages );
 
 
@@ -1097,6 +1122,13 @@ namespace Divide
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
+            PostFX& postFX = _context.getRenderer().postFX();
+            {
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 3u, ShaderStageVisibility::FRAGMENT );
+                const bool useSSR = UsesScreenSpaceReflections(
+                    params._stagePass._stage, postFX.getFilterState( FilterType::FILTER_SS_REFLECTIONS ) );
+                Set( binding._data, postFX.getFilterBatch().ssrTexture( useSSR ), Texture::DefaultSampler() );
+            }
             if ( params._stagePass._stage == RenderStage::DISPLAY )
             {
                 const RenderTarget* MSSource = _context.renderTargetPool().getRenderTarget( params._target );
@@ -1156,6 +1188,8 @@ namespace Divide
         const auto& accumAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ACCUMULATION );
         const auto& revAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::REVEALAGE );
         const auto& normalsAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
+        const RenderTarget* target = _context.renderTargetPool().getRenderTarget( params._target );
+        const bool writeNormals = target->hasAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
 
         // Step2: Composition pass
         // Don't clear depth & colours and do not write to the depth buffer
@@ -1164,12 +1198,13 @@ namespace Divide
         beginRenderPassCompCmd->_target = params._target;
         beginRenderPassCompCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::ALBEDO )] = true;
         beginRenderPassCompCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::VELOCITY )] = false;
-        beginRenderPassCompCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::NORMALS )] = true;
+        beginRenderPassCompCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::NORMALS )] = writeNormals;
         beginRenderPassCompCmd->_descriptor._autoResolveMSAA = params._targetDescriptorMainPass._autoResolveMSAA;
         beginRenderPassCompCmd->_descriptor._keepMSAADataAfterResolve = params._targetDescriptorMainPass._keepMSAADataAfterResolve;
 
         GFX::EnqueueCommand<GFX::SetCameraCommand>( bufferInOut )->_cameraSnapshot = Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot();
-        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = params._useMSAA ? s_OITCompositionMSPipeline : s_OITCompositionPipeline;
+        const auto variant = SelectOITCompositionVariant( writeNormals, params._useMSAA );
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = s_OITCompositionPipelines[to_base( variant )];
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -1181,6 +1216,7 @@ namespace Divide
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, revAtt->texture(), revAtt->_descriptor._sampler );
             }
+            if ( writeNormals )
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, normalsAtt->texture(), normalsAtt->_descriptor._sampler );
@@ -1240,7 +1276,7 @@ namespace Divide
         }
     }
 
-    bool RenderPassExecutor::validateNodesForStagePass( const RenderStagePass stagePass )
+    bool RenderPassExecutor::validateNodesForStagePass( const RenderStagePass stagePass, bool* const pendingShaderOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -1253,6 +1289,18 @@ namespace Divide
             {
                 node._materialReady = false;
                 ret = true;
+                if ( pendingShaderOut != nullptr && !*pendingShaderOut && node._node != nullptr )
+                {
+                    const RenderingComponent* rComp = node._node->get<RenderingComponent>();
+                    if ( rComp != nullptr && rComp->renderOptionEnabled( RenderingComponent::RenderOptions::IS_VISIBLE ) )
+                    {
+                        const Handle<Material> material = rComp->getMaterialInstance();
+                        if ( material != INVALID_HANDLE<Material> && Get( material )->shaderPending( stagePass ) )
+                        {
+                            *pendingShaderOut = true;
+                        }
+                    }
+                }
             }
         }
         return ret;
@@ -1269,6 +1317,8 @@ namespace Divide
             NOP();
         }
         const CameraSnapshot& camSnapshot = camera->snapshot();
+        const CameraSnapshot& activeCameraSnapshot =
+            _parent.parent().projectManager()->activeProject()->getActiveScene()->playerCamera( playerIdx )->snapshot();
 
         GFX::BeginDebugScopeCommand* beginDebugScopeCmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut );
         if ( params._passName.empty() )
@@ -1299,15 +1349,32 @@ namespace Divide
             Attorney::ProjectManagerRenderPass::initDefaultCullValues( _parent.parent().projectManager().get(), _stage, cullParams );
 
             cullParams._clippingPlanes = params._clippingPlanes;
-            cullParams._stage = _stage;
+            cullParams._stagePass = params._stagePass;
+            cullParams._stagePass._passType = RenderPassType::COUNT;
             cullParams._minExtents = params._minExtents;
             cullParams._ignoredGUIDS = { &ignoreGUID, 1 };
             cullParams._cameraEyePos = camSnapshot._eye;
+            cullParams._rangeCameraEyePos = _stage == RenderStage::NODE_PREVIEW ? camSnapshot._eye : activeCameraSnapshot._eye;
             cullParams._frustum = &camera->getFrustum();
-            cullParams._cullMaxDistance = std::min( cullParams._cullMaxDistance, camSnapshot._zPlanes.y );
             cullParams._maxLoD = params._maxLoD;
 
             U16 cullFlags = to_base( CullOptions::DEFAULT_CULL_OPTIONS );
+            if ( _stage == RenderStage::REFLECTION )
+            {
+                const auto& reflection = _context.context().config().rendering.reflection;
+                if ( !reflection.includeGrass )
+                {
+                    cullFlags |= to_base( CullOptions::CULL_REFLECTION_GRASS );
+                }
+                if ( !reflection.includeTrees )
+                {
+                    cullFlags |= to_base( CullOptions::CULL_REFLECTION_TREES );
+                }
+                if ( !reflection.includeDynamicObjects )
+                {
+                    cullFlags |= to_base( CullOptions::CULL_REFLECTION_DYNAMIC_OBJECTS );
+                }
+            }
             if ( !( params._drawMask & to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_DYNAMIC_NODES ) ) ) )
             {
                 cullFlags |= to_base( CullOptions::CULL_DYNAMIC_NODES );
@@ -1339,37 +1406,36 @@ namespace Divide
             if ( doPrePass )
             {
                 params._stagePass._passType = RenderPassType::PRE_PASS;
-                hasInvalidNodes = validateNodesForStagePass( params._stagePass ) || hasInvalidNodes;
+                hasInvalidNodes = validateNodesForStagePass( params._stagePass, params._pendingShaderOut ) || hasInvalidNodes;
             }
             if ( doMainPass )
             {
                 params._stagePass._passType = RenderPassType::MAIN_PASS;
-                hasInvalidNodes = validateNodesForStagePass( params._stagePass ) || hasInvalidNodes;
+                hasInvalidNodes = validateNodesForStagePass( params._stagePass, params._pendingShaderOut ) || hasInvalidNodes;
             }
             if ( doOITPass )
             {
                 params._stagePass._passType = RenderPassType::OIT_PASS;
-                hasInvalidNodes = validateNodesForStagePass( params._stagePass ) || hasInvalidNodes;
+                hasInvalidNodes = validateNodesForStagePass( params._stagePass, params._pendingShaderOut ) || hasInvalidNodes;
             }
             else if ( drawTranslucents )
             {
                 params._stagePass._passType = RenderPassType::TRANSPARENCY_PASS;
-                hasInvalidNodes = validateNodesForStagePass( params._stagePass ) || hasInvalidNodes;
+                hasInvalidNodes = validateNodesForStagePass( params._stagePass, params._pendingShaderOut ) || hasInvalidNodes;
             }
         }
 
-        if ( params._feedBackContainer != nullptr )
+        if ( params._shadowBoundsFeedback != nullptr )
         {
-            params._feedBackContainer->resize( _visibleNodesCache.size() );
-            std::memcpy( params._feedBackContainer->data(), _visibleNodesCache.data(), _visibleNodesCache.size() * sizeof( VisibleNode ) );
-            if ( hasInvalidNodes )
+            for ( size_t i = 0u; i < _visibleNodesCache.size(); ++i )
             {
-                // This may hurt ... a lot ... -Ionut
-                dvd_erase_if( *params._feedBackContainer, []( VisibleNode& node )
-                              {
-                                  return node._node == nullptr || !node._materialReady;
-                              } );
-            };
+                const VisibleNode& node = _visibleNodesCache.node( i );
+                if ( node._node != nullptr && node._materialReady &&
+                     node._node->getNode().type() == SceneNodeType::TYPE_SUBMESH )
+                {
+                    params._shadowBoundsFeedback->add( node._node->get<BoundsComponent>()->getBoundingBox() );
+                }
+            }
         }
 
         // Tell the Rendering API to draw from our desired PoV

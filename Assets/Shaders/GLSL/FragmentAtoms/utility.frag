@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #ifndef _UTILITY_FRAG_
 #define _UTILITY_FRAG_
 
@@ -25,6 +27,8 @@ vec3 WorldSpacePos(in vec2 texCoords, in float depthIn, in mat4 invProjMatrix, i
 #define ToLinear(SRGB) pow((SRGB).rgb, vec3(detail__gamma))
 #define ToSRGB(RGB) pow((RGB).rgb, vec3(detail__gamma__inv))
 #define dvd_screenPositionNormalised (gl_FragCoord.xy / dvd_ViewPort.zw)
+#define SampleScreenTexture(S) textureGrad((S), dvd_screenPositionNormalised, \
+                                           vec2(1.f / dvd_ViewPort.z, 0.f), vec2(0.f, 1.f / dvd_ViewPort.w))
 
 // Accurate variants from Frostbite notes:
 // https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -56,11 +56,10 @@ namespace Attorney
 
 class TerrainChunk
 {
-    static U32 _chunkID;
     friend class Attorney::TerrainChunkVegetation;
 
    public:
-    TerrainChunk(Terrain* parentTerrain, QuadtreeNode& parentNode) noexcept;
+    TerrainChunk(Terrain* parentTerrain, QuadtreeNode& parentNode, U32 id) noexcept;
 
     void load(U8 depth, const uint2 pos, U32 targetChunkDimension, uint2 HMSize, BoundingBox& bbInOut);
 
@@ -109,6 +108,11 @@ class TerrainChunkVegetation
     static VegetationInstance* getVegetation(const Divide::TerrainChunk& chunk) noexcept
     {
         return chunk._vegetation.get();
+    }
+
+    static void destroyVegetation(Divide::TerrainChunk& chunk) noexcept
+    {
+        chunk._vegetation.reset();
     }
 
     friend class Divide::Terrain;

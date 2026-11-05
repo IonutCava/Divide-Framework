@@ -89,6 +89,35 @@ struct TextureUpdateLayout
     size_t _requiredSize{ 0u };
 };
 
+struct TextureTransparencyInfo
+{
+    static constexpr U8 PIXEL_THRESHOLD = 5u;
+
+    void add( const U8 alpha ) noexcept
+    {
+        if ( alpha <= 250u && _nonOpaquePixels < PIXEL_THRESHOLD )
+        {
+            ++_nonOpaquePixels;
+        }
+        _hasVisiblePixel |= alpha > 1u;
+        _hasTranslucentPixel |= alpha > 1u && alpha <= 250u;
+    }
+
+    void merge( const TextureTransparencyInfo& other ) noexcept
+    {
+        _nonOpaquePixels = to_U8( std::min<U32>( PIXEL_THRESHOLD, to_U32( _nonOpaquePixels ) + other._nonOpaquePixels ) );
+        _hasVisiblePixel |= other._hasVisiblePixel;
+        _hasTranslucentPixel |= other._hasTranslucentPixel;
+    }
+
+    [[nodiscard]] bool hasTransparency() const noexcept { return _nonOpaquePixels >= PIXEL_THRESHOLD && _hasVisiblePixel; }
+    [[nodiscard]] bool hasTranslucency() const noexcept { return hasTransparency() && _hasTranslucentPixel; }
+
+    U8 _nonOpaquePixels{ 0u };
+    bool _hasVisiblePixel{ false };
+    bool _hasTranslucentPixel{ false };
+};
+
 /// An API-independent representation of a texture
 NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
 {
@@ -112,7 +141,9 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         [[nodiscard]] static TextureDescriptor DefaultTextureDescriptor( TextureType type, GFXDataFormat sampledDataType, bool depth ) noexcept;
         [[nodiscard]] static const SamplerDescriptor DefaultSampler() noexcept;
         [[nodiscard]] static U8 GetBytesPerPixel( GFXDataFormat format, GFXImageFormat baseFormat, GFXImagePacking packing ) noexcept;
+        [[nodiscard]] static bool HasValidFileLayerCount( const TextureDescriptor& descriptor, U16 imageLayers ) noexcept;
         [[nodiscard]] static U16 TextureLayersForImageLayers( TextureType type, U16 imageLayers ) noexcept;
+        [[nodiscard]] static U16 ResolveMipCount( const vec3<U16>& dimensions, MipMappingState state, U16 suppliedMipCount ) noexcept;
         [[nodiscard]] static bool GetViewLayerRange( TextureType sourceType, TextureType targetType, U16 textureLayers,
                                                      SubRange requested, SubRange& rangeOut ) noexcept;
 
@@ -160,9 +191,9 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         PROPERTY_R( U16, depth, 1u );
         /// Layer count for array textures and cubemaps
         PROPERTY_R( U16, layerCount, 1u );
-        /// If the texture has an alpha channel and at least one pixel is translucent, return true
+        /// True when the inspected alpha contains a meaningful partially transparent value.
         PROPERTY_R( bool, hasTranslucency, false );
-        /// If the texture has an alpha channel and at least on pixel is fully transparent and no pixels are partially transparent, return true
+        /// True when the inspected alpha contains a meaningful non-opaque region.
         PROPERTY_R( bool, hasTransparency, false );
         PROPERTY_R( bool, loadedFromFile, false );
         [[nodiscard]] U8 numChannels() const noexcept;
@@ -171,16 +202,17 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         bool postLoad() override;
      protected:
         /// Use STB to load a file into a Texture Object
-        bool loadFile( const ResourcePath& path, std::string_view name, ImageTools::ImageData& fileData );
-        bool checkTransparency( const ResourcePath& path, std::string_view name, ImageTools::ImageData& fileData );
+        bool loadFile( const ResourcePath& path, std::string_view name, ImageTools::ImageData& fileData, TextureTransparencyInfo& transparency );
+        bool checkTransparency( const ResourcePath& path, std::string_view name, const ImageTools::ImageData& fileData,
+                                U16 firstLayer, TextureTransparencyInfo& transparency );
         /// Load texture data using the specified file name
         bool loadInternal();
 
-        void validateDescriptor(bool makeImmutable);
+        void validateDescriptor( bool makeImmutable, U16 suppliedMipCount );
 
         virtual void loadDataInternal( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment ) = 0;
         virtual void loadDataInternal( std::span<const Byte> data, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) = 0;
-        virtual ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable );
+        virtual ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable, U16 suppliedMipCount = 0u );
         virtual void submitTextureData(ImageUsage& crtUsageInOut);
 
     protected:

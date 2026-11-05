@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -208,7 +208,7 @@ class Scene : public Resource, public PlatformContextComponent {
                       void            addMusic(MusicType type, const std::string_view name, const ResourcePath& srcFile);
         [[nodiscard]] SceneGraphNode* addSky(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
         [[nodiscard]] SceneGraphNode* addInfPlane(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
-                      void            addWater(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
+        [[nodiscard]] SceneGraphNode* addWater(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
                       void            addTerrain(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
         [[nodiscard]] SceneGraphNode* addParticleEmitter(const std::string_view name, std::shared_ptr<ParticleData> data,SceneGraphNode* parentNode);
 #pragma endregion
@@ -330,11 +330,13 @@ class Scene : public Resource, public PlatformContextComponent {
 
     private:
         void processInternalTimers( U64 appDeltaUS, U64 gameDeltaUS, vector<TimerStruct>& timers );
+        [[nodiscard]] Camera* cameraForInput(PlayerIndex idx) const;
         /// Returns true if the camera was moved/rotated/etc
         bool updateCameraControls(PlayerIndex idx) const;
         void updateSelectionData(PlayerIndex idx, DragSelectData& data);
         [[nodiscard]] bool checkCameraUnderwater(PlayerIndex idx) const;
         [[nodiscard]] bool checkCameraUnderwater(const Camera& camera) const noexcept;
+        [[nodiscard]] bool ensureGlobalWater();
 
     protected:
         Project&         _parent;
@@ -360,6 +362,11 @@ class Scene : public Resource, public PlatformContextComponent {
 
         vector<TimerStruct> _taskTimers;
         vector<TimerStruct> _guiTimers;
+        SceneGraphNode* _globalWaterNode = nullptr;
+        Str<64> _globalWaterNodeName = "Water";
+        F32 _globalWaterHeight = 0.f;
+        U32 _globalWaterSize = 4608u;
+        U32 _globalWaterDepth = 500u;
 };
 
 namespace Attorney {

@@ -74,7 +74,7 @@ protected:
     explicit ShadowMapGenerator(GFXDevice& context, ShadowType type) noexcept;
 
     friend class ShadowMap;
-    virtual void render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) = 0;
+    virtual void render(const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) = 0;
 
     virtual void updateMSAASampleCount([[maybe_unused]] const U8 sampleCount) { }
 
@@ -91,6 +91,15 @@ NOINITVTABLE_CLASS(ShadowMap)
     static constexpr U8 MAX_SHADOW_FRAME_LIFETIME = 32u;
     static constexpr U8 WORLD_AO_LAYER_INDEX = (Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT) ;
 
+    [[nodiscard]] static constexpr RTBlitEntry ScratchBlit( const U16 destinationLayer ) noexcept
+    {
+        return
+        {
+            ._input = { ._layerOffset = 0u, ._index = 0u },
+            ._output = { ._layerOffset = destinationLayer, ._index = 0u }
+        };
+    }
+
   public:
     // Init and destroy buffers, shaders, etc
     static void initShadowMaps(GFXDevice& context);
@@ -106,7 +115,7 @@ NOINITVTABLE_CLASS(ShadowMap)
     static bool freeShadowMapOffset(const Light& light);
     static bool tryReuseShadowMaps(const Light& light);
     static bool markShadowMapsUsed(Light& light);
-    static bool generateShadowMaps(const Camera& playerCamera, Light& light, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
+    static bool generateShadowMaps(const Camera& playerCamera, Light& light, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
 
     static ShadowType getShadowTypeForLightType(LightType type) noexcept;
     static LightType getLightTypeForShadowType(ShadowType type) noexcept;
@@ -117,18 +126,21 @@ NOINITVTABLE_CLASS(ShadowMap)
     static const RenderTargetHandle& getShadowMap(ShadowType type);
     static const RenderTargetHandle& getShadowMapCache(ShadowType type);
 
+    [[nodiscard]] static bool prepareDebugViewShader(LightType type);
     static void setDebugViewLight(GFXDevice& context, Light* light);
+    static void clearDebugViewLight(GFXDevice& context, const Light* light);
 
     static void setMSAASampleCount(ShadowType type, U8 sampleCount);
 
     static vector<Camera*>& shadowCameras(const ShadowType type) noexcept { return s_shadowCameras[to_base(type)]; }
 
-    static void generateWorldAO(const Camera& playerCamera, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
+    [[nodiscard]] static mat4<F32> generateWorldAO(const Camera& activeCamera, const float2& staticHeightRange, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
   protected:
       static bool commitLayerRange(Light& light);
       static bool freeShadowMapOffsetLocked(const Light& light);
       static bool tryReuseShadowMapsLocked(const Light& light);
+      static void setDebugViewLightLocked(GFXDevice& context, Light* light);
 
   protected:
     struct ShadowLayerData {

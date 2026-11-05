@@ -68,7 +68,7 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
     Attorney::SceneNodeLightComponent::setBounds(sgn->getNode(), BoundingBox(float3(-g_defaultLightDistance * 0.5f), float3(-g_defaultLightDistance * 0.5f)));
 
     _positionCache.set(VECTOR3_ZERO);
-    _feedbackContainers.resize(csmSplitCount());
+    _cascadeBoundsFeedback.resize(csmSplitCount());
 }
 
 void DirectionalLightComponent::lockDirection(const bool state) noexcept {

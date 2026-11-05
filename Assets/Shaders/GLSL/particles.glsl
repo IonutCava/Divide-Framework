@@ -1,5 +1,7 @@
 -- Vertex
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "nodeBufferedInput.cmn"
 
 layout(location = ATTRIB_POSITION)  in vec3 inVertexData;
@@ -38,6 +40,7 @@ layout(location = 0) out vec2 _colourOut;
 layout(location = ATTRIB_FREE_START + 0) in vec4 particleColour;
 
 void main() {
+    const vec2 moments = computeMoments();
     float alpha = particleColour.a;
 #ifdef HAS_TEXTURE
     alpha *= texture(texDiffuse0, vec3(VAR._texCoord, 0)).a;
@@ -46,7 +49,7 @@ void main() {
         discard;
     }
 
-    _colourOut = computeMoments();
+    _colourOut = moments;
 }
 
 -- Fragment

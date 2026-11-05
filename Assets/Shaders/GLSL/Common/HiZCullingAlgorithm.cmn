@@ -1,11 +1,14 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #ifndef _HIZ_CULL_CMN_
 #define _HIZ_CULL_CMN_
 
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D HiZBuffer;
 uniform vec2 dvd_viewSize;
-uniform vec4 dvd_frustumPlanes[6];
 #define viewProjectionMatrix PushData0
 #define viewMatrix PushData1
+
+#include "frustumCulling.cmn"
 
 struct AABB
 {
@@ -23,18 +26,6 @@ vec3 getHalfExtents(const in vec3 P, const in float R)
 }
 #endif //!USE_CUSTOM_EXTENTS
 
-
-bool SphereInFrustum(in vec3 pos, in float radius)
-{
-    for (int i = 0; i < 6; ++i)
-    {
-        if (dot(vec4(pos, 1.f), dvd_frustumPlanes[i]) + radius < 0.f)
-        {
-            return false;
-        }
-    }
-    return true;
-}
 
 const vec3 aabb_corners[8] =
 {

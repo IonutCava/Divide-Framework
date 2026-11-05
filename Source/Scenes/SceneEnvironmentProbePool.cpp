@@ -737,8 +737,8 @@ void SceneEnvironmentProbePool::createDebugView(const U16 layerIndex)
         }
 
         probeView->_shader = s_previewShader;
-        probeView->_shaderData.set(_ID("layer"), PushConstantType::INT, layerIndex);
-        probeView->_shaderData.set(_ID("face"), PushConstantType::INT, i % 6u);
+        probeView->_shaderData.set(_ID("layer"), PushConstantType::INT, to_I32(layerIndex));
+        probeView->_shaderData.set(_ID("face"), PushConstantType::INT, to_I32(i % 6u));
         if (i > 11)
         {
             Util::StringFormatTo( probeView->_name, "Probe_{}_Filtered_face_{}", layerIndex, i % 6u );

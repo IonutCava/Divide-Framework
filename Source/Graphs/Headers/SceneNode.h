@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2018-2026 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -39,6 +39,7 @@
 #include "Core/Headers/Profiler.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingBox.h"
 #include "Core/Resources/Headers/Resource.h"
+#include "ECS/Components/Headers/BoundsUpdateState.h"
 #include "ECS/Components/Headers/EditorComponent.h"
 #include "Platform/Video/Headers/GenericDrawCommand.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
@@ -122,7 +123,7 @@ class SceneNode : public CachedResource
     [[nodiscard]] inline SceneNodeRenderState& renderState() noexcept { return _renderState; }
     [[nodiscard]] inline const SceneNodeRenderState& renderState() const noexcept { return _renderState; }
 
-    [[nodiscard]] inline const BoundingBox& getBounds() const noexcept { return _boundingBox; }
+    [[nodiscard]] BoundingBox getBounds() const noexcept;
     [[nodiscard]] virtual bool boundsInWorldSpace() const noexcept { return false; }
 
     [[nodiscard]] inline U32 requiredComponentMask() const noexcept { return _requiredComponentMask; }
@@ -164,8 +165,10 @@ class SceneNode : public CachedResource
     SceneNodeRenderState _renderState;
 
     /// Bounds are local unless boundsInWorldSpace() is overridden.
+    mutable SharedMutex _boundsLock;
     BoundingBox _boundingBox{};
-    bool _boundsChanged = false;
+    std::atomic<U64> _boundsRevision{ 0u };
+    BoundsChangeCounter _boundsChanges;
 
 private:
     U32 _requiredComponentMask = to_U32(ComponentType::TRANSFORM);
@@ -218,28 +221,23 @@ class SceneNodeBoundsSystem
         node.setBounds(aabb);
     }
 
-    static bool boundsChanged(const SceneNode& node) noexcept
+    static U64 boundsChangeRevision(const SceneNode& node) noexcept
     {
-        return node._boundsChanged;
+        return node._boundsChanges.revision();
+    }
+
+    static U64 boundsRevision(const SceneNode& node) noexcept
+    {
+        return node._boundsRevision.load(std::memory_order_acquire);
     }
 
     static void setBoundsChanged(SceneNode& node) noexcept
     {
-        node._boundsChanged = true;
-    }
-
-    static bool clearBoundsChanged(SceneNode& node) noexcept
-    {
-        if (!node._boundsChanged)
-        {
-            return false;
-        }
-
-        node._boundsChanged = false;
-        return true;
+        node._boundsChanges.markChanged();
     }
 
     friend class Divide::BoundsSystem;
+    friend class Divide::SceneGraphNode;
 };
 
 class SceneNodeLightComponent

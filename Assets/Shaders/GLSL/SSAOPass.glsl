@@ -1,5 +1,7 @@
 --Fragment.SSAOCalc
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 /*******************************************************************************
 Copyright (C) 2013 John Chapman
 
@@ -278,6 +280,8 @@ void main() {
 
 --Fragment.SSAODownsample
 
+#include "ssaoResampling.cmn"
+
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texDepthMap;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texNormal;
 
@@ -315,25 +319,27 @@ void main()
                                    ivec2(0, 1),
                                    ivec2(1, 1),
                                    ivec2(1, 0));
-   float d[] = float[] (
-      textureOffset(texDepthMap, VAR._texCoord, offsets[0]).r,
-      textureOffset(texDepthMap, VAR._texCoord, offsets[1]).r,
-      textureOffset(texDepthMap, VAR._texCoord, offsets[2]).r,
-      textureOffset(texDepthMap, VAR._texCoord, offsets[3]).r);
- 
-   vec3 pn[] = vec3[](
-       textureOffset(texNormal, VAR._texCoord, offsets[0]).rga,
-       textureOffset(texNormal, VAR._texCoord, offsets[1]).rga,
-       textureOffset(texNormal, VAR._texCoord, offsets[2]).rga,
-       textureOffset(texNormal, VAR._texCoord, offsets[3]).rga);
+   const ivec2 sourceSize = textureSize(texDepthMap, 0);
+   const ivec2 targetSize = (sourceSize + 1) / 2;
+   const ivec2 targetPixel = ivec2(VAR._texCoord * vec2(targetSize));
+   const ivec2 sourceMax = sourceSize - 1;
+   float d[4];
+   vec2 pn[4];
+   for (int i = 0; i < 4; ++i)
+   {
+       const ivec2 sourcePixel = SSAO_DOWNSAMPLE_SOURCE_PIXEL(targetPixel, offsets[i], sourceMax);
+       d[i] = texelFetch(texDepthMap, sourcePixel, 0).r;
+       pn[i] = texelFetch(texNormal, sourcePixel, 0).rg;
+   }
 
    const int i = representativeDepthIndex(vec4(d[0], d[1], d[2], d[3]));
-   _outColour = vec3(d[i], pn[i].rg);
+   _outColour = vec3(d[i], pn[i]);
 }
 
 --Fragment.SSAOUpsample
 
 #include "utility.frag"
+#include "ssaoResampling.cmn"
 
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texSSAOLinear;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texDepthMap;
@@ -342,40 +348,39 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 3) uniform sampler2D texSSAONearest;
 
 layout(location = 0) out float _ssaoOut;
 
-float nearest_depth_ao() {
-    float d[] = float[](
-        textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(0, 0)).r,
-        textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(0, 1)).r,
-        textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(1, 0)).r,
-        textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(1, 1)).r);
+void main()
+{
+    const ivec2 offsets[] = ivec2[](ivec2(0, 0),
+                                    ivec2(0, 1),
+                                    ivec2(1, 0),
+                                    ivec2(1, 1));
+    const ivec2 sourceSize = textureSize(texSSAONormalsDepth, 0);
+    const ivec2 base = ivec2(SSAO_UPSAMPLE_SOURCE_POSITION(VAR._texCoord, vec2(sourceSize)));
+    const ivec2 sourceMax = sourceSize - 1;
+    float d[4];
+    float ao[4];
+    vec3 n[4];
+    for (int i = 0; i < 4; ++i)
+    {
+        const ivec2 sourcePixel = SSAO_CLAMP_SOURCE_PIXEL(base, offsets[i], ivec2(0), sourceMax);
+        const vec3 depthAndNormal = texelFetch(texSSAONormalsDepth, sourcePixel, 0).rgb;
+        d[i] = depthAndNormal.r;
+        n[i] = unpackNormal(depthAndNormal.gb);
+        ao[i] = texelFetch(texSSAONearest, sourcePixel, 0).r;
+    }
 
-    float ao[] = float[](
-        textureOffset(texSSAONearest, VAR._texCoord, ivec2(0, 0)).r,
-        textureOffset(texSSAONearest, VAR._texCoord, ivec2(0, 1)).r,
-        textureOffset(texSSAONearest, VAR._texCoord, ivec2(1, 0)).r,
-        textureOffset(texSSAONearest, VAR._texCoord, ivec2(1, 1)).r);
-
-    float d0 = texture(texDepthMap, VAR._texCoord).r;
+    const float d0 = texture(texDepthMap, VAR._texCoord).r;
     int best_depth_idx = 0;
     float min_dist = abs(d0 - d[0]);
-    for (int i = 1; i < 4; i++) {
-        float dist = abs(d0 - d[i]);
-
-        if (min_dist > dist) {
+    for (int i = 1; i < 4; ++i)
+    {
+        const float dist = abs(d0 - d[i]);
+        if (min_dist > dist)
+        {
             min_dist = dist;
             best_depth_idx = i;
         }
     }
-
-    return ao[best_depth_idx];
-}
-
-void main() {
-    vec3 n[] = vec3[](
-        unpackNormal(textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(0, 0)).gb),
-        unpackNormal(textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(0, 1)).gb),
-        unpackNormal(textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(1, 0)).gb),
-        unpackNormal(textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(1, 1)).gb));
 
     float dot01 = dot(n[0], n[1]);
     float dot02 = dot(n[0], n[2]);
@@ -384,5 +389,5 @@ void main() {
     float min_dot = min(dot01, min(dot02, dot03));
     float s = step(0.997f, min_dot);
 
-    _ssaoOut = mix(nearest_depth_ao(), texture(texSSAOLinear, VAR._texCoord).r, s);
+    _ssaoOut = mix(ao[best_depth_idx], texture(texSSAOLinear, VAR._texCoord).r, s);
 }

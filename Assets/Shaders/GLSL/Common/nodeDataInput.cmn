@@ -1,3 +1,6 @@
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #ifndef _NODE_DATA_INPUT_CMN_
 #define _NODE_DATA_INPUT_CMN_
 
@@ -47,7 +50,7 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH, 1, std140) uniform dvd_CamBlock
     mat4  dvd_ViewMatrix;
     mat4  dvd_ViewProjectionMatrix;
     mat4  dvd_InverseViewMatrix;
-    mat4  dvd_WorldAOVPMatrix;
+    mat4  _reservedCameraMatrix;
     mat4  dvd_PrevViewProjectionMatrix;
     vec4  dvd_ViewPort;
     //x - scale, y - bias, z - light bleed bias, w - min shadow variance

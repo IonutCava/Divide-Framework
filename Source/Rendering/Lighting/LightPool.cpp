@@ -8,6 +8,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Core/Time/Headers/ProfileTimer.h"
+#include "Graphs/Headers/SceneGraph.h"
 #include "Managers/Headers/ProjectManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
@@ -16,6 +17,7 @@
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
 #include "Rendering/Lighting/Headers/LightUploadState.h"
+#include "Scenes/Headers/Scene.h"
 
 #include "ECS/Components/Headers/SpotLightComponent.h"
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
@@ -62,7 +64,7 @@ namespace Divide
     void LightPool::InitStaticData( PlatformContext& context )
     {
         ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
+        bufferDescriptor._ringBufferLength = (Config::MAX_FRAMES_IN_FLIGHT + 1u) * Config::MAX_LOCAL_PLAYER_COUNT;
         bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
         bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
 
@@ -153,7 +155,8 @@ namespace Divide
     {
         ShadowMap::reset();
 
-        const SharedLock<SharedMutex> r_lock( _lightLock );
+        LockGuard<SharedMutex> w_lock( _lightLock );
+        setDebugLightLocked( nullptr );
         for ( const LightList& lightList : _lights )
         {
             if ( !lightList.empty() )
@@ -181,7 +184,11 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         LockGuard<SharedMutex> w_lock( _movedSceneVolumesLock );
-        _movedSceneVolumes.clear();
+        const size_t consumed = _shadowMovementBatch.finish( _movedSceneVolumes.size() );
+        if ( consumed > 0u )
+        {
+            _movedSceneVolumes.erase( _movedSceneVolumes.begin(), _movedSceneVolumes.begin() + consumed );
+        }
         return true;
     }
 
@@ -218,6 +225,10 @@ namespace Divide
             return false;
         }
 
+        if ( _debugLight == &light )
+        {
+            setDebugLightLocked( nullptr );
+        }
         _lights[to_U32( light.getLightType() )].erase( it );  // remove it from the map
         _totalLightCount -= 1u;
         return true;
@@ -229,6 +240,15 @@ namespace Divide
 
         LockGuard<SharedMutex> w_lock( _movedSceneVolumesLock );
         _movedSceneVolumes.push_back( { volume , staticSource } );
+    }
+
+    void LightPool::onVolumeChanged( const BoundingSphere& previous, const bool previousStatic,
+                                     const BoundingSphere& current, const bool currentStatic )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
+        LockGuard<SharedMutex> w_lock( _movedSceneVolumesLock );
+        AppendShadowVolumeChange( _movedSceneVolumes, previous, previousStatic, current, currentStatic );
     }
 
     //ToDo: Generate shadow maps in parallel - Ionut
@@ -251,10 +271,17 @@ namespace Divide
         constexpr U8 stageIndex = to_U8( RenderStage::SHADOW );
         LightList& sortedLights = _sortedLights[stageIndex];
 
+        ShadowMovementBatch::Snapshot movementSnapshot{};
+        {
+            LockGuard<SharedMutex> lock( _movedSceneVolumesLock );
+            movementSnapshot = _shadowMovementBatch.begin( _movedSceneVolumes.size() );
+        }
+
         for ( Light* light : sortedLights )
         {
             light->shadowPropertyIndex( -1 );
-            if ( cameraChanged && light->getLightType() == LightType::DIRECTIONAL )
+            if ( movementSnapshot._invalidateAll ||
+                 ( cameraChanged && light->getLightType() == LightType::DIRECTIONAL ) )
             {
                 light->staticShadowsDirty( true );
                 light->dynamicShadowsDirty( true );
@@ -279,7 +306,7 @@ namespace Divide
             }
 
             // Remember scene changes even for lights that are not selected this frame.
-            const bool cacheInvalidated = isShadowCacheInvalidated( light );
+            const bool cacheInvalidated = isShadowCacheInvalidated( light, movementSnapshot._count );
             const U32 typeIndex = to_U32( lType );
             const U32 typeLimit = to_U32( GetMaxLights( lType ) );
             const bool shadowTypeEnabled = lType == LightType::DIRECTIONAL ? shadowSettings.csm.enabled :
@@ -292,11 +319,11 @@ namespace Divide
             }
 
             const bool reuseCached = !cacheInvalidated && ShadowMap::tryReuseShadowMaps( *light );
-            if ( !reuseCached && !ShadowMap::generateShadowMaps( playerCamera, *light, bufferInOut, memCmdInOut ) )
+            bool pendingCasters = false;
+            if ( !reuseCached && !ShadowMap::generateShadowMaps( playerCamera, *light, pendingCasters, bufferInOut, memCmdInOut ) )
             {
                 continue;
             }
-
             const I32 shadowIndex = slots.reserve( typeIndex, typeLimit );
             assert( shadowIndex >= 0 );
             light->shadowPropertyIndex( shadowIndex );
@@ -342,6 +369,10 @@ namespace Divide
             if ( !reuseCached )
             {
                 light->cleanShadowProperties();
+                if ( pendingCasters )
+                {
+                    light->dynamicShadowsDirty( true );
+                }
 
                 GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
                 computeMipMapsCommand._texture = ShadowMap::getShadowMap( lType )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
@@ -351,8 +382,15 @@ namespace Divide
             }
         }
 
-        ShadowMap::generateWorldAO( playerCamera, bufferInOut, memCmdInOut );
+        BoundingBox staticBounds{};
+        float2 staticHeightRange{ 0.f, 0.f };
+        if ( parentScene().sceneGraph()->staticGeometryBounds( staticBounds ) )
+        {
+            staticHeightRange.set( staticBounds._min.y, staticBounds._max.y );
+        }
+        _shadowBufferData._worldAOVPMatrix = ShadowMap::generateWorldAO( playerCamera, staticHeightRange, bufferInOut, memCmdInOut );
 
+        _shadowBufferData._cameraViewDepthRow = camera._viewMatrix.getCol( 2 );
         memCmdInOut._bufferLocks.push_back( s_shadowBuffer->writeData( _shadowBufferData.data() ) );
 
         _shadowBufferDirty = true;
@@ -362,22 +400,63 @@ namespace Divide
 
     void LightPool::debugLight( Light* light )
     {
-        _debugLight = light;
-        ShadowMap::setDebugViewLight( context().gfx(), _debugLight );
-    }
-
-    Light* LightPool::getLight( const I64 lightGUID, const LightType type ) const
-    {
-        SharedLock<SharedMutex> r_lock( _lightLock );
-
-        const LightList::const_iterator it = findLight( lightGUID, type );
-        if ( it != eastl::end( _lights[to_U32( type )] ) )
+        I64 lightGUID = -1;
+        LightType lightType = LightType::COUNT;
+        if ( light != nullptr )
         {
-            return *it;
+            SharedLock<SharedMutex> lock( _lightLock );
+            for ( const LightList& lights : _lights )
+            {
+                const auto it = eastl::find( lights.cbegin(), lights.cend(), light );
+                if ( it != lights.cend() )
+                {
+                    lightGUID = light->getGUID();
+                    lightType = light->getLightType();
+                    break;
+                }
+            }
+            if ( lightType == LightType::COUNT )
+            {
+                Console::errorfn( "[Shadow Preview] Cannot select a light outside this pool." );
+                return;
+            }
         }
 
-        DIVIDE_UNEXPECTED_CALL();
-        return nullptr;
+        if ( light != nullptr && !ShadowMap::prepareDebugViewShader( lightType ) )
+        {
+            return;
+        }
+
+        LockGuard<SharedMutex> lock( _lightLock );
+        if ( light != nullptr )
+        {
+            const auto it = findLightLocked( lightGUID, lightType );
+            if ( it == _lights[to_base( lightType )].cend() || *it != light )
+            {
+                Console::errorfn( "[Shadow Preview] The selected light was removed before the preview was ready." );
+                return;
+            }
+        }
+        setDebugLightLocked( light );
+    }
+
+    Light* LightPool::debugLight() const noexcept
+    {
+        SharedLock<SharedMutex> lock( _lightLock );
+        return _debugLight;
+    }
+
+    void LightPool::setDebugLightLocked( Light* light )
+    {
+        if ( light == nullptr )
+        {
+            ShadowMap::clearDebugViewLight( context().gfx(), _debugLight );
+        }
+        else
+        {
+            ShadowMap::setDebugViewLight( context().gfx(), light );
+        }
+        _debugLight = light;
     }
 
     U32 LightPool::uploadLightList( const RenderStage stage, const LightList& lights, const mat4<F32>& viewMatrix )
@@ -511,7 +590,7 @@ namespace Divide
         }
     }
 
-    [[nodiscard]] bool LightPool::isShadowCacheInvalidated( Light* const light )
+    [[nodiscard]] bool LightPool::isShadowCacheInvalidated( Light* const light, const size_t movedVolumeCount )
     {
         const bool rangeChanged = light->_shadowRangeState.update( light->range() );
         bool directionalSettingsChanged = false;
@@ -527,20 +606,16 @@ namespace Divide
             light->dynamicShadowsDirty( true );
         }
 
+        if ( movedVolumeCount > 0u )
         {
+            const BoundingSphere& lightBounds = light->boundingVolume();
+            const bool directional = light->getLightType() == LightType::DIRECTIONAL;
             SharedLock<SharedMutex> r_lock( _movedSceneVolumesLock );
-            if ( _movedSceneVolumes.empty() )
+            assert( movedVolumeCount <= _movedSceneVolumes.size() );
+            for ( size_t i = 0u; i < movedVolumeCount; ++i )
             {
-                return light->staticShadowsDirty() || light->dynamicShadowsDirty();
-            }
-        }
-
-        const BoundingSphere& lightBounds = light->boundingVolume();
-        {
-            SharedLock<SharedMutex> r_lock( _movedSceneVolumesLock );
-            for ( const MovingVolume& volume : _movedSceneVolumes )
-            {
-                if ( volume._volume.collision( lightBounds ) )
+                const MovingVolume& volume = _movedSceneVolumes[i];
+                if ( ShadowVolumeAffectsLight( directional, volume._volume, lightBounds ) )
                 {
                     if ( volume._staticSource )
                     {

@@ -25,6 +25,7 @@
 #include "Environment/Terrain/Headers/InfinitePlane.h"
 #include "Environment/Terrain/Headers/Terrain.h"
 #include "Environment/Terrain/Headers/TerrainDescriptor.h"
+#include "Environment/Vegetation/Headers/Vegetation.h"
 #include "Environment/Water/Headers/Water.h"
 
 #include "Geometry/Material/Headers/Material.h"
@@ -233,6 +234,10 @@ namespace Divide
 
             pt.put( "vegetation.grassVisibility", state()->renderState().grassVisibility() );
             pt.put( "vegetation.treeVisibility", state()->renderState().treeVisibility() );
+            pt.put( "water.global.<xmlattr>.node", _globalWaterNodeName.c_str() );
+            pt.put( "water.global.<xmlattr>.height", _globalWaterHeight );
+            pt.put( "water.global.<xmlattr>.size", _globalWaterSize );
+            pt.put( "water.global.<xmlattr>.depth", _globalWaterDepth );
 
             pt.put( "wind.windDirX", state()->windDirX() );
             pt.put( "wind.windDirZ", state()->windDirZ() );
@@ -338,6 +343,15 @@ namespace Divide
         state()->renderState().grassVisibility( pt.get( "vegetation.grassVisibility", state()->renderState().grassVisibility() ) );
         state()->renderState().treeVisibility( pt.get( "vegetation.treeVisibility", state()->renderState().treeVisibility() ) );
         state()->renderState().generalVisibility( pt.get( "options.visibility", state()->renderState().generalVisibility() ) );
+        _globalWaterNodeName = pt.get<std::string>( "water.global.<xmlattr>.node", _globalWaterNodeName.c_str() ).c_str();
+        _globalWaterHeight = pt.get( "water.global.<xmlattr>.height", _globalWaterHeight );
+        _globalWaterSize = pt.get( "water.global.<xmlattr>.size", _globalWaterSize );
+        _globalWaterDepth = pt.get( "water.global.<xmlattr>.depth", _globalWaterDepth );
+        if ( _globalWaterNodeName.empty() || !std::isfinite( _globalWaterHeight ) || _globalWaterSize == 0u || _globalWaterDepth == 0u )
+        {
+            Console::errorfn( "Invalid global water node, height, size or depth in scene {}", sceneName.c_str() );
+            return false;
+        }
 
         state()->windDirX( pt.get( "wind.windDirX", state()->windDirX() ) );
         state()->windDirZ( pt.get( "wind.windDirZ", state()->windDirZ() ) );
@@ -544,7 +558,14 @@ namespace Divide
                     case _ID( "WATER" ):
                     {
                         normalMask |= to_base( ComponentType::RENDERING );
-                        addWater( parent, nodeTree, sceneNode.name );
+                        if ( parent == _sceneGraph->getRoot() && sceneNode.name == _globalWaterNodeName )
+                        {
+                            nodeTree.put( "dimensions.<xmlattr>.width", _globalWaterSize );
+                            nodeTree.put( "dimensions.<xmlattr>.length", _globalWaterSize );
+                            nodeTree.put( "dimensions.<xmlattr>.depth", _globalWaterDepth );
+                            nodeTree.put( "TRANSFORM.Transform.position.<xmlattr>.y", _globalWaterHeight );
+                        }
+                        DIVIDE_UNUSED( addWater( parent, nodeTree, sceneNode.name ) );
                     } break;
                     case _ID( "MESH" ):
                     {
@@ -670,6 +691,7 @@ namespace Divide
             return;
         }
 
+        AddVariableF( ter, "globalWaterHeight", _globalWaterHeight );
         ResourceDescriptor<Terrain> descriptor( GetVariable( ter, "terrainName" ), ter );
         descriptor.flag( ter._active );
 
@@ -766,10 +788,10 @@ namespace Divide
         return skyNode;
     }
 
-    void Scene::addWater( SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName )
+    SceneGraphNode* Scene::addWater( SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName )
     {
 
-        ResourceDescriptor<WaterPlane> waterDescriptor( ("Water_" + nodeName).c_str() );
+        ResourceDescriptor<WaterPlane> waterDescriptor( Util::StringFormat( "Water_{}_{}_{}", resourceName().c_str(), parentNode->getGUID(), nodeName.c_str() ) );
         Handle<WaterPlane> water = CreateResource( waterDescriptor, _loadingTasks );
         Get(water)->loadFromXML( pt );
 
@@ -787,6 +809,36 @@ namespace Divide
 
         SceneGraphNode* waterNode = parentNode->addChildNode( waterNodeDescriptor );
         waterNode->loadFromXML( pt );
+        return waterNode;
+    }
+
+    bool Scene::ensureGlobalWater()
+    {
+        if ( _globalWaterNode != nullptr )
+        {
+            return true;
+        }
+
+        SceneGraphNode* root = _sceneGraph->getRoot();
+        SceneGraphNode* node = root->findChild( _ID( _globalWaterNodeName ), false, false );
+        if ( node != nullptr && node->getNode().type() != SceneNodeType::TYPE_WATER )
+        {
+            Console::errorfn( "Scene {} has a non-water root node named {}", resourceName().c_str(), _globalWaterNodeName.c_str() );
+            return false;
+        }
+        if ( node == nullptr )
+        {
+            boost::property_tree::ptree settings;
+            settings.put( "static", true );
+            settings.put( "dimensions.<xmlattr>.width", _globalWaterSize );
+            settings.put( "dimensions.<xmlattr>.length", _globalWaterSize );
+            settings.put( "dimensions.<xmlattr>.depth", _globalWaterDepth );
+            settings.put( "TRANSFORM.Transform.position.<xmlattr>.y", _globalWaterHeight );
+            node = addWater( root, settings, _globalWaterNodeName );
+        }
+        _globalWaterNode = node;
+        _globalWaterNode->setFlag( SceneGraphNode::Flags::VISIBILITY_LOCKED );
+        return true;
     }
 
     SceneGraphNode* Scene::addInfPlane( SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName )
@@ -835,7 +887,7 @@ namespace Divide
 
         const auto increaseCameraSpeed = [this]( const InputParams params )
         {
-            Camera* cam = playerCamera( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) );
+            Camera* cam = cameraForInput( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) );
             if ( cam->mode() != Camera::Mode::STATIC &&
                 cam->mode() != Camera::Mode::SCRIPTED )
             {
@@ -852,7 +904,7 @@ namespace Divide
 
         const auto decreaseCameraSpeed = [this]( const InputParams params )
         {
-            Camera* cam = playerCamera( getPlayerIndexForDevice(params._deviceType, params._deviceIndex ) );
+            Camera* cam = cameraForInput( getPlayerIndexForDevice(params._deviceType, params._deviceIndex ) );
             if ( cam->mode() != Camera::Mode::STATIC &&
                  cam->mode() != Camera::Mode::SCRIPTED )
             {
@@ -1252,6 +1304,11 @@ namespace Divide
 
         WAIT_FOR_CONDITION( _loadingTasks.load() == 0u );
 
+        if ( !ensureGlobalWater() )
+        {
+            return false;
+        }
+
         // We always add a sky
         const auto& skies = sceneGraph()->getNodesByType( SceneNodeType::TYPE_SKY );
         assert( !skies.empty() );
@@ -1318,6 +1375,7 @@ namespace Divide
         _xmlSceneGraphRootNode = {};
         _flashLight.fill( nullptr );
         _sceneGraph->unload();
+        _globalWaterNode = nullptr;
 
         loadComplete( false );
         DIVIDE_ASSERT( playerCount() == 0u );
@@ -1357,6 +1415,19 @@ namespace Divide
         updateCameraControls( idx );
         state()->renderState().renderPass( idx );
         state()->playerPass( idx );
+
+        Camera* activeCamera = playerCamera( idx );
+        activeCamera->updateLookAt();
+        state()->playerState( idx ).cameraUnderwater( checkCameraUnderwater( *activeCamera ) );
+
+        if constexpr ( Config::Build::ENABLE_EDITOR )
+        {
+            const Editor& editor = _context.editor();
+            if ( editor.inEditMode() && editor.stepQueue() == 0u && editor.nodePreviewWindowVisible() )
+            {
+                editor.nodePreviewCamera()->updateLookAt();
+            }
+        }
 
         if ( state()->playerState().cameraUnderwater() )
         {
@@ -1547,24 +1618,34 @@ namespace Divide
         return false;
     }
 
+    Camera* Scene::cameraForInput( const PlayerIndex idx ) const
+    {
+        if constexpr ( Config::Build::ENABLE_EDITOR )
+        {
+            const Editor& editor = _context.editor();
+            if ( editor.inEditMode() && editor.stepQueue() == 0u && editor.nodePreviewWindowVisible() &&
+                 editor.windowFocusState()._focusedNodePreview )
+            {
+                return editor.nodePreviewCamera();
+            }
+        }
+        return playerCamera( idx );
+    }
+
     bool Scene::updateCameraControls( const PlayerIndex idx ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-        Camera* cam = playerCamera( idx );
-        if ( cam->mode() == Camera::Mode::STATIC ||
-             cam->mode() == Camera::Mode::SCRIPTED )
-        {
-            return false;
-        }
-
         SceneStatePerPlayer& playerState = state()->playerState( idx );
-        const bool updated = cam->moveFromPlayerState(playerState);
-        playerState.cameraUpdated( updated );
+        Camera* activeCamera = playerCamera( idx );
+        Camera* inputCamera = cameraForInput( idx );
+        const bool canMove = inputCamera->mode() != Camera::Mode::STATIC &&
+                             inputCamera->mode() != Camera::Mode::SCRIPTED;
+        const bool updated = canMove && inputCamera->moveFromPlayerState( playerState );
+        playerState.cameraUpdated( updated && inputCamera == activeCamera );
 
         if ( updated )
         {
-            playerState.cameraUnderwater( checkCameraUnderwater( *cam ) );
             playerState._zoom.reset();
         }
 
@@ -1577,9 +1658,53 @@ namespace Divide
 
         sceneRuntimeUS( sceneRuntimeUS() + deltaTimeUS );
 
+        if ( !ensureGlobalWater() )
+        {
+            return;
+        }
         updateSceneStateInternal( deltaTimeUS );
-        _state->waterBodies().resize(0);
         _sceneGraph->sceneUpdate( deltaTimeUS, *_state );
+
+        if ( _globalWaterNode == nullptr )
+        {
+            Console::errorfn( "Global water was removed during the scene update in {}", resourceName().c_str() );
+            return;
+        }
+        auto& waterBodies = _state->waterBodies();
+        waterBodies.clear();
+        const vec3<U32>& globalDimensions = _globalWaterNode->getNode<WaterPlane>().getDimensions();
+        const float3& globalPosition = _globalWaterNode->get<TransformComponent>()->getWorldPosition();
+        _globalWaterHeight = globalPosition.y;
+        waterBodies.emplace_back( WaterBodyData
+        {
+            ._positionW = globalPosition,
+            ._extents = { to_F32( globalDimensions.width ), to_F32( globalDimensions.depth ),
+                          to_F32( globalDimensions.height ), 0.f }
+        } );
+        for ( const SceneGraphNode* node : _sceneGraph->getNodesByType( SceneNodeType::TYPE_WATER ) )
+        {
+            if ( node == _globalWaterNode || !node->hasFlag( SceneGraphNode::Flags::ACTIVE ) ||
+                 node->hasFlag( SceneGraphNode::Flags::LOADING ) )
+            {
+                continue;
+            }
+            const vec3<U32>& dimensions = node->getNode<WaterPlane>().getDimensions();
+            waterBodies.emplace_back( WaterBodyData
+            {
+                ._positionW = node->get<TransformComponent>()->getWorldPosition(),
+                ._extents = { to_F32( dimensions.width ), to_F32( dimensions.depth ),
+                              to_F32( dimensions.height ), 0.f }
+            } );
+        }
+
+        for ( SceneGraphNode* node : _sceneGraph->getNodesByType( SceneNodeType::TYPE_VEGETATION ) )
+        {
+            if ( node->hasFlag( SceneGraphNode::Flags::ACTIVE ) && !node->hasFlag( SceneGraphNode::Flags::LOADING ) )
+            {
+                node->getNode<Vegetation>().finalizeInstance( node, *_state );
+            }
+        }
+        _sceneGraph->updateStaticGeometryBounds();
         _aiManager->update( deltaTimeUS );
     }
 
@@ -1870,12 +1995,7 @@ namespace Divide
             const auto& waterBodies = state()->waterBodies();
             for ( const WaterBodyData& water : waterBodies )
             {
-                const float3& extents = water._extents;
-                const float3& position = water._positionW;
-                if ( extents.x > 0.f && extents.y > 0.f && extents.z > 0.f &&
-                     std::abs( eyePos.x - position.x ) <= extents.x * 0.5f &&
-                     std::abs( eyePos.z - position.z ) <= extents.z * 0.5f &&
-                     eyePos.y < position.y && eyePos.y > position.y - extents.y )
+                if ( PointInsideWater( water, eyePos ) )
                 {
                     return true;
                 }
@@ -2021,6 +2141,10 @@ namespace Divide
 
     void Scene::onNodeDestroy( SceneGraphNode* node )
     {
+        if ( node == _globalWaterNode )
+        {
+            _globalWaterNode = nullptr;
+        }
         const I64 guid = node->getGUID();
         for ( I64& target : _currentHoverTarget )
         {

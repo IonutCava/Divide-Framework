@@ -176,7 +176,6 @@ namespace Divide
         const auto& rtPool = context().gfx().renderTargetPool();
         const auto& prbAtt = _preRenderBatch.getOutput( false )._rt->getAttachment( RTAttachmentType::COLOUR );
         const auto& linDepthDataAtt = _preRenderBatch.getLinearDepthRT()._rt->getAttachment( RTAttachmentType::COLOUR );
-        const auto& ssrDataAtt = rtPool.getRenderTarget( RenderTargetNames::SSR_RESULT )->getAttachment( RTAttachmentType::COLOUR );
         const auto& velocityAtt = rtPool.getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::VELOCITY );
 
         const SamplerDescriptor defaultSampler =
@@ -194,7 +193,7 @@ namespace Divide
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 5u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, ssrDataAtt->texture(), defaultSampler );
+            Set( binding._data, _preRenderBatch.ssrTexture( getFilterState( FilterType::FILTER_SS_REFLECTIONS ) ), defaultSampler );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 4u, ShaderStageVisibility::FRAGMENT );

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -40,6 +40,8 @@ namespace Divide
 class Terrain;
 class Vegetation;
 
+constexpr size_t MAX_VEGETATION_TREE_MESHES = 4u;
+
 template<>
 struct PropertyDescriptor<Vegetation>
 {
@@ -48,9 +50,10 @@ struct PropertyDescriptor<Vegetation>
     vector<Str<256>> treeMeshes;
     Str<256> name = "";
     string billboardTextureArray = "";
-    std::array<float3, 4> treeRotations;
+    std::array<float3, MAX_VEGETATION_TREE_MESHES> treeRotations;
     float4 grassScales = VECTOR4_UNIT;
     float4 treeScales = VECTOR4_UNIT;
+    float4 treeDensities = VECTOR4_UNIT;
     Terrain* parentTerrain = nullptr;
     U32 chunkSize = 0u;
 };

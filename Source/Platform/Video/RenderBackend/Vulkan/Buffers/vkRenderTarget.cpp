@@ -635,8 +635,6 @@ namespace Divide
 
         assert(pipelineRenderingCreateInfoOut.sType == VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO);
 
-        _renderInfoState._keptMSAAData = descriptor._keepMSAADataAfterResolve;
-
         const U16 targetMipWriteLevel = descriptor._mipWriteLevel == ALL_MIPS ? 0u : descriptor._mipWriteLevel;
         _renderInfoState._mipLevel = targetMipWriteLevel;
         _renderingInfo.renderArea.extent.width  = std::max<U32>( 1u, to_U32( getWidth() ) >> targetMipWriteLevel );
@@ -732,36 +730,17 @@ namespace Divide
                     _colourAttachmentFormats[i] = vkTexRender->vkFormat();
                     
                     info.clearValue = {};
-                    info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
                     const bool resolveMSAA = descriptor._autoResolveMSAA && _attachmentsAutoResolve[i];
-                    // If we specify a clear policy, we want to clear out attachment on load
+                    ConfigureAttachmentLoadStore( info, clearPolicy[i]._enabled, resolveMSAA,
+                                                  descriptor._keepMSAADataAfterResolve );
                     if ( clearPolicy[i]._enabled )
                     {
                         std::copy_n( clearPolicy[i]._colour._v, 4u, info.clearValue.color.float32 );
-
-                        info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-                    }
-                    else if ( resolveMSAA && !descriptor._keepMSAADataAfterResolve && !_renderInfoState._keptMSAAData)
-                    {
-                        info.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-                    }
-                    else
-                    {
-                        info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
                     }
 
-                    // MSAA complicates things a lot. For best performance we want to inline resolve and also don't care about the msaa target's contents that much
-                    // Ideally, we should not care about our MSAA load and store and just focus on the resolve target ...
                     if ( resolveMSAA )
                     {
                         imageViewDescriptor._resolveTarget = true;
-
-                        if ( !descriptor._keepMSAADataAfterResolve )
-                        {
-                            info.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-                        }
-
                         info.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
                         info.resolveImageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
                         info.resolveImageView = static_cast<vkTexture*>(Get(_attachments[i]->resolvedTexture()))->getImageView( imageViewDescriptor );
@@ -815,27 +794,19 @@ namespace Divide
             _depthAttachmentInfo.imageView = vkTexRender->getImageView( imageViewDescriptor );
             _depthAttachmentInfo.clearValue.depthStencil.depth = 1.f;
 
-            // We should always load/clear depth values since DONT_CARE will lead to failed depth tests
-            _depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-            _depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            const bool resolveMSAA = descriptor._autoResolveMSAA && _attachmentsAutoResolve[RT_DEPTH_ATTACHMENT_IDX];
+            ConfigureAttachmentLoadStore( _depthAttachmentInfo, clearPolicy[RT_DEPTH_ATTACHMENT_IDX]._enabled,
+                                          resolveMSAA, descriptor._keepMSAADataAfterResolve );
 
-            // If we specify a clear policy, we want to clear out attachment on load
             if ( clearPolicy[RT_DEPTH_ATTACHMENT_IDX]._enabled )
             {
-                _depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
                 _depthAttachmentInfo.clearValue.depthStencil.depth = clearPolicy[RT_DEPTH_ATTACHMENT_IDX]._colour.r;
                 _depthAttachmentInfo.clearValue.depthStencil.stencil = to_U32(clearPolicy[RT_DEPTH_ATTACHMENT_IDX]._colour.g);
             }
 
-            if ( descriptor._autoResolveMSAA && _attachmentsAutoResolve[RT_DEPTH_ATTACHMENT_IDX] )
+            if ( resolveMSAA )
             {
                 imageViewDescriptor._resolveTarget = true;
-
-                if ( !descriptor._keepMSAADataAfterResolve )
-                {
-                    _depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-                }
-
                 VkResolveModeFlagBits chosenDepthResolve = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
                 const VkResolveModeFlags supported = VK_API::s_supportedDepthResolveModes;
                 if ( supported & VK_RESOLVE_MODE_AVERAGE_BIT )

@@ -28,6 +28,39 @@
 
 namespace Divide
 {
+    namespace
+    {
+        Mutex s_shadowPreviewLock;
+        Handle<ShaderProgram> s_layeredPreviewShader = INVALID_HANDLE<ShaderProgram>;
+        Handle<ShaderProgram> s_cubePreviewShader = INVALID_HANDLE<ShaderProgram>;
+
+        Handle<ShaderProgram> CreateShadowPreviewShader( const bool cubemap )
+        {
+            ShaderModuleDescriptor vertModule = {};
+            vertModule._moduleType = ShaderType::VERTEX;
+            vertModule._sourceFile = "baseVertexShaders.glsl";
+            vertModule._variant = "FullScreenQuad";
+            if ( cubemap )
+            {
+                vertModule._defines.emplace_back( "SPLAT_R_CHANNEL" );
+            }
+
+            ShaderModuleDescriptor fragModule = {};
+            fragModule._moduleType = ShaderType::FRAGMENT;
+            fragModule._sourceFile = "fbPreview.glsl";
+            fragModule._variant = cubemap ? "Cube.Shadow" : "Layered.LinearDepth";
+
+            ShaderProgramDescriptor shaderDescriptor = {};
+            shaderDescriptor._modules.push_back( vertModule );
+            shaderDescriptor._modules.push_back( fragModule );
+
+            ResourceDescriptor<ShaderProgram> descriptor(
+                cubemap ? "fbPreview.Cube.Shadow" : "fbPreview.Layered.LinearDepth", shaderDescriptor );
+            descriptor.waitForReady( true );
+            return CreateResource( descriptor );
+        }
+    }
+
     Mutex ShadowMap::s_shadowMapUsageLock;
     std::array<ShadowMap::LayerLifetimeMask, to_base( ShadowType::COUNT )> ShadowMap::s_shadowMapLifetime;
     std::array<std::unique_ptr<ShadowMapGenerator>, to_base( ShadowType::COUNT )> ShadowMap::s_shadowMapGenerators;
@@ -248,6 +281,13 @@ namespace Divide
 
     void ShadowMap::destroyShadowMaps( GFXDevice& context )
     {
+        {
+            LockGuard<Mutex> lock( s_shadowPreviewLock );
+            setDebugViewLightLocked( context, nullptr );
+            DestroyResource( s_layeredPreviewShader );
+            DestroyResource( s_cubePreviewShader );
+        }
+
         for ( U8 t = 0u; t < to_base( ShadowType::COUNT ); ++t )
         {
             for ( auto& camera : s_shadowCameras[t] )
@@ -256,8 +296,6 @@ namespace Divide
             }
             s_shadowCameras[t].clear();
         }
-
-        s_debugViews.clear();
 
         for ( RenderTargetHandle& handle : s_shadowMaps )
         {
@@ -445,7 +483,7 @@ namespace Divide
         return true;
     }
 
-    bool ShadowMap::generateShadowMaps( const Camera& playerCamera, Light& light, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+    bool ShadowMap::generateShadowMaps( const Camera& playerCamera, Light& light, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -458,16 +496,16 @@ namespace Divide
 
         if ( markShadowMapsUsed( light ) ) [[likely]]
         {
-            s_shadowMapGenerators[shadowTypeIdx]->render( playerCamera, light, s_shadowPassIndex[shadowTypeIdx]++, bufferInOut, memCmdInOut );
+            s_shadowMapGenerators[shadowTypeIdx]->render( playerCamera, light, s_shadowPassIndex[shadowTypeIdx]++, pendingCastersOut, bufferInOut, memCmdInOut );
             return true;
         }
 
         return false;
     }
 
-    void ShadowMap::generateWorldAO( const Camera& playerCamera, GFX::CommandBuffer& bufferInOut,GFX::MemoryBarrierCommand& memCmdInOut )
+    mat4<F32> ShadowMap::generateWorldAO( const Camera& activeCamera, const float2& staticHeightRange, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        static_cast<CascadedShadowMapsGenerator*>(s_shadowMapGenerators[to_base( ShadowType::CSM )].get())->generateWorldAO( playerCamera , bufferInOut, memCmdInOut );
+        return static_cast<CascadedShadowMapsGenerator*>(s_shadowMapGenerators[to_base( ShadowType::CSM )].get())->generateWorldAO( activeCamera, staticHeightRange, bufferInOut, memCmdInOut );
     }
 
     const RenderTargetHandle& ShadowMap::getShadowMap( const LightType type )
@@ -497,7 +535,59 @@ namespace Divide
         }
     }
 
+    bool ShadowMap::prepareDebugViewShader( const LightType type )
+    {
+        if ( type == LightType::COUNT )
+        {
+            Console::errorfn( "[Shadow Preview] Cannot preview an invalid light type." );
+            return false;
+        }
+
+        const bool cubemap = type == LightType::POINT;
+        {
+            LockGuard<Mutex> lock( s_shadowPreviewLock );
+            if ( (cubemap ? s_cubePreviewShader : s_layeredPreviewShader) != INVALID_HANDLE<ShaderProgram> )
+            {
+                return true;
+            }
+        }
+
+        Handle<ShaderProgram> created = CreateShadowPreviewShader( cubemap );
+        if ( created == INVALID_HANDLE<ShaderProgram> )
+        {
+            Console::errorfn( "[Shadow Preview] Failed to load the shadow preview shader." );
+            return false;
+        }
+
+        {
+            LockGuard<Mutex> lock( s_shadowPreviewLock );
+            Handle<ShaderProgram>& cached = cubemap ? s_cubePreviewShader : s_layeredPreviewShader;
+            if ( cached == INVALID_HANDLE<ShaderProgram> )
+            {
+                cached = created;
+                created = INVALID_HANDLE<ShaderProgram>;
+            }
+        }
+        DestroyResource( created );
+        return true;
+    }
+
     void ShadowMap::setDebugViewLight( GFXDevice& context, Light* light )
+    {
+        LockGuard<Mutex> lock( s_shadowPreviewLock );
+        setDebugViewLightLocked( context, light );
+    }
+
+    void ShadowMap::clearDebugViewLight( GFXDevice& context, const Light* light )
+    {
+        LockGuard<Mutex> lock( s_shadowPreviewLock );
+        if ( light != nullptr && s_shadowPreviewLight == light )
+        {
+            setDebugViewLightLocked( context, nullptr );
+        }
+    }
+
+    void ShadowMap::setDebugViewLightLocked( GFXDevice& context, Light* light )
     {
         if ( light == s_shadowPreviewLight )
         {
@@ -519,29 +609,25 @@ namespace Divide
         // Add new views if needed
         if ( light != nullptr && light->castsShadows() )
         {
-            ShaderModuleDescriptor vertModule = {};
-            vertModule._moduleType = ShaderType::VERTEX;
-            vertModule._sourceFile = "baseVertexShaders.glsl";
-            vertModule._variant = "FullScreenQuad";
+            const LightType lightType = light->getLightType();
+            if ( lightType == LightType::COUNT )
+            {
+                Console::errorfn( "[Shadow Preview] Cannot preview an invalid light type." );
+                s_shadowPreviewLight = nullptr;
+                return;
+            }
+            const Handle<ShaderProgram> previewShader = lightType == LightType::POINT ? s_cubePreviewShader : s_layeredPreviewShader;
+            if ( previewShader == INVALID_HANDLE<ShaderProgram> )
+            {
+                Console::errorfn( "[Shadow Preview] Failed to load the shadow preview shader." );
+                s_shadowPreviewLight = nullptr;
+                return;
+            }
 
-            ShaderModuleDescriptor fragModule = {};
-            fragModule._moduleType = ShaderType::FRAGMENT;
-            fragModule._sourceFile = "fbPreview.glsl";
-
-            switch ( light->getLightType() )
+            switch ( lightType )
             {
                 case LightType::DIRECTIONAL:
                 {
-
-                    fragModule._variant = "Layered.LinearDepth";
-
-                    ShaderProgramDescriptor shaderDescriptor = {};
-                    shaderDescriptor._modules.push_back( vertModule );
-                    shaderDescriptor._modules.push_back( fragModule );
-
-                    ResourceDescriptor<ShaderProgram> shadowPreviewShader( "fbPreview.Layered.LinearDepth", shaderDescriptor );
-                    shadowPreviewShader.waitForReady( true );
-                    Handle<ShaderProgram> previewShader = CreateResource( shadowPreviewShader );
                     const U8 splitCount = static_cast<DirectionalLightComponent&>(*light).csmSplitCount();
 
                     constexpr I16 Base = 2;
@@ -551,7 +637,7 @@ namespace Divide
                         shadow->_texture = getShadowMap( LightType::DIRECTIONAL )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
                         shadow->_sampler = getShadowMap( LightType::DIRECTIONAL )._rt->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
                         shadow->_shader = previewShader;
-                        shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, i + light->getShadowArrayOffset() );
+                        shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, to_I32( i ) + to_I32( light->getShadowArrayOffset() ) );
                         shadow->_groupID = Base + to_I16( light->shadowPropertyIndex() );
                         shadow->_enabled = true;
                         Util::StringFormatTo( shadow->_name, "CSM_{}", i + light->getShadowArrayOffset() );
@@ -561,20 +647,12 @@ namespace Divide
                 case LightType::SPOT:
                 {
                     constexpr I16 Base = 22;
-                    fragModule._variant = "Layered.LinearDepth";
-
-                    ShaderProgramDescriptor shaderDescriptor = {};
-                    shaderDescriptor._modules.push_back( vertModule );
-                    shaderDescriptor._modules.push_back( fragModule );
-
-                    ResourceDescriptor<ShaderProgram> shadowPreviewShader( "fbPreview.Layered.LinearDepth", shaderDescriptor );
-                    shadowPreviewShader.waitForReady( true );
 
                     DebugView_ptr shadow = std::make_shared<DebugView>( to_I16( I16_MAX - 1 ) );
                     shadow->_texture = getShadowMap( LightType::SPOT )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
                     shadow->_sampler = getShadowMap( LightType::SPOT )._rt->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
-                    shadow->_shader = CreateResource( shadowPreviewShader );
-                    shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, light->getShadowArrayOffset() );
+                    shadow->_shader = previewShader;
+                    shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, to_I32( light->getShadowArrayOffset() ) );
                     shadow->_enabled = true;
                     shadow->_groupID = Base + to_I16( light->shadowPropertyIndex() );
                     Util::StringFormatTo( shadow->_name, "SM_{}", light->getShadowArrayOffset() );
@@ -583,16 +661,6 @@ namespace Divide
                 case LightType::POINT:
                 {
                     constexpr I16 Base = 222;
-                    fragModule._variant = "Cube.Shadow";
-
-                    ShaderProgramDescriptor shaderDescriptor = {};
-                    shaderDescriptor._modules.push_back( vertModule );
-                    shaderDescriptor._modules.back()._defines.emplace_back( "SPLAT_R_CHANNEL" );
-                    shaderDescriptor._modules.push_back( fragModule );
-
-                    ResourceDescriptor<ShaderProgram> shadowPreviewShader( "fbPreview.Cube.Shadow", shaderDescriptor );
-                    shadowPreviewShader.waitForReady( true );
-                    Handle<ShaderProgram> previewShader = CreateResource( shadowPreviewShader );
 
                     for ( U8 i = 0u; i < 6u; ++i )
                     {
@@ -600,8 +668,8 @@ namespace Divide
                         shadow->_texture = getShadowMap( LightType::POINT )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
                         shadow->_sampler = getShadowMap( LightType::POINT )._rt->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
                         shadow->_shader = previewShader;
-                        shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, light->getShadowArrayOffset() );
-                        shadow->_shaderData.set( _ID( "face" ), PushConstantType::INT, i );
+                        shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, to_I32( light->getShadowArrayOffset() ) );
+                        shadow->_shaderData.set( _ID( "face" ), PushConstantType::INT, to_I32( i ) );
                         shadow->_groupID = Base + to_I16( light->shadowPropertyIndex() );
                         shadow->_enabled = true;
                         Util::StringFormatTo( shadow->_name, "CubeSM_{}_face_{}", light->getShadowArrayOffset(), i );

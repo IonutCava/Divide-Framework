@@ -1,3 +1,4 @@
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/DVDConverter.h"
 #include "Headers/MeshImporter.h"
 
@@ -126,6 +127,26 @@ void OnShutdown()
     Assimp::DefaultLogger::kill();
 }
 
+detail::BoneBindingStatus detail::RegisterBoneBinding( Bone& bone, const mat4<F32>& offset,
+                                                        U16& nextBoneIndex ) noexcept
+{
+    if ( bone._boneID == Bone::INVALID_BONE_IDX )
+    {
+        if ( nextBoneIndex >= Config::MAX_BONE_COUNT_PER_NODE || nextBoneIndex >= Bone::INVALID_BONE_IDX )
+        {
+            return BoneBindingStatus::LIMIT_EXCEEDED;
+        }
+
+        bone._offsetMatrix = offset;
+        bone._boneID = to_U8( nextBoneIndex++ );
+        return BoneBindingStatus::REGISTERED;
+    }
+
+    constexpr F32 offsetTolerance = 0.0001f;
+    return bone._offsetMatrix.compare( offset, offsetTolerance ) ? BoneBindingStatus::REUSED
+                                                                 : BoneBindingStatus::CONFLICT;
+}
+
 U32 PopulateNodeData(aiNode* node, MeshNodeData& target, const aiMatrix4x4& axisCorrectionBasis)
 {
     if (node == nullptr)
@@ -250,9 +271,8 @@ bool Load(PlatformContext& context, Import::ImportData& target)
     {
         target._skeleton.reset( CreateBoneTree(aiScenePointer->mRootNode, nullptr) );
 
-        mat4<F32> out;
-        U8 boneID = 0u;
-        for ( U16 meshPointer = 0u; meshPointer < aiScenePointer->mNumMeshes; ++meshPointer )
+        U16 nextBoneIndex = 0u;
+        for ( U32 meshPointer = 0u; meshPointer < aiScenePointer->mNumMeshes; ++meshPointer )
         {
             const aiMesh* mesh = aiScenePointer->mMeshes[meshPointer];
             for ( U32 n = 0; n < mesh->mNumBones; ++n )
@@ -264,14 +284,23 @@ bool Load(PlatformContext& context, Import::ImportData& target)
                 {
                     Console::warnfn(LOCALE_STR("MISSING_BONE_IN_SKELETON"), bone->mName.C_Str());
                 }
-                else if ( found->_boneID == Bone::INVALID_BONE_IDX)
-                {
-                    AnimUtils::TransformMatrix( bone->mOffsetMatrix, found->_offsetMatrix);
-                    found->_boneID = boneID++;
-                }
                 else
                 {
-                    DIVIDE_UNEXPECTED_CALL_MSG("Duplicate bone transform found in imported mesh data!");
+                    mat4<F32> offset;
+                    AnimUtils::TransformMatrix( bone->mOffsetMatrix, offset );
+                    const detail::BoneBindingStatus status = detail::RegisterBoneBinding( *found, offset, nextBoneIndex );
+                    if ( status == detail::BoneBindingStatus::CONFLICT )
+                    {
+                        Console::errorfn( LOCALE_STR( "ERROR_IMPORTER_BONE_OFFSET_CONFLICT" ), modelPath,
+                                          bone->mName.C_Str(), mesh->mName.C_Str() );
+                        return false;
+                    }
+                    if ( status == detail::BoneBindingStatus::LIMIT_EXCEEDED )
+                    {
+                        Console::errorfn( LOCALE_STR( "ERROR_IMPORTER_BONE_LIMIT" ), modelPath,
+                                          Config::MAX_BONE_COUNT_PER_NODE );
+                        return false;
+                    }
                 }
             }
         }

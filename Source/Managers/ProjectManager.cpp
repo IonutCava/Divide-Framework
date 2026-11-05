@@ -936,7 +936,6 @@ namespace Divide
 
         _currentPlayerPass = idx;
         Attorney::SceneProjectManager::currentPlayerPass( activeProject()->getActiveScene(), _currentPlayerPass );
-        playerCamera()->updateLookAt();
     }
 
     void ProjectManager::editorPreviewNode( const I64 editorPreviewNode ) noexcept
@@ -985,7 +984,7 @@ namespace Divide
     }
 
     
-    void ProjectManager::getSortedReflectiveNodes( const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut ) const
+    void ProjectManager::getSortedReflectiveNodes( const Camera* camera, const bool inView, VisibleNodeList<>& nodesOut ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -1003,10 +1002,11 @@ namespace Divide
         {
             NodeCullParams cullParams = {};
             cullParams._lodThresholds = activeProject()->getActiveScene()->state()->renderState().lodThresholds();
-            cullParams._stage = stage;
+            cullParams._stagePass._stage = RenderStage::DISPLAY;
             cullParams._cameraEyePos = camera->snapshot()._eye;
+            cullParams._rangeCameraEyePos = cullParams._cameraEyePos;
             cullParams._frustum = &camera->getFrustum();
-            cullParams._cullMaxDistance = camera->snapshot()._zPlanes.max;
+            cullParams._cullMaxDistance = activeProject()->getActiveScene()->state()->renderState().generalVisibility();
 
             RenderPassCuller::FrustumCull( parent().platformContext(), cullParams, to_base( CullOptions::DEFAULT_CULL_OPTIONS ), allNodes, nodesOut );
         }
@@ -1016,7 +1016,7 @@ namespace Divide
         }
     }
 
-    void ProjectManager::getSortedRefractiveNodes( const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut ) const
+    void ProjectManager::getSortedRefractiveNodes( const Camera* camera, const bool inView, VisibleNodeList<>& nodesOut ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -1033,10 +1033,11 @@ namespace Divide
         {
             NodeCullParams cullParams = {};
             cullParams._lodThresholds = activeProject()->getActiveScene()->state()->renderState().lodThresholds();
-            cullParams._stage = stage;
+            cullParams._stagePass._stage = RenderStage::DISPLAY;
             cullParams._cameraEyePos = camera->snapshot()._eye;
+            cullParams._rangeCameraEyePos = cullParams._cameraEyePos;
             cullParams._frustum = &camera->getFrustum();
-            cullParams._cullMaxDistance = camera->snapshot()._zPlanes.max;
+            cullParams._cullMaxDistance = activeProject()->getActiveScene()->state()->renderState().generalVisibility();
 
             RenderPassCuller::FrustumCull( parent().platformContext(), cullParams, to_base( CullOptions::DEFAULT_CULL_OPTIONS ), allNodes, nodesOut );
         }
@@ -1055,7 +1056,7 @@ namespace Divide
     {
         Scene* activeScene = activeProject()->getActiveScene();
 
-        cullParamsInOut._stage = stage;
+        cullParamsInOut._stagePass._stage = stage;
         cullParamsInOut._lodThresholds = activeScene->state()->renderState().lodThresholds( stage );
         if ( stage != RenderStage::SHADOW )
         {
@@ -1071,12 +1072,12 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        Time::ScopedTimer timer( *_sceneGraphCullTimers[to_U32( params._stage )] );
+        Time::ScopedTimer timer( *_sceneGraphCullTimers[to_U32( params._stagePass._stage )] );
 
         Scene* activeScene = activeProject()->getActiveScene();
         RenderPassCuller::FrustumCull( params, cullFlags, *activeScene->sceneGraph(), *activeScene->state(), _parent.platformContext(), nodesOut );
 
-        if ( params._stage == RenderStage::DISPLAY )
+        if ( params._stagePass._stage == RenderStage::DISPLAY )
         {
             _recentlyRenderedNodes = nodesOut;
         }
@@ -1096,16 +1097,12 @@ namespace Divide
                     const BoundsComponent* bComp = sgn->get<BoundsComponent>();
                     VisibleNode temp{};
                     temp._node = sgn;
-                    temp._distanceToCameraSq = bComp == nullptr ? 0.f : bComp->getBoundingSphere().getDistanceFromPoint( cameraEye );
+                    temp._distanceToCameraSq = bComp == nullptr
+                                                   ? 0.f
+                                                   : bComp->getBoundingBox().nearestPoint( cameraEye ).distanceSquared( cameraEye );
                     nodesOut.append( temp );
                 };
                 appendNode( sgn );
-
-                const BoundsComponent* bComp = sgn->get<BoundsComponent>();
-                VisibleNode temp{};
-                temp._node = sgn;
-                temp._distanceToCameraSq = bComp == nullptr ? 0.f : bComp->getBoundingSphere().getDistanceFromPoint( cameraEye );
-                nodesOut.append( temp );
 
                 const auto& children = sgn->getChildren();
                 SharedLock<SharedMutex> r_lock( children._lock );

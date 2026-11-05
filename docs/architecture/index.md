@@ -1,5 +1,7 @@
 # Agent codebase reference
 
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
+
 These guides are task-scoped notes, not the framework's human-facing feature overview.
 Start with the repository-wide instructions in [AGENTS.md](../../AGENTS.md), then read only the relevant guides.
 Source paths below and in the guides are relative to the repository root.
@@ -10,6 +12,7 @@ Source paths below and in the guides are relative to the repository root.
 | [Shaders and descriptors](shader-descriptors.md) | `ShaderProgram`, `ShaderDataUploader`, `GLSLToSPIRV`, backend shader programs; bindings and cache compatibility |
 | [GPU resources](gpu-resources.md) | `vkDevice`, `VKWrapper`, GL/Vulkan buffer and texture implementations; allocation, capabilities, coordinate/colour conventions |
 | [Asset pipeline](asset-pipeline.md) | `MeshImporter`, `DVDConverter`, `VertexBuffer`, `Texture`, `ImageTools`; import, cache, and upload |
+| [Scene loading](scene-loading.md) | `ProjectManager`, `ScenePool`, `Scene`, `SceneGraph`; scene selection, XML and activation |
 | [Threading](threading.md) | `PlatformContext`, task pools, render preparation, resource synchronization, Vulkan queue usage |
 | [Networking](networking.md) | `Client`, `Connection`; context ownership, heartbeat cancellation and loopback test initialization |
 

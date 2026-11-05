@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -37,7 +37,19 @@
 #define VMA_ASSERT(expr) DIVIDE_GPU_ASSERT(expr)
 #endif //VMA_ASSERT
 
-#define VMA_DEBUG_LOG(format, ...) do { Divide::Console::printfn(format, ##__VA_ARGS__); } while(false)
+namespace Divide
+{
+    extern std::atomic_bool g_enableVMADebugLogging;
+}
+
+#define VMA_DEBUG_LOG(...)                                                                 \
+    do                                                                                     \
+    {                                                                                      \
+        if ( Divide::g_enableVMADebugLogging.load( std::memory_order_relaxed ) )            \
+        {                                                                                  \
+            Divide::Console::printfn( __VA_ARGS__ );                                       \
+        }                                                                                  \
+    } while ( false )
 
 DISABLE_MSVC_WARNING_PUSH(4127) // conditional expression is constant
 DISABLE_MSVC_WARNING_PUSH(4100) // unreferenced formal parameter

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 DIVIDE-Studio
 
 
 #include "Headers/CommandBufferPool.h"
@@ -17,6 +18,7 @@ void InitPools(const size_t poolSizeFactor)
 void DestroyPools() noexcept
 {
     delete g_sCommandBufferPool;
+    g_sCommandBufferPool = nullptr;
 }
 
 CommandBufferPool::CommandBufferPool(const size_t poolSizeFactor)

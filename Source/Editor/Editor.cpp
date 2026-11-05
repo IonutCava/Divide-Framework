@@ -1086,6 +1086,12 @@ namespace Divide
 
         nodePreviewWindowVisible(false);
 
+        if ( _gizmoSelectionRefresh.pending() &&
+             _gizmoSelectionRefresh.consumeIfIdle( _gizmo->isUsing() ) )
+        {
+            Attorney::GizmoEditor::updateSelections( _gizmo.get() );
+        }
+
         Attorney::GizmoEditor::update( _gizmo.get(), deltaTimeUS );
 
         if ( running() )
@@ -1144,9 +1150,9 @@ namespace Divide
             }
             else
             {
+                playerState.overrideCamera( editorCamera() );
                 if ( nodePreviewWindowVisible() )
                 {
-                    playerState.overrideCamera( nodePreviewCamera() );
                     Attorney::ProjectManagerEditor::editorPreviewNode( sMgr.get(), _previewNode == nullptr ? 0 : _previewNode->getGUID() );
                     if ( !movedToNode && _previewNode != nullptr )
                     {
@@ -1161,7 +1167,6 @@ namespace Divide
                 }
                 else
                 {
-                    playerState.overrideCamera( editorCamera() );
                     Attorney::ProjectManagerEditor::editorPreviewNode( sMgr.get(), -1 );
                     nodePreviewCamera()->setTarget( nullptr );
                     movedToNode = false;
@@ -1894,7 +1899,7 @@ namespace Divide
         const SceneViewWindow* sceneView = static_cast<SceneViewWindow*>(_dockedWindows[to_base( WindowType::SceneView )].get());
         _windowFocusState._hoveredScenePreview = sceneView->hovered() && sceneView->sceneRect( true ).contains( mousePos.x, mousePos.y );
 
-        const NodePreviewWindow* nodeView = static_cast<SceneViewWindow*>(_dockedWindows[to_base( WindowType::NodePreview )].get());
+        const NodePreviewWindow* nodeView = static_cast<NodePreviewWindow*>(_dockedWindows[to_base( WindowType::NodePreview )].get());
         _windowFocusState._hoveredNodePreview = nodeView->hovered() && nodeView->sceneRect( true ).contains( mousePos.x, mousePos.y );
 
         _windowFocusState._globalMousePos = mousePos;
@@ -2311,11 +2316,7 @@ namespace Divide
 
     void Editor::onNodeSpatialChange([[maybe_unused]] const SceneGraphNode& node)
     {
-        // Don't update the gizmo if it the source of the spatial change
-        if (!_gizmo->isUsing())
-        {
-            Attorney::GizmoEditor::updateSelections(_gizmo.get());
-        }
+        _gizmoSelectionRefresh.request();
     }
 
     void Editor::onChangeScene( Scene* newScene )
@@ -2392,7 +2393,7 @@ namespace Divide
                         {
                             const ImageView texView = tex->getView( TextureType::TEXTURE_2D_ARRAY,
                                                                                     { 0u, tex->mipCount() },
-                                                                                    { 0u, to_U16( tex->depth() * 6u) });
+                                                                                    { 0u, ALL_LAYERS });
 
                             Set( binding._data, texView, defaultSampler );
                         }

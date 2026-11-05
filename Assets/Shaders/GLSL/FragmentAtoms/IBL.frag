@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #ifndef _IMAGE_BASED_LIGHTING_FRAG_
 #define _IMAGE_BASED_LIGHTING_FRAG_
 
@@ -45,6 +47,19 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 7, std140) uniform dvd_ProbeBlock
     ProbeData dvd_Probes[GLOBAL_PROBE_COUNT];
 };
 
+struct IBLGradients
+{
+    vec3 _normalDx;
+    vec3 _normalDy;
+    vec2 _brdfDx;
+    vec2 _brdfDy;
+};
+
+#if !defined(NO_ENV_MAPPING) && !defined(NO_IBL)
+#define IBL_GRADIENTS(N, B) IBLGradients(dFdx(N), dFdy(N), dFdx(B), dFdy(B))
+#else
+#define IBL_GRADIENTS(N, B) IBLGradients(vec3(0.f), vec3(0.f), vec2(0.f), vec2(0.f))
+#endif
 
 #define IsProbeEnabled(P) (uint(P._positionW.w) == 1u)
 
@@ -108,21 +123,23 @@ vec4 getReflectionLookup(in float roughness, in vec3 viewDirectionWV, in vec3 no
 
 #if defined(SHADING_MODE_PBR)
 
-vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV, in float NdotV, in vec3 positionW, in uint probeID)
+vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV, in float NdotV, in vec3 positionW,
+              in uint probeID, in vec4 positionDx, in vec4 positionDy, in IBLGradients gradients)
 {
-    if ( probeID == SKY_LIGHT_LAYER_IDX && getWorldAO() < 1.f )
+    const vec3 ambient = getIBLAmbient(material);
+    const vec3 normalW = normalize(mat3(dvd_InverseViewMatrix) * normalWV);
+    const vec2 brdfCoords = vec2(NdotV, material._roughness);
+    if (probeID == SKY_LIGHT_LAYER_IDX && getWorldAO(positionDx, positionDy) < 1.f)
     {
-        return vec3( 0.f );
+        return ambient;
     }
 
     const vec4 reflectionLookup = getReflectionLookup(material._roughness, viewDirectionWV, normalWV, positionW, probeID);
 
-    const vec3 normalW = normalize(mat3(dvd_InverseViewMatrix) * normalWV);
-    const vec3 irradiance = texture(texEnvIrradiance, vec4(normalW, float(probeID))).rgb;
+    const vec3 irradiance = textureGrad(texEnvIrradiance, vec4(normalW, float(probeID)), gradients._normalDx, gradients._normalDy).rgb;
     const vec3 prefiltered = textureLod(texEnvPrefiltered, reflectionLookup, (material._roughness * REFLECTION_PROBE_MIP_COUNT)).rgb;
-    const vec2 envBRDF = texture(texBRDFLut, vec2(NdotV, material._roughness)).rg;
+    const vec2 envBRDF = textureGrad(texBRDFLut, brdfCoords, gradients._brdfDx, gradients._brdfDy).rg;
     const vec3 diffuse = irradiance * material._diffuseColour;
-    const vec3 ambient = getIBLAmbient(material);
 
     const vec3 F = computeFresnelSchlickRoughness(NdotV, material._F0, material._roughness);
     const vec3 kS = F;
@@ -135,27 +152,36 @@ vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV
 
 #else //SHADING_MODE_PBR
 
-vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV, in float NdotV, in vec3 positionW, in uint probeID)
+vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV, in float NdotV, in vec3 positionW,
+              in uint probeID, in vec4 positionDx, in vec4 positionDy, in IBLGradients gradients)
 {
-    if ( probeID == SKY_LIGHT_LAYER_IDX && getWorldAO() < 1.f )
+    const vec3 ambient = getIBLAmbient(material);
+#if defined(SHADING_MODE_BLINN_PHONG)
+    const vec3 normalW = normalize(mat3(dvd_InverseViewMatrix) * normalWV);
+#endif //SHADING_MODE_BLINN_PHONG
+    if (probeID == SKY_LIGHT_LAYER_IDX && getWorldAO(positionDx, positionDy) < 1.f)
     {
-        return vec3(0.f);
+        return ambient;
     }
 
     const vec4 reflectionLookup = getReflectionLookup(material._roughness, viewDirectionWV, normalWV, positionW, probeID);
     const vec3 prefiltered = textureLod(texEnvPrefiltered, reflectionLookup, (material._roughness * REFLECTION_PROBE_MIP_COUNT)).rgb;
-    const vec3 ambient = getIBLAmbient(material);
 
     // Don't know. Shinnier => more reflective?
     const float kD = material._specular.a / MAX_SHININESS;
+#if defined(SHADING_MODE_BLINN_PHONG)
+    const vec3 irradiance = textureGrad(texEnvIrradiance, vec4(normalW, float(probeID)), gradients._normalDx, gradients._normalDy).rgb;
+    return (irradiance * material._diffuseColour + easeInQuint(kD) * prefiltered) * material._occlusion + ambient;
+#else //SHADING_MODE_BLINN_PHONG
     return (easeInQuint(kD) * prefiltered) * material._occlusion + ambient;
+#endif //SHADING_MODE_BLINN_PHONG
 }
 
 #endif //SHADING_MODE_PBR
 
 #else //!NO_ENV_MAPPING && !NO_IBL
 
-#define ApplyIBL(M,V,N,nDv,P,ID) getIBLAmbient(M)
+#define ApplyIBL(M,V,N,nDv,P,ID,DX,DY,G) getIBLAmbient(M)
 
 #endif //!NO_ENV_MAPPING && !NO_IBL
 
@@ -167,7 +193,12 @@ vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV
 
 vec3 ApplySSR(in float roughness, in vec3 radianceIn)
 {
-    const vec4 ssr = texture(texSSR, dvd_screenPositionNormalised);
+    const vec4 ssr = SampleScreenTexture(texSSR);
+    if (ssr.a == 0.f)
+    {
+        return radianceIn;
+    }
+
     return mix(mix(radianceIn, ssr.rgb, ssr.a),
                radianceIn,
                roughness);
@@ -181,7 +212,7 @@ vec3 ApplySSR(in float roughness, in vec3 radianceIn)
 
 #else  //NO_SSAO
 
-#define ApplySSAO(R) (R * texture(texSSAO, dvd_screenPositionNormalised).r)
+#define ApplySSAO(R) (R * SampleScreenTexture(texSSAO).r)
 
 #endif  //NO_SSAO
 

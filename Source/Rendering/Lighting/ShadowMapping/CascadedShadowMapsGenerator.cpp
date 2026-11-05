@@ -6,7 +6,6 @@
 #include "Rendering/Camera/Headers/Camera.h"
 
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
-#include "ECS/Components/Headers/BoundsComponent.h"
 
 #include "Managers/Headers/ProjectManager.h"
 #include "Managers/Headers/RenderPassManager.h"
@@ -15,7 +14,6 @@
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
-#include "Graphs/Headers/SceneGraphNode.h"
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -42,6 +40,7 @@ namespace Divide
 
     CascadedShadowMapsGenerator::CascadedShadowMapsGenerator( GFXDevice& context )
         : ShadowMapGenerator( context, ShadowType::CSM )
+        , _worldAOCamera( Camera::CreateCamera( "WorldAOCamera", Camera::Mode::STATIC ) )
     {
         Console::printfn( LOCALE_STR( "LIGHT_CREATE_SHADOW_FB"), "EVCSM" );
 
@@ -135,7 +134,7 @@ namespace Divide
             colourDescriptor._texType = TextureType::TEXTURE_2D_ARRAY; 
             colourDescriptor._dataType = texDescriptor._dataType;
             colourDescriptor._baseFormat = texDescriptor._baseFormat;
-            colourDescriptor._layerCount = Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT;
+            colourDescriptor._layerCount = 1u;
             colourDescriptor._mipMappingState = MipMappingState::OFF;
 
             TextureDescriptor depthDescriptor{};
@@ -143,7 +142,7 @@ namespace Divide
             depthDescriptor._dataType = GFXDataFormat::UNSIGNED_INT;
             depthDescriptor._baseFormat = GFXImageFormat::RED;
             depthDescriptor._packing = GFXImagePacking::DEPTH;
-            depthDescriptor._layerCount = Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT;
+            depthDescriptor._layerCount = 1u;
             depthDescriptor._mipMappingState = MipMappingState::OFF;
 
             RenderTargetDescriptor desc = {};
@@ -195,6 +194,7 @@ namespace Divide
 
         DestroyResource( _blurDepthMapShader );
         DestroyResource( _blurAOMapShader );
+        Camera::DestroyCamera( _worldAOCamera );
     }
 
     CascadedShadowMapsGenerator::SplitDepths CascadedShadowMapsGenerator::calculateSplitDepths( DirectionalLightComponent& light, const float2 nearFarPlanes ) const noexcept
@@ -256,10 +256,10 @@ namespace Divide
 
             float3 frustumCornersWS[8]
             {
-                {-1.0f,  1.0f, -1.0f},
-                { 1.0f,  1.0f, -1.0f},
-                { 1.0f, -1.0f, -1.0f},
-                {-1.0f, -1.0f, -1.0f},
+                {-1.0f,  1.0f,  0.0f},
+                { 1.0f,  1.0f,  0.0f},
+                { 1.0f, -1.0f,  0.0f},
+                {-1.0f, -1.0f,  0.0f},
                 {-1.0f,  1.0f,  1.0f},
                 { 1.0f,  1.0f,  1.0f},
                 { 1.0f, -1.0f,  1.0f},
@@ -307,37 +307,22 @@ namespace Divide
 
             if ( cascadeIterator > 0 && light.csmUseSceneAABBFit()[cascadeIterator] )
             {
-                // Only meshes should be enough
-                bool validResult = false;
-                auto& prevPassResults = light.feedBackContainers()[cascadeIterator];
-                if ( !prevPassResults.empty() )
+                const ShadowCasterBounds& previous = light.cascadeBoundsFeedback()[cascadeIterator];
+                if ( previous._valid )
                 {
-                    BoundingBox meshAABB{};
-                    for ( auto& node : prevPassResults )
+                    BoundingBox meshAABB{ previous._bounds };
+                    meshAABB.transform( lightViewMatrix );
+                    appliedDiff = std::max( 0.f, meshAABB.getHalfExtent().y - radius );
+                    if ( appliedDiff > 0.5f )
                     {
-                        const SceneNode& sNode = node._node->getNode();
-                        if ( sNode.type() == SceneNodeType::TYPE_SUBMESH)
-                        {
-                            meshAABB.add( node._node->get<BoundsComponent>()->getBoundingBox() );
-                            validResult = true;
-                        }
-                    }
+                        radius += appliedDiff * 0.75f;
 
-                    if ( validResult )
-                    {
-                        meshAABB.transform( lightViewMatrix );
-                        appliedDiff = meshAABB.getHalfExtent().y - radius;
-                        if ( appliedDiff > 0.5f )
-                        {
-                            radius += appliedDiff * 0.75f;
+                        maxExtents.set( radius, radius, radius );
+                        minExtents = -maxExtents;
 
-                            maxExtents.set( radius, radius, radius );
-                            minExtents = -maxExtents;
-
-                            //Position the view matrix looking down the center of the frustum with an arbitrary light direction
-                            lightPosition = frustumCenter - light.directionCache() * (light.csmNearClipOffset() - minExtents.z);
-                            lightViewMatrix = lightCam->lookAt( lightPosition, frustumCenter, WORLD_Y_AXIS );
-                        }
+                        //Position the view matrix looking down the center of the frustum with an arbitrary light direction
+                        lightPosition = frustumCenter - light.directionCache() * (light.csmNearClipOffset() - minExtents.z);
+                        lightViewMatrix = lightCam->lookAt( lightPosition, frustumCenter, WORLD_Y_AXIS );
                     }
                 }
             }
@@ -345,7 +330,7 @@ namespace Divide
             const float2 clip
             {
                 0.0001f,
-                maxExtents.z - minExtents.z
+                maxExtents.z - minExtents.z + std::max( 0.f, light.csmNearClipOffset() )
             };
 
             mat4<F32> lightOrthoMatrix = Camera::Ortho( minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, clip.min, clip.max );
@@ -376,18 +361,19 @@ namespace Divide
         }
     }
 
-    void CascadedShadowMapsGenerator::render( const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+    void CascadedShadowMapsGenerator::render( const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         auto& dirLight = static_cast<DirectionalLightComponent&>(light);
 
         const U8 numSplits = dirLight.csmSplitCount();
-        dirLight.feedBackContainers().resize( numSplits );
+        dirLight.cascadeBoundsFeedback().resize( numSplits );
         applyFrustumSplits( dirLight, playerCamera, numSplits );
 
         RenderPassParams params = {};
         params._sourceNode = light.sgn();
+        params._pendingShaderOut = &pendingCastersOut;
         params._stagePass = { RenderStage::SHADOW, RenderPassType::COUNT, lightIndex, static_cast<RenderStagePass::VariantType>(ShadowType::CSM) };
         params._target = _drawBufferDepth._targetID;
         params._maxLoD = -1;
@@ -404,46 +390,27 @@ namespace Divide
         cmd->_scopeId = lightIndex;
 
         RenderPassManager* rpm = _context.context().kernel().renderPassManager().get();
+        const U16 layerOffset = dirLight.getShadowArrayOffset();
+        const U8 layerCount = dirLight.csmSplitCount();
+        const RenderTargetHandle& rtHandle = ShadowMap::getShadowMap( _type );
 
         for ( I8 i = numSplits - 1; i >= 0 && i < numSplits; i-- )
         {
-            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer._offset = i;
-            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer._offset = i;
-
             Util::StringFormatTo( params._passName, "CSM_PASS_{}", i );
             params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
             params._minExtents.set( g_minExtentsFactors[i] );
-            if ( i > 0 && dirLight.csmUseSceneAABBFit()[i] )
+            params._shadowBoundsFeedback = SelectCascadeBoundsFeedback(
+                dirLight.cascadeBoundsFeedback()[i], to_U8( i ), dirLight.csmUseSceneAABBFit()[i] );
+            if ( params._shadowBoundsFeedback != nullptr )
             {
                 STUBBED( "CascadedShadowMapsGenerator::render: Validate AABBFit for first cascade!" );
-                params._feedBackContainer = &dirLight.feedBackContainers()[i];
-                params._feedBackContainer->resize( 0 );
             }
 
             rpm->doCustomPass( ShadowMap::shadowCameras( ShadowType::CSM )[i], params, bufferInOut, memCmdInOut );
-        }
-
-        const U16 layerOffset = dirLight.getShadowArrayOffset();
-        const U8 layerCount = dirLight.csmSplitCount();
-
-        const RenderTargetHandle& rtHandle = ShadowMap::getShadowMap( _type );
-
-        GFX::BlitRenderTargetCommand* blitRenderTargetCommand = GFX::EnqueueCommand<GFX::BlitRenderTargetCommand>( bufferInOut );
-        blitRenderTargetCommand->_source = _drawBufferDepth._targetID;
-        blitRenderTargetCommand->_destination = rtHandle._targetID;
-        for ( U8 i = 0u; i < dirLight.csmSplitCount(); ++i )
-        {
-            blitRenderTargetCommand->_params.emplace_back( RTBlitEntry
-            {
-                ._input = {
-                    ._layerOffset = i,
-                    ._index = 0u
-                },
-                ._output = {
-                    ._layerOffset = to_U16( layerOffset + i ),
-                    ._index = 0u
-                }
-            } );
+            GFX::BlitRenderTargetCommand* blitRenderTargetCommand = GFX::EnqueueCommand<GFX::BlitRenderTargetCommand>( bufferInOut );
+            blitRenderTargetCommand->_source = _drawBufferDepth._targetID;
+            blitRenderTargetCommand->_destination = rtHandle._targetID;
+            blitRenderTargetCommand->_params.emplace_back( ShadowMap::ScratchBlit( to_U16( layerOffset + i ) ) );
         }
 
         // Now we can either blur our target or just skip to mipmap computation
@@ -455,25 +422,25 @@ namespace Divide
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 
-    void CascadedShadowMapsGenerator::generateWorldAO( const Camera & playerCamera, GFX::CommandBuffer & bufferInOut, GFX::MemoryBarrierCommand & memCmdInOut )
+    mat4<F32> CascadedShadowMapsGenerator::generateWorldAO( const Camera& activeCamera, const float2& staticHeightRange, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        //ToDo: compute this:
-        constexpr F32 offset = 500.f;
+        constexpr F32 horizontalExtent = 500.f;
+        constexpr F32 verticalMargin = 50.f;
+        const float3 activeCameraPos = activeCamera.snapshot()._eye;
+        const F32 top = staticHeightRange.y + verticalMargin;
+        const F32 bottom = staticHeightRange.x - verticalMargin;
+        const float3 eye{ activeCameraPos.x, top, activeCameraPos.z };
+        const float3 target{ activeCameraPos.x, top - 1.f, activeCameraPos.z };
 
-        // Use a top down camera encompasing most of the scene
-        const float3 playerCamPos = playerCamera.snapshot()._eye;
-
-        const float2 maxExtents( offset, offset );
+        const float2 maxExtents( horizontalExtent, horizontalExtent );
         const float2 minExtents = -maxExtents;
 
         const Rect<I32> orthoRect = { minExtents.x, maxExtents.x, minExtents.y, maxExtents.y };
-        const float2 zPlanes = { 1.f, offset * 1.5f };
+        const float2 zPlanes = { 1.f, top - bottom };
 
-        auto& shadowCameras = ShadowMap::shadowCameras( ShadowType::SINGLE );
-        Camera* shadowCamera = shadowCameras[0];
-        const mat4<F32> viewMatrix = shadowCamera->lookAt( playerCamPos + float3( 0.f, offset, 0.f ), playerCamPos, WORLD_Z_NEG_AXIS );
-        const mat4<F32> projMatrix = shadowCamera->setProjection( orthoRect, zPlanes );
-        shadowCamera->updateLookAt();
+        const mat4<F32> viewMatrix = _worldAOCamera->lookAt( eye, target, WORLD_Z_NEG_AXIS );
+        const mat4<F32> projMatrix = _worldAOCamera->setProjection( orthoRect, zPlanes );
+        _worldAOCamera->updateLookAt();
 
         // Render large(ish) objects into shadow map
         RenderPassParams params = {};
@@ -489,31 +456,19 @@ namespace Divide
         params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "World AO Render Pass";
-        _context.context().kernel().renderPassManager()->doCustomPass( shadowCamera, params, bufferInOut, memCmdInOut );
+        _context.context().kernel().renderPassManager()->doCustomPass( _worldAOCamera, params, bufferInOut, memCmdInOut );
 
         const RenderTargetHandle& handle = ShadowMap::getShadowMap( _type );
 
         GFX::BlitRenderTargetCommand blitRenderTargetCommand = {};
         blitRenderTargetCommand._source = _drawBufferDepth._targetID;
         blitRenderTargetCommand._destination = handle._targetID;
-        blitRenderTargetCommand._params.emplace_back( RTBlitEntry
-        {
-            ._input = {
-                ._layerOffset = 0u,
-                ._index = 0u
-            },
-            ._output = {
-                ._layerOffset = ShadowMap::WORLD_AO_LAYER_INDEX,
-                ._index = 0u
-            }
-        } );
+        blitRenderTargetCommand._params.emplace_back( ShadowMap::ScratchBlit( ShadowMap::WORLD_AO_LAYER_INDEX ) );
 
         GFX::EnqueueCommand( bufferInOut, blitRenderTargetCommand );
 
-        // Apply a large blur to the map
+        // Blur the top-down coverage map.
         blurTarget( ShadowMap::WORLD_AO_LAYER_INDEX, 1u, bufferInOut );
-        // Used when sampling from sky probes. Us world X/Z to determine if we are in shadow or not. If we are, don't sample sky probe
-        // Can be used for other effects (e.g. rain culling)
 
         GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
         computeMipMapsCommand._texture = handle._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
@@ -525,7 +480,8 @@ namespace Divide
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
-        Attorney::GFXDeviceShadowMap::worldAOViewProjectionMatrix( _context, mat4<F32>::Multiply( projMatrix, viewMatrix ) );
+        const mat4<F32> worldAOVP = mat4<F32>::Multiply( projMatrix, viewMatrix );
+        return mat4<F32>::Multiply( MAT4_BIAS_ZERO_ONE_Z, worldAOVP );
     }
 
     void CascadedShadowMapsGenerator::blurTarget( const U16 layerOffset, const U16 layerCount, GFX::CommandBuffer & bufferInOut )
@@ -565,10 +521,7 @@ namespace Divide
         // Blur vertically
         beginRenderPassCmd._target = rtHandle._targetID;
         beginRenderPassCmd._name = "DO_CSM_BLUR_PASS_VERTICAL";
-        if ( layerCount == 1u )
-        {
-            beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, false };
-        }
+        beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, false };
 
         GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
         const auto& blurAtt = _blurBuffer._rt->getAttachment( RTAttachmentType::COLOUR );

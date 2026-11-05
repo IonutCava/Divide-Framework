@@ -161,6 +161,7 @@ namespace Divide
 
         using RenderTargets = std::array<bool, to_base( RTColourAttachmentSlot::COUNT )>;
         using ShaderLoadData = std::array<LoadData, to_base( ShaderType::COUNT )>;
+        using UniformBlockLayouts = std::array<Reflection::UniformsSet, 2u>;
 
         using ShaderProgramMap = fixed_vector<ShaderProgram*, U16_MAX, true>;
 
@@ -262,6 +263,7 @@ namespace Divide
         vector<Reflection::ImageEntry> _sampledImages;
         static bool SaveToCache( LoadData::ShaderCacheType cache, const LoadData& dataIn, const eastl::set<U64>& atomIDsIn );
         static bool LoadFromCache( LoadData::ShaderCacheType cache, LoadData& dataInOut, eastl::set<U64>& atomIDsOut );
+        static bool ReadCachedSPIRV( std::istream& stream, std::vector<SpvWord>& spirvOut );
 
     protected:
         static ShaderQueue s_recompileQueue;
@@ -284,15 +286,18 @@ namespace Divide
         bool loadSourceCode( const ModuleDefines& defines,
                              bool reloadExisting,
                              LoadData& loadDataInOut,
-                             Reflection::UniformsSet& previousUniformsInOut,
-                             U8& blockIndexInOut );
+                             UniformBlockLayouts& uniformBlocksInOut );
+
+        static U8 FindUniformBlockIndex( const UniformBlockLayouts& uniformBlocks,
+                                         const Reflection::UniformsSet& uniforms ) noexcept;
+        static bool CachedUniformBlockMatches( const UniformBlockLayouts& uniformBlocks,
+                                               const LoadData& data, U8& blockIndexOut ) noexcept;
 
         static void loadAndParseGLSL( std::string_view programName,
                                       RenderAPI renderAPI,
                                       const ModuleDefines& defines,
                                       LoadData& loadDataInOut,
-                                      Reflection::UniformsSet& previousUniformsInOut,
-                                      U8& blockIndexInOut,
+                                      UniformBlockLayouts& uniformBlocksInOut,
                                       eastl::set<U64>& atomIDsInOut );
 
         void initDrawDescriptorSetLayout( const PerFileShaderData& loadData );

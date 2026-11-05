@@ -119,12 +119,60 @@ public:
     };
 
 public:
+    enum class OITCompositionVariant : U8
+    {
+        COLOUR,
+        COLOUR_MSAA,
+        COLOUR_NORMALS,
+        COLOUR_NORMALS_MSAA,
+        COUNT
+    };
+
+    using OITCompositionShaders = std::array<Handle<ShaderProgram>, to_base( OITCompositionVariant::COUNT )>;
+
+    [[nodiscard]] static constexpr OITCompositionVariant SelectOITCompositionVariant( const bool writeNormals, const bool useMSAA ) noexcept
+    {
+        if ( writeNormals )
+        {
+            return useMSAA ? OITCompositionVariant::COLOUR_NORMALS_MSAA : OITCompositionVariant::COLOUR_NORMALS;
+        }
+        return useMSAA ? OITCompositionVariant::COLOUR_MSAA : OITCompositionVariant::COLOUR;
+    }
+
+    [[nodiscard]] static constexpr bool UsesScreenSpaceReflections( const RenderStage stage, const bool enabled ) noexcept
+    {
+        return stage == RenderStage::DISPLAY && enabled;
+    }
+
+    template<typename Owner, typename Package, typename Callback>
+    static void VisitPreparationOwners( vector<std::pair<Owner*, Package*>>& owners, Callback&& callback )
+    {
+        std::sort( owners.begin(), owners.end(), []( const auto& lhs, const auto& rhs )
+        {
+            return std::less<Owner*>{}( lhs.first, rhs.first );
+        } );
+        for ( size_t i = 0u; i < owners.size(); )
+        {
+            Owner* owner = owners[i].first;
+            Package* prepared = nullptr;
+            do
+            {
+                if ( owners[i].second != nullptr )
+                {
+                    prepared = owners[i].second;
+                }
+                ++i;
+            }
+            while ( i < owners.size() && owners[i].first == owner );
+            callback( *owner, prepared );
+        }
+    }
+
     explicit RenderPassExecutor(RenderPassManager& parent, GFXDevice& context, RenderStage stage);
 
     void doCustomPass(PlayerIndex idx, Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
     static void PostInit(GFXDevice& context,
-                         Handle<ShaderProgram> OITCompositionShader,
-                         Handle<ShaderProgram> OITCompositionShaderMS,
+                         const OITCompositionShaders& OITShaders,
                          Handle<ShaderProgram> ResolveGBufferShaderMS);
 
     static void ResizeGPUBuffers(GFXDevice& context, size_t indirectionCount, size_t transformCount, size_t materialCount, U16 ringLength);
@@ -203,7 +251,7 @@ private:
 
     void resolveMainScreenTarget(const RenderPassParams& params, GFX::CommandBuffer& bufferInOut) const;
 
-    [[nodiscard]] bool validateNodesForStagePass(RenderStagePass stagePass);
+    [[nodiscard]] bool validateNodesForStagePass(RenderStagePass stagePass, bool* pendingShaderOut);
     void parseTransformRange(RenderBin::SortedQueue& queue, U32 start, U32 end, const PlayerIndex index, D64 interpolationFactor);
     void parseMaterialRange(RenderBin::SortedQueue& queue, U32 start, U32 end);
 
@@ -223,6 +271,7 @@ private:
     RenderBin::SortedQueues _sortedQueues{};
     DrawCommandContainer _drawCommands{};
     RenderQueuePackages _renderQueuePackages{};
+    vector<std::pair<RenderingComponent*, RenderPackage*>> _preparationOwners{};
 
     ShaderBuffer_uptr _cmdBuffer;
 
@@ -235,8 +284,7 @@ private:
     static bool s_globalDataInit;
     static bool s_resizeBufferQueued;
 
-    static Pipeline* s_OITCompositionPipeline;
-    static Pipeline* s_OITCompositionMSPipeline;
+    static std::array<Pipeline*, to_base( OITCompositionVariant::COUNT )> s_OITCompositionPipelines;
     static Pipeline* s_ResolveGBufferPipeline;
 };
 

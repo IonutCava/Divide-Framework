@@ -61,8 +61,10 @@ RenderPassManager::RenderPassManager(Kernel& parent, GFXDevice& context)
 
 RenderPassManager::~RenderPassManager()
 {
-    DestroyResource( _oitCompositionShader );
-    DestroyResource( _oitCompositionShaderMS );
+    for ( Handle<ShaderProgram>& shader : _oitCompositionShaders )
+    {
+        DestroyResource( shader );
+    }
     DestroyResource( _gbufferResolveShader );
 }
 
@@ -72,19 +74,28 @@ void RenderPassManager::postInit()
     {
         const ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "OITComposition.glsl" };
 
-        ShaderProgramDescriptor shaderDescriptor = {};
-        shaderDescriptor._modules.push_back(vertModule);
-        shaderDescriptor._modules.push_back(fragModule);
-
+        for ( const bool writeNormals : { false, true } )
         {
-            ResourceDescriptor<ShaderProgram> shaderResDesc("OITComposition", shaderDescriptor );
-            _oitCompositionShader = CreateResource(shaderResDesc);
-        }
-        {
-            shaderDescriptor._modules.back()._defines.emplace_back("USE_MSAA_TARGET");
+            for ( const bool useMSAA : { false, true } )
+            {
+                ShaderProgramDescriptor shaderDescriptor = {};
+                shaderDescriptor._modules.push_back( vertModule );
+                shaderDescriptor._modules.push_back( fragModule );
+                if ( !writeNormals )
+                {
+                    shaderDescriptor._modules.back()._defines.emplace_back( "OIT_COLOUR_ONLY" );
+                }
+                if ( useMSAA )
+                {
+                    shaderDescriptor._modules.back()._defines.emplace_back( "USE_MSAA_TARGET" );
+                }
 
-            ResourceDescriptor<ShaderProgram> shaderResMSDesc("OITCompositionMS", shaderDescriptor );
-            _oitCompositionShaderMS = CreateResource(shaderResMSDesc);
+                const auto variant = RenderPassExecutor::SelectOITCompositionVariant( writeNormals, useMSAA );
+                ResourceDescriptor<ShaderProgram> shaderResDesc(
+                    Util::StringFormat( "OITComposition{}{}", writeNormals ? "" : "ColourOnly", useMSAA ? "MS" : "" ),
+                    shaderDescriptor );
+                _oitCompositionShaders[to_base( variant )] = CreateResource( shaderResDesc );
+            }
         }
     }
     {
@@ -101,7 +112,7 @@ void RenderPassManager::postInit()
         _gbufferResolveShader = CreateResource(shaderResolveDesc);
     }
 
-    RenderPassExecutor::PostInit( _context, _oitCompositionShader, _oitCompositionShaderMS, _gbufferResolveShader );
+    RenderPassExecutor::PostInit( _context, _oitCompositionShaders, _gbufferResolveShader );
 }
 
 void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& pool, Task* parentTask)
@@ -115,14 +126,82 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
         state.store(false);
     }
 
-    //All of our render passes should run in parallel
-    for (I8 i = to_base(RenderStage::COUNT) - 1; i >= 0; i-- )
-    { 
-        RenderPassData& passData = _renderPassData[i];
-        passData._workTask = CreateTask( parentTask,
+    std::array<U8, to_base( RenderStage::COUNT )> taskOrder{};
+    std::array<bool, to_base( RenderStage::COUNT )> scheduled{};
+    for ( U8 orderIndex = 0u; orderIndex < taskOrder.size(); ++orderIndex )
+    {
+        bool found = false;
+        for ( U8 stageIndex = 0u; stageIndex < scheduled.size(); ++stageIndex )
+        {
+            if ( scheduled[stageIndex] )
+            {
+                continue;
+            }
+
+            const auto& pass = _renderPassData[stageIndex]._pass;
+            if ( !DIVIDE_ASSERT( pass != nullptr, "Render stage has no pass" ) )
+            {
+                return;
+            }
+
+            bool ready = true;
+            for ( const RenderStage dependency : pass->dependencies() )
+            {
+                const U8 dependencyIndex = to_base( dependency );
+                if ( !DIVIDE_ASSERT( dependencyIndex < scheduled.size(), "Invalid render-stage dependency" ) )
+                {
+                    return;
+                }
+                if ( !scheduled[dependencyIndex] )
+                {
+                    ready = false;
+                    break;
+                }
+            }
+
+            if ( ready )
+            {
+                taskOrder[orderIndex] = stageIndex;
+                scheduled[stageIndex] = true;
+                found = true;
+                break;
+            }
+        }
+
+        if ( !DIVIDE_ASSERT( found, "Render-stage dependencies contain a cycle" ) )
+        {
+            return;
+        }
+    }
+
+    for ( const U8 i : taskOrder )
+    {
+        _renderPassData[i]._workTask = CreateTask( parentTask,
                                         [&, i](const Task& parentTask) {
                                            PROFILE_SCOPE("RenderPass: BuildCommandBuffer", Profiler::Category::Scene );
                                            PROFILE_TAG("Pass IDX", i);
+
+                                           RenderPassData& passData = _renderPassData[i];
+                                           const auto dependenciesComplete = [&]() noexcept
+                                           {
+                                               for ( const RenderStage dep : passData._pass->dependencies() )
+                                               {
+                                                   if ( !_renderPassCompleted[to_base( dep )].load() )
+                                                   {
+                                                       return false;
+                                                   }
+                                               }
+                                               return true;
+                                           };
+
+                                           while ( !dependenciesComplete() )
+                                           {
+                                               if ( !pool.threadWaiting() )
+                                               {
+                                                   UniqueLock<Mutex> lock( _waitForDependenciesLock );
+                                                   _waitForDependencies.wait_for( lock, std::chrono::milliseconds( 2 ), dependenciesComplete );
+                                               }
+                                           }
 
                                            Handle<GFX::CommandBuffer> cmdBufferHandle = GFX::AllocateCommandBuffer( TypeUtil::RenderStageToString( static_cast<RenderStage>(i) ), 1024 );
                                            GFX::CommandBuffer* cmdBuffer = GFX::Get(cmdBufferHandle);
@@ -133,23 +212,6 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
                                            Time::ScopedTimer timeGPUFlush( *_processCommandBufferTimer[i] );
                                            cmdBuffer->batch();
 
-                                           if (!passData._pass->dependencies().empty())
-                                           {
-                                               UniqueLock<Mutex> lock( _waitForDependenciesLock );
-                                               _waitForDependencies.wait(lock, [&]() noexcept
-                                               {
-                                                   for ( const RenderStage dep : passData._pass->dependencies() )
-                                                   {
-                                                       if ( !_renderPassCompleted[to_base( dep )] )
-                                                       {
-                                                           return false;
-                                                       }
-                                                   }
-
-                                                   return true;
-                                               });
-                                            }
-
                                             _context.flushCommandBuffer( MOV(cmdBufferHandle) );
                                             _renderPassCompleted[i].store(true);
 
@@ -157,7 +219,7 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
                                            _waitForDependencies.notify_all();
                                        });
 
-        pool.enqueue(*passData._workTask, TaskPriority::DONT_CARE_NO_IDLE);
+        pool.enqueue(*_renderPassData[i]._workTask, TaskPriority::DONT_CARE_NO_IDLE);
     }
 }
 

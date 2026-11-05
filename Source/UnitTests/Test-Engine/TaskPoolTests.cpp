@@ -9,7 +9,7 @@
 
 namespace Divide
 {
-    TEST_CASE( "Parallel loading waits process main-thread completion callbacks", "[threading]" )
+    TEST_CASE( "Parallel loading waits process main-thread completion callbacks", "[threading][render_smoke]" )
     {
         platformInitRunListener::PlatformInit();
 
@@ -76,4 +76,38 @@ namespace Divide
         CHECK( callbackOnMain.load() );
     }
 
+    TEST_CASE( "Parallel terrain chunk jobs visit every distinct chunk once", "[threading][terrain][render_smoke]" )
+    {
+        platformInitRunListener::PlatformInit();
+        TaskPool pool{ "TERRAIN_CHUNK_TEST" };
+        REQUIRE( pool.init( 3u ) );
+        SCOPE_EXIT
+        {
+            pool.shutdown();
+        };
+
+        constexpr U32 chunkCount = 64u;
+        std::array<std::atomic_uint, chunkCount> visits{};
+        std::array<U32, chunkCount> chunkIDs{};
+        for ( U32 i = 0u; i < chunkCount; ++i )
+        {
+            chunkIDs[i] = i;
+        }
+
+        ParallelForDescriptor descriptor{};
+        descriptor._iterCount = chunkCount;
+        descriptor._partitionSize = 1u;
+        Parallel_For( pool, descriptor, [&]( const Task*, const U32 start, const U32 end )
+        {
+            for ( U32 i = start; i < end; ++i )
+            {
+                visits[chunkIDs[i]].fetch_add( 1u );
+            }
+        } );
+
+        for ( const auto& count : visits )
+        {
+            CHECK( count.load() == 1u );
+        }
+    }
 }

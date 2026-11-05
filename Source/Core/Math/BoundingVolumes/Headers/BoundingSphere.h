@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -53,10 +53,7 @@ class BoundingSphere
     void fromOBB(const OBB& box) noexcept;
     void fromBoundingSphere(const BoundingSphere& bSphere) noexcept;
     [[nodiscard]] bool containsPoint(const float3& point) const noexcept;
-    [[nodiscard]] bool containsBoundingBox(const BoundingBox& AABB) const noexcept;
 
-    // https://code.google.com/p/qe3e/source/browse/trunk/src/BoundingSphere.h?r=28
-    void add(const BoundingSphere& bSphere) noexcept;
     void add(const float3& point) noexcept;
     void addRadius(const BoundingSphere& bSphere) noexcept;
     void addRadius(const float3& point) noexcept;
@@ -69,7 +66,6 @@ class BoundingSphere
 
 
     [[nodiscard]] F32 getDistanceFromPoint(const float3& point) const noexcept;
-    [[nodiscard]] F32 getDistanceSQFromPoint(const float3& point) const noexcept;
 
     void reset() noexcept;
 

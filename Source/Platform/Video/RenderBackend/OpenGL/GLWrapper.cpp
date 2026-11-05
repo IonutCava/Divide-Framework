@@ -38,7 +38,7 @@ namespace Divide
     NO_DESTROY GLStateTracker GL_API::s_stateTracker;
     std::atomic_bool GL_API::s_glFlushQueued{false};
     NO_DESTROY GLUtil::glTextureViewCache GL_API::s_textureViewCache{};
-    U32 GL_API::s_fenceSyncCounter[GL_API::s_LockFrameLifetime]{};
+    std::atomic_uint GL_API::s_fenceSyncCounter[GL_API::s_LockFrameLifetime]{};
     SharedMutex GL_API::s_samplerMapLock;
     NO_DESTROY GL_API::SamplerObjectMap GL_API::s_samplerMap{};
     std::unique_ptr<glHardwareQueryPool> GL_API::s_hardwareQueryPool = nullptr;
@@ -577,10 +577,7 @@ namespace Divide
 
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
-            gl46core::glObjectLabel( gl46core::GL_VERTEX_ARRAY,
-                                     _dummyVAO,
-                                     -1,
-                                     "GENERIC_VAO");
+            GLUtil::SetObjectLabel( gl46core::GL_VERTEX_ARRAY, _dummyVAO, "GENERIC_VAO" );
         }
 
         gl46core::glBindVertexArray( _dummyVAO );
@@ -719,7 +716,7 @@ namespace Divide
             DIVIDE_GPU_ASSERT( waitRet != gl46core::GL_WAIT_FAILED, "GL_API::beginFrame error: Not sure what to do here. Probably raise an exception or something." );
             if ( waitRet == gl46core::GL_ALREADY_SIGNALED || waitRet == gl46core::GL_CONDITION_SATISFIED )
             {
-                s_stateTracker._lastSyncedFrameNumber = sync.second;
+                s_stateTracker._lastSyncedFrameNumber.store( sync.second, std::memory_order_relaxed );
                 DestroyFenceSync( sync.first );
                 s_stateTracker._endFrameFences.pop();
             }
@@ -729,7 +726,7 @@ namespace Divide
             }
         }
 
-        LockManager::CleanExpiredSyncObjects( RenderAPI::OpenGL, s_stateTracker._lastSyncedFrameNumber );
+        LockManager::CleanExpiredSyncObjects( RenderAPI::OpenGL, s_stateTracker._lastSyncedFrameNumber.load( std::memory_order_relaxed ) );
 
         return true;
     }
@@ -742,7 +739,7 @@ namespace Divide
 
         for ( U32 i = 0u; i < GL_API::s_LockFrameLifetime - 1; ++i )
         {
-            s_fenceSyncCounter[i] = s_fenceSyncCounter[i + 1];
+            s_fenceSyncCounter[i].store(s_fenceSyncCounter[i + 1].load(std::memory_order_relaxed), std::memory_order_relaxed);
         }
 
         PROFILE_SCOPE( "GL_API: Post-Swap cleanup", Profiler::Category::Graphics );
@@ -772,7 +769,7 @@ namespace Divide
 
         for ( size_t i = 0u; i < std::size( _context.getPerformanceMetrics()._syncObjectsInFlight ); ++i )
         {
-            _context.getPerformanceMetrics()._syncObjectsInFlight[i] = i < fenceSize ? s_fenceSyncCounter[i] : 0u;
+            _context.getPerformanceMetrics()._syncObjectsInFlight[i] = i < fenceSize ? s_fenceSyncCounter[i].load(std::memory_order_relaxed) : 0u;
         }
 
         _context.getPerformanceMetrics()._generatedRenderTargetCount = to_U32( _context.renderTargetPool().getRenderTargets().size() );
@@ -1103,15 +1100,18 @@ namespace Divide
                                                                                          srcView._descriptor._dataType,
                                                                                          srcView._descriptor._packing )._format;
 
-            const bool isCube = IsCubeTexture(srcTexture->descriptor()._texType);
-            const U16 texLayers = isCube ? srcTexture->depth() * 6u : srcTexture->depth();
+            const bool isCube = IsCubeTexture( srcTexture->descriptor()._texType );
+            const bool isCubeView = IsCubeTexture( TargetType( srcView ) );
+            const U32 texLayers = srcTexture->descriptor()._texType == TextureType::TEXTURE_3D
+                                ? srcTexture->depth()
+                                : srcTexture->layerCount() * (isCube ? 6u : 1u);
             const U16 viewLayerCount = srcView._subRange._layerRange._count;
             const U16 viewLayerOffset = srcView._subRange._layerRange._offset;
 
-            const gl46core::GLuint glMinLayer = static_cast<gl46core::GLuint>(viewLayerOffset * (isCube ? 6u : 1u));
+            const gl46core::GLuint glMinLayer = to_U32( viewLayerOffset * (isCubeView ? 6u : 1u) );
             const gl46core::GLuint glLayerCount = (viewLayerCount == ALL_LAYERS)
-                                                          ? static_cast<gl46core::GLuint>(texLayers - glMinLayer)
-                                                          : static_cast<gl46core::GLuint>(viewLayerCount * (isCube ? 6u : 1u));
+                                                          ? to_U32( texLayers - glMinLayer )
+                                                          : to_U32( viewLayerCount * (isCubeView ? 6u : 1u) );
 
             PROFILE_SCOPE( "GL: cache miss  - Image", Profiler::Category::Graphics );
             gl46core::glTextureView( handle,
@@ -2275,19 +2275,21 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_GPU_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] < U32_MAX );
-
-        ++s_fenceSyncCounter[s_LockFrameLifetime - 1u];
-        return gl46core::glFenceSync( gl46core::GL_SYNC_GPU_COMMANDS_COMPLETE, static_cast<gl46core::GLbitfield>(gl46core::UnusedMask::GL_UNUSED_BIT) );
+        gl46core::GLsync sync = gl46core::glFenceSync( gl46core::GL_SYNC_GPU_COMMANDS_COMPLETE, static_cast<gl46core::GLbitfield>(gl46core::UnusedMask::GL_UNUSED_BIT) );
+        if (sync != nullptr)
+        {
+            DIVIDE_GPU_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u].load(std::memory_order_relaxed) < U32_MAX );
+            s_fenceSyncCounter[s_LockFrameLifetime - 1u].fetch_add(1u, std::memory_order_relaxed);
+        }
+        return sync;
     }
 
     void GL_API::DestroyFenceSync( gl46core::GLsync& sync )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_GPU_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] > 0u );
-
-        --s_fenceSyncCounter[s_LockFrameLifetime - 1u];
+        DIVIDE_GPU_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u].load(std::memory_order_relaxed) > 0u );
+        s_fenceSyncCounter[s_LockFrameLifetime - 1u].fetch_sub(1u, std::memory_order_relaxed);
         gl46core::glDeleteSync( sync );
         sync = nullptr;
     }

@@ -1,6 +1,9 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/GUIButton.h"
+
+#include "Core/Resources/Headers/ResourceCache.h"
+#include "Platform/Audio/Headers/AudioDescriptor.h"
 
 namespace Divide {
 
@@ -15,6 +18,8 @@ GUIButton::GUIButton(const std::string_view name,
     : GUIElementBase(name, parent),
       _btnWindow(nullptr)
 {
+    _eventSound.fill(INVALID_HANDLE<AudioDescriptor>);
+
     if (parent != nullptr)
     {
         _btnWindow = CEGUI::WindowManager::getSingleton().createWindow(CEGUI::String(guiScheme.data(), guiScheme.length()) + "/Button", CEGUI::String(name.data(), name.length()));
@@ -88,6 +93,11 @@ GUIButton::GUIButton(const std::string_view name,
 
 GUIButton::~GUIButton()
 {
+    for (Handle<AudioDescriptor>& sound : _eventSound)
+    {
+        DestroyResource(sound);
+    }
+
     if (_btnWindow != nullptr)
     {
         _btnWindow->removeAllEvents();
@@ -179,7 +189,13 @@ void GUIButton::setEventCallback(const Event event, const ButtonCallback& callba
 
 void GUIButton::setEventSound(const Event event, const Handle<AudioDescriptor> sound)
 {
-    _eventSound[to_base(event)] = sound;
+    Handle<AudioDescriptor>& current = _eventSound[to_base(event)];
+    if (current != sound)
+    {
+        const Handle<AudioDescriptor> replacement = GetResourceRef(sound);
+        DestroyResource(current);
+        current = replacement;
+    }
 }
 
 void GUIButton::setEventCallback(const Event event, const ButtonCallback& callback, const Handle<AudioDescriptor> sound)

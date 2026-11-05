@@ -1,0 +1,25 @@
+diff --git a/extern/stb/stb_image.h b/extern/stb/stb_image.h
+--- a/extern/stb/stb_image.h
++++ b/extern/stb/stb_image.h
+@@ -5314,6 +5314,11 @@ static void *stbi__bmp_load(stbi__context *s, int *x, int *y, int *comp, int req
+    ma = info.ma;
+    all_a = info.all_a;
+ 
++   if (info.offset < info.extra_read + info.hsz ||
++       (!s->io.read &&
++        info.offset >= s->img_buffer_original_end - s->img_buffer_original))
++      return stbi__errpuc("bad BMP offset", "Corrupt BMP");
++
+    if (info.hsz == 12) {
+       if (info.bpp < 24)
+          psize = (info.offset - info.extra_read - 24) / 3;
+@@ -5321,9 +5326,6 @@ static void *stbi__bmp_load(stbi__context *s, int *x, int *y, int *comp, int req
+       if (info.bpp < 16)
+          psize = (info.offset - info.extra_read - info.hsz) >> 2;
+    }
+-   if (psize == 0) {
+-      STBI_ASSERT(info.offset == (s->img_buffer - s->buffer_start));
+-   }
+ 
+    if (info.bpp == 24 && ma == 0xff000000)
+       s->img_n = 3;

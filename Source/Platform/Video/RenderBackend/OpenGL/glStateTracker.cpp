@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/glStateTracker.h"
 #include "Headers/GLWrapper.h"
@@ -81,7 +81,7 @@ namespace Divide
 
         _vaoBufferData = {};
         _endFrameFences = {};
-        _lastSyncedFrameNumber = 0u;
+        _lastSyncedFrameNumber.store( 0u, std::memory_order_relaxed );
 
         _blendPropertiesGlobal.blendSrc( BlendProperty::ONE );
         _blendPropertiesGlobal.blendDest( BlendProperty::ZERO );
@@ -727,9 +727,12 @@ namespace Divide
 
         if ( enable && _blendPropertiesGlobal != blendingProperties )
         {
+            const bool separateModeChanged = (blendingProperties.blendOpAlpha() == BlendOperation::COUNT) !=
+                                             (_blendPropertiesGlobal.blendOpAlpha() == BlendOperation::COUNT);
             if ( blendingProperties.blendOpAlpha() != BlendOperation::COUNT )
             {
-                if ( blendingProperties.blendSrc() != _blendPropertiesGlobal.blendSrc() ||
+                if ( separateModeChanged ||
+                     blendingProperties.blendSrc() != _blendPropertiesGlobal.blendSrc() ||
                      blendingProperties.blendDest() != _blendPropertiesGlobal.blendDest() ||
                      blendingProperties.blendSrcAlpha() != _blendPropertiesGlobal.blendSrcAlpha() ||
                      blendingProperties.blendDestAlpha() != _blendPropertiesGlobal.blendDestAlpha() )
@@ -751,13 +754,14 @@ namespace Divide
             }
             else
             {
-                if ( blendingProperties.blendSrc() != _blendPropertiesGlobal.blendSrc() ||
+                if ( separateModeChanged ||
+                     blendingProperties.blendSrc() != _blendPropertiesGlobal.blendSrc() ||
                      blendingProperties.blendDest() != _blendPropertiesGlobal.blendDest() )
                 {
                     gl46core::glBlendFunc( GLUtil::glBlendTable[to_base( blendingProperties.blendSrc() )],
                                            GLUtil::glBlendTable[to_base( blendingProperties.blendDest() )] );
                 }
-                if ( blendingProperties.blendOp() != _blendPropertiesGlobal.blendOp() )
+                if ( separateModeChanged || blendingProperties.blendOp() != _blendPropertiesGlobal.blendOp() )
                 {
                     gl46core::glBlendEquation( GLUtil::glBlendOpTable[blendingProperties.blendOp() != BlendOperation::COUNT
                                                                                                     ? to_base( blendingProperties.blendOp() )
@@ -794,9 +798,12 @@ namespace Divide
 
         if ( enable && crtProperties != blendingProperties )
         {
+            const bool separateModeChanged = (blendingProperties.blendOpAlpha() == BlendOperation::COUNT) !=
+                                             (crtProperties.blendOpAlpha() == BlendOperation::COUNT);
             if ( blendingProperties.blendOpAlpha() != BlendOperation::COUNT )
             {
-                if ( blendingProperties.blendSrc() != crtProperties.blendSrc() ||
+                if ( separateModeChanged ||
+                     blendingProperties.blendSrc() != crtProperties.blendSrc() ||
                      blendingProperties.blendDest() != crtProperties.blendDest() ||
                      blendingProperties.blendSrcAlpha() != crtProperties.blendSrcAlpha() ||
                      blendingProperties.blendDestAlpha() != crtProperties.blendDestAlpha() )
@@ -828,7 +835,8 @@ namespace Divide
             }
             else
             {
-                if ( blendingProperties.blendSrc() != crtProperties.blendSrc() ||
+                if ( separateModeChanged ||
+                     blendingProperties.blendSrc() != crtProperties.blendSrc() ||
                      blendingProperties.blendDest() != crtProperties.blendDest() )
                 {
                     gl46core::glBlendFunci( drawBufferIdx,
@@ -839,7 +847,7 @@ namespace Divide
                     _blendPropertiesGlobal.blendDest() = blendingProperties.blendDest();
                 }
 
-                if ( blendingProperties.blendOp() != crtProperties.blendOp() )
+                if ( separateModeChanged || blendingProperties.blendOp() != crtProperties.blendOp() )
                 {
                     gl46core::glBlendEquationi( drawBufferIdx,
                                                 GLUtil::glBlendOpTable[blendingProperties.blendOp() != BlendOperation::COUNT

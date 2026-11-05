@@ -98,10 +98,24 @@ class LightPool final : public FrameListener,
           std::array<PointShadowProperties, Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS> _pointLights{};
           std::array<SpotShadowProperties, Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS> _spotLights{};
           std::array<CSMShadowProperties, Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS> _dirLights{};
+          float4 _cameraViewDepthRow{};
+          mat4<F32> _worldAOVPMatrix = MAT4_IDENTITY;
 
           [[nodiscard]] bufferPtr data() const noexcept { return (bufferPtr)_pointLights.data(); }
       };
 #pragma pack(pop)
+
+    static_assert(sizeof(float4) == 16u && sizeof(mat4<F32>) == 64u);
+    static_assert(sizeof(PointShadowProperties) == 2u * sizeof(float4));
+    static_assert(sizeof(SpotShadowProperties) == 2u * sizeof(float4) + sizeof(mat4<F32>));
+    static_assert(sizeof(CSMShadowProperties) == (1u + Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT) * sizeof(float4) +
+                                                Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT * sizeof(mat4<F32>));
+    static_assert(offsetof(ShadowProperties, _cameraViewDepthRow) ==
+                  Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS * sizeof(PointShadowProperties) +
+                  Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS * sizeof(SpotShadowProperties) +
+                  Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * sizeof(CSMShadowProperties));
+    static_assert(offsetof(ShadowProperties, _worldAOVPMatrix) == offsetof(ShadowProperties, _cameraViewDepthRow) + sizeof(float4));
+    static_assert(sizeof(ShadowProperties) == offsetof(ShadowProperties, _worldAOVPMatrix) + sizeof(mat4<F32>));
 
   public:
     struct ShadowLightList
@@ -139,8 +153,6 @@ class LightPool final : public FrameListener,
         return _lights[to_U32(type)];
     }
 
-    [[nodiscard]] Light* getLight(I64 lightGUID, LightType type) const;
-
     void sortLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot);
     void uploadLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut);
 
@@ -149,9 +161,12 @@ class LightPool final : public FrameListener,
     void preRenderAllPasses(const Camera* playerCamera);
 
     void onVolumeMoved(const BoundingSphere& volume, bool staticSource);
+    void onVolumeChanged(const BoundingSphere& previous, bool previousStatic,
+                         const BoundingSphere& current, bool currentStatic);
 
     /// nullptr = disabled
     void debugLight(Light* light);
+    [[nodiscard]] Light* debugLight() const noexcept;
 
     /// Get the appropriate shadow bind slot for every light's shadow
     [[nodiscard]] static U8 GetShadowBindSlotOffset(const ShadowType type) noexcept {
@@ -159,7 +174,6 @@ class LightPool final : public FrameListener,
     }
 
     PROPERTY_RW(bool, lightImpostorsEnabled, false);
-    POINTER_R(Light, debugLight, nullptr);
 
   protected:
     [[nodiscard]] bool frameStarted(const FrameEvent& evt) override;
@@ -172,11 +186,6 @@ class LightPool final : public FrameListener,
     void generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
 
     friend class ProjectManager;
-    [[nodiscard]] LightList::const_iterator findLight(const I64 GUID, const LightType type) const {
-        SharedLock<SharedMutex> r_lock(_lightLock);
-        return findLightLocked(GUID, type);
-    }
-
     [[nodiscard]] LightList::const_iterator findLightLocked(const I64 GUID, const LightType type) const {
         return eastl::find_if(cbegin(_lights[to_U32(type)]), cend(_lights[to_U32(type)]),
                               [GUID](Light* const light) noexcept {
@@ -184,7 +193,7 @@ class LightPool final : public FrameListener,
                               });
     }
 
-    [[nodiscard]] bool isShadowCacheInvalidated(Light* light);
+    [[nodiscard]] bool isShadowCacheInvalidated(Light* light, size_t movedVolumeCount);
 
 
     [[nodiscard]] static bool IsLightInViewFrustum(const Frustum& frustum, const Light* light) noexcept;
@@ -200,6 +209,7 @@ class LightPool final : public FrameListener,
     [[nodiscard]] U32           sortedLightCount(const RenderStage stage) const { return _sortedLightPropertiesCount[to_base(stage)]; }
 
   private:
+      void setDebugLightLocked(Light* light);
       U32 uploadLightList(RenderStage stage,
                           const LightList& lights,
                           const mat4<F32>& viewMatrix);
@@ -230,8 +240,10 @@ class LightPool final : public FrameListener,
 
     mutable SharedMutex _movedSceneVolumesLock;
     fixed_vector<MovingVolume, Config::MAX_VISIBLE_NODES, true> _movedSceneVolumes;
+    ShadowMovementBatch _shadowMovementBatch;
 
     mutable SharedMutex _lightLock{};
+    Light* _debugLight = nullptr;
     Time::ProfileTimer& _shadowPassTimer;
     U32                 _totalLightCount = 0u;
     bool                _shadowBufferDirty = false;
