@@ -34,6 +34,7 @@
 #define VK_RESOURCES_H
 
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
+#include "Core/Headers/RenderSmokeTest.h"
 
 #include "vkInitializers.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
@@ -64,6 +65,8 @@ class VKDevice;
 class vkShaderProgram;
 class Pipeline;
 enum class DescriptorSetBindingType : U8;
+
+[[noreturn]] void ReportVulkanDeviceLost( const char* operation, const VKDevice* device = nullptr ) noexcept;
 
 FWD_DECLARE_MANAGED_CLASS( VKSwapChain );
 
@@ -441,6 +444,10 @@ inline std::string VKErrorString(VkResult errorCode)
         const VkResult err = (x);                                                                            \
         if ( err != VK_SUCCESS )                                                                              \
         {                                                                                                     \
+            if ( err == VK_ERROR_DEVICE_LOST && RenderSmokeTest::Enabled() )                                 \
+            {                                                                                                 \
+                ReportVulkanDeviceLost( #x );                                                                \
+            }                                                                                                 \
             const std::string vkErrorString = VKErrorString( err );                                          \
             const std::string vkFailureMsg = vkErrorString + " (" + std::to_string( static_cast<int>( err ) ) + ")"; \
             Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), vkFailureMsg.c_str() );                    \

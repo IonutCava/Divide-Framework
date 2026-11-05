@@ -190,8 +190,19 @@ namespace Divide
             return info;
         }
 
+        [[nodiscard]] static constexpr bool SupportsSmokeReadback( const VkFormat format,
+                                                                   const VkSampleCountFlagBits samples,
+                                                                   const U32 layers,
+                                                                   const U32 depth ) noexcept
+        {
+            return samples == VK_SAMPLE_COUNT_1_BIT && layers == 1u && depth == 1u &&
+                   ( format == VK_FORMAT_R8G8B8A8_UNORM || format == VK_FORMAT_R8G8B8A8_SRGB ||
+                     format == VK_FORMAT_B8G8R8A8_UNORM || format == VK_FORMAT_B8G8R8A8_SRGB );
+        }
+
         [[nodiscard]] ImageReadbackData readData(U16 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept override;
         [[nodiscard]] ImageReadbackData readData( VkCommandBuffer cmdBuffer, U16 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept;
+        [[nodiscard]] ImageReadbackData readDataForSmoke() const noexcept;
         [[nodiscard]] VkImageView getImageView( const CachedImageView::Descriptor& descriptor ) const;
 
         [[nodiscard]] static VkImageAspectFlags GetAspectFlags( const TextureDescriptor& descriptor ) noexcept;

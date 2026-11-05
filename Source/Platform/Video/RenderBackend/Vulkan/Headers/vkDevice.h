@@ -50,6 +50,13 @@ class VKDevice final : NonCopyable, NonMovable
                    features.extendedDynamicState3ColorWriteMask;
         }
 
+        [[nodiscard]] static constexpr bool CanEnableDeviceFault( const bool smokeMode,
+                                                                   const bool extensionPresent,
+                                                                   const bool featureSupported ) noexcept
+        {
+            return smokeMode && extensionPresent && featureSupported;
+        }
+
         [[nodiscard]] VkDevice getVKDevice() const noexcept;
         [[nodiscard]] VkPhysicalDevice getVKPhysicalDevice() const noexcept;
 
@@ -60,6 +67,11 @@ class VKDevice final : NonCopyable, NonMovable
         [[nodiscard]] VkResult        submitToQueue(QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence) const;
         [[nodiscard]] VkResult        queuePresent(QueueType queue, const VkPresentInfoKHR& presentInfo) const;
         [[nodiscard]] VkResult        waitIdle() const;
+        void writeDeviceFaultInfo( std::FILE* output ) const noexcept;
+
+        [[nodiscard]] static bool SmokeQueueSubmitActive() noexcept;
+        [[nodiscard]] static std::FILE* PendingSmokeDeviceLossFailure() noexcept;
+        static void SetPendingSmokeDeviceLossFailure( std::FILE* output ) noexcept;
 
         [[nodiscard]] U32     getPresentQueueIndex() const noexcept;
         [[nodiscard]] VKQueue getQueue( QueueType type ) const noexcept;
@@ -75,9 +87,19 @@ class VKDevice final : NonCopyable, NonMovable
         [[nodiscard]] Mutex& queueLock( QueueType type ) const noexcept;
 
     private:
+        struct SmokeFailureState
+        {
+            bool _queueSubmitActive{ false };
+            std::FILE* _deviceLossFailure{ nullptr };
+        };
+
+        static thread_local SmokeFailureState s_smokeFailureState;
+
         vkb::Device _device{}; // Vulkan device for commands
         vkb::PhysicalDevice _physicalDevice{}; // GPU chosen as the default device
         U32 _presentQueueIndex{ INVALID_VK_QUEUE_INDEX };
+        bool _deviceFaultEnabled{ false };
+        bool _deviceFaultVendorBinary{ false };
 
         std::array<VKQueue, to_base( QueueType::COUNT ) > _queues;
         mutable std::array<Mutex, to_base( QueueType::COUNT )> _queueLocks;

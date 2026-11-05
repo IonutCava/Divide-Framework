@@ -8,9 +8,11 @@
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/Kernel.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Utility/Headers/Localization.h"
+#include "Utility/Headers/ImageToolsFwd.h"
 
 #include "Platform/Headers/SDLEventManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -42,13 +44,77 @@ namespace
                                                                  const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
                                                                  void* )
     {
+        using namespace Divide;
 
-        if ( Divide::VK_API::GetStateTracker()._enabledAPIDebugging && !(*Divide::VK_API::GetStateTracker()._enabledAPIDebugging) )
+        const bool warning = ( messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ) != 0u;
+        const bool error = ( messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ) != 0u;
+        const char* messageID = pCallbackData != nullptr && pCallbackData->pMessageIdName != nullptr ? pCallbackData->pMessageIdName : "UNKNOWN";
+        const char* message = pCallbackData != nullptr && pCallbackData->pMessage != nullptr ? pCallbackData->pMessage : "<no message>";
+        if ( RenderSmokeTest::Enabled() && ( warning || error ) )
+        {
+            if ( std::FILE* pendingFailure = VKDevice::PendingSmokeDeviceLossFailure(); pendingFailure != nullptr )
+            {
+                if ( std::fprintf( pendingFailure, "subsequent_validation_id=%s\nsubsequent_validation_message=%s\n", messageID, message ) < 0 ||
+                     std::fflush( pendingFailure ) != 0 )
+                {
+                    RenderSmokeTest::EndFailure( pendingFailure, RenderSmokeTest::IO_FAILURE_EXIT );
+                }
+                return VK_FALSE;
+            }
+        }
+        if ( RenderSmokeTest::Enabled() && RenderSmokeTest::IsAllowedValidationAdvisory( warning, error, messageID, message ) )
+        {
+            RenderSmokeTest::ReportValidationAdvisory( messageID, message );
+        }
+        if ( RenderSmokeTest::Enabled() && RenderSmokeTest::IsFatalValidationSeverity( warning, error, messageID, message ) )
+        {
+            const bool deferQueueDeviceLoss = RenderSmokeTest::IsQueueSubmitDeviceLossResult( VKDevice::SmokeQueueSubmitActive(),
+                                                                                             messageID,
+                                                                                             message );
+            std::FILE* output = RenderSmokeTest::BeginFailure( deferQueueDeviceLoss ? "device_lost" : "validation" );
+            std::fprintf( output, "severity=%s\ntype=%u\nthread=%zu\nmessage_id=%s\n",
+                          error ? "error" : "warning",
+                          to_U32( messageType ),
+                          std::hash<std::thread::id>{}( std::this_thread::get_id() ),
+                          messageID );
+            if ( pCallbackData != nullptr )
+            {
+                for ( U32 i = 0u; i < pCallbackData->objectCount && pCallbackData->pObjects != nullptr; ++i )
+                {
+                    const VkDebugUtilsObjectNameInfoEXT& object = pCallbackData->pObjects[i];
+                    std::fprintf( output, "object type=%d handle=%s name=%s\n",
+                                  to_I32( object.objectType ),
+                                  std::to_string( object.objectHandle ).c_str(),
+                                  object.pObjectName != nullptr ? object.pObjectName : "" );
+                }
+                for ( U32 i = 0u; i < pCallbackData->queueLabelCount && pCallbackData->pQueueLabels != nullptr; ++i )
+                {
+                    const char* name = pCallbackData->pQueueLabels[i].pLabelName;
+                    std::fprintf( output, "queue_label=%s\n", name != nullptr ? name : "" );
+                }
+                for ( U32 i = 0u; i < pCallbackData->cmdBufLabelCount && pCallbackData->pCmdBufLabels != nullptr; ++i )
+                {
+                    const char* name = pCallbackData->pCmdBufLabels[i].pLabelName;
+                    std::fprintf( output, "command_label=%s\n", name != nullptr ? name : "" );
+                }
+            }
+            std::fprintf( output, "message:\n%s\n", message );
+            if ( deferQueueDeviceLoss )
+            {
+                if ( std::ferror( output ) != 0 || std::fflush( output ) != 0 )
+                {
+                    RenderSmokeTest::EndFailure( output, RenderSmokeTest::IO_FAILURE_EXIT );
+                }
+                VKDevice::SetPendingSmokeDeviceLossFailure( output );
+                return VK_FALSE;
+            }
+            RenderSmokeTest::EndFailure( output, RenderSmokeTest::VALIDATION_FAILURE_EXIT );
+        }
+
+        if ( VK_API::GetStateTracker()._enabledAPIDebugging && !(*VK_API::GetStateTracker()._enabledAPIDebugging) )
         {
             return VK_FALSE;
         }
-
-        using namespace Divide;
 
         const auto to_string_message_severity = []( VkDebugUtilsMessageSeverityFlagBitsEXT s ) -> const char*
         {
@@ -633,6 +699,10 @@ namespace Divide
             {
                 vkDestroySemaphore( device, submitSemaphore, nullptr );
             }, true );
+            if ( RenderSmokeTest::Enabled() )
+            {
+                RenderSmokeTest::Fail( "queue_submit", VKErrorString( submitResult ).c_str(), RenderSmokeTest::VALIDATION_FAILURE_EXIT );
+            }
             return;
         }
 
@@ -910,6 +980,10 @@ namespace Divide
         const VkResult result = windowState._swapChain->beginFrame();
         if ( result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR )
         {
+            if ( result == VK_ERROR_DEVICE_LOST && RenderSmokeTest::Enabled() )
+            {
+                ReportVulkanDeviceLost( "vkAcquireNextImageKHR" );
+            }
             if ( result == VK_ERROR_OUT_OF_DATE_KHR )
             {
                 windowState._needsRecreate = !recreateSwapChain( windowState );
@@ -986,10 +1060,177 @@ namespace Divide
             s_submitSemaphores._pendingSubmitSemaphores.reset_lose_memory();
         }
 
+        const bool mainWindow = window.getGUID() == _context.context().mainWindow().getGUID();
+        const U32 presentsBeforeCapture = RenderSmokeTest::PresentCount();
+        const bool capture = mainWindow && !windowState._recreateAfterPresent &&
+                             windowState._swapChain->currentImageWasRenderedThisFrame() &&
+                             RenderSmokeTest::TryBeginCapture();
+        VMABuffer_uptr editorReadback{};
+        VkExtent2D editorExtent{};
+        VkFormat editorFormat = VK_FORMAT_UNDEFINED;
+        size_t editorByteCount = 0u;
+        if ( capture && RenderSmokeTest::WindowCaptureRequested() )
+        {
+            const vkb::Swapchain& swapchain = windowState._swapChain->getSwapChain();
+            editorExtent = swapchain.extent;
+            editorFormat = swapchain.image_format;
+            if ( !windowState._swapChain->deferPresentTransition() ||
+                 ( swapchain.image_usage_flags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT ) == 0u ||
+                 !VKSwapChain::SupportsSmokeReadback( editorFormat ) ||
+                 editorExtent.width == 0u || editorExtent.height == 0u ||
+                 editorExtent.width > U16_MAX || editorExtent.height > U16_MAX )
+            {
+                RenderSmokeTest::Fail( "window_capture", "Unsupported swapchain image for editor readback",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+
+            editorByteCount = to_size( editorExtent.width ) * to_size( editorExtent.height ) * 4u;
+            editorReadback = VKUtil::createStagingBuffer( editorByteCount, "SMOKE_EDITOR_READBACK", true );
+            if ( editorReadback == nullptr || editorReadback->_buffer == VK_NULL_HANDLE ||
+                 editorReadback->_allocation == VK_NULL_HANDLE || editorReadback->_allocInfo.pMappedData == nullptr )
+            {
+                RenderSmokeTest::Fail( "window_capture", "Unable to allocate editor readback buffer",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+
+            const VkCommandBuffer commandBuffer = GetCurrentCommandBuffer();
+            VkImageMemoryBarrier2 imageBarrier = VKSwapChain::SmokePresentBarrier( windowState._swapChain->getCurrentImage(), true );
+
+            VkDependencyInfo dependency = vk::dependencyInfo();
+            dependency.imageMemoryBarrierCount = 1u;
+            dependency.pImageMemoryBarriers = &imageBarrier;
+            VK_PROFILE( vkCmdPipelineBarrier2, commandBuffer, &dependency );
+
+            VkBufferImageCopy copy{};
+            copy.imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0u, 0u, 1u };
+            copy.imageExtent = { editorExtent.width, editorExtent.height, 1u };
+            VK_PROFILE( vkCmdCopyImageToBuffer, commandBuffer, imageBarrier.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        editorReadback->_buffer, 1u, &copy );
+
+            imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+            imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+            imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+            imageBarrier.dstAccessMask = VK_ACCESS_2_NONE;
+            imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            imageBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+            VkBufferMemoryBarrier2 bufferBarrier = vk::bufferMemoryBarrier2();
+            bufferBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+            bufferBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            bufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT;
+            bufferBarrier.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT;
+            bufferBarrier.buffer = editorReadback->_buffer;
+            bufferBarrier.offset = 0u;
+            bufferBarrier.size = editorByteCount;
+            dependency.bufferMemoryBarrierCount = 1u;
+            dependency.pBufferMemoryBarriers = &bufferBarrier;
+            VK_PROFILE( vkCmdPipelineBarrier2, commandBuffer, &dependency );
+        }
+        else if ( windowState._swapChain->deferPresentTransition() &&
+                  windowState._swapChain->currentImageWasRenderedThisFrame() )
+        {
+            const VkImageMemoryBarrier2 imageBarrier = VKSwapChain::SmokePresentBarrier( windowState._swapChain->getCurrentImage(), false );
+            VkDependencyInfo dependency = vk::dependencyInfo();
+            dependency.imageMemoryBarrierCount = 1u;
+            dependency.pImageMemoryBarriers = &imageBarrier;
+            VK_PROFILE( vkCmdPipelineBarrier2, GetCurrentCommandBuffer(), &dependency );
+        }
+
         const VkResult result = windowState._swapChain->endFrame( s_localPendingSems );
         windowState._frameInProgress = false;
         const bool recreateAfterPresent = windowState._recreateAfterPresent;
         windowState._recreateAfterPresent = false;
+
+        RenderSmokeTest::RecordPresent( mainWindow, result == VK_SUCCESS, recreateAfterPresent );
+
+        if ( capture )
+        {
+            if ( result == VK_ERROR_DEVICE_LOST )
+            {
+                ReportVulkanDeviceLost( "frame submission or presentation during capture" );
+            }
+            if ( result != VK_SUCCESS || recreateAfterPresent || RenderSmokeTest::PresentCount() <= presentsBeforeCapture )
+            {
+                RenderSmokeTest::Fail( "capture", "The captured scene frame was not presented successfully",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            if ( editorReadback != nullptr )
+            {
+                const VkFence fence = windowState._swapChain->activeFrameFence();
+                const VkResult waitResult = vkWaitForFences( _device->getVKDevice(), 1u, &fence, VK_TRUE, 10'000'000'000ull );
+                if ( waitResult == VK_ERROR_DEVICE_LOST )
+                {
+                    ReportVulkanDeviceLost( "vkWaitForFences during editor capture" );
+                }
+                if ( waitResult == VK_TIMEOUT )
+                {
+                    RenderSmokeTest::Fail( "gpu_hang", "Timed out waiting for editor readback",
+                                           RenderSmokeTest::DEVICE_LOST_EXIT );
+                }
+                if ( waitResult != VK_SUCCESS )
+                {
+                    char detail[128]{};
+                    std::snprintf( detail, sizeof( detail ), "Editor readback fence failed: %d", to_I32( waitResult ) );
+                    RenderSmokeTest::Fail( "window_capture", detail, RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+                }
+
+                vector<Byte> pixels( editorByteCount );
+                {
+                    LockGuard<Mutex> lock( s_stateTracker._allocatorInstance._allocatorLock );
+                    const VkResult invalidateResult = vmaInvalidateAllocation( *s_stateTracker._allocatorInstance._allocator,
+                                                                               editorReadback->_allocation, 0u, editorByteCount );
+                    if ( invalidateResult == VK_ERROR_DEVICE_LOST )
+                    {
+                        ReportVulkanDeviceLost( "vmaInvalidateAllocation during editor capture" );
+                    }
+                    if ( invalidateResult != VK_SUCCESS )
+                    {
+                        char detail[128]{};
+                        std::snprintf( detail, sizeof( detail ), "Editor readback invalidation failed: %d", to_I32( invalidateResult ) );
+                        RenderSmokeTest::Fail( "window_capture", detail, RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+                    }
+                    const std::span<const Byte> mapped{ static_cast<const Byte*>( editorReadback->_allocInfo.pMappedData ),
+                                                        editorByteCount };
+                    const std::span<Byte> destination{ pixels.data(), pixels.size() };
+                    if ( !VKSwapChain::ConvertSmokeReadback( editorFormat, editorExtent.width, editorExtent.height, mapped, destination ) )
+                    {
+                        RenderSmokeTest::Fail( "window_capture", "Could not convert editor readback pixels",
+                                               RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+                    }
+                }
+                const ResourcePath editorPath = ResourcePath{ RenderSmokeTest::OutputDirectory() } / "editor.pending.png";
+                if ( !ImageTools::SaveImage( editorPath, to_U16( editorExtent.width ), to_U16( editorExtent.height ),
+                                             4u, 4u, false, pixels.data(), ImageTools::SaveImageFormat::PNG ) )
+                {
+                    RenderSmokeTest::Fail( "window_capture", "Unable to save editor image",
+                                           RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+                }
+            }
+            const RenderTarget* target = _context.renderTargetPool().getRenderTarget( RenderTargetNames::BACK_BUFFER );
+            const RTAttachment* attachment = target != nullptr
+                                           ? target->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO )
+                                           : nullptr;
+            const Texture* texture = attachment != nullptr ? Get( attachment->texture() ) : nullptr;
+            if ( texture == nullptr )
+            {
+                RenderSmokeTest::Fail( "capture", "Scene colour attachment unavailable", RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+
+            const ImageReadbackData data = static_cast<const vkTexture*>( texture )->readDataForSmoke();
+            const ResourcePath path = ResourcePath{ RenderSmokeTest::OutputDirectory() } / "scene.png";
+            if ( data._data.empty() ||
+                 !ImageTools::SaveImage( path, data._width, data._height, data._numComponents, data._bpp,
+                                         data._sourceIsBGR, data._data.data(), ImageTools::SaveImageFormat::PNG ) )
+            {
+                RenderSmokeTest::FinishCapture( false );
+                RenderSmokeTest::Fail( "capture", "Unable to save scene image", RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            RenderSmokeTest::FinishCapture( true );
+            if ( editorReadback != nullptr )
+            {
+                RenderSmokeTest::FinishWindowCapture( true );
+            }
+        }
 
         for (VkSemaphore semaphore : s_localPendingSems)
         {
@@ -1008,6 +1249,10 @@ namespace Divide
         }
         else if ( result != VK_SUCCESS )
         {
+            if ( result == VK_ERROR_DEVICE_LOST && RenderSmokeTest::Enabled() )
+            {
+                ReportVulkanDeviceLost( "frame submission or presentation" );
+            }
             Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( result ).c_str() );
             if ( result != VK_ERROR_DEVICE_LOST )
             {
@@ -1133,7 +1378,9 @@ namespace Divide
             DIVIDE_GPU_ASSERT(windowState._surface != nullptr);
         }
 
-        windowState._swapChain = std::make_unique<VKSwapChain>( *this, *_device, *windowState._window );
+        const bool smokeReadback = RenderSmokeTest::WindowCaptureRequested() &&
+                                   windowState._window->getGUID() == _context.context().mainWindow().getGUID();
+        windowState._swapChain = std::make_unique<VKSwapChain>( *this, *_device, *windowState._window, smokeReadback );
         windowState._needsRecreate = !recreateSwapChain( windowState );
     }
 
@@ -1203,6 +1450,14 @@ namespace Divide
             .set_debug_callback_user_data_pointer( this );
 
         vkb::SystemInfo& systemInfo = systemInfoRet.value();
+
+        if ( RenderSmokeTest::Enabled() &&
+             ( !Config::ENABLE_GPU_VALIDATION || !config.debug.renderer.enableRenderAPIDebugging ||
+               !systemInfo.validation_layers_available || !systemInfo.is_extension_available( VK_EXT_DEBUG_UTILS_EXTENSION_NAME ) ) )
+        {
+            Console::errorfn( "The Vulkan smoke test requires the Khronos validation layer and VK_EXT_debug_utils." );
+            return ErrorCode::RENDER_SMOKE_TEST_FAILED;
+        }
 
         s_hasDebugMarkerSupport = false;
         if ( Config::ENABLE_GPU_VALIDATION && (config.debug.renderer.enableRenderAPIDebugging || config.debug.renderer.enableRenderAPIBestPractices) )
@@ -1416,6 +1671,12 @@ namespace Divide
                           deviceProperties.driverVersion,
                           deviceProperties.apiVersion );
 
+        if ( RenderSmokeTest::RenderDocCaptureRequested() )
+        {
+            RenderSmokeTest::ReportVulkanToolEnumerationSkipped();
+            Console::warnfn( "Skipping Vulkan tool listing for the supervised RenderDoc capture; validation remains enabled." );
+        }
+        else
         {
             std::vector<VkPhysicalDeviceToolProperties> tools;
             const VkResult toolResult = EnumeratePhysicalDeviceTools(
@@ -2884,9 +3145,9 @@ namespace Divide
                     imageBarrier.srcStageMask = imageWasRenderedThisFrame
                                               ? VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
                                               : VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-                    imageBarrier.oldLayout = (shouldClear || !canLoadPreviousContents)
-                                           ? VK_IMAGE_LAYOUT_UNDEFINED
-                                           : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                    imageBarrier.oldLayout = VKSwapChain::ScreenPassInitialLayout( swapChain->deferPresentTransition(),
+                                                                                   imageWasRenderedThisFrame,
+                                                                                   canLoadPreviousContents );
 
                     VkDependencyInfo dependencyInfo = vk::dependencyInfo();
                     dependencyInfo.imageMemoryBarrierCount = 1u;
@@ -2943,7 +3204,8 @@ namespace Divide
                 PROFILE_SCOPE( "END_RENDER_PASS", Profiler::Category::Graphics );
 
                 VK_PROFILE( vkCmdEndRendering, cmdBuffer );
-                if ( stateTracker._activeRenderTargetID == SCREEN_TARGET_ID )
+                if ( stateTracker._activeRenderTargetID == SCREEN_TARGET_ID &&
+                     !stateTracker._activeWindow->_swapChain->deferPresentTransition() )
                 {
                     VkImageMemoryBarrier2 imageBarrier = vk::imageMemoryBarrier2();
                     imageBarrier.image = stateTracker._activeWindow->_swapChain->getCurrentImage();
@@ -2969,7 +3231,7 @@ namespace Divide
                     
                     VK_PROFILE( vkCmdPipelineBarrier2,cmdBuffer, &dependencyInfo );
                 }
-                else
+                else if ( stateTracker._activeRenderTargetID != SCREEN_TARGET_ID )
                 {
                     vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget( stateTracker._activeRenderTargetID ));
                     const GFX::EndRenderPassCommand* crtCmd = cmd->As<GFX::EndRenderPassCommand>();

@@ -9,6 +9,7 @@
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Core/Resources/Headers/ResourceCache.h"
@@ -435,9 +436,24 @@ namespace Divide
             return ErrorCode::MISSING_PROJECT_DATA;
         }
 
+        const SceneEntries& sceneEntries = _activeProject->getSceneEntries();
+        auto startupScene = sceneEntries.cbegin();
+        if ( RenderSmokeTest::Enabled() && !RenderSmokeTest::Scene().empty() )
+        {
+            startupScene = std::find_if( sceneEntries.cbegin(), sceneEntries.cend(), []( const SceneEntry& entry )
+            {
+                return entry._name == RenderSmokeTest::Scene().c_str();
+            });
+            if ( startupScene == sceneEntries.cend() )
+            {
+                Console::errorfn( LOCALE_STR( "ERROR_SCENE_LOAD" ), RenderSmokeTest::Scene().c_str() );
+                return ErrorCode::MISSING_SCENE_DATA;
+            }
+        }
+
         SwitchSceneTarget sceneTarget
         {
-            ._targetScene = _activeProject->getSceneEntries().front(),
+            ._targetScene = *startupScene,
             ._unloadPreviousScene = true,
             ._loadInSeparateThread = false,
             ._deferToStartOfFrame = false,
@@ -446,7 +462,7 @@ namespace Divide
 
         if ( !_activeProject->switchScene( sceneTarget ) )
         {
-            Console::errorfn( LOCALE_STR( "ERROR_SCENE_LOAD" ), _activeProject->getSceneEntries().front()._name.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_SCENE_LOAD" ), startupScene->_name.c_str() );
             return ErrorCode::MISSING_SCENE_DATA;
         }
 
@@ -859,7 +875,7 @@ namespace Divide
         }
         _saveTimer += deltaGameTimeUS;
 
-        if ( _saveTimer >= Time::SecondsToMicroseconds<U64>( Config::Build::IS_DEBUG_BUILD ? 5 : 10 ) )
+        if ( !RenderSmokeTest::Enabled() && _saveTimer >= Time::SecondsToMicroseconds<U64>( Config::Build::IS_DEBUG_BUILD ? 5 : 10 ) )
         {
             if ( !saveActiveScene( true, true ) )
             {

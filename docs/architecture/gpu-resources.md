@@ -182,6 +182,60 @@ sampled-only depth fallbacks must upload and create views with a depth aspect.
 For arrays, cubemaps, mip generation, and partial updates, inspect backend `loadDataInternal(...)` overloads; shared decode/import is in [asset pipeline](asset-pipeline.md).
 Queue ownership is covered in [threading](threading.md).
 
+### Vulkan smoke readback and recovery
+
+The opt-in smoke mode enables `VK_EXT_device_fault` only when the selected GPU
+reports both the extension and its feature. On a reported device loss it
+flushes the first failure, attempts bounded fault details before termination,
+and explicitly records unavailable/failed collection. Vendor binary evidence
+is capped and retained locally. A watchdog bounds the whole capture; it is not
+a guarantee against a driver-wide hang.
+When validation reports the `vkQueueSubmit` device-loss result inside the
+tracked submit call, the callback claims and flushes the first failure but
+defers termination only until that call returns. The submit wrapper then
+collects fault details outside the callback and fails; all other validation
+failures retain the immediate shutdown path.
+
+For the smoke image, `vkTexture::readDataForSmoke` accepts a single-layer,
+single-sample RGBA8/BGRA8 scene target. It transitions the image on the graphics
+queue, copies into a mapped readback buffer, waits on a dedicated fence,
+invalidates the VMA allocation and only then copies/saves the pixels. The
+staging buffer follows deferred destruction. This path does not use the immediate
+command ring. The older generic Vulkan `readData(VkCommandBuffer, ...)` path
+copies mapped memory before its recorded commands complete and must not be
+used as evidence of a completed image.
+
+When an editor capture is requested, the main swapchain also requires
+`VK_IMAGE_USAGE_TRANSFER_SRC_BIT`; an unsupported surface fails the smoke run
+explicitly and ordinary swapchains are unchanged. After the final ImGui pass,
+the main smoke swapchain defers its presentation transition until window flush.
+The same frame command buffer transitions the colour attachment directly to a
+transfer source, copies it to a host-readable staging buffer, and then
+transitions it for presentation. Other smoke frames transition directly from
+the attachment to presentation. Multiple screen passes keep the attachment
+layout and synchronize between passes. The runner waits for a successful
+present, while the backend waits for that frame's fence and invalidates mapped
+memory before saving. The capture supports the selected RGBA/BGRA 8-bit and packed 10-bit
+swapchain formats; conversion handles channel order and the swapchain's
+top-down origin. It contains neither window decorations nor detached windows.
+
+`Tools/VulkanRecoveryProbe.cpp` identifies the same device UUID, creates a new
+logical device, submits an empty valid command buffer and waits for its fence.
+The runner backs off between bounded probe processes; enumeration alone is not
+recovery. See [Vulkan smoke diagnosis](rendering.md#vulkan-smoke-diagnosis).
+
+### OpenGL smoke readback
+
+OpenGL smoke mode verifies the expected Vulkan device UUID against the active
+context's `GL_EXT_memory_object` or `GL_EXT_semaphore` device UUIDs before
+recording GPU identity. It reads the single-sample scene texture and the main
+default framebuffer after command replay and before `SDL_GL_SwapWindow`.
+Pixel-pack state, the pixel-pack buffer and read framebuffer bindings are
+restored after readback. The returned bottom-up pixels are passed to
+`ImageTools::SaveImage`, which flips them for PNG output. A successful swap
+is required before capture completion; the supervisor promotes the editor
+image only after clean shutdown.
+
 ## Coordinate convention
 
 OpenGL is the reference. Client code does not branch on the API for Y: projection/clip space is Y-up, NDC-to-UV math is shared, texture origin is bottom-left (loaders flip on import), and viewport/scissor rectangles use bottom-left origin.
