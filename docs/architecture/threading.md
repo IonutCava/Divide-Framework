@@ -126,5 +126,9 @@ For changes to mapped writes or staging uploads, also read [GPU resources](gpu-r
 Selection and immediate-command use live in `vkDevice.cpp` and `VKWrapper.cpp`.
 Several upload paths still use the graphics immediate-command context; queue enums are not evidence that async compute is wired end-to-end.
 
+Smoke-test scene readback uses a separate graphics command pool and completed
+fence rather than the immediate-command ring; see
+[GPU resources](gpu-resources.md#vulkan-smoke-readback-and-recovery).
+
 Any actual async-compute/transfer feature requires an audit of queue ownership, resource transitions/barriers, completion/lifetime synchronization, and render-stage dependencies.
 Do not infer synchronization from descriptor binding type: indirect command-buffer hazards follow `BufferUsageType::COMMAND_BUFFER`; see [shaders and descriptors](shader-descriptors.md).

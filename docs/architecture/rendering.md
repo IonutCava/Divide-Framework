@@ -78,6 +78,136 @@ switch the rendered frame between the current animation frame and frame zero.
   and representative non-instrumented builds. Investigate backend-specific
   costs without assuming exact parity.
 
+## Vulkan smoke diagnosis
+
+`RenderSmokeTest`, `Kernel`, the Vulkan and OpenGL `flushWindow` implementations, and
+`Tools/VulkanSmokeTest.ps1` provide an opt-in local Windows diagnostic loop.
+The runner builds the instrumented editor, runs focused engine tests and
+launches one protected attempt; a coding agent diagnoses and changes code
+between invocations. It snapshots logs and source state, uses an owned Windows
+job for bounded process cleanup, and records each attempt outside the
+checkout. The installed CDB runtime is copied into each attempt because the
+packaged executable may escape the job. A controlled preflight checks that CDB
+and its child inherit the job; the actual renderer waits before platform/GPU
+initialization until its identity, parent and job membership are verified.
+CDB captures the first validation failure when available; without it, the
+process still terminates after flushing the failure. Smoke mode redirects MSVC
+CRT abort reports to stderr without a modal dialog; CDB also breaks on CRT
+`abort` to capture its originating stack. Normal interactive runs are unchanged.
+For a Vulkan diagnostic, optional `-RenderDocInjectExe` injects the named
+`renderdoccmd.exe` into the verified renderer while it is still at the pre-GPU
+gate. The attempt's `renderdoc/target.json` records its PID and target ID for
+a separate bounded target-control client, which must verify the PID and retain
+the capture. Injection failure stops the attempt before releasing the gate;
+capture instrumentation is not part of the 300-present acceptance contract.
+The supervised capture skips only the optional Vulkan tool-property listing:
+the installed RenderDoc/validation combination produced an out-of-bounds write
+while enumerating it. This skip is recorded in the event and console logs;
+Vulkan validation and all recovery/watchdog checks remain enabled. Ordinary
+runs still enumerate tools. This workaround does not establish which layer
+caused the inconsistent count or make other RenderDoc configurations safe.
+Minidumps include
+executable data segments and indirectly referenced memory; inspect
+`GFXDevice::s_debugScope` and `s_debugScopeDepth` for the active replay scopes,
+alongside the validation callback's command-buffer labels. No dump is uploaded.
+
+Vulkan mode forces Vulkan, the editor, core and synchronization validation
+without saving scene, editor layout or configuration changes. It uses the
+Default project unless `-Project` selects another; `-Scene` selects that
+project's scene. See [Scene loading](scene-loading.md) for the selection and
+loading flow. Both smoke backends start the editor in Play mode so game time,
+animation and wind advance, and the player camera supplies the display view.
+Ordinary editor startup remains unchanged. Pausing switches to the independent
+editor camera.
+Diagnostic runs can select an existing material debug view with
+`-MaterialDebugView` (for example `SHADOW_MAPS` or `CSM_SPLITS`); the runner
+records it and requires `-DiagnosticPresents`, so debug-only captures cannot
+count as normal 300-present acceptance. Every Vulkan warning/error is fatal before ordinary interactive
+filters except the user-approved `BestPractices-specialuse-extension` warning
+specifically for `VK_EXT_custom_border_color`, which is recorded without
+terminating. Errors are never exempt. Unrelated TODO/STUBBED messages are not
+failure triggers.
+`Kernel` marks scene readiness after warmup and
+marks a frame only when scene render commands were recorded. Both backends
+count only successful main-window presents of those frames; Vulkan excludes
+swapchain recreation. Each eligible present is recorded so the 30-second
+no-progress watchdog works even for slow instrumented scenes. The overall
+render deadline defaults to 120 seconds and can be extended with
+`-RenderTimeoutSeconds` (up to 7200 seconds), without changing the no-progress
+limit. Success additionally requires the requested 300 presents, a
+completed scene image, the final main editor framebuffer, clean shutdown and
+matching process/result evidence. The editor image is read back after ImGui
+rendering and promoted from `editor.pending.png` to `editor.png` only after a
+successful exit. Inspect both images visually; a
+completed present or image does not prove correct pixels. See
+[GPU resources](gpu-resources.md#vulkan-smoke-readback-and-recovery) for
+readback and device-loss handling.
+
+The editor image contains the main framebuffer, not OS window decorations or
+detached editor windows. OpenGL mode requires `XML/config.xml` to select
+OpenGL and `-ExpectedGPU` to match a device UUID exposed by the active GL
+context; unsupported or mismatched identities fail explicitly. Use a separate
+`-OutputRoot` for `-Backend OpenGL`, and retain the UUID reported by the Vulkan
+run. OpenGL reads the scene texture and default back buffer before swapping,
+then accepts them only after a successful swap. Its smoke mode does not turn
+ordinary GL debug messages into the Vulkan validation failure policy.
+Match framebuffer size, DPI, editor layout, scene, camera and timing when
+comparing backends. A capture is not an automatic parity check, and UI animation
+and presentation colour space can still differ.
+
+The runner waits for a bounded fresh-device submission and fence on the same GPU
+after a device loss or suspected GPU hang; waiting does not consume an iteration.
+It recognizes `VK_ERROR_DEVICE_LOST` even when the validation callback reports
+the result before the backend can classify it, and resumes an unverified
+recovery before starting another renderer.
+Observed display-reset evidence and the need for recovery are persisted, so an
+interrupted supervisor still requires a successful probe even when the first
+failure record does not mention `VK_ERROR_DEVICE_LOST`. Device-loss signatures
+identify the failing Vulkan operation without incorporating volatile fault data.
+Pass `-AmdCaptureExe` with the absolute path to RadeonDeveloperPanelCLI.exe to
+start a separately owned crash capture before the renderer. Its adjacent
+`rgd.exe` is required. The runner waits up to 20 seconds for late reports after
+the renderer exits, then stops the owned capture tree. A nonempty
+attempt-specific `amd-crash.rgd` takes precedence over downstream validation
+errors and requires recovery; when available, the local text report supplies its
+shader hash for repeated-failure accounting. If capture did not finish
+successfully after a failed run that selected a GPU, recovery is verified even
+without a report. An unexpected exit after selecting a GPU also requires the
+same recovery probe, including when Radeon capture is disabled.
+After three same-signature repairs without increased scene-present progress, a
+device loss requires explicit user approval to continue; other repeated
+no-progress failures stop. With explicit user approval,
+`-ApproveStalledNonDeviceLoss` permits one supervised diagnostic attempt after
+a non-device stop without resetting the recorded failures; an unsuccessful
+attempt stops again. A completed diagnostic records presentation progress and
+breaks the repeated-failure sequence but does not satisfy the 300-present
+contract. When no engine failure record exists, a captured
+debugger event and fault symbol distinguish unexpected exits; assertions also
+include their logged source and message. The repair budget defaults to 25
+iterations; after explicit user approval, `-MaxAttempts` can extend it or set
+it to `0` for no overall attempt limit. This does not reset recorded attempts
+or the repeated-failure guards.
+The watchdog cannot guarantee prevention or recovery of a system-wide GPU hang; do not
+alter Windows TDR settings or deliberately trigger a reset.
+Build failures and interrupted builds preserve their logs without consuming an
+iteration or changing the renderer's no-progress signature. Each retry uses
+a distinct artifact directory; successful builds and failed tests still count.
+The debugger fixture publishes its PID only after closing the marker file.
+The supervisor retries transient marker sharing and lock violations within its
+existing readiness deadline; persistent and unrelated errors remain fatal, and
+the PID must still pass the parent, process identity and job-membership checks.
+On a startup, rendering, presentation-progress, or shutdown timeout, the
+supervisor rechecks the debuggee's identity and job membership, requests a
+bounded all-thread debugger capture, and then terminates the owned process.
+An interrupted preflight can resume after confirming that no renderer was launched
+and no helper from that attempt remains; its successful build remains counted.
+The runner reuses an active matching x64 Visual Studio developer environment;
+it rejects a mismatched one instead of silently switching compilers.
+Use `-SkipUnitTests` to defer focused engine tests while repairing the smoke
+run; run the focused tests and full internal suite after the smoke test passes.
+After further changes, `-Revalidate` starts another attempt in the same recorded
+repair budget without overwriting the successful evidence.
+
 ## Stage dependencies
 
 `Kernel.cpp` registers the coarse render graph:

@@ -237,6 +237,7 @@ private:
     // OpenGL rendering is not thread-safe anyway, so this works
     eastl::stack<HardwareQueryContext> _queryContext;
     bool _runQueries{false};
+    bool _screenPassRecorded{false};
 
     bool _uniformsNeedLock{false};
     bool _supportsParallelShaderCompilation{false};

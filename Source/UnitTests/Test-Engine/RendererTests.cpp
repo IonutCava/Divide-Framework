@@ -1511,6 +1511,99 @@ namespace Divide
         CHECK( info.priority == 1.f );
     }
 
+    TEST_CASE( "Device-fault capture requires smoke mode, its extension and feature", "[render_smoke][device_fault]" )
+    {
+        CHECK( VKDevice::CanEnableDeviceFault( true, true, true ) );
+        CHECK_FALSE( VKDevice::CanEnableDeviceFault( false, true, true ) );
+        CHECK_FALSE( VKDevice::CanEnableDeviceFault( true, false, true ) );
+        CHECK_FALSE( VKDevice::CanEnableDeviceFault( true, true, false ) );
+    }
+
+    TEST_CASE( "Vulkan smoke readback accepts only single-sample RGBA8 scene images", "[render_smoke][readback]" )
+    {
+        CHECK( vkTexture::SupportsSmokeReadback( VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, 1u, 1u ) );
+        CHECK( vkTexture::SupportsSmokeReadback( VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLE_COUNT_1_BIT, 1u, 1u ) );
+        CHECK( vkTexture::SupportsSmokeReadback( VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, 1u, 1u ) );
+        CHECK( vkTexture::SupportsSmokeReadback( VK_FORMAT_B8G8R8A8_SRGB, VK_SAMPLE_COUNT_1_BIT, 1u, 1u ) );
+        CHECK_FALSE( vkTexture::SupportsSmokeReadback( VK_FORMAT_R16G16B16A16_SFLOAT, VK_SAMPLE_COUNT_1_BIT, 1u, 1u ) );
+        CHECK_FALSE( vkTexture::SupportsSmokeReadback( VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_4_BIT, 1u, 1u ) );
+        CHECK_FALSE( vkTexture::SupportsSmokeReadback( VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, 2u, 1u ) );
+        CHECK_FALSE( vkTexture::SupportsSmokeReadback( VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, 1u, 2u ) );
+    }
+
+    TEST_CASE( "Vulkan editor readback transitions directly from the last screen pass", "[render_smoke][readback]" )
+    {
+        CHECK( VKSwapChain::ScreenPassInitialLayout( true, false, false ) == VK_IMAGE_LAYOUT_UNDEFINED );
+        CHECK( VKSwapChain::ScreenPassInitialLayout( true, false, true ) == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR );
+        CHECK( VKSwapChain::ScreenPassInitialLayout( true, true, true ) == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
+        CHECK( VKSwapChain::ScreenPassInitialLayout( true, true, false ) == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
+        CHECK( VKSwapChain::ScreenPassInitialLayout( false, true, true ) == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR );
+        CHECK( VKSwapChain::ScreenPassInitialLayout( false, true, false ) == VK_IMAGE_LAYOUT_UNDEFINED );
+
+        for ( const bool capture : { false, true } )
+        {
+            const VkImageMemoryBarrier2 barrier = VKSwapChain::SmokePresentBarrier( VK_NULL_HANDLE, capture );
+            CHECK( barrier.sType == VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 );
+            CHECK( barrier.srcQueueFamilyIndex == VK_QUEUE_FAMILY_IGNORED );
+            CHECK( barrier.dstQueueFamilyIndex == VK_QUEUE_FAMILY_IGNORED );
+            CHECK( barrier.srcStageMask == VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT );
+            CHECK( barrier.srcAccessMask == VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT );
+            CHECK( barrier.oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
+            CHECK( barrier.subresourceRange.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT );
+            CHECK( barrier.subresourceRange.levelCount == 1u );
+            CHECK( barrier.subresourceRange.layerCount == 1u );
+            CHECK( barrier.newLayout == ( capture ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR ) );
+            CHECK( barrier.dstStageMask == ( capture ? VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT : VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT ) );
+            CHECK( barrier.dstAccessMask == ( capture ? VK_ACCESS_2_TRANSFER_READ_BIT : VK_ACCESS_2_NONE ) );
+        }
+    }
+
+    TEST_CASE( "Vulkan editor readback converts swapchain pixels and image origin", "[render_smoke][readback]" )
+    {
+        CHECK( VKSwapChain::SupportsSmokeReadback( VK_FORMAT_R8G8B8A8_UNORM ) );
+        CHECK( VKSwapChain::SupportsSmokeReadback( VK_FORMAT_R8G8B8A8_SRGB ) );
+        CHECK( VKSwapChain::SupportsSmokeReadback( VK_FORMAT_B8G8R8A8_UNORM ) );
+        CHECK( VKSwapChain::SupportsSmokeReadback( VK_FORMAT_B8G8R8A8_SRGB ) );
+        CHECK( VKSwapChain::SupportsSmokeReadback( VK_FORMAT_A2B10G10R10_UNORM_PACK32 ) );
+        CHECK( VKSwapChain::SupportsSmokeReadback( VK_FORMAT_A2R10G10B10_UNORM_PACK32 ) );
+        CHECK_FALSE( VKSwapChain::SupportsSmokeReadback( VK_FORMAT_R16G16B16A16_SFLOAT ) );
+
+        const std::array<Byte, 16> bgra
+        {{
+            Byte{ 3 }, Byte{ 2 }, Byte{ 1 }, Byte{ 255 }, Byte{ 6 }, Byte{ 5 }, Byte{ 4 }, Byte{ 255 },
+            Byte{ 9 }, Byte{ 8 }, Byte{ 7 }, Byte{ 255 }, Byte{ 12 }, Byte{ 11 }, Byte{ 10 }, Byte{ 255 }
+        }};
+        const std::array<Byte, 16> expected
+        {{
+            Byte{ 7 }, Byte{ 8 }, Byte{ 9 }, Byte{ 255 }, Byte{ 10 }, Byte{ 11 }, Byte{ 12 }, Byte{ 255 },
+            Byte{ 1 }, Byte{ 2 }, Byte{ 3 }, Byte{ 255 }, Byte{ 4 }, Byte{ 5 }, Byte{ 6 }, Byte{ 255 }
+        }};
+        std::array<Byte, 16> converted{};
+        REQUIRE( VKSwapChain::ConvertSmokeReadback( VK_FORMAT_B8G8R8A8_SRGB, 2u, 2u, bgra, converted ) );
+        CHECK( converted == expected );
+        REQUIRE( VKSwapChain::ConvertSmokeReadback( VK_FORMAT_R8G8B8A8_UNORM, 2u, 2u, expected, converted ) );
+        CHECK( converted[0] == Byte{ 1 } );
+        CHECK( converted[2] == Byte{ 3 } );
+        CHECK( converted[8] == Byte{ 7 } );
+
+        const std::array<Byte, 4> expectedPacked{{ Byte{ 255 }, Byte{ 128 }, Byte{ 0 }, Byte{ 170 } }};
+        for ( const VkFormat format : { VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_FORMAT_A2R10G10B10_UNORM_PACK32 } )
+        {
+            const U32 pixel = ( 2u << 30u ) | ( 512u << 10u ) |
+                              ( format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 ? 1023u : 1023u << 20u );
+            const std::array<U32, 1> source{ pixel };
+            std::array<Byte, 4> output{};
+            REQUIRE( VKSwapChain::ConvertSmokeReadback( format, 1u, 1u, std::as_bytes( std::span{ source } ), output ) );
+            CHECK( output == expectedPacked );
+        }
+
+        const auto unchanged = converted;
+        CHECK_FALSE( VKSwapChain::ConvertSmokeReadback( VK_FORMAT_R8G8B8A8_UNORM, 0u, 2u, bgra, converted ) );
+        CHECK_FALSE( VKSwapChain::ConvertSmokeReadback( VK_FORMAT_R8G8B8A8_UNORM, 3u, 2u, bgra, converted ) );
+        CHECK_FALSE( VKSwapChain::ConvertSmokeReadback( VK_FORMAT_R16G16B16A16_SFLOAT, 2u, 2u, bgra, converted ) );
+        CHECK( converted == unchanged );
+    }
+
     TEST_CASE( "Compute workgroup support treats device limits as inclusive maxima", "[compute][device_limits]" )
     {
         DeviceInformation info{};

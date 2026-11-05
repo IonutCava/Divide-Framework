@@ -1,10 +1,11 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/Application.h"
 #include "Headers/DisplayManager.h"
 
 #include "Headers/Kernel.h"
 #include "Headers/Configuration.h"
+#include "Headers/RenderSmokeTest.h"
 
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Platform/File/Headers/FileManagement.h"
@@ -81,7 +82,10 @@ bool Application::onProfilerStateChanged( const Profiler::State state )
         case Profiler::State::STARTED:
         {
             context.config().debug.renderer.assertOnRenderAPIError = false;
-            context.config().debug.renderer.enableRenderAPIDebugging = false;
+            if ( !RenderSmokeTest::Enabled() )
+            {
+                context.config().debug.renderer.enableRenderAPIDebugging = false;
+            }
             context.config().debug.renderer.enableRenderAPIDebugGrouping = false;
         } break;
         case Profiler::State::STOPPED:

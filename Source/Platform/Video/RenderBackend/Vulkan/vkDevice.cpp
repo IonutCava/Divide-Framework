@@ -1,11 +1,64 @@
 // Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/vkDevice.h"
+#include "Headers/VKWrapper.h"
 
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Utility/Headers/Localization.h"
+
+#include <cinttypes>
 
 namespace Divide
 {
+    thread_local VKDevice::SmokeFailureState VKDevice::s_smokeFailureState{};
+
+    namespace
+    {
+        [[noreturn]] void FinishVulkanDeviceLost( std::FILE* output, const char* operation, const VKDevice* device ) noexcept
+        {
+            VKDevice::SetPendingSmokeDeviceLossFailure( output );
+            if ( std::fprintf( output, "detail=%s\n", operation != nullptr ? operation : "<unknown>" ) < 0 ||
+                 std::fflush( output ) != 0 )
+            {
+                RenderSmokeTest::EndFailure( output, RenderSmokeTest::IO_FAILURE_EXIT );
+            }
+
+            if ( device == nullptr )
+            {
+                device = VK_API::GetStateTracker()._device;
+            }
+            if ( device != nullptr )
+            {
+                device->writeDeviceFaultInfo( output );
+            }
+            else
+            {
+                std::fprintf( output, "device_fault=unavailable_before_device_registration\n" );
+            }
+            RenderSmokeTest::EndFailure( output, RenderSmokeTest::DEVICE_LOST_EXIT );
+        }
+    }
+
+    [[noreturn]] void ReportVulkanDeviceLost( const char* operation, const VKDevice* device ) noexcept
+    {
+        FinishVulkanDeviceLost( RenderSmokeTest::BeginFailure( "device_lost" ), operation, device );
+    }
+
+    bool VKDevice::SmokeQueueSubmitActive() noexcept
+    {
+        return s_smokeFailureState._queueSubmitActive;
+    }
+
+    std::FILE* VKDevice::PendingSmokeDeviceLossFailure() noexcept
+    {
+        return s_smokeFailureState._deviceLossFailure;
+    }
+
+    void VKDevice::SetPendingSmokeDeviceLossFailure( std::FILE* output ) noexcept
+    {
+        s_smokeFailureState._deviceLossFailure = output;
+    }
+
     VKDevice::VKDevice( vkb::Instance& instance, VkSurfaceKHR targetSurface )
     {
         supportsDescriptorBuffers(true);
@@ -97,6 +150,23 @@ namespace Divide
 
         _physicalDevice = physicalDeviceSelection.value();
 
+        if ( RenderSmokeTest::Enabled() )
+        {
+            VkPhysicalDeviceIDProperties identity{};
+            identity.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
+            VkPhysicalDeviceProperties2 properties{};
+            properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+            properties.pNext = &identity;
+            vkGetPhysicalDeviceProperties2( _physicalDevice.physical_device, &properties );
+
+            std::array<char, VK_UUID_SIZE * 2u + 1u> uuid{};
+            for ( size_t i = 0u; i < VK_UUID_SIZE; ++i )
+            {
+                std::snprintf( uuid.data() + i * 2u, 3u, "%02x", to_U32( identity.deviceUUID[i] ) );
+            }
+            RenderSmokeTest::ReportGPU( uuid.data(), properties.properties.deviceName );
+        }
+
         {
             // VK_EXT_descriptor_heap is not enabled/used yet (planned future descriptor model). Only log availability.
             U32 extensionCount = 0u;
@@ -122,6 +192,10 @@ namespace Divide
                 VK_EXT_MESH_SHADER_EXTENSION_NAME,
             }
         );
+        if ( RenderSmokeTest::Enabled() )
+        {
+            _physicalDevice.enable_extensions_if_present( { VK_EXT_DEVICE_FAULT_EXTENSION_NAME } );
+        }
 
         //create the final Vulkan device
         vkb::DeviceBuilder deviceBuilder{ _physicalDevice };
@@ -131,6 +205,9 @@ namespace Divide
 
         VkPhysicalDeviceMaintenance7FeaturesKHR maintenance7Features{};
         maintenance7Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR;
+
+        VkPhysicalDeviceFaultFeaturesEXT faultFeatures{};
+        faultFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_EXT;
 
         for ( const auto& extension : _physicalDevice.get_extensions() )
         {
@@ -177,6 +254,19 @@ namespace Divide
 
                 deviceBuilder.add_pNext(&meshShaderFeatures);*/
             }
+            else if ( extension == VK_EXT_DEVICE_FAULT_EXTENSION_NAME && RenderSmokeTest::Enabled() )
+            {
+                VkPhysicalDeviceFeatures2 features{};
+                features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                features.pNext = &faultFeatures;
+                vkGetPhysicalDeviceFeatures2( _physicalDevice.physical_device, &features );
+                if ( CanEnableDeviceFault( true, true, faultFeatures.deviceFault == VK_TRUE ) )
+                {
+                    _deviceFaultEnabled = true;
+                    _deviceFaultVendorBinary = faultFeatures.deviceFaultVendorBinary == VK_TRUE;
+                    deviceBuilder.add_pNext( &faultFeatures );
+                }
+            }
         }
 
         auto vkbDevice = deviceBuilder.build();
@@ -188,6 +278,7 @@ namespace Divide
 
         // Get the VkDevice handle used in the rest of a Vulkan application
         _device = vkbDevice.value();
+        RenderSmokeTest::ReportDeviceFaultSupport( _deviceFaultEnabled, _deviceFaultVendorBinary );
 
         const auto presentIndex = _device.get_queue_index(vkb::QueueType::present);
         if (presentIndex )
@@ -320,7 +411,23 @@ namespace Divide
         VkResult submitResult = VK_SUCCESS;
         {
             LockGuard<Mutex> w_lock( queueLock( queue ) );
+            s_smokeFailureState._queueSubmitActive = RenderSmokeTest::Enabled();
             submitResult = vkQueueSubmit( _queues[to_base( queue )]._queue, 1, &submitInfo, fence );
+            s_smokeFailureState._queueSubmitActive = false;
+        }
+        std::FILE* deferredFailure = s_smokeFailureState._deviceLossFailure;
+        if ( deferredFailure != nullptr )
+        {
+            if ( submitResult == VK_ERROR_DEVICE_LOST )
+            {
+                FinishVulkanDeviceLost( deferredFailure, "vkQueueSubmit", this );
+            }
+            std::fprintf( deferredFailure, "deferred_submit_result=%d\n", to_I32( submitResult ) );
+            RenderSmokeTest::EndFailure( deferredFailure, RenderSmokeTest::VALIDATION_FAILURE_EXIT );
+        }
+        if ( submitResult == VK_ERROR_DEVICE_LOST && RenderSmokeTest::Enabled() )
+        {
+            ReportVulkanDeviceLost( "vkQueueSubmit", this );
         }
         if ( submitResult != VK_SUCCESS )
         {
@@ -341,8 +448,16 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        LockGuard<Mutex> w_lock( queueLock( queue ) );
-        return vkQueuePresentKHR( _queues[to_base( queue )]._queue, &presentInfo );
+        VkResult result = VK_SUCCESS;
+        {
+            LockGuard<Mutex> w_lock( queueLock( queue ) );
+            result = vkQueuePresentKHR( _queues[to_base( queue )]._queue, &presentInfo );
+        }
+        if ( result == VK_ERROR_DEVICE_LOST && RenderSmokeTest::Enabled() )
+        {
+            ReportVulkanDeviceLost( "vkQueuePresentKHR", this );
+        }
+        return result;
     }
 
     Mutex& VKDevice::queueLock( const QueueType type ) const noexcept
@@ -361,10 +476,98 @@ namespace Divide
 
     VkResult VKDevice::waitIdle() const
     {
-        ScopedLock<Mutex, Mutex, Mutex> lock( _queueLocks[to_base(QueueType::GRAPHICS)],
-                                             _queueLocks[to_base(QueueType::COMPUTE)],
-                                             _queueLocks[to_base(QueueType::TRANSFER)] );
-        return vkDeviceWaitIdle( getVKDevice() );
+        VkResult result = VK_SUCCESS;
+        {
+            ScopedLock<Mutex, Mutex, Mutex> lock( _queueLocks[to_base(QueueType::GRAPHICS)],
+                                                 _queueLocks[to_base(QueueType::COMPUTE)],
+                                                 _queueLocks[to_base(QueueType::TRANSFER)] );
+            result = vkDeviceWaitIdle( getVKDevice() );
+        }
+        if ( result == VK_ERROR_DEVICE_LOST && RenderSmokeTest::Enabled() )
+        {
+            ReportVulkanDeviceLost( "vkDeviceWaitIdle", this );
+        }
+        return result;
+    }
+
+    void VKDevice::writeDeviceFaultInfo( std::FILE* output ) const noexcept
+    {
+        if ( !_deviceFaultEnabled || getVKDevice() == VK_NULL_HANDLE )
+        {
+            std::fprintf( output, "device_fault=unavailable\n" );
+            return;
+        }
+
+        const auto getFault = reinterpret_cast<PFN_vkGetDeviceFaultInfoEXT>(
+            vkGetDeviceProcAddr( getVKDevice(), "vkGetDeviceFaultInfoEXT" ) );
+        if ( getFault == nullptr )
+        {
+            std::fprintf( output, "device_fault=entry_point_unavailable\n" );
+            return;
+        }
+
+        VkDeviceFaultCountsEXT counts{};
+        counts.sType = VK_STRUCTURE_TYPE_DEVICE_FAULT_COUNTS_EXT;
+        VkResult result = getFault( getVKDevice(), &counts, nullptr );
+        if ( result != VK_SUCCESS )
+        {
+            std::fprintf( output, "device_fault=query_failed result=%d\n", to_I32( result ) );
+            return;
+        }
+
+        constexpr U32 MAX_FAULT_ENTRIES = 256u;
+        constexpr U64 MAX_FAULT_BINARY_BYTES = 16u * 1024u * 1024u;
+        const U32 availableAddresses = counts.addressInfoCount;
+        const U32 availableVendors = counts.vendorInfoCount;
+        const U64 availableBinaryBytes = counts.vendorBinarySize;
+        counts.addressInfoCount = std::min( counts.addressInfoCount, MAX_FAULT_ENTRIES );
+        counts.vendorInfoCount = std::min( counts.vendorInfoCount, MAX_FAULT_ENTRIES );
+        counts.vendorBinarySize = _deviceFaultVendorBinary ? std::min( counts.vendorBinarySize, MAX_FAULT_BINARY_BYTES ) : 0u;
+
+        try
+        {
+            std::vector<VkDeviceFaultAddressInfoEXT> addresses( counts.addressInfoCount );
+            std::vector<VkDeviceFaultVendorInfoEXT> vendors( counts.vendorInfoCount );
+            std::vector<U8> binary( to_size( counts.vendorBinarySize ) );
+            VkDeviceFaultInfoEXT info{};
+            info.sType = VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT;
+            info.pAddressInfos = addresses.empty() ? nullptr : addresses.data();
+            info.pVendorInfos = vendors.empty() ? nullptr : vendors.data();
+            info.pVendorBinaryData = binary.empty() ? nullptr : binary.data();
+            result = getFault( getVKDevice(), &counts, &info );
+
+            std::fprintf( output, "device_fault=result_%d addresses=%u/%u vendors=%u/%u binary_bytes=%" PRIu64 "/%" PRIu64 "\n",
+                          to_I32( result ), counts.addressInfoCount, availableAddresses, counts.vendorInfoCount, availableVendors,
+                          to_U64( counts.vendorBinarySize ), availableBinaryBytes );
+            if ( result != VK_SUCCESS && result != VK_INCOMPLETE )
+            {
+                return;
+            }
+
+            std::fprintf( output, "device_fault_description=%.*s\n", VK_MAX_DESCRIPTION_SIZE, info.description );
+            for ( size_t i = 0u; i < std::min( addresses.size(), to_size( counts.addressInfoCount ) ); ++i )
+            {
+                const VkDeviceFaultAddressInfoEXT& address = addresses[i];
+                std::fprintf( output, "fault_address type=%d value=0x%" PRIx64 " precision=%" PRIu64 "\n",
+                              to_I32( address.addressType ), to_U64( address.reportedAddress ), to_U64( address.addressPrecision ) );
+            }
+            for ( size_t i = 0u; i < std::min( vendors.size(), to_size( counts.vendorInfoCount ) ); ++i )
+            {
+                const VkDeviceFaultVendorInfoEXT& vendor = vendors[i];
+                std::fprintf( output, "fault_vendor description=%.*s code=%" PRIu64 " data=%" PRIu64 "\n",
+                              VK_MAX_DESCRIPTION_SIZE, vendor.description, to_U64( vendor.vendorFaultCode ), to_U64( vendor.vendorFaultData ) );
+            }
+            if ( !binary.empty() )
+            {
+                const size_t writtenSize = std::min( binary.size(), to_size( counts.vendorBinarySize ) );
+                const bool saved = writtenSize > 0u && RenderSmokeTest::WriteDeviceFaultBinary( std::span{ binary.data(), writtenSize } );
+                std::fprintf( output, "device_fault_binary=%s\n", saved ? "device-fault.bin" : "write_failed" );
+            }
+        }
+        catch ( const std::bad_alloc& )
+        {
+            std::fprintf( output, "device_fault=allocation_failed\n" );
+        }
     }
 
 }; //namespace Divide

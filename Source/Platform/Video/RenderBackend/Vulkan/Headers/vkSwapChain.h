@@ -56,7 +56,7 @@ namespace Divide {
 
     class VKSwapChain final : NonCopyable, NonMovable {
     public:
-        VKSwapChain(VK_API& context, const VKDevice& device, const DisplayWindow& window);
+        VKSwapChain( VK_API& context, const VKDevice& device, const DisplayWindow& window, bool smokeReadback );
         ~VKSwapChain();
 
         ErrorCode create(bool vSync, bool adaptiveSync, VkSurfaceKHR targetSurface);
@@ -77,6 +77,27 @@ namespace Divide {
             return to_size( frameNumber % FrameSlotCount() );
         }
 
+        [[nodiscard]] static constexpr bool SupportsSmokeReadback( const VkFormat format ) noexcept
+        {
+            return format == VK_FORMAT_R8G8B8A8_UNORM || format == VK_FORMAT_R8G8B8A8_SRGB ||
+                   format == VK_FORMAT_B8G8R8A8_UNORM || format == VK_FORMAT_B8G8R8A8_SRGB ||
+                   format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 || format == VK_FORMAT_A2R10G10B10_UNORM_PACK32;
+        }
+
+        [[nodiscard]] static bool ConvertSmokeReadback( VkFormat format, U32 width, U32 height,
+                                                        std::span<const Byte> source, std::span<Byte> destination ) noexcept;
+
+        [[nodiscard]] static constexpr VkImageLayout ScreenPassInitialLayout( const bool deferPresent,
+                                                                             const bool renderedThisFrame,
+                                                                             const bool canLoadPreviousContents ) noexcept
+        {
+            return deferPresent && renderedThisFrame ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                 : canLoadPreviousContents ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR : VK_IMAGE_LAYOUT_UNDEFINED;
+        }
+
+        [[nodiscard]] static VkImageMemoryBarrier2 SmokePresentBarrier( VkImage image, bool capture ) noexcept;
+        [[nodiscard]] bool deferPresentTransition() const noexcept { return _smokeReadback; }
+
         [[nodiscard]] vkb::Swapchain& getSwapChain() noexcept;
         [[nodiscard]] VkImage         getCurrentImage() const noexcept;
         [[nodiscard]] VkImageView     getCurrentImageView() const noexcept;
@@ -94,6 +115,7 @@ namespace Divide {
         VK_API& _context;
         const VKDevice& _device;
         const DisplayWindow& _window;
+        const bool _smokeReadback;
 
         FrameData* _activeFrame{ nullptr };
         vector<FrameData> _frames;

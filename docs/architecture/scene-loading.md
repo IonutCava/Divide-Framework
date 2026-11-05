@@ -18,11 +18,21 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 ## Selection and loading flow
 
-In an editor build with the editor enabled, `Kernel` selects the Default
-project; otherwise it uses the configured startup project.
-`Project::Project()` discovers scene entries by enumerating folders under
-`Projects/<project>/Scenes/`. `ProjectManager::loadProjectInternal()`
-selects the first entry; directory enumeration order is not guaranteed.
+In an editor build with the editor enabled, `Kernel` normally selects the
+Default project; otherwise it uses the configured startup project. A named
+smoke project overrides that choice, and a missing explicit smoke project is
+an error rather than a fallback. `Project::Project()` discovers scene entries
+by enumerating folders under `Projects/<project>/Scenes/`.
+`ProjectManager::loadProjectInternal()` normally selects the first entry;
+directory enumeration order is not guaranteed. The smoke runner's `-Project`
+and `-Scene` parameters can select a particular scene, for example
+`-Project Games -Scene WarScene`; `-Scene` requires `-Project`. A missing
+explicitly selected scene is an error.
+
+Smoke runs start in Play mode, using the loaded player camera and advancing
+game time. Pausing uses the independent editor camera instead. WarScene's HUD
+reports the player camera even while that override is active, so its coordinates
+do not identify a paused editor view.
 
 1. `Project::switchScene()` verifies both the scene directory and
    `Scenes/<scene>.xml`. `ScenePool::getOrCreateScene()` creates the registered

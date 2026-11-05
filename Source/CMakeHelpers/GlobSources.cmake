@@ -72,11 +72,15 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/Headers/PlatformContextComponent.h
                          Core/Headers/PoolHandle.h
                          Core/Headers/Profiler.h
+                         Core/Headers/RenderSmokeTest.h
                          Core/Headers/RingBuffer.h
+                         Core/Headers/SmokeOutput.h
+                         Core/Headers/SmokeRuntimeDialogs.h
                          Core/Headers/StringHelper.h
                          Core/Headers/StringHelper.inl
                          Core/Headers/TaskPool.h
                          Core/Headers/TaskPool.inl
+                         Core/Headers/VulkanRecoveryPolicy.h
                          Core/Headers/WindowManager.h
                          Core/Headers/WindowManager.inl
                          Core/Math/BoundingVolumes/Headers/BoundingBox.h
@@ -133,6 +137,7 @@ set( CORE_SOURCE Core/Application.cpp
                  Core/LoopTimingData.cpp
                  Core/PlatformContext.cpp
                  Core/Profiler.cpp
+                 Core/RenderSmokeTest.cpp
                  Core/RingBuffer.cpp
                  Core/StringHelper.cpp
                  Core/TaskPool.cpp
@@ -866,6 +871,7 @@ set( TEST_ENGINE_SOURCE UnitTests/unitTestCommon.h
                         UnitTests/Test-Engine/MathVectorTests.cpp
                         UnitTests/Test-Engine/MeshImportTests.cpp
                         UnitTests/Test-Engine/NodeEditorTests.cpp
+                        UnitTests/Test-Engine/RenderSmokeTests.cpp
                         UnitTests/Test-Engine/RendererTests.cpp
                         UnitTests/Test-Engine/SceneNodeEventTests.cpp
                         UnitTests/Test-Engine/ShaderCompilerTests.cpp

@@ -1,6 +1,9 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "Headers/Kernel.h"
 #include "Headers/Configuration.h"
 #include "Headers/PlatformContext.h"
+#include "Headers/RenderSmokeTest.h"
 
 #include "Core/Debugging/Headers/DebugInterface.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
@@ -189,13 +192,17 @@ void Kernel::onLoop()
         Time::ScopedTimer timer(_appLoopTimerMain);
 
         ResourceCache::OnFrameStart();
+        RenderSmokeTest::BeginFrame();
 
         if (!keepAlive())
         {
             // exiting the rendering loop will return us to the last control point
             _platformContext.app().mainLoopActive(false);
 
-            DIVIDE_EXPECTED_CALL( projectManager()->saveActiveScene(true, false) );
+            if ( !RenderSmokeTest::Enabled() )
+            {
+                DIVIDE_EXPECTED_CALL( projectManager()->saveActiveScene(true, false) );
+            }
 
             return;
         }
@@ -248,6 +255,11 @@ void Kernel::onLoop()
             if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_ENDED, evt))
             {
                 keepAlive(false);
+            }
+
+            if ( RenderSmokeTest::ReadyToStop() )
+            {
+                _platformContext.app().RequestShutdown( false );
             }
 
             if (_platformContext.app().RestartRequested() || _platformContext.app().ShutdownRequested() )
@@ -640,6 +652,11 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
         _renderTimer.erase(begin(_renderTimer) + i);
     }
 
+    if ( playerCount > 0u )
+    {
+        RenderSmokeTest::MarkSceneFrame();
+    }
+
     return true;
 }
 
@@ -661,6 +678,11 @@ void Kernel::warmup()
     stopSplashScreen();
 
     Attorney::ProjectManagerKernel::initPostLoadState(_projectManager.get());
+    if ( RenderSmokeTest::Enabled() && keepAlive() && _projectManager->loadComplete() )
+    {
+        _platformContext.gfx().materialDebugFlag( RenderSmokeTest::MaterialView() );
+        RenderSmokeTest::MarkSceneReady();
+    }
 }
 
 
@@ -699,6 +721,31 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     if ( Util::ExtractStartupProject( _argc, _argv, config.startupProject ) )
     {
         Console::printfn( LOCALE_STR( "START_APPLICATION_PROJECT_ARGUMENT" ) , config.startupProject.c_str() );
+    }
+
+    if ( RenderSmokeTest::Enabled() )
+    {
+        const bool vulkan = RenderSmokeTest::SelectedBackend() == RenderSmokeTest::Backend::VULKAN;
+        if ( !Config::Build::IS_EDITOR_BUILD || ( vulkan && !Config::ENABLE_GPU_VALIDATION ) ||
+             Util::FindCommandLineArgument( _argc, _argv, "disableEditor" ) ||
+             Util::FindCommandLineArgument( _argc, _argv, "disableRenderAPIDebugging" ) )
+        {
+            Console::errorfn( "The render smoke test requires an editor build and API debugging." );
+            return ErrorCode::RENDER_SMOKE_TEST_FAILED;
+        }
+
+        config.startupProject = RenderSmokeTest::Project().empty() ? Config::DEFAULT_PROJECT_NAME : RenderSmokeTest::Project().c_str();
+        config.runtime.enableEditor = true;
+        if ( vulkan )
+        {
+            config.runtime.targetRenderingAPI = to_U8( RenderAPI::Vulkan );
+        }
+        else if ( config.runtime.targetRenderingAPI != to_U8( RenderAPI::OpenGL ) )
+        {
+            Console::errorfn( "The OpenGL smoke test requires OpenGL in config.xml." );
+            return ErrorCode::RENDER_SMOKE_TEST_FAILED;
+        }
+        config.debug.renderer.enableRenderAPIDebugging = true;
     }
 
     if (config.runtime.targetRenderingAPI >= to_U8(RenderAPI::COUNT))
@@ -844,7 +891,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     Str<256> startupProject = config.startupProject.c_str();
     if ( Config::Build::IS_EDITOR_BUILD && config.runtime.enableEditor)
     {
-        startupProject = Config::DEFAULT_PROJECT_NAME;
+        startupProject = RenderSmokeTest::Project().empty() ? Config::DEFAULT_PROJECT_NAME : RenderSmokeTest::Project().c_str();
         Console::printfn(LOCALE_STR("START_FRAMEWORK_EDITOR"), startupProject.c_str() );
     }
     else
@@ -867,6 +914,12 @@ ErrorCode Kernel::initialize(const string& entryPoint)
             targetProject = project;
             break;
         }
+    }
+
+    if ( targetProject._guid == 0 && !RenderSmokeTest::Project().empty() )
+    {
+        Console::errorfn( "Render smoke test project [ {} ] not found.", startupProject.c_str() );
+        return ErrorCode::MISSING_PROJECT_DATA;
     }
 
     while ( targetProject._guid == 0 )
@@ -947,7 +1000,10 @@ void Kernel::shutdown()
 {
     Console::printfn(LOCALE_STR("STOP_KERNEL"));
 
-    _platformContext.config().save();
+    if ( !RenderSmokeTest::Enabled() )
+    {
+        _platformContext.config().save();
+    }
 
     for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i)
     {
@@ -1188,4 +1244,3 @@ void Kernel::unlockInputFromConsumer(const InputConsumerType type)
 
 #pragma endregion
 };
-

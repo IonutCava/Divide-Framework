@@ -7,6 +7,7 @@
 #include "Core/Headers/Application.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "ECS/Components/Headers/TransformComponent.h"
@@ -329,6 +330,7 @@ namespace Divide
             return false;
         }
 
+        _simulationPaused = RenderSmokeTest::InitialSimulationPaused( RenderSmokeTest::Enabled(), _simulationPaused );
         DIVIDE_EXPECTED_CALL( createDirectory( Paths::g_saveLocation / Paths::Editor::g_saveLocation ) == FileError::NONE );
 
         _mainWindow = &_context.app().windowManager().getWindow( 0u );
@@ -463,6 +465,14 @@ namespace Divide
 
         ImGuiPlatformIO& platform_io = editorContext->PlatformIO;
         ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
+        if ( RenderSmokeTest::Enabled() )
+        {
+            if ( io.IniFilename != nullptr )
+            {
+                ImGui::LoadIniSettingsFromDisk( io.IniFilename );
+            }
+            io.IniFilename = nullptr;
+        }
         createFontTexture(io, mainMonitor.dpi / PlatformDefaultDPI());
         initBasicImGUIState( io, platform_io, true, _imguiStringBuffers[to_base(ImGuiContextType::Editor)] );
         editorContext->Viewports[0]->PlatformHandle = _mainWindow;
@@ -754,6 +764,10 @@ namespace Divide
 
         ImGuiContext*& gizmoContext = _imguiContexts[to_base( ImGuiContextType::Gizmo )];
         gizmoContext = ImGui::CreateContext( io.Fonts );
+        if ( RenderSmokeTest::Enabled() )
+        {
+            gizmoContext->IO.IniFilename = nullptr;
+        }
         initBasicImGUIState( gizmoContext->IO, gizmoContext->PlatformIO, false, _imguiStringBuffers[to_base(ImGuiContextType::Gizmo)]);
         gizmoContext->Viewports[0]->PlatformHandle = _mainWindow;
 
@@ -852,7 +866,7 @@ namespace Divide
     {
         processInput(false);
 
-        if ( saveToXML() )
+        if ( !RenderSmokeTest::Enabled() && saveToXML() )
         {
             _context.config().save();
         }

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
+Copyright (c) 2018-2026 DIVIDE-Studio
 Copyright (c) 2009 Ionut Cava
 
 This file is part of DIVIDE Framework.
@@ -73,6 +73,7 @@ namespace Divide
         GUI_INIT_ERROR,
         NETWORK_CONNECT_ERROR,
         NETWORK_SERVER_START_ERROR,
+        RENDER_SMOKE_TEST_FAILED,
         COUNT
     };
 
@@ -115,6 +116,7 @@ namespace Divide
             "GUI INIT ERROR",
             "NETWORK CONNECTION ERROR",
             "NETWORK SERVER START ERROR",
+            "RENDER SMOKE TEST FAILED",
             "UNKNOWN"
         };
     }

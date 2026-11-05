@@ -66,6 +66,24 @@
 - On runtime failures (asserts, crashes, GPU/device-loss, startup issues), inspect `Logs/errors.log` and `Logs/console.log` before concluding root cause. If files are locked while debugging, stop the process and re-read them immediately after exit.
 - Documentation-only changes require no build unless they affect an executable example or have a dedicated documentation check.
 
+### Local Vulkan smoke diagnosis
+
+The opt-in Windows runner and its safety contract are described in
+[Rendering](docs/architecture/rendering.md#vulkan-smoke-diagnosis). Run
+`powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tools\VulkanSmokeTest.ps1 -OutputRoot <absolute-directory-outside-checkout>`
+for one build/test/renderer attempt; use `-PreflightOnly` to check the local
+probe, debugger and process watchdog without launching the renderer. The runner
+chooses build parallelism from available CPU and memory; `-BuildJobs` overrides it.
+It reuses a verified instrumented CMake configuration when preset/dependency
+inputs are unchanged; Ninja still regenerates modified build files.
+Diagnose and repair the recorded failure before the next invocation. Device
+loss or a suspected GPU hang requires the same-GPU recovery probe before a
+new renderer run. Use `-ApproveStalledDeviceLoss` only after the user explicitly
+approves the pending no-progress pause. Artifacts and dumps remain local.
+The user approved logging, without aborting, the single best-practices advisory
+for `VK_EXT_custom_border_color`; every other Vulkan warning and every error
+remains fatal. A successful run can therefore contain that recorded advisory.
+
 ### Canonical validation and dependency provisioning
 
 The project requires CMake >= 3.29.2, Ninja, and a C++23 compiler; CI pins tool

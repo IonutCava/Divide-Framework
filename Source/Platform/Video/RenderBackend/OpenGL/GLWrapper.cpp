@@ -11,10 +11,12 @@
 #include "Core/Headers/Application.h"
 #include "Core/Headers/DisplayManager.h"
 #include "Core/Headers/Configuration.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Utility/Headers/Localization.h"
+#include "Utility/Headers/ImageToolsFwd.h"
 
 #include "GUI/Headers/GUI.h"
 
@@ -131,6 +133,136 @@ namespace Divide
                    _handle == rhs._handle &&
                    _offset == rhs._offset;
                    //&& _buffer == rhs._buffer; //Same handle results in same buffer
+        }
+
+        void CheckSmokeGLError( const char* operation )
+        {
+            const gl46core::GLenum error = gl46core::glGetError();
+            if ( error != gl46core::GL_NO_ERROR )
+            {
+                char detail[160]{};
+                std::snprintf( detail, sizeof( detail ), "OpenGL %s failed: 0x%x", operation, to_U32( error ) );
+                RenderSmokeTest::Fail( "capture", detail, RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+        }
+
+        void VerifySmokeGPU( const char* renderer )
+        {
+            gl46core::GLint extensionCount = 0;
+            gl46core::glGetIntegerv( gl46core::GL_NUM_EXTENSIONS, &extensionCount );
+            bool supportsUUID = false;
+            for ( gl46core::GLint i = 0; i < extensionCount; ++i )
+            {
+                const char* extension = reinterpret_cast<const char*>( gl46core::glGetStringi( gl46core::GL_EXTENSIONS, to_U32( i ) ) );
+                if ( extension != nullptr &&
+                     ( std::strcmp( extension, "GL_EXT_memory_object" ) == 0 || std::strcmp( extension, "GL_EXT_semaphore" ) == 0 ) )
+                {
+                    supportsUUID = true;
+                    break;
+                }
+            }
+            CheckSmokeGLError( "GPU extension query" );
+            if ( !supportsUUID )
+            {
+                RenderSmokeTest::Fail( "gpu_identity", "OpenGL does not expose a compatible device UUID",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+
+            gl46core::GLint deviceCount = 0;
+            gl46core::glGetIntegerv( gl46ext::GL_NUM_DEVICE_UUIDS_EXT, &deviceCount );
+            CheckSmokeGLError( "GPU UUID count query" );
+            if ( deviceCount <= 0 || deviceCount > 16 )
+            {
+                RenderSmokeTest::Fail( "gpu_identity", "OpenGL reported an invalid device UUID count",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+
+            for ( gl46core::GLint i = 0; i < deviceCount; ++i )
+            {
+                std::array<U8, 16> uuid{};
+                gl46ext::glGetUnsignedBytei_vEXT( gl46ext::GL_DEVICE_UUID_EXT, to_U32( i ), uuid.data() );
+                CheckSmokeGLError( "GPU UUID query" );
+                if ( RenderSmokeTest::MatchesGPUUUID( uuid, RenderSmokeTest::ExpectedGPU() ) )
+                {
+                    RenderSmokeTest::ReportGPU( RenderSmokeTest::ExpectedGPU().c_str(), renderer );
+                    return;
+                }
+            }
+            RenderSmokeTest::Fail( "gpu_identity", "The OpenGL context does not use the expected Vulkan GPU",
+                                   RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+        }
+
+        [[nodiscard]] ImageReadbackData CaptureSmokeScene( GFXDevice& context )
+        {
+            const RenderTarget* target = context.renderTargetPool().getRenderTarget( RenderTargetNames::BACK_BUFFER );
+            const RTAttachment* attachment = target != nullptr
+                                           ? target->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO )
+                                           : nullptr;
+            const Texture* texture = attachment != nullptr ? Get( attachment->texture() ) : nullptr;
+            if ( texture == nullptr )
+            {
+                RenderSmokeTest::Fail( "capture", "Scene colour attachment unavailable", RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+
+            CheckSmokeGLError( "before scene readback" );
+            gl46core::GLint previousPackBuffer = 0;
+            gl46core::glGetIntegerv( gl46core::GL_PIXEL_PACK_BUFFER_BINDING, &previousPackBuffer );
+            GLStateTracker& stateTracker = GL_API::GetStateTracker();
+            const PixelAlignment previousPackAlignment = stateTracker._packAlignment;
+            gl46core::glBindBuffer( gl46core::GL_PIXEL_PACK_BUFFER, 0u );
+            const ImageReadbackData data = texture->readData( 0u, {} );
+            stateTracker.setPixelPackAlignment( previousPackAlignment );
+            gl46core::glBindBuffer( gl46core::GL_PIXEL_PACK_BUFFER, to_U32( previousPackBuffer ) );
+            CheckSmokeGLError( "scene readback" );
+            return data;
+        }
+
+        [[nodiscard]] vector<Byte> CaptureSmokeEditor( const DisplayWindow& window )
+        {
+            const auto dimensions = window.getDrawableSize();
+            size_t byteCount = 0u;
+            if ( !RenderSmokeTest::RGBA8ReadbackSize( dimensions.width, dimensions.height, byteCount ) )
+            {
+                RenderSmokeTest::Fail( "window_capture", "Unsupported OpenGL framebuffer dimensions",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            vector<Byte> pixels( byteCount );
+            CheckSmokeGLError( "before editor readback" );
+
+            gl46core::GLint previousFramebuffer = 0;
+            gl46core::GLint previousPackBuffer = 0;
+            gl46core::GLint previousAlignment = 0;
+            gl46core::GLint previousRowLength = 0;
+            gl46core::GLint previousSkipRows = 0;
+            gl46core::GLint previousSkipPixels = 0;
+            gl46core::glGetIntegerv( gl46core::GL_READ_FRAMEBUFFER_BINDING, &previousFramebuffer );
+            gl46core::glGetIntegerv( gl46core::GL_PIXEL_PACK_BUFFER_BINDING, &previousPackBuffer );
+            gl46core::glGetIntegerv( gl46core::GL_PACK_ALIGNMENT, &previousAlignment );
+            gl46core::glGetIntegerv( gl46core::GL_PACK_ROW_LENGTH, &previousRowLength );
+            gl46core::glGetIntegerv( gl46core::GL_PACK_SKIP_ROWS, &previousSkipRows );
+            gl46core::glGetIntegerv( gl46core::GL_PACK_SKIP_PIXELS, &previousSkipPixels );
+
+            gl46core::glBindFramebuffer( gl46core::GL_READ_FRAMEBUFFER, 0u );
+            gl46core::GLint previousReadBuffer = 0;
+            gl46core::glGetIntegerv( gl46core::GL_READ_BUFFER, &previousReadBuffer );
+            gl46core::glReadBuffer( gl46core::GL_BACK );
+            gl46core::glBindBuffer( gl46core::GL_PIXEL_PACK_BUFFER, 0u );
+            gl46core::glPixelStorei( gl46core::GL_PACK_ALIGNMENT, 1 );
+            gl46core::glPixelStorei( gl46core::GL_PACK_ROW_LENGTH, 0 );
+            gl46core::glPixelStorei( gl46core::GL_PACK_SKIP_ROWS, 0 );
+            gl46core::glPixelStorei( gl46core::GL_PACK_SKIP_PIXELS, 0 );
+            gl46core::glReadPixels( 0, 0, to_I32( dimensions.width ), to_I32( dimensions.height ),
+                                    gl46core::GL_RGBA, gl46core::GL_UNSIGNED_BYTE, pixels.data() );
+
+            gl46core::glPixelStorei( gl46core::GL_PACK_ALIGNMENT, previousAlignment );
+            gl46core::glPixelStorei( gl46core::GL_PACK_ROW_LENGTH, previousRowLength );
+            gl46core::glPixelStorei( gl46core::GL_PACK_SKIP_ROWS, previousSkipRows );
+            gl46core::glPixelStorei( gl46core::GL_PACK_SKIP_PIXELS, previousSkipPixels );
+            gl46core::glBindBuffer( gl46core::GL_PIXEL_PACK_BUFFER, to_U32( previousPackBuffer ) );
+            gl46core::glReadBuffer( static_cast<gl46core::GLenum>( previousReadBuffer ) );
+            gl46core::glBindFramebuffer( gl46core::GL_READ_FRAMEBUFFER, to_U32( previousFramebuffer ) );
+            CheckSmokeGLError( "editor readback" );
+            return pixels;
         }
     }
 
@@ -295,6 +427,10 @@ namespace Divide
         }
         // GPU info, including vendor, gpu and driver
         Console::printfn( LOCALE_STR( "GL_VENDOR_STRING" ), gpuVendorStr, gpuRendererStr, reinterpret_cast<const char*>(gl46core::glGetString( gl46core::GL_VERSION )) );
+        if ( RenderSmokeTest::Enabled() && RenderSmokeTest::SelectedBackend() == RenderSmokeTest::Backend::OPENGL )
+        {
+            VerifySmokeGPU( gpuRendererStr );
+        }
 
         DeviceInformation deviceInformation{};
         deviceInformation._vendor = vendor;
@@ -671,6 +807,7 @@ namespace Divide
 
     bool GL_API::prepareFlushWindow( DisplayWindow& window )
     {
+        _screenPassRecorded = false;
         GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ));
         return true;
     }
@@ -680,16 +817,67 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const bool mainWindow = window.getGUID() == _context.context().mainWindow().getGUID();
+        const U32 presentsBeforeCapture = RenderSmokeTest::PresentCount();
+        const bool capture = mainWindow && _screenPassRecorded && RenderSmokeTest::TryBeginCapture();
+        ImageReadbackData sceneData{};
+        vector<Byte> editorPixels{};
+        if ( capture )
+        {
+            sceneData = CaptureSmokeScene( _context );
+            if ( RenderSmokeTest::WindowCaptureRequested() )
+            {
+                editorPixels = CaptureSmokeEditor( window );
+            }
+        }
         if ( mainWindow )
         {
             endPerformanceQueries();
             _swapBufferTimer.start();
         }
+        bool swapSucceeded = false;
         {
             PROFILE_SCOPE( "GL_API: Swap Buffers", Profiler::Category::Graphics );
-            SDL_GL_SwapWindow( window.getRawWindow() );
+            swapSucceeded = SDL_GL_SwapWindow( window.getRawWindow() );
         }
-        
+
+        RenderSmokeTest::RecordPresent( mainWindow && _screenPassRecorded, swapSucceeded, false );
+        if ( RenderSmokeTest::Enabled() && !swapSucceeded )
+        {
+            RenderSmokeTest::Fail( "present", SDL_GetError(), RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+        }
+        if ( capture )
+        {
+            if ( RenderSmokeTest::PresentCount() <= presentsBeforeCapture )
+            {
+                RenderSmokeTest::Fail( "capture", "The captured scene frame was not presented successfully",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            const ResourcePath directory{ RenderSmokeTest::OutputDirectory() };
+            if ( sceneData._data.empty() ||
+                 !ImageTools::SaveImage( directory / "scene.png", sceneData._width, sceneData._height,
+                                         sceneData._numComponents, sceneData._bpp, sceneData._sourceIsBGR,
+                                         sceneData._data.data(), ImageTools::SaveImageFormat::PNG ) )
+            {
+                RenderSmokeTest::FinishCapture( false );
+                RenderSmokeTest::Fail( "capture", "Unable to save scene image", RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            if ( RenderSmokeTest::WindowCaptureRequested() )
+            {
+                const auto dimensions = window.getDrawableSize();
+                if ( editorPixels.empty() ||
+                     !ImageTools::SaveImage( directory / "editor.pending.png", to_U16( dimensions.width ), to_U16( dimensions.height ),
+                                             4u, 4u, false, editorPixels.data(), ImageTools::SaveImageFormat::PNG ) )
+                {
+                    RenderSmokeTest::Fail( "window_capture", "Unable to save editor image", RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+                }
+            }
+            RenderSmokeTest::FinishCapture( true );
+            if ( RenderSmokeTest::WindowCaptureRequested() )
+            {
+                RenderSmokeTest::FinishWindowCapture( true );
+            }
+        }
+
         if ( mainWindow ) 
         {
             _swapBufferTimer.stop();
@@ -1172,6 +1360,7 @@ namespace Divide
                 if ( crtCmd->_target == SCREEN_TARGET_ID )
                 {
                     PROFILE_SCOPE( "Begin Screen Target", Profiler::Category::Graphics );
+                    _screenPassRecorded = true;
 
                     DIVIDE_EXPECTED_CALL( s_stateTracker.setActiveFB( RenderTarget::Usage::RT_WRITE_ONLY, 0u ) != GLStateTracker::BindResult::FAILED );
                     if ( !GFXDevice::GetDeviceInformation()._screenSRGB )

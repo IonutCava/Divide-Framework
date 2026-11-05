@@ -1,10 +1,13 @@
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "EngineMain.h"
 #include "EngineConfig.h"
 
 #include "Platform/File/Headers/FileManagement.h"
 #include "Utility/Headers/Localization.h"
 #include "Core/Headers/Application.h"
+#include "Core/Headers/RenderSmokeTest.h"
 
 namespace Divide {
 
@@ -27,6 +30,11 @@ ErrorCode Engine::Init(Application& app, const int argc, char** argv)
 
 ErrorCode Engine::Run(const int argc, char** argv)
 {
+    if ( !RenderSmokeTest::Configure( argc, argv ) )
+    {
+        return ErrorCode::RENDER_SMOKE_TEST_FAILED;
+    }
+
     ErrorCode errorCode = PlatformInit(argc, argv);
     {
         if ( errorCode != ErrorCode::NO_ERR )
@@ -37,6 +45,10 @@ ErrorCode Engine::Run(const int argc, char** argv)
             }
 
             std::cerr << TypeUtil::ErrorCodeToString(errorCode) << std::endl;
+            if ( RenderSmokeTest::Enabled() )
+            {
+                [[maybe_unused]] const bool recorded = RenderSmokeTest::Complete( false );
+            }
             return errorCode;
         }
 
@@ -67,6 +79,11 @@ ErrorCode Engine::Run(const int argc, char** argv)
     {
         errorCode = ErrorCode::PLATFORM_CLOSE_ERROR;
         std::cerr << TypeUtil::ErrorCodeToString(errorCode) << std::endl;
+    }
+
+    if ( RenderSmokeTest::Enabled() && !RenderSmokeTest::Complete( errorCode == ErrorCode::NO_ERR ) && errorCode == ErrorCode::NO_ERR )
+    {
+        errorCode = ErrorCode::RENDER_SMOKE_TEST_FAILED;
     }
 
     return errorCode;
@@ -106,6 +123,15 @@ ErrorCode Engine::RunInternal(const int argc, char** argv)
         else
         {
             result = AppStepResult::ERROR;
+        }
+
+        if ( RenderSmokeTest::Enabled() )
+        {
+            RenderSmokeTest::RecordAppStop( result == AppStepResult::STOP );
+            if ( result != AppStepResult::STOP && errorCode == ErrorCode::NO_ERR )
+            {
+                errorCode = ErrorCode::RENDER_SMOKE_TEST_FAILED;
+            }
         }
 
         Profiler::Shutdown();

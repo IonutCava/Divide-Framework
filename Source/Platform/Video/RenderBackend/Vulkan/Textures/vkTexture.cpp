@@ -4,6 +4,7 @@
 #include "Utility/Headers/Localization.h"
 
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkBufferImpl.h" //For staging buffers
@@ -1176,6 +1177,133 @@ namespace Divide
         }
 
         FlushPipelineBarrier(cmdBuffer, TransitionType::BLIT_WRITE_TO_SHADER_READ, range, namedImage );
+    }
+
+    ImageReadbackData vkTexture::readDataForSmoke() const noexcept
+    {
+        if ( _image == nullptr || _image->_image == VK_NULL_HANDLE || _width == 0u || _height == 0u ||
+             !SupportsSmokeReadback( vkFormat(), sampleFlagBits(), _descriptor._layerCount, _depth ) )
+        {
+            RenderSmokeTest::Fail( "capture", "Unsupported or unavailable scene image", RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+        }
+
+        VKDevice* device = VK_API::GetStateTracker()._device;
+        if ( device == nullptr )
+        {
+            RenderSmokeTest::Fail( "capture", "Vulkan device unavailable for scene readback", RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+        }
+
+        const auto checkResult = []( const char* stage, const VkResult result )
+        {
+            if ( result == VK_SUCCESS )
+            {
+                return;
+            }
+
+            char detail[192]{};
+            std::snprintf( detail, sizeof( detail ), "%s returned %d", stage, to_I32( result ) );
+            if ( result == VK_ERROR_DEVICE_LOST )
+            {
+                ReportVulkanDeviceLost( detail );
+            }
+            if ( result == VK_TIMEOUT )
+            {
+                RenderSmokeTest::Fail( "gpu_hang", detail, RenderSmokeTest::DEVICE_LOST_EXIT );
+            }
+            RenderSmokeTest::Fail( "capture", detail, RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+        };
+
+        const VkDevice vkDevice = device->getVKDevice();
+        const size_t byteCount = to_size( _width ) * to_size( _height ) * 4u;
+        VMABuffer_uptr staging = VKUtil::createStagingBuffer( byteCount, "SMOKE_SCENE_READBACK", true );
+        if ( staging == nullptr || staging->_buffer == VK_NULL_HANDLE || staging->_allocation == VK_NULL_HANDLE ||
+             staging->_allocInfo.pMappedData == nullptr )
+        {
+            RenderSmokeTest::Fail( "capture", "Unable to allocate mapped scene readback buffer", RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+        }
+
+        VkCommandPoolCreateInfo poolInfo = vk::commandPoolCreateInfo();
+        poolInfo.queueFamilyIndex = device->getQueue( QueueType::GRAPHICS )._index;
+        VkCommandPool pool = VK_NULL_HANDLE;
+        checkResult( "vkCreateCommandPool", vkCreateCommandPool( vkDevice, &poolInfo, nullptr, &pool ) );
+
+        const VkCommandBufferAllocateInfo allocationInfo = vk::commandBufferAllocateInfo( pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1u );
+        VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+        checkResult( "vkAllocateCommandBuffers", vkAllocateCommandBuffers( vkDevice, &allocationInfo, &commandBuffer ) );
+
+        const VkFenceCreateInfo fenceInfo = vk::fenceCreateInfo();
+        VkFence fence = VK_NULL_HANDLE;
+        checkResult( "vkCreateFence", vkCreateFence( vkDevice, &fenceInfo, nullptr, &fence ) );
+
+        const VkCommandBufferBeginInfo beginInfo = vk::commandBufferBeginInfo( VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT );
+        checkResult( "vkBeginCommandBuffer", vkBeginCommandBuffer( commandBuffer, &beginInfo ) );
+
+        VkImageMemoryBarrier2 imageBarrier = vk::imageMemoryBarrier2();
+        imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+        imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+        imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+        imageBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+        imageBarrier.oldLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+        imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        imageBarrier.image = _image->_image;
+        imageBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0u, 1u, 0u, 1u };
+
+        VkDependencyInfo dependency = vk::dependencyInfo();
+        dependency.imageMemoryBarrierCount = 1u;
+        dependency.pImageMemoryBarriers = &imageBarrier;
+        VK_PROFILE( vkCmdPipelineBarrier2, commandBuffer, &dependency );
+
+        VkBufferImageCopy copy{};
+        copy.imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0u, 0u, 1u };
+        copy.imageExtent = { _width, _height, 1u };
+        VK_PROFILE( vkCmdCopyImageToBuffer, commandBuffer, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    staging->_buffer, 1u, &copy );
+
+        imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+        imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+        imageBarrier.dstStageMask = VK_API::AllShaderStages();
+        imageBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+        imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        imageBarrier.newLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+
+        VkBufferMemoryBarrier2 bufferBarrier = vk::bufferMemoryBarrier2();
+        bufferBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+        bufferBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        bufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT;
+        bufferBarrier.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT;
+        bufferBarrier.buffer = staging->_buffer;
+        bufferBarrier.offset = 0u;
+        bufferBarrier.size = byteCount;
+        dependency.bufferMemoryBarrierCount = 1u;
+        dependency.pBufferMemoryBarriers = &bufferBarrier;
+        VK_PROFILE( vkCmdPipelineBarrier2, commandBuffer, &dependency );
+
+        checkResult( "vkEndCommandBuffer", vkEndCommandBuffer( commandBuffer ) );
+        VkSubmitInfo submit = vk::submitInfo();
+        submit.commandBufferCount = 1u;
+        submit.pCommandBuffers = &commandBuffer;
+        checkResult( "vkQueueSubmit", device->submitToQueue( QueueType::GRAPHICS, submit, fence ) );
+        checkResult( "vkWaitForFences", vkWaitForFences( vkDevice, 1u, &fence, VK_TRUE, 10'000'000'000ull ) );
+
+        ImageReadbackData data{};
+        data._width = _width;
+        data._height = _height;
+        data._depth = 1u;
+        data._bpp = 4u;
+        data._numComponents = 4u;
+        data._sourceIsBGR = vkFormat() == VK_FORMAT_B8G8R8A8_UNORM || vkFormat() == VK_FORMAT_B8G8R8A8_SRGB;
+        data._data.resize( byteCount );
+        {
+            LockGuard<Mutex> lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+            checkResult( "vmaInvalidateAllocation",
+                         vmaInvalidateAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator,
+                                                  staging->_allocation, 0u, byteCount ) );
+            std::memcpy( data._data.data(), staging->_allocInfo.pMappedData, byteCount );
+        }
+
+        vkDestroyFence( vkDevice, fence, nullptr );
+        vkDestroyCommandPool( vkDevice, pool, nullptr );
+        return data;
     }
 
     ImageReadbackData vkTexture::readData( const U16 mipLevel, const PixelAlignment& pixelPackAlignment ) const noexcept

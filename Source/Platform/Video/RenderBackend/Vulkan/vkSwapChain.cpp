@@ -3,6 +3,7 @@
 #include "Headers/vkSwapChain.h"
 #include "Headers/vkDevice.h"
 
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Utility/Headers/Localization.h"
 
 #include "Platform/Headers/DisplayWindow.h"
@@ -10,10 +11,11 @@
 
 namespace Divide {
 
-    VKSwapChain::VKSwapChain(VK_API& context, const VKDevice& device, const DisplayWindow& window)
+    VKSwapChain::VKSwapChain( VK_API& context, const VKDevice& device, const DisplayWindow& window, const bool smokeReadback )
         : _context(context)
         , _device(device)
         , _window(window)
+        , _smokeReadback(smokeReadback)
     {
         const auto& windowDimensions = _window.getDrawableSize();
         surfaceExtent({ windowDimensions.width, windowDimensions.height } );
@@ -73,6 +75,29 @@ namespace Divide {
         if ( _swapChain.swapchain != VK_NULL_HANDLE )
         {
             swapchainBuilder.set_old_swapchain( _swapChain );
+        }
+
+        if ( _smokeReadback )
+        {
+            VkSurfaceCapabilitiesKHR capabilities{};
+            const VkResult capabilitiesResult = vkGetPhysicalDeviceSurfaceCapabilitiesKHR( _device.getVKPhysicalDevice(),
+                                                                                           targetSurface, &capabilities );
+            if ( capabilitiesResult == VK_ERROR_DEVICE_LOST )
+            {
+                ReportVulkanDeviceLost( "vkGetPhysicalDeviceSurfaceCapabilitiesKHR" );
+            }
+            if ( capabilitiesResult != VK_SUCCESS )
+            {
+                char detail[128]{};
+                std::snprintf( detail, sizeof( detail ), "Surface capability query failed: %d", to_I32( capabilitiesResult ) );
+                RenderSmokeTest::Fail( "window_capture", detail, RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            if ( ( capabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT ) == 0u )
+            {
+                RenderSmokeTest::Fail( "window_capture", "The main swapchain does not support transfer-source readback",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            swapchainBuilder.add_image_usage_flags( VK_IMAGE_USAGE_TRANSFER_SRC_BIT );
         }
 
         // adaptiveSync not supported yet
@@ -136,6 +161,81 @@ namespace Divide {
         surfaceExtent( VkExtent2D{ windowDimensions.width, windowDimensions.height } );
 
         return ErrorCode::NO_ERR;
+    }
+
+    bool VKSwapChain::ConvertSmokeReadback( const VkFormat format, const U32 width, const U32 height,
+                                            const std::span<const Byte> source, const std::span<Byte> destination ) noexcept
+    {
+        if ( !SupportsSmokeReadback( format ) || width == 0u || height == 0u ||
+             to_size( width ) > std::numeric_limits<size_t>::max() / 4u )
+        {
+            return false;
+        }
+        const size_t rowBytes = to_size( width ) * 4u;
+        if ( to_size( height ) > std::numeric_limits<size_t>::max() / rowBytes )
+        {
+            return false;
+        }
+        const size_t requiredBytes = rowBytes * to_size( height );
+        if ( source.size() < requiredBytes || destination.size() < requiredBytes )
+        {
+            return false;
+        }
+
+        const bool packed = format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 ||
+                            format == VK_FORMAT_A2R10G10B10_UNORM_PACK32;
+        const bool swapRedBlue = format == VK_FORMAT_B8G8R8A8_UNORM || format == VK_FORMAT_B8G8R8A8_SRGB ||
+                                 format == VK_FORMAT_A2R10G10B10_UNORM_PACK32;
+        // The swapchain is top-down; ImageTools::SaveImage expects bottom-up RGBA.
+        for ( size_t row = 0u; row < to_size( height ); ++row )
+        {
+            const Byte* input = source.data() + ( to_size( height ) - row - 1u ) * rowBytes;
+            Byte* output = destination.data() + row * rowBytes;
+            if ( !packed && !swapRedBlue )
+            {
+                std::memcpy( output, input, rowBytes );
+                continue;
+            }
+            for ( size_t column = 0u; column < to_size( width ); ++column )
+            {
+                if ( packed )
+                {
+                    U32 pixel = 0u;
+                    std::memcpy( &pixel, input, sizeof( pixel ) );
+                    const auto channel = []( const U32 value ) { return Byte{ to_U8( ( value * 255u + 511u ) / 1023u ) }; };
+                    const U32 low = pixel & 1023u;
+                    const U32 high = ( pixel >> 20u ) & 1023u;
+                    output[0] = channel( swapRedBlue ? high : low );
+                    output[1] = channel( ( pixel >> 10u ) & 1023u );
+                    output[2] = channel( swapRedBlue ? low : high );
+                    output[3] = Byte{ to_U8( ( pixel >> 30u ) * 85u ) };
+                }
+                else
+                {
+                    output[0] = input[2];
+                    output[1] = input[1];
+                    output[2] = input[0];
+                    output[3] = input[3];
+                }
+                input += 4u;
+                output += 4u;
+            }
+        }
+        return true;
+    }
+
+    VkImageMemoryBarrier2 VKSwapChain::SmokePresentBarrier( const VkImage image, const bool capture ) noexcept
+    {
+        VkImageMemoryBarrier2 barrier = vk::imageMemoryBarrier2();
+        barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+        barrier.dstStageMask = capture ? VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT : VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+        barrier.dstAccessMask = capture ? VK_ACCESS_2_TRANSFER_READ_BIT : VK_ACCESS_2_NONE;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        barrier.newLayout = capture ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        barrier.image = image;
+        barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0u, 1u, 0u, 1u };
+        return barrier;
     }
 
     VkResult VKSwapChain::beginFrame()

@@ -17,6 +17,10 @@
 
         void ReportDescriptorFailure(const char* operation, const VkResult result)
         {
+            if (result == VK_ERROR_DEVICE_LOST && Divide::RenderSmokeTest::Enabled())
+            {
+                Divide::ReportVulkanDeviceLost(operation);
+            }
             Divide::Console::errorfn("{} failed: {} ({})", operation, Divide::VKErrorString(result), Divide::to_I32(result));
         }
     }
