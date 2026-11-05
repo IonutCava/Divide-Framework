@@ -270,6 +270,16 @@ namespace Divide::RenderSmokeTest
                 }
                 options._renderDocCapture = true;
             }
+            else if ( argument == "--smokeEditorPaused" )
+            {
+                sawOption = true;
+                if ( options._pausedEditor )
+                {
+                    errorOut = "Duplicate --smokeEditorPaused option";
+                    return ParseResult::ERROR;
+                }
+                options._pausedEditor = true;
+            }
             else if ( argument == "--disableRenderAPIDebugging" || argument == "--disableEditor" )
             {
                 incompatible = true;
@@ -545,6 +555,11 @@ namespace Divide::RenderSmokeTest
     Backend SelectedBackend() noexcept
     {
         return State()._options._backend;
+    }
+
+    bool PausedEditorRequested() noexcept
+    {
+        return Enabled() && State()._options._pausedEditor;
     }
 
     bool WindowCaptureRequested() noexcept

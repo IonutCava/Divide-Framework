@@ -1118,12 +1118,17 @@ namespace Divide
             ShaderModuleDescriptor fragModule = {};
             fragModule._moduleType = ShaderType::FRAGMENT;
             fragModule._sourceFile = "fbPreview.glsl";
-            fragModule._variant = "LinearDepth.ScenePlanes";
+            fragModule._variant = "LinearDepth";
 
             ShaderProgramDescriptor shaderDescriptor = {};
             shaderDescriptor._modules.push_back( vertModule );
             shaderDescriptor._modules.push_back( fragModule );
 
+            ResourceDescriptor<ShaderProgram> previewDepth( "fbPreviewLinearDepth", shaderDescriptor );
+            previewDepth.waitForReady( false );
+            _previewDepthMapShader = CreateResource( previewDepth, loadTasks );
+
+            shaderDescriptor._modules.back()._variant = "LinearDepth.ScenePlanes";
             ResourceDescriptor<ShaderProgram> previewReflectionRefractionDepth( "fbPreviewLinearDepthScenePlanes", shaderDescriptor );
             previewReflectionRefractionDepth.waitForReady( false );
             _previewRenderTargetDepth = CreateResource( previewReflectionRefractionDepth, loadTasks );
@@ -1302,6 +1307,11 @@ namespace Divide
         _renderer = std::make_unique<Renderer>( context() );
 
         WAIT_FOR_CONDITION( loadTasks.load() == 0 );
+        if ( ResourceCache::Inspect( _previewDepthMapShader )._state != ResourceState::RES_LOADED )
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_STARTUP_SHADER_LOAD_FAILED" ), "fbPreviewLinearDepth" );
+            return ErrorCode::GLSL_INIT_ERROR;
+        }
         const DisplayWindow* mainWindow = context().app().windowManager().mainWindow();
 
         SizeChangeParams params{};
@@ -2720,26 +2730,8 @@ namespace Divide
 
     void GFXDevice::initDebugViews()
     {
-        // Lazy-load preview shader
-        if ( _previewDepthMapShader == INVALID_HANDLE<ShaderProgram>)
+        if ( _debugViews.beginDefaultViewInitialization() )
         {
-            ShaderModuleDescriptor vertModule = {};
-            vertModule._moduleType = ShaderType::VERTEX;
-            vertModule._sourceFile = "baseVertexShaders.glsl";
-            vertModule._variant = "FullScreenQuad";
-
-            ShaderModuleDescriptor fragModule = {};
-            fragModule._moduleType = ShaderType::FRAGMENT;
-            fragModule._sourceFile = "fbPreview.glsl";
-            fragModule._variant = "LinearDepth";
-
-            ShaderProgramDescriptor shaderDescriptor = {};
-            shaderDescriptor._modules.push_back( vertModule );
-            shaderDescriptor._modules.push_back( fragModule );
-
-            // The LinearDepth variant converts the depth values to linear values between the 2 scene z-planes
-            _previewDepthMapShader = CreateResource( ResourceDescriptor<ShaderProgram>( "fbPreviewLinearDepth", shaderDescriptor ) );
-
             DebugView_ptr HiZ = std::make_shared<DebugView>();
             HiZ->_shader = _renderTargetDraw;
             HiZ->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::UTILS.HI_Z )->getAttachment( RTAttachmentType::COLOUR )->texture();
@@ -2880,8 +2872,6 @@ namespace Divide
             addDebugView( AlphaRevealageHigh );
             addDebugView( Luminance );
             addDebugView( Edges );
-
-            WAIT_FOR_CONDITION( Get(_previewDepthMapShader)->getState() == ResourceState::RES_LOADED );
         }
     }
 
@@ -2999,6 +2989,12 @@ namespace Divide
         GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut )->_viewport.set( previousViewport );
     }
 
+    bool DebugViewRegistry::beginDefaultViewInitialization()
+    {
+        LockGuard<Mutex> lock( _lock );
+        return !std::exchange( _defaultViewsInitialized, true );
+    }
+
     DebugView* DebugViewRegistry::add( const DebugView_ptr& view )
     {
         LockGuard<Mutex> lock( _lock );
@@ -3056,6 +3052,7 @@ namespace Divide
         LockGuard<Mutex> lock( _lock );
         _active.clear();
         _retired.clear();
+        _defaultViewsInitialized = false;
     }
 
     void DebugViewRegistry::getNames( vector<std::tuple<string, I16, I16, bool>>& namesOut ) const

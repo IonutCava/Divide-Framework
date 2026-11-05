@@ -39,6 +39,7 @@ bool Configuration::fromXML(const ResourcePath& xmlFilePath, const char* fileNam
         GET_PARAM(runtime.targetDisplay);
         GET_PARAM(runtime.targetRenderingAPI);
         GET_PARAM(runtime.maxWorkerThreads);
+        GET_PARAM(runtime.assetLoaderThreads);
         GET_PARAM(runtime.windowedMode);
         GET_PARAM(runtime.windowResizable);
         GET_PARAM(runtime.maximizeOnStart);
@@ -210,6 +211,7 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
     PUT_PARAM(runtime.targetDisplay);
     PUT_PARAM(runtime.targetRenderingAPI);
     PUT_PARAM(runtime.maxWorkerThreads);
+    PUT_PARAM(runtime.assetLoaderThreads);
     PUT_PARAM(runtime.windowedMode);
     PUT_PARAM(runtime.windowResizable);
     PUT_PARAM(runtime.maximizeOnStart);

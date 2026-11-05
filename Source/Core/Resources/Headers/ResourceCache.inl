@@ -420,6 +420,28 @@ namespace Divide
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
+    ResourceSnapshot ResourceCache::Inspect( const Handle<T> handle )
+    {
+        if ( handle != INVALID_HANDLE<T> ) [[likely]]
+        {
+            ResourcePool<T>& pool = GetPool<T>( s_renderAPI );
+            SharedLock<SharedMutex> r_lock( pool._lock );
+            if ( handle._index < pool._freeList.size() &&
+                 !pool._freeList[handle._index].first &&
+                 pool._freeList[handle._index].second == handle._generation )
+            {
+                const T* resource = pool._resPool[handle._index]._ptr;
+                if ( resource != nullptr )
+                {
+                    return { resource->getState(), resource->getGUID() };
+                }
+            }
+        }
+
+        return {};
+    }
+
+    template <typename T> requires std::is_base_of_v<CachedResource, T>
     void ResourceCache::Destroy( Handle<T>& handle, const bool immediate )
     {
         if ( handle == INVALID_HANDLE<T> ) [[unlikely]]

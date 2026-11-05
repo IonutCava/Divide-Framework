@@ -4,6 +4,7 @@
 #include "Headers/CascadedShadowMapsGenerator.h"
 
 #include "Rendering/Camera/Headers/Camera.h"
+#include "Rendering/Lighting/Headers/ShadowPassState.h"
 
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
 
@@ -242,7 +243,9 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        const SplitDepths splitDepths = calculateSplitDepths( light, shadowCamera.snapshot()._zPlanes );
+        const float2 cameraPlanes = shadowCamera.snapshot()._zPlanes;
+        const SplitDepths splitDepths = calculateSplitDepths( light, cameraPlanes );
+        const F32 clipRange = cameraPlanes.max - cameraPlanes.min;
 
         const mat4<F32> invViewProj = GetInverse( shadowCamera.viewProjectionMatrix() );
 
@@ -251,7 +254,16 @@ namespace Divide
         {
             Camera* lightCam = ShadowMap::shadowCameras( ShadowType::CSM )[cascadeIterator];
 
-            const F32 prevSplitDistance = cascadeIterator == 0 ? 0.0f : splitDepths[cascadeIterator - 1];
+            F32 prevSplitDistance = 0.f;
+            if ( cascadeIterator > 0u )
+            {
+                // Include the preceding split's transition region in this cascade.
+                const F32 previousStart = cascadeIterator > 1u
+                                        ? cameraPlanes.min + clipRange * splitDepths[cascadeIterator - 2u]
+                                        : 0.f;
+                const F32 previousEnd = cameraPlanes.min + clipRange * splitDepths[cascadeIterator - 1u];
+                prevSplitDistance = CSMOverlapNearFraction( cameraPlanes.min, clipRange, previousStart, previousEnd );
+            }
             const F32 splitDistance = splitDepths[cascadeIterator];
 
             float3 frustumCornersWS[8]

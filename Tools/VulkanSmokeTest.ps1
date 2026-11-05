@@ -23,10 +23,13 @@ param(
     [switch] $PreflightOnly,
     [ValidateRange(120, 7200)]
     [int] $RenderTimeoutSeconds = 120,
-    [ValidateRange(0, 299)]
+    [ValidateRange(0, 1000000)]
     [int] $DiagnosticPresents = 0,
+    [ValidateRange(300, 1000000)]
+    [int] $MinimumPresents = 300,
     [ValidatePattern('^$|^[A-Z_]{1,32}$')]
     [string] $MaterialDebugView = '',
+    [switch] $EditorPaused,
     [ValidateRange(0, 2147483647)]
     [int] $MaxAttempts = 25
 )
@@ -52,6 +55,14 @@ if ($MaterialDebugView -and $DiagnosticPresents -eq 0)
 {
     throw '-MaterialDebugView is restricted to diagnostic runs; full acceptance requires normal rendering.'
 }
+if ($EditorPaused -and $DiagnosticPresents -eq 0)
+{
+    throw '-EditorPaused is restricted to diagnostic runs; full acceptance requires Play mode.'
+}
+if ($DiagnosticPresents -gt 0 -and $PSBoundParameters.ContainsKey('MinimumPresents'))
+{
+    throw '-MinimumPresents cannot be combined with -DiagnosticPresents.'
+}
 
 $script:Repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..')).TrimEnd('\')
 $script:Root = [IO.Path]::GetFullPath($OutputRoot).TrimEnd('\')
@@ -68,7 +79,7 @@ $script:StatePath = Join-Path $script:Root 'state.json'
 $script:Timeline = Join-Path $script:Root 'timeline.log'
 $script:ConfigurePreset = 'windows-msvc-editor-instrumentation'
 $script:BuildPreset = 'windows-msvc-debug-editor-instrumentation'
-$script:TargetPresents = if ($DiagnosticPresents -gt 0) { $DiagnosticPresents } else { 300 }
+$script:TargetPresents = if ($DiagnosticPresents -gt 0) { $DiagnosticPresents } else { $MinimumPresents }
 
 $lock = [IO.File]::Open((Join-Path $script:Root 'supervisor.lock'), [IO.FileMode]::OpenOrCreate,
                         [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
@@ -1292,7 +1303,7 @@ exit $LASTEXITCODE
                         break
                     }
                 }
-                if ($null -eq $failureTime -and $null -ne $captureTime -and ($now - $captureTime).TotalSeconds -ge 15)
+                if ($null -eq $failureTime -and $null -ne $captureTime -and ($now - $captureTime).TotalSeconds -ge 60)
                 {
                     $reason = 'shutdown_timeout'
                     $terminate = $true
@@ -2006,6 +2017,7 @@ int main(int argc, char** argv)
         targetPresents = $script:TargetPresents
         diagnosticOnly = $DiagnosticPresents -gt 0
         materialDebugView = if ($MaterialDebugView) { $MaterialDebugView } else { $null }
+        editorPaused = [bool]$EditorPaused
         approvedStalledNonDeviceLoss = $approvedStalledNonDevice
         renderTimeoutSeconds = $RenderTimeoutSeconds
         maxAttempts = $MaxAttempts
@@ -2047,6 +2059,7 @@ int main(int argc, char** argv)
     if ($Project) { $arguments += "--smokeProject=$Project" }
     if ($Scene) { $arguments += "--smokeScene=$Scene" }
     if ($MaterialDebugView) { $arguments += "--smokeMaterialView=$MaterialDebugView" }
+    if ($EditorPaused) { $arguments += '--smokeEditorPaused' }
     $program = $engine.Executable
     if ($debugger)
     {

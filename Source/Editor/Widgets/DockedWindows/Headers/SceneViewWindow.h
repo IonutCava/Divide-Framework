@@ -42,6 +42,8 @@ namespace Divide {
 
     class SceneViewWindow final : public NodePreviewWindow {
     public:
+        static constexpr const char* WINDOW_NAME = "Scene View ###AnimatedTitlePlayState";
+
         SceneViewWindow(Editor& parent, const Descriptor& descriptor);
 
         [[nodiscard]] static RenderTargetID GameViewRenderTarget() noexcept;

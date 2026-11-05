@@ -29,9 +29,10 @@ namespace Divide::RenderSmokeTest
         OPENGL
     };
 
-    [[nodiscard]] constexpr bool InitialSimulationPaused( const bool smokeEnabled, const bool normalPaused ) noexcept
+    [[nodiscard]] constexpr bool InitialSimulationPaused( const bool smokeEnabled, const bool normalPaused,
+                                                          const bool pausedEditorRequested ) noexcept
     {
-        return normalPaused && !smokeEnabled;
+        return smokeEnabled ? pausedEditorRequested : normalPaused;
     }
 
     struct Options
@@ -48,6 +49,7 @@ namespace Divide::RenderSmokeTest
         bool _windowCapture{ false };
         bool _supervisorGate{ false };
         bool _renderDocCapture{ false };
+        bool _pausedEditor{ false };
     };
 
     [[nodiscard]] constexpr bool IsValidContentName( const std::string_view name ) noexcept
@@ -215,6 +217,7 @@ namespace Divide::RenderSmokeTest
     [[nodiscard]] bool Configure( I32 argc, char** argv );
     [[nodiscard]] bool Enabled() noexcept;
     [[nodiscard]] Backend SelectedBackend() noexcept;
+    [[nodiscard]] bool PausedEditorRequested() noexcept;
     [[nodiscard]] bool WindowCaptureRequested() noexcept;
     [[nodiscard]] bool RenderDocCaptureRequested() noexcept;
     [[nodiscard]] const std::string& OutputDirectory() noexcept;

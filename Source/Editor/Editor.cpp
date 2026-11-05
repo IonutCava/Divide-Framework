@@ -330,7 +330,8 @@ namespace Divide
             return false;
         }
 
-        _simulationPaused = RenderSmokeTest::InitialSimulationPaused( RenderSmokeTest::Enabled(), _simulationPaused );
+        _simulationPaused = RenderSmokeTest::InitialSimulationPaused( RenderSmokeTest::Enabled(), _simulationPaused,
+                                                                      RenderSmokeTest::PausedEditorRequested() );
         DIVIDE_EXPECTED_CALL( createDirectory( Paths::g_saveLocation / Paths::Editor::g_saveLocation ) == FileError::NONE );
 
         _mainWindow = &_context.app().windowManager().getWindow( 0u );
@@ -813,7 +814,8 @@ namespace Divide
         descriptor.flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
         _dockedWindows[to_base( WindowType::NodePreview )] = std::make_unique<NodePreviewWindow>( *this, descriptor );
 
-        descriptor.name = "Scene View ##AnimatedTitlePlayState";
+        descriptor.name = SceneViewWindow::WINDOW_NAME;
+        descriptor.focusOnFirstDraw = true;
         _dockedWindows[to_base( WindowType::SceneView )] = std::make_unique<SceneViewWindow>( *this, descriptor );
 
         _editorSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;

@@ -74,11 +74,26 @@ class RenderQueue final : public KernelComponent {
             return _binType == RenderBinType::COUNT ? !_filterByBinType
                                                     : ( binType == _binType ) != _filterByBinType;
         }
+
+        [[nodiscard]] static constexpr bool RequiresMaterialForPreparation( const RenderStagePass stagePass,
+                                                                            const RenderBinType binType,
+                                                                            const bool drawState ) noexcept
+        {
+            if ( stagePass._passType == RenderPassType::MAIN_PASS )
+            {
+                return true;
+            }
+
+            const bool transparencyPass = stagePass._passType == RenderPassType::OIT_PASS ||
+                                          stagePass._passType == RenderPassType::TRANSPARENCY_PASS;
+            return drawState && ForPass( stagePass, transparencyPass ).includes( binType );
+        }
     };
 
   public:
     explicit RenderQueue(Kernel& parent, RenderStage stage);
 
+    [[nodiscard]] static RenderBinType getBinForNode(const SceneGraphNode* node, Handle<Material> matInstance);
     void populateRenderQueues(const PopulateQueueParams& params, RenderQueuePackages& queueInOut);
 
     void postRender(const SceneRenderState& renderState, RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut);
@@ -96,8 +111,6 @@ class RenderQueue final : public KernelComponent {
     [[nodiscard]] RenderingOrder getSortOrder(RenderStagePass stagePass, RenderBinType rbType) const;
 
     [[nodiscard]] FORCE_INLINE RenderBin& getBin(const RenderBinType rbType) noexcept { return _renderBins[to_base(rbType)]; }
-    [[nodiscard]] RenderBinType getBinForNode(const SceneGraphNode* node, Handle<Material> matInstance);
-
   private:
     const RenderStage _stage;
     RenderBinArray _renderBins;

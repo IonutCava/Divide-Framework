@@ -55,7 +55,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
 
         ResourceDescriptor<ShaderProgram> fxaa("FXAA", aaShaderDescriptor );
         fxaa.waitForReady(false);
-        _fxaa = CreateResource(fxaa);
+        _fxaa = CreateResource(fxaa, taskCounter);
 
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateBlock = _context.get2DStateBlock();

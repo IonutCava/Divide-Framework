@@ -134,6 +134,7 @@ namespace TypeUtil {
 
 class Material final : public CachedResource {
     friend class Attorney::MaterialRenderBin;
+    friend struct MaterialTestAccess;
 
   public:
     static constexpr F32 MAX_SHININESS = 255.f;
@@ -345,7 +346,9 @@ class Material final : public CachedResource {
 
     void recomputeShaders();
 
-    void setShaderProgramInternal(ShaderProgramDescriptor shaderDescriptor, RenderStagePass stagePass);
+    void setShaderProgramInternal(RenderStagePass stagePass);
+    void reportShaderFailure(ShaderProgramInfo& info, RenderStagePass stagePass, ResourceState state);
+    [[nodiscard]] bool prepareShader(RenderStagePass stagePass, bool& shaderJustFinishedLoading, bool consumeNotification);
 
     void computeAndAppendShaderDefines( ShaderProgramDescriptor& shaderDescriptor, RenderStagePass renderStagePass) const;
 

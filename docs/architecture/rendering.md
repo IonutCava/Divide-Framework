@@ -118,11 +118,14 @@ project's scene. See [Scene loading](scene-loading.md) for the selection and
 loading flow. Both smoke backends start the editor in Play mode so game time,
 animation and wind advance, and the player camera supplies the display view.
 Ordinary editor startup remains unchanged. Pausing switches to the independent
-editor camera.
+editor camera. Use `-EditorPaused` with `-DiagnosticPresents` to inspect the
+ordinary paused-editor startup and saved dock layout without changing them;
+this diagnostic does not count as Play-mode acceptance.
 Diagnostic runs can select an existing material debug view with
 `-MaterialDebugView` (for example `SHADOW_MAPS` or `CSM_SPLITS`); the runner
-records it and requires `-DiagnosticPresents`, so debug-only captures cannot
-count as normal 300-present acceptance. Every Vulkan warning/error is fatal before ordinary interactive
+records it and requires `-DiagnosticPresents`. Diagnostic runs may request
+more than 300 presents to let asynchronous scene assets load, but debug-only
+captures never count as normal acceptance. Every Vulkan warning/error is fatal before ordinary interactive
 filters except the user-approved `BestPractices-specialuse-extension` warning
 specifically for `VK_EXT_custom_border_color`, which is recorded without
 terminating. Errors are never exempt. Unrelated TODO/STUBBED messages are not
@@ -134,11 +137,15 @@ swapchain recreation. Each eligible present is recorded so the 30-second
 no-progress watchdog works even for slow instrumented scenes. The overall
 render deadline defaults to 120 seconds and can be extended with
 `-RenderTimeoutSeconds` (up to 7200 seconds), without changing the no-progress
-limit. Success additionally requires the requested 300 presents, a
+limit. Normal runs require at least 300 presents; `-MinimumPresents` can
+increase that target for longer visual checks while keeping the same watchdogs
+and success criteria. Success additionally requires the requested presents, a
 completed scene image, the final main editor framebuffer, clean shutdown and
 matching process/result evidence. The editor image is read back after ImGui
 rendering and promoted from `editor.pending.png` to `editor.png` only after a
-successful exit. Inspect both images visually; a
+successful exit. The supervisor allows 60 seconds after capture for shutdown,
+including completion of in-flight asynchronous shader loads; a timeout still
+requires GPU recovery before another attempt. Inspect both images visually; a
 completed present or image does not prove correct pixels. See
 [GPU resources](gpu-resources.md#vulkan-smoke-readback-and-recovery) for
 readback and device-loss handling.
@@ -381,7 +388,15 @@ including edits through a mutable `range()` reference, also invalidate the light
 cached shadow. Directional near-clip offsets and scene-fit toggles are tracked
 as well, including direct property mutations. Each active cascade uploads its
 own split distance and matrix; fragments outside the active splits are
-unshadowed rather than indexing a nonexistent split.
+unshadowed rather than indexing a nonexistent split. Each farther frustum
+overlaps the last 10% of the preceding split, where directional visibility
+smoothly blends to the next active cascade. The final split does not fade to
+an absent cascade, and an unavailable adjacent sample is not blended in.
+Directional VSM minimum variance and depth bias are scaled from cascade 0 by
+the current light-projection depth gradient, preserving their world-space scale.
+Point, spot and world-AO variance policies are unchanged. Different caster
+coverage and filter footprints can still change individual shadows; blending
+does not add casters to a farther cascade.
 Directional caches conservatively invalidate for moved scene volumes even
 outside the light's local bounding sphere, which does not bound the cascades.
 Changed caster bounds publish their previous and current spheres together;

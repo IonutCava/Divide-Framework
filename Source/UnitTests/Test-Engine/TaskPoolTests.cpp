@@ -2,13 +2,90 @@
 #include "UnitTests/unitTestCommon.h"
 
 #include "Core/Headers/Application.h"
+#include "Core/Headers/Configuration.h"
+#include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/TaskPool.h"
+#include "Core/Headers/ThreadPoolSizing.h"
 #include "Platform/Headers/ConditionalWait.h"
 #include "Platform/Headers/PlatformRuntime.h"
+#include "Utility/Headers/XMLParser.h"
 
 namespace Divide
 {
+    TEST_CASE( "Startup warmup keeps just one frame behind the splash", "[startup]" )
+    {
+        CHECK( Kernel::STARTUP_WARMUP_FRAME_COUNT == 1u );
+    }
+
+    TEST_CASE( "Asset-loader sizing respects the worker budget", "[threading][configuration]" )
+    {
+        using namespace ThreadPoolSizing;
+        struct TestCase
+        {
+            U32 _total;
+            U32 _requested;
+            U32 _asset;
+            U32 _high;
+        };
+        constexpr std::array cases{
+            TestCase{ 0u,  0u, 4u,  4u },
+            TestCase{ 16u, 0u, 4u,  4u },
+            TestCase{ 17u, 0u, 4u,  4u },
+            TestCase{ 18u, 0u, 5u,  4u },
+            TestCase{ 20u, 0u, 7u,  4u },
+            TestCase{ 21u, 0u, 8u,  4u },
+            TestCase{ 32u, 0u, 8u, 15u },
+            TestCase{ 32u, 4u, 4u, 19u },
+            TestCase{ 32u, 1u, 4u, 19u },
+            TestCase{ 32u, 9u, 8u, 15u },
+            TestCase{ 18u, 8u, 5u,  4u }
+        };
+
+        for ( const TestCase& test : cases )
+        {
+            const Counts counts = Calculate( test._total, test._requested );
+            INFO( "total=" << test._total << ", requested=" << test._requested );
+            CHECK( counts._asset == test._asset );
+            CHECK( counts._highPriority == test._high );
+            CHECK( counts._render == RENDER_WORKERS );
+            CHECK( counts._lowPriority == LOW_PRIORITY_WORKERS );
+        }
+    }
+
+    TEST_CASE( "Asset-loader worker configuration defaults and round trips", "[threading][configuration]" )
+    {
+        platformInitRunListener::PlatformInit();
+        const platformInitRunListener::LocalizationScope localization{};
+        const auto suffix = std::chrono::steady_clock::now().time_since_epoch().count();
+        const std::filesystem::path directory = std::filesystem::temp_directory_path() /
+                                                ( "divide-asset-workers-" + std::to_string( suffix ) );
+        REQUIRE( std::filesystem::create_directory( directory ) );
+        SCOPE_EXIT
+        {
+            std::error_code error;
+            std::filesystem::remove( directory / "missing.xml", error );
+            std::filesystem::remove( directory / "saved.xml", error );
+            std::filesystem::remove( directory, error );
+        };
+        const ResourcePath path{ directory.string() };
+        {
+            std::ofstream missing{ directory / "missing.xml" };
+            missing << "<config><runtime/></config>";
+            REQUIRE( missing.good() );
+        }
+
+        Configuration config{};
+        CHECK( config.runtime.assetLoaderThreads == 0 );
+        REQUIRE( XML::loadFromXML( config, path, "missing.xml" ) );
+        CHECK( config.runtime.assetLoaderThreads == 0 );
+        config.runtime.assetLoaderThreads = 4;
+        REQUIRE( XML::saveToXML( config, path, "saved.xml" ) );
+        Configuration restored{};
+        REQUIRE( XML::loadFromXML( restored, path, "saved.xml" ) );
+        CHECK( restored.runtime.assetLoaderThreads == 4 );
+    }
+
     TEST_CASE( "Parallel loading waits process main-thread completion callbacks", "[threading][render_smoke]" )
     {
         platformInitRunListener::PlatformInit();
