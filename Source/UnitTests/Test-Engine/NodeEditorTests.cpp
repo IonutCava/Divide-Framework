@@ -1,10 +1,29 @@
 // Copyright (c) 2026 DIVIDE-Studio
 #include "UnitTests/unitTestCommon.h"
 
+#include "Editor/Widgets/DockedWindows/Headers/SceneViewWindow.h"
+#include "Platform/Video/Headers/GFXDevice.h"
+
 #include "imgui-node-editor/imgui_node_editor_internal.h"
 
 namespace Divide
 {
+    TEST_CASE("Scene View uses the frame with in-game UI", "[editor][scene_view]")
+    {
+        const RenderTargetID previousScreen = RenderTargetNames::SCREEN;
+        const RenderTargetID previousBackBuffer = RenderTargetNames::BACK_BUFFER;
+        SCOPE_EXIT
+        {
+            RenderTargetNames::SCREEN = previousScreen;
+            RenderTargetNames::BACK_BUFFER = previousBackBuffer;
+        };
+
+        RenderTargetNames::SCREEN = 42u;
+        RenderTargetNames::BACK_BUFFER = 73u;
+        CHECK(SceneViewWindow::GameViewRenderTarget() == RenderTargetNames::BACK_BUFFER);
+        CHECK(SceneViewWindow::GameViewRenderTarget() != RenderTargetNames::SCREEN);
+    }
+
     TEST_CASE("Vendored node editor preserves node positions", "[node_editor]")
     {
         namespace ed = ax::NodeEditor;

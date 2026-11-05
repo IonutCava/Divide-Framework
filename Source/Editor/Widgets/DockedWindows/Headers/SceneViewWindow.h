@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -34,6 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DVD_SCENE_VIEW_WINDOW_H_
 
 #include "NodePreviewWindow.h"
+#include "Platform/Video/Headers/RenderAPIEnums.h"
 
 struct ImGuiWindow;
 
@@ -43,6 +44,7 @@ namespace Divide {
     public:
         SceneViewWindow(Editor& parent, const Descriptor& descriptor);
 
+        [[nodiscard]] static RenderTargetID GameViewRenderTarget() noexcept;
         void drawInternal() override;
     };
 } //namespace Divide
