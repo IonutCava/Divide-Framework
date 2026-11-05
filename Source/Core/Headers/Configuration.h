@@ -83,6 +83,7 @@ struct Configuration final : XML::IXMLSerializable {
         U8 targetDisplay = 0;
         U8 targetRenderingAPI = 0;
         I16 maxWorkerThreads = -1;
+        I16 assetLoaderThreads = 0;
         U8   windowedMode = 0;
         bool windowResizable = false;
         bool maximizeOnStart = true;

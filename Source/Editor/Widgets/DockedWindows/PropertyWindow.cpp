@@ -1407,6 +1407,10 @@ namespace Divide
                 program = Get( shaderHandle );
                 shaderName = program->resourceName().c_str();
             }
+            else
+            {
+                shaderName = material->shaderPending( currentStagePass ) ? "Loading..." : "Failed";
+            }
             stateBlock = material->getOrCreateRenderStateBlock( currentStagePass );
         }
 

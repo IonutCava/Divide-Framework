@@ -43,8 +43,10 @@
 		<targetDisplay>1</targetDisplay>
 		<!-- 0 = NULL, 1 - OpenGL4, 2 - Vulkan-->
 		<targetRenderingAPI>1</targetRenderingAPI>
-		<!-- The maximum number of worker threads that we want to spawn. -1 = (CPU thread count - 1). We will always spawn a minimum of 5 threads-->
+		<!-- Worker budget; -1 uses the CPU's logical thread count. The existing minimum budget is 16. -->
 		<maxWorkerThreads>-1</maxWorkerThreads>
+		<!-- Asset-loader workers: 0 selects automatically; explicit values are limited to 4-8 and the available worker budget. -->
+		<assetLoaderThreads>0</assetLoaderThreads>
 		<!-- 0 = windowed, 1 = borderless window, 2 = fullscreen (has some issues)-->
 		<windowedMode>0</windowedMode>
 		<!-- do we allow window resizing if running in windowed mode? -->

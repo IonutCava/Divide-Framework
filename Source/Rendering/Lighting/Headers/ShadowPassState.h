@@ -9,13 +9,22 @@
 #pragma once
 
 #include "Platform/Headers/PlatformDataTypes.h"
+#include "../../../../Assets/Shaders/GLSL/Common/csmShadow.cmn"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
 
 namespace Divide
 {
+    [[nodiscard]] constexpr F32 CSMOverlapNearFraction(const F32 cameraNear, const F32 clipRange,
+                                                        const F32 previousStart, const F32 previousEnd) noexcept
+    {
+        assert(clipRange > 0.f);
+        return std::clamp((CSM_BLEND_START(previousStart, previousEnd) - cameraNear) / clipRange, 0.f, 1.f);
+    }
+
     [[nodiscard]] constexpr U32 ShadowLayerMask(const U8 layerCount) noexcept
     {
         assert(layerCount <= 32u);

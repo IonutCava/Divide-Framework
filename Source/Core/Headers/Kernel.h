@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -95,6 +95,8 @@ class Kernel final : public Input::InputAggregatorInterface,
         };
 
     public:
+
+        static constexpr U8 STARTUP_WARMUP_FRAME_COUNT = 1u;
 
         Kernel(I32 argc, char** argv, Application& parentApp);
         ~Kernel() override;

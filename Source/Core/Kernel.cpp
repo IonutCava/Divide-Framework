@@ -4,6 +4,7 @@
 #include "Headers/Configuration.h"
 #include "Headers/PlatformContext.h"
 #include "Headers/RenderSmokeTest.h"
+#include "Headers/ThreadPoolSizing.h"
 
 #include "Core/Debugging/Headers/DebugInterface.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
@@ -34,30 +35,19 @@ namespace Divide
 namespace
 {
     constexpr U32 g_printTimerBase = 15u;
-    constexpr U8  g_warmupFrameCount = 8u;
-
-    constexpr U32 g_mininumTotalWorkerCount = 16u;
-    static U32 g_totalWorkerCount = 8u;
-    constexpr U8 g_renderThreadCount = 1u;
+    ThreadPoolSizing::Counts g_threadPoolSizes = ThreadPoolSizing::Calculate( ThreadPoolSizing::MIN_TOTAL_WORKERS );
 
     U32 g_printTimer = g_printTimerBase;
 };
 
 size_t Kernel::TotalThreadCount( const TaskPoolType type ) noexcept
 {
-    constexpr U8 g_renderThreadPoolSize = 6u;
-    constexpr U8 g_assetLoadingPoolSize = 4u;
-    constexpr U8 g_backupThreadPoolSize = 2u;
-
-    DIVIDE_ASSERT(g_totalWorkerCount >= g_mininumTotalWorkerCount);
-    static_assert(g_renderThreadPoolSize + g_assetLoadingPoolSize + g_backupThreadPoolSize + g_renderThreadCount < g_mininumTotalWorkerCount);
-
     switch ( type )
     {
-        case TaskPoolType::ASSET_LOADER:  return g_assetLoadingPoolSize;
-        case TaskPoolType::RENDERER:      return g_renderThreadPoolSize;
-        case TaskPoolType::LOW_PRIORITY:  return g_backupThreadPoolSize;
-        case TaskPoolType::HIGH_PRIORITY: return std::max(g_totalWorkerCount - g_backupThreadPoolSize - g_assetLoadingPoolSize - g_renderThreadPoolSize - g_renderThreadCount, 4u);
+        case TaskPoolType::ASSET_LOADER:  return g_threadPoolSizes._asset;
+        case TaskPoolType::RENDERER:      return g_threadPoolSizes._render;
+        case TaskPoolType::LOW_PRIORITY: return g_threadPoolSizes._lowPriority;
+        case TaskPoolType::HIGH_PRIORITY: return g_threadPoolSizes._highPriority;
 
         default: 
             DIVIDE_UNEXPECTED_CALL();
@@ -66,10 +56,8 @@ size_t Kernel::TotalThreadCount( const TaskPoolType type ) noexcept
             break;
     }
 
-    return TotalThreadCount(TaskPoolType::ASSET_LOADER) +
-           TotalThreadCount(TaskPoolType::RENDERER) +
-           TotalThreadCount(TaskPoolType::LOW_PRIORITY) +
-           TotalThreadCount(TaskPoolType::HIGH_PRIORITY);
+    return g_threadPoolSizes._asset + g_threadPoolSizes._render +
+           g_threadPoolSizes._lowPriority + g_threadPoolSizes._highPriority;
 }
 
 Kernel::Kernel(const I32 argc, char** argv, Application& parentApp)
@@ -660,14 +648,14 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
     return true;
 }
 
-// The first loops compiles all the visible data, so do not render the first couple of frames
+// Render one initial frame behind the splash before enabling the editor.
 void Kernel::warmup()
 {
     Console::printfn(LOCALE_STR("START_RENDER_LOOP"));
 
     _timingData.freezeGameTime(true);
 
-    for (U8 i = 0u; i < g_warmupFrameCount; ++i)
+    for (U8 i = 0u; i < STARTUP_WARMUP_FRAME_COUNT; ++i)
     {
         onLoop();
     }
@@ -753,7 +741,25 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         config.runtime.targetRenderingAPI = to_U8(RenderAPI::OpenGL);
     }
 
-    g_totalWorkerCount = std::max( config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : std::thread::hardware_concurrency(), g_mininumTotalWorkerCount);
+    const U32 totalWorkerCount = config.runtime.maxWorkerThreads > 0
+        ? to_U32( config.runtime.maxWorkerThreads )
+        : std::thread::hardware_concurrency();
+    const I16 requestedAssetWorkers = config.runtime.assetLoaderThreads;
+    const U32 assetWorkerCount = requestedAssetWorkers > 0 ? to_U32( requestedAssetWorkers ) : 0u;
+    g_threadPoolSizes = ThreadPoolSizing::Calculate( totalWorkerCount, assetWorkerCount );
+
+    if ( requestedAssetWorkers < 0 )
+    {
+        Console::warnfn( LOCALE_STR( "INVALID_ASSET_LOADER_THREADS" ), requestedAssetWorkers );
+    }
+    else if ( assetWorkerCount != 0u && assetWorkerCount != g_threadPoolSizes._asset )
+    {
+        Console::warnfn( LOCALE_STR( "LIMIT_ASSET_LOADER_THREADS" ),
+                         assetWorkerCount, g_threadPoolSizes._asset );
+    }
+    Console::printfn( LOCALE_STR( "TASK_POOL_SIZES" ),
+                     g_threadPoolSizes._asset, g_threadPoolSizes._render,
+                     g_threadPoolSizes._highPriority, g_threadPoolSizes._lowPriority );
 
     _platformContext.pfx().apiID(PXDevice::PhysicsAPI::Jolt);
     _platformContext.sfx().apiID(SFXDevice::AudioAPI::SDL);

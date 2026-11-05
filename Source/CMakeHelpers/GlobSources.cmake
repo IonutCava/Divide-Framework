@@ -80,6 +80,7 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/Headers/StringHelper.inl
                          Core/Headers/TaskPool.h
                          Core/Headers/TaskPool.inl
+                         Core/Headers/ThreadPoolSizing.h
                          Core/Headers/VulkanRecoveryPolicy.h
                          Core/Headers/WindowManager.h
                          Core/Headers/WindowManager.inl
@@ -581,6 +582,7 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/Headers/HardwareQuery.h
                              Platform/Video/Headers/IMPrimitive.h
                              Platform/Video/Headers/IMPrimitiveDescriptors.h
+                             Platform/Video/Headers/IMPrimitiveDrawSnapshots.h
                              Platform/Video/Headers/LockManager.h
                              Platform/Video/Headers/Pipeline.h
                              Platform/Video/Headers/PushConstants.h
@@ -867,6 +869,7 @@ set( TEST_ENGINE_SOURCE UnitTests/unitTestCommon.h
                         UnitTests/Test-Engine/GUIButtonTests.cpp
                         UnitTests/Test-Engine/ImageToolsTests.cpp
                         UnitTests/Test-Engine/LightingTests.cpp
+                        UnitTests/Test-Engine/MaterialReadinessTests.cpp
                         UnitTests/Test-Engine/MathMatrixTests.cpp
                         UnitTests/Test-Engine/MathVectorTests.cpp
                         UnitTests/Test-Engine/MeshImportTests.cpp

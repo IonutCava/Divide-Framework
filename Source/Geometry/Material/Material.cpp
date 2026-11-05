@@ -327,8 +327,7 @@ namespace Divide
                           }
                           if ( variantMapDst[v]._shaderRef != INVALID_HANDLE<ShaderProgram> )
                           {
-                              const ShaderProgram* previous = Get( variantMapDst[v]._shaderRef );
-                              if ( previous != nullptr && previous->getState() != ResourceState::RES_LOADED )
+                              if ( ResourceCache::Inspect( variantMapDst[v]._shaderRef )._state != ResourceState::RES_LOADED )
                               {
                                   cloneMat->_context->shaderComputeQueue().waitForPendingLoads();
                               }
@@ -497,11 +496,23 @@ namespace Divide
         }
     }
 
-    void Material::setShaderProgramInternal( ShaderProgramDescriptor shaderDescriptor, const RenderStagePass stagePass )
+    void Material::reportShaderFailure( ShaderProgramInfo& info, const RenderStagePass stagePass, const ResourceState state )
+    {
+        info._shaderCompStage = ShaderBuildStage::FAILED;
+        info._shaderKeyCache = I64_LOWEST;
+        info._readyNotificationPending = false;
+        Console::errorfn( LOCALE_STR( "MATERIAL_SHADER_LOAD_FAILED" ),
+                          resourceName().c_str(),
+                          TypeUtil::RenderStageToString( stagePass._stage ),
+                          TypeUtil::RenderPassTypeToString( stagePass._passType ),
+                          to_U32( to_base( stagePass._variant ) ),
+                          to_U32( to_base( state ) ),
+                          to_U32( info._shaderRef ) );
+    }
+
+    void Material::setShaderProgramInternal( const RenderStagePass stagePass )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
-
-        computeAndAppendShaderDefines( shaderDescriptor, stagePass );
 
         ShaderProgramInfo& info = shaderInfo( stagePass );
         ShaderComputeQueue& shaderQueue = _context->shaderComputeQueue();
@@ -509,21 +520,38 @@ namespace Divide
         {
             shaderQueue.cancel( info );
         }
-        // if we already have a different shader assigned ...
+
+        ShaderProgram* previous = nullptr;
         if ( info._shaderRef != INVALID_HANDLE<ShaderProgram> )
         {
-            ResourcePtr<ShaderProgram> ptr = Get( info._shaderRef);
-
-            // We cannot replace a shader that is still loading in the background
-            if ( !WaitForReady( ptr ) )
+            const ResourceSnapshot snapshot = ResourceCache::Inspect( info._shaderRef );
+            const ShaderResourceStatus status = ClassifyShaderResource( snapshot._state );
+            if ( status == ShaderResourceStatus::PENDING )
             {
-                info._shaderCompStage = ShaderBuildStage::FAILED;
                 return;
             }
-            if ( ptr->descriptor() != shaderDescriptor )
+            if ( status == ShaderResourceStatus::FAILED )
+            {
+                reportShaderFailure( info, stagePass, snapshot._state );
+                return;
+            }
+            previous = Get( info._shaderRef );
+            if ( previous == nullptr )
+            {
+                reportShaderFailure( info, stagePass, ResourceState::RES_UNKNOWN );
+                return;
+            }
+        }
+
+        ShaderProgramDescriptor shaderDescriptor = _computeShaderCBK( this, stagePass );
+        computeAndAppendShaderDefines( shaderDescriptor, stagePass );
+
+        if ( previous != nullptr )
+        {
+            if ( previous->descriptor() != shaderDescriptor )
             {
                 Console::printfn( LOCALE_STR( "REPLACE_SHADER" ),
-                                  ptr->resourceName().c_str(),
+                                  previous->resourceName().c_str(),
                                   shaderDescriptor._name.c_str(),
                                   TypeUtil::RenderStageToString( stagePass._stage ),
                                   TypeUtil::RenderPassTypeToString( stagePass._passType ),
@@ -541,10 +569,6 @@ namespace Divide
         {
             shaderQueue.process( shaderElement );
             info._shaderCompStage = ShaderBuildStage::COMPUTED;
-            if ( !WaitForReady( Get(info._shaderRef) ) )
-            {
-                info._shaderCompStage = ShaderBuildStage::FAILED;
-            }
         }
         else
         {
@@ -581,6 +605,7 @@ namespace Divide
 
                     stagePass._variant = static_cast<RenderStagePass::VariantType>(v);
                     shaderInfo._shaderCompStage = ShaderBuildStage::REQUESTED;
+                    shaderInfo._readyNotificationPending = false;
                 }
             }
         }
@@ -590,43 +615,40 @@ namespace Divide
 
     Handle<ShaderProgram> Material::computeAndGetProgramHandle( const RenderStagePass renderStagePass )
     {
-        constexpr U8 maxRetries = 250;
-
         bool justFinishedLoading = false;
-        for ( U8 i = 0; i < maxRetries; ++i )
+        if ( prepareShader( renderStagePass, justFinishedLoading, false ) )
         {
-            if ( !canDraw( renderStagePass, justFinishedLoading ) )
-            {
-                if ( !_context->shaderComputeQueue().stepQueue() )
-                {
-                    NOP();
-                }
-            }
-            else
-            {
-                return getProgramHandle( renderStagePass );
-            }
+            return getProgramHandle( renderStagePass );
         }
 
-        return _context->imShaders()->imWorldShaderNoTexture();
+        return INVALID_HANDLE<ShaderProgram>;
     }
 
     Handle<ShaderProgram> Material::getProgramHandle( const RenderStagePass renderStagePass ) const
     {
-
         const ShaderProgramInfo& info = shaderInfo( renderStagePass );
 
-        if ( info._shaderRef != INVALID_HANDLE<ShaderProgram> )
+        if ( info._shaderCompStage == ShaderBuildStage::READY && info._shaderRef != INVALID_HANDLE<ShaderProgram> )
         {
-            WAIT_FOR_CONDITION( Get(info._shaderRef)->getState() == ResourceState::RES_LOADED );
             return info._shaderRef;
         }
-        DIVIDE_UNEXPECTED_CALL();
 
-        return _context->imShaders()->imWorldShaderNoTexture();
+        Console::errorfn( LOCALE_STR( "MATERIAL_SHADER_NOT_READY" ),
+                          resourceName().c_str(),
+                          TypeUtil::RenderStageToString( renderStagePass._stage ),
+                          TypeUtil::RenderPassTypeToString( renderStagePass._passType ),
+                          to_U32( to_base( renderStagePass._variant ) ) );
+        return INVALID_HANDLE<ShaderProgram>;
     }
 
     bool Material::canDraw( const RenderStagePass renderStagePass, bool& shaderJustFinishedLoading )
+    {
+        return prepareShader( renderStagePass, shaderJustFinishedLoading, true );
+    }
+
+    bool Material::prepareShader( const RenderStagePass renderStagePass,
+                                  bool& shaderJustFinishedLoading,
+                                  const bool consumeNotification )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -639,8 +661,7 @@ namespace Divide
 
         if ( info._shaderCompStage == ShaderBuildStage::REQUESTED )
         {
-            setShaderProgramInternal( _computeShaderCBK( this, renderStagePass ),
-                                      renderStagePass );
+            setShaderProgramInternal( renderStagePass );
         }
 
         // A replacement may retain its previous shader until the queue processes it.
@@ -653,44 +674,34 @@ namespace Divide
 
             if ( info._shaderRef == INVALID_HANDLE<ShaderProgram> )
             {
-                info._shaderCompStage = ShaderBuildStage::FAILED;
+                reportShaderFailure( info, renderStagePass, ResourceState::RES_UNKNOWN );
                 return false;
             }
             info._shaderCompStage = ShaderBuildStage::COMPUTED;
         }
 
-        // If the shader is computed ...
         if ( info._shaderCompStage == ShaderBuildStage::COMPUTED )
         {
-            assert( info._shaderRef != INVALID_HANDLE<ShaderProgram> );
-            // ... wait for the shader to finish loading
-            if ( !WaitForReady( Get(info._shaderRef) ) )
+            const ResourceSnapshot snapshot = ResourceCache::Inspect( info._shaderRef );
+            if ( info.updateReadiness( snapshot._state, snapshot._guid ) == ShaderResourceStatus::FAILED )
             {
-                info._shaderCompStage = ShaderBuildStage::FAILED;
+                reportShaderFailure( info, renderStagePass, snapshot._state );
             }
-            else
-            {
-                info._shaderCompStage = ShaderBuildStage::READY;
-                info._shaderKeyCache = Get(info._shaderRef)->getGUID();
-            }
-            // Once it has finished loading, it is ready for drawing
-            shaderJustFinishedLoading = true;
         }
 
-        // If the shader isn't ready it may have not passed through the computational stage yet (e.g. the first time this method is called)
         if ( info._shaderCompStage != ShaderBuildStage::READY )
         {
-            // This is usually the first step in generating a shader: No shader available but we need to render in this stagePass
             if ( info._shaderCompStage == ShaderBuildStage::COUNT )
             {
-                // So request a new shader
                 info._shaderCompStage = ShaderBuildStage::REQUESTED;
             }
-
             return false;
         }
 
-        // Shader should be in the ready state
+        if ( consumeNotification )
+        {
+            shaderJustFinishedLoading = info.takeReadyNotification();
+        }
         return true;
     }
 
@@ -1343,7 +1354,7 @@ namespace Divide
                 auto& shaders = _shaderInfo[s][p];
                 for ( const ShaderProgramInfo& info : shaders )
                 {
-                    if ( info._shaderRef != INVALID_HANDLE<ShaderProgram> && Get(info._shaderRef)->getState() == ResourceState::RES_LOADED )
+                    if ( ResourceCache::Inspect( info._shaderRef )._state == ResourceState::RES_LOADED )
                     {
                         Get(info._shaderRef)->recompile();
                     }

@@ -985,6 +985,7 @@ namespace Divide
         Mutex memCmdLock;
 
         const U32 nodeCount = to_U32( _visibleNodesCache.size() );
+        const RenderQueue::PopulateQueueParams queueParams = RenderQueue::PopulateQueueParams::ForPass( stagePass, transparencyPass );
 
         const auto cbk = [&]( const Task* /*parentTask*/, const U32 start, const U32 end )
         {
@@ -993,9 +994,16 @@ namespace Divide
             {
                 const VisibleNode& node = _visibleNodesCache.node( i );
                 SceneGraphNode* sgn = node._node;
+                RenderingComponent* rComp = sgn->get<RenderingComponent>();
+                const RenderBinType binType = RenderQueue::getBinForNode( sgn, rComp->getMaterialInstance() );
+                DIVIDE_ASSERT( binType != RenderBinType::COUNT );
+                if ( !queueParams.includes( binType ) )
+                {
+                    continue;
+                }
                 if ( sgn->getNode().renderState().drawState( stagePass ) )
                 {
-                    if ( Attorney::RenderingCompRenderPass::prepareDrawPackage( *sgn->get<RenderingComponent>(), cameraSnapshot, sceneRenderState, stagePass, postDrawMemCmd, false ) )
+                    if ( Attorney::RenderingCompRenderPass::prepareDrawPackage( *rComp, cameraSnapshot, sceneRenderState, stagePass, postDrawMemCmd, false ) )
                     {
                         _renderQueue->addNodeToQueue( sgn, stagePass, node._distanceToCameraSq, targetBin );
                     }
@@ -1021,7 +1029,6 @@ namespace Divide
 
         _renderQueuePackages.clear();
 
-        const RenderQueue::PopulateQueueParams queueParams = RenderQueue::PopulateQueueParams::ForPass( stagePass, transparencyPass );
         _renderQueue->populateRenderQueues( queueParams, _renderQueuePackages );
 
 
@@ -1299,9 +1306,27 @@ namespace Divide
         for ( I32 i = nodeCount - 1; i >= 0; i-- )
         {
             VisibleNode& node = _visibleNodesCache.node( i );
-            if ( node._node == nullptr || (node._materialReady && !Attorney::SceneGraphNodeRenderPassManager::canDraw( node._node, stagePass )) )
+            if ( node._node != nullptr && stagePass._passType != RenderPassType::MAIN_PASS )
             {
-                node._materialReady = false;
+                const RenderingComponent* rComp = node._node->get<RenderingComponent>();
+                if ( rComp != nullptr )
+                {
+                    const RenderBinType binType = RenderQueue::getBinForNode( node._node, rComp->getMaterialInstance() );
+                    DIVIDE_ASSERT( binType != RenderBinType::COUNT );
+                    if ( !RenderQueue::PopulateQueueParams::RequiresMaterialForPreparation(
+                             stagePass, binType, node._node->getNode().renderState().drawState( stagePass ) ) )
+                    {
+                        continue;
+                    }
+                }
+            }
+
+            if ( !node.checkMaterialReadiness( [&]
+                 {
+                     return node._node != nullptr &&
+                            Attorney::SceneGraphNodeRenderPassManager::canDraw( node._node, stagePass );
+                 } ) )
+            {
                 ret = true;
                 if ( pendingShaderOut != nullptr && !*pendingShaderOut && node._node != nullptr )
                 {

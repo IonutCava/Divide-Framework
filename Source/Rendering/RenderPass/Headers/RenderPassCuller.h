@@ -87,6 +87,14 @@ struct VisibleNode {
     SceneGraphNode* _node = nullptr;
     F32 _distanceToCameraSq = 0.f;
     bool _materialReady = true;
+
+    template<typename ReadinessCheck>
+    [[nodiscard]] bool checkMaterialReadiness( ReadinessCheck&& check )
+    {
+        const bool passReady = check();
+        _materialReady &= passReady;
+        return passReady;
+    }
 };
 
 template<typename T = VisibleNode, size_t N = Config::MAX_VISIBLE_NODES>

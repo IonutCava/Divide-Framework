@@ -59,6 +59,12 @@ namespace Divide
     };
 
     struct ResourcePoolBase;
+    struct ResourceSnapshot
+    {
+        ResourceState _state{ ResourceState::RES_UNKNOWN };
+        I64 _guid{ I64_LOWEST };
+    };
+
     class ResourceCache final : private NonMovable, private NonCopyable
     {
         public:
@@ -70,6 +76,9 @@ namespace Divide
 
             template <typename T> requires std::is_base_of_v<CachedResource, T>
             [[nodiscard]] static T* Get( Handle<T> handle);
+
+            template <typename T> requires std::is_base_of_v<CachedResource, T>
+            [[nodiscard]] static ResourceSnapshot Inspect( Handle<T> handle );
 
             template <typename T> requires std::is_base_of_v<CachedResource, T>
             static void Destroy( Handle<T>& handle, const bool immediate );

@@ -156,6 +156,7 @@ FWD_DECLARE_MANAGED_STRUCT(DebugView);
 class DebugViewRegistry final
 {
   public:
+    [[nodiscard]] bool beginDefaultViewInitialization();
     DebugView* add(const DebugView_ptr& view);
     bool remove(const DebugView* view);
     void releaseRetired();
@@ -167,6 +168,7 @@ class DebugViewRegistry final
     mutable Mutex _lock;
     vector<DebugView_ptr> _active;
     vector<DebugView_ptr> _retired;
+    bool _defaultViewsInitialized = false;
 };
 
 template<typename Descriptor, size_t N>

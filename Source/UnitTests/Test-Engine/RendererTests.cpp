@@ -23,6 +23,7 @@
 #include "Platform/Video/Headers/CommandBufferPool.h"
 #include "Platform/Video/Headers/BlurPass.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/IMPrimitiveDrawSnapshots.h"
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Platform/Video/Headers/fontstash.h"
 #include "Rendering/PostFX/CustomOperators/Headers/SSAOState.h"
@@ -594,6 +595,57 @@ namespace Divide
         }
     }
 
+    TEST_CASE( "Material readiness polls every required render pass", "[renderer][render_queue][startup]" )
+    {
+        VisibleNode node{};
+        U32 checks = 0u;
+        const auto check = [&]( const bool ready )
+        {
+            return node.checkMaterialReadiness( [&]
+            {
+                ++checks;
+                return ready;
+            } );
+        };
+
+        CHECK_FALSE( check( false ) );
+        CHECK( check( true ) );
+        CHECK_FALSE( check( false ) );
+        CHECK( checks == 3u );
+        CHECK_FALSE( node._materialReady );
+
+        node = {};
+        CHECK( check( true ) );
+        CHECK( check( true ) );
+        CHECK( node._materialReady );
+    }
+
+    TEST_CASE( "Material readiness follows the bins used to prepare each pass", "[renderer][render_queue][startup]" )
+    {
+        using Params = RenderQueue::PopulateQueueParams;
+        for ( const RenderStage stage : { RenderStage::DISPLAY, RenderStage::REFLECTION, RenderStage::REFRACTION, RenderStage::NODE_PREVIEW } )
+        {
+            for ( const RenderBinType bin : { RenderBinType::OPAQUE, RenderBinType::SKY, RenderBinType::WATER, RenderBinType::TRANSLUCENT } )
+            {
+                CAPTURE( stage, bin );
+                const bool translucent = bin == RenderBinType::TRANSLUCENT;
+                CHECK( Params::RequiresMaterialForPreparation( { stage, RenderPassType::MAIN_PASS }, bin, false ) );
+                CHECK( Params::RequiresMaterialForPreparation( { stage, RenderPassType::PRE_PASS }, bin, true ) == !translucent );
+                CHECK_FALSE( Params::RequiresMaterialForPreparation( { stage, RenderPassType::PRE_PASS }, bin, false ) );
+                for ( const RenderPassType pass : { RenderPassType::OIT_PASS, RenderPassType::TRANSPARENCY_PASS } )
+                {
+                    CHECK( Params::RequiresMaterialForPreparation( { stage, pass }, bin, true ) == translucent );
+                    CHECK_FALSE( Params::RequiresMaterialForPreparation( { stage, pass }, bin, false ) );
+                }
+            }
+        }
+
+        CHECK( Params::RequiresMaterialForPreparation( { RenderStage::SHADOW, RenderPassType::MAIN_PASS },
+                                                        RenderBinType::TRANSLUCENT, true ) );
+        CHECK( Params::RequiresMaterialForPreparation( { RenderStage::SHADOW, RenderPassType::PRE_PASS },
+                                                        RenderBinType::TRANSLUCENT, true ) );
+    }
+
     TEST_CASE( "OIT composition selects the destination and sample-count variant", "[render_smoke][oit]" )
     {
         using Variant = RenderPassExecutor::OITCompositionVariant;
@@ -763,6 +815,100 @@ namespace Divide
             CHECK( fonsCreateInternal( &params ) == nullptr );
             CHECK( state._creates == 1u );
             CHECK( state._deletes == 1u );
+        }
+    }
+
+    TEST_CASE( "Immediate draws retain independent uniforms until their frame is flushed", "[render_smoke][uniforms][editor]" )
+    {
+        IMPrimitiveDrawSnapshots snapshots;
+        UniformData defaults;
+        GFX::CommandBuffer commands;
+        constexpr U64 customBinding = _ID( "customImmediateValue" );
+        constexpr U64 matrixBinding = _ID( "dvd_WorldMatrix" );
+        constexpr U32 drawCount = 8u;
+        std::array<mat4<F32>, drawCount> expectedMatrices;
+        std::array<const UniformData*, drawCount> expectedAddresses{};
+
+        for (U32 i = 0u; i < drawCount; ++i)
+        {
+            defaults.set( customBinding, PushConstantType::UINT, i );
+            expectedMatrices[i] = MAT4_IDENTITY;
+            expectedMatrices[i]._vec[3].x = to_F32(i + 1u);
+            snapshots.record( 42u, defaults, [&](UniformData& uniforms)
+            {
+                uniforms.set( matrixBinding, PushConstantType::MAT4, expectedMatrices[i] );
+                expectedAddresses[i] = &uniforms;
+                GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( commands )->_uniformData = &uniforms;
+            } );
+        }
+
+        REQUIRE( commands.commands().size() == drawCount );
+        for (U32 i = 0u; i < drawCount; ++i)
+        {
+            const auto* command = commands.commands()[i]->As<GFX::SendPushConstantsCommand>();
+            REQUIRE( command->_uniformData == expectedAddresses[i] );
+            const auto& entries = command->_uniformData->entries();
+            REQUIRE( entries.size() == 2u );
+            REQUIRE( entries[0]._bindingHash == customBinding );
+            REQUIRE( entries[1]._bindingHash == matrixBinding );
+            U32 customValue = U32_MAX;
+            std::memcpy( &customValue, command->_uniformData->data( entries[0]._range._startOffset ), sizeof(customValue) );
+            CHECK( customValue == i );
+            CHECK( std::memcmp( command->_uniformData->data( entries[1]._range._startOffset ),
+                                &expectedMatrices[i], sizeof(expectedMatrices[i]) ) == 0 );
+            for (U32 j = 0u; j < i; ++j)
+            {
+                CHECK( expectedAddresses[i] != expectedAddresses[j] );
+            }
+        }
+
+        const Byte* firstStorage = expectedAddresses[0]->data( 0u );
+        commands.clear();
+        snapshots.record( 43u, defaults, [&](UniformData& uniforms)
+        {
+            CHECK( &uniforms == expectedAddresses[0] );
+            uniforms.set( matrixBinding, PushConstantType::MAT4, expectedMatrices[0] );
+            CHECK( uniforms.data( 0u ) == firstStorage );
+        } );
+    }
+
+    TEST_CASE( "Immediate draws isolate concurrent view uniforms", "[render_smoke][uniforms][editor][threading]" )
+    {
+        IMPrimitiveDrawSnapshots snapshots;
+        const UniformData defaults;
+        constexpr size_t viewCount = 8u;
+        constexpr U64 viewBinding = _ID( "viewIndex" );
+        std::array<UniformData*, viewCount> recorded{};
+        std::array<std::thread, viewCount> workers;
+        for (size_t i = 0u; i < viewCount; ++i)
+        {
+            workers[i] = std::thread( [&, i]
+            {
+                snapshots.record( 100u, defaults, [&](UniformData& uniforms)
+                {
+                    uniforms.set( viewBinding, PushConstantType::UINT, to_U32(i) );
+                    recorded[i] = &uniforms;
+                } );
+            } );
+        }
+        for (std::thread& worker : workers)
+        {
+            worker.join();
+        }
+
+        for (size_t i = 0u; i < viewCount; ++i)
+        {
+            REQUIRE( recorded[i] != nullptr );
+            REQUIRE( recorded[i]->entries().size() == 1u );
+            const auto& entry = recorded[i]->entries().front();
+            CHECK( entry._bindingHash == viewBinding );
+            U32 view = U32_MAX;
+            std::memcpy( &view, recorded[i]->data( entry._range._startOffset ), sizeof(view) );
+            CHECK( view == i );
+            for (size_t j = 0u; j < i; ++j)
+            {
+                CHECK( recorded[i] != recorded[j] );
+            }
         }
     }
 
@@ -1811,6 +1957,21 @@ namespace Divide
             std::memcpy( &value, view._shaderData.data( entry->_range._startOffset ), sizeof(value) );
             CHECK( value == 0u );
         }
+    }
+
+    TEST_CASE( "Default debug views initialize once per registry lifetime", "[render_smoke][debug_views][startup]" )
+    {
+        DebugViewRegistry registry;
+        CHECK( registry.beginDefaultViewInitialization() );
+        CHECK_FALSE( registry.beginDefaultViewInitialization() );
+
+        registry.add( std::make_shared<DebugView>() );
+        registry.clear();
+        vector<std::tuple<string, I16, I16, bool>> names;
+        registry.getNames( names );
+        CHECK( names.empty() );
+        CHECK( registry.beginDefaultViewInitialization() );
+        CHECK_FALSE( registry.beginDefaultViewInitialization() );
     }
 
     TEST_CASE( "Removed debug views retain queued uniform data until frame flush", "[render_smoke][debug_views]" )

@@ -104,6 +104,81 @@ namespace Divide
         CHECK(reduce(almostOne, almostOne) == 0.f);
     }
 
+    TEST_CASE("Cascade blend ranges match their overlapping shadow frusta", "[lighting][shadows][csm]")
+    {
+        constexpr F32 cameraNear = 0.1f;
+        constexpr F32 cameraFar = 1000.f;
+        constexpr F32 clipRange = cameraFar - cameraNear;
+        constexpr std::array<F32, 4u> splitEnds{ { 20.f, 70.f, 200.f, 600.f } };
+        const auto blendWeight = [](const F32 depth, const F32 start, const F32 end)
+        {
+            using std::clamp;
+            const F32 t = CSM_BLEND_LINEAR_WEIGHT(depth, start, end);
+            return CSM_BLEND_SMOOTH_WEIGHT(t);
+        };
+
+        for (size_t layer = 1u; layer < splitEnds.size(); ++layer)
+        {
+            const F32 previousStart = layer > 1u ? splitEnds[layer - 2u] : 0.f;
+            const F32 previousEnd = splitEnds[layer - 1u];
+            const F32 blendStart = CSM_BLEND_START(previousStart, previousEnd);
+            const F32 nearFraction = CSMOverlapNearFraction(cameraNear, clipRange, previousStart, previousEnd);
+            const F32 actualNear = cameraNear + nearFraction * clipRange;
+            CHECK(actualNear == Catch::Approx(blendStart).margin(0.0001f));
+
+            CHECK(blendWeight(blendStart - 1.f, blendStart, previousEnd) == 0.f);
+            CHECK(blendWeight(blendStart, blendStart, previousEnd) == 0.f);
+            CHECK(blendWeight((blendStart + previousEnd) * 0.5f, blendStart, previousEnd) == Catch::Approx(0.5f));
+            CHECK(blendWeight(previousEnd, blendStart, previousEnd) == 1.f);
+            CHECK(blendWeight(previousEnd + 1.f, blendStart, previousEnd) == 1.f);
+        }
+
+        CHECK(CSMOverlapNearFraction(cameraNear, clipRange, 0.f, 0.05f) == 0.f);
+        CHECK(blendWeight(1.f, 1.f, 1.f) == 0.f);
+    }
+
+    TEST_CASE("Directional cascade variance and bias retain their world-space scale", "[lighting][shadows][csm]")
+    {
+        constexpr F32 referenceGradient = 0.01f;
+        constexpr F32 referenceVariance = 0.00001f;
+        constexpr F32 referenceBias = 0.00001f;
+        constexpr F32 worldSeparation = 0.5f;
+        const F32 referenceDelta = worldSeparation * referenceGradient - referenceBias;
+        const F32 expectedBound = referenceVariance / (referenceVariance + referenceDelta * referenceDelta);
+
+        for (const F32 gradient : { 0.02f, 0.01f, 0.002f, 0.00025f })
+        {
+            const F32 scaleSq = CSM_DEPTH_SCALE_SQUARED(gradient * gradient, referenceGradient * referenceGradient);
+            const F32 variance = CSM_MIN_VARIANCE_FOR_SCALE(referenceVariance, scaleSq);
+            const F32 bias = CSM_DEPTH_BIAS_FOR_SCALE(referenceBias, std::sqrt(scaleSq));
+            const F32 delta = worldSeparation * gradient - bias;
+            const F32 bound = variance / (variance + delta * delta);
+            CHECK(variance / (gradient * gradient) == Catch::Approx(referenceVariance / (referenceGradient * referenceGradient)));
+            CHECK(bias / gradient == Catch::Approx(referenceBias / referenceGradient));
+            CHECK(bound == Catch::Approx(expectedBound));
+        }
+
+        const F32 distantDelta = worldSeparation * 0.00025f;
+        const F32 unscaledBound = referenceVariance / (referenceVariance + distantDelta * distantDelta);
+        CHECK(unscaledBound > expectedBound + 0.5f);
+
+        const mat4<F32> lightView = Camera::LookAt(float3{ 4.f, 8.f, 3.f }, float3{ 0.f }, float3{ 0.f, 1.f, 0.f });
+        const auto depthGradientSquared = [&](const F32 farPlane)
+        {
+            const mat4<F32> projection = Camera::Ortho(-10.f, 10.f, -10.f, 10.f, 0.1f, farPlane);
+            const mat4<F32> matrix = ShadowMap::BiasedViewProjection(mat4<F32>::Multiply(projection, lightView));
+            const float3 gradient{ matrix.m[0][2], matrix.m[1][2], matrix.m[2][2] };
+            return gradient.lengthSquared();
+        };
+        const F32 referenceMatrixGradientSq = depthGradientSquared(100.f);
+        for (const F32 farPlane : { 50.f, 100.f, 500.f, 1000.f })
+        {
+            const F32 scaleSq = CSM_DEPTH_SCALE_SQUARED(depthGradientSquared(farPlane), referenceMatrixGradientSq);
+            const F32 rangeRatio = 99.9f / (farPlane - 0.1f);
+            CHECK(scaleSq == Catch::Approx(rangeRatio * rangeRatio).epsilon(0.0001f));
+        }
+    }
+
     TEST_CASE("Spot shadow projection rejects fragments outside the biased clip volume", "[lighting][shadows]")
     {
         const auto inside = [](const F32 x, const F32 y, const F32 z, const F32 w)

@@ -22,15 +22,34 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 `ShaderProgram` loads/reparses GLSL, loads/builds GLSL cache, loads/builds SPIR-V, loads/builds reflection, and hands shared results to the backend.
 OpenGL still consumes GLSL; Vulkan consumes SPIR-V. Reflection is shared, not duplicated per backend.
+`GFXDevice` preloads the regular and linear-depth framebuffer preview programs
+during rendering initialization. The depth-preview load participates in the
+startup task barrier and failure stops initialization; debug-view registration
+remains lazy and resets with the registry. Post-AA includes FXAA in the same
+`PreRenderBatch` load counter as its SMAA programs.
 The resource pool calls `unload()` before destroying a loaded shader program.
 Vulkan's destructor only releases any remaining module-parent references, so it
 also cleans up partially loaded programs without unregistering a loaded program
 twice.
 Material shader slots own their program references. Cloning acquires a separate
-reference, moving a slot transfers it, and replacing a program releases the old
-reference after acquiring the replacement. Queued replacements retain the old
+reference only for a ready program; pending clones request their own slot. A
+ready clone publishes its own render-ready notification for its new owner.
+Moving a slot transfers its reference. A requested replacement polls the old
+program until it has loaded, then queues the replacement and releases the old
+reference only after acquiring the new one. Queued replacements retain the old
 program until processed but do not report the slot ready; material unload cancels
 queued writes and waits for in-flight shader loads before releasing slots.
+`Material::canDraw()` polls resource snapshots without waiting for compilation:
+created, loading, and thread-loaded programs remain pending; missing, stale,
+failed, and unloading resources are reported as failures. A ready transition
+publishes one render notification even if the property window inspected the
+shader first. The property window displays pending or failed state rather than
+spinning or substituting an unrelated program.
+Render-pass validation polls every required pass even when an earlier pass is
+pending, so later shader requests can start without waiting for it. It keeps a
+node out of the prepared queue until all required passes are ready. Main-pass
+material preparation is required for every node; other passes request only
+draw-enabled nodes in the bins that those passes actually render.
 The shader queue dispatches queued asynchronous loads only while fewer than 15
 are in flight; remaining entries stay queued. Immediate high-priority processing
 can bypass that limit, and cache hits release their counter immediately.
@@ -71,6 +90,9 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
   uniform; render infrastructure does not dispatch on vegetation flags.
 - `shadowStrength.cmn` shares shadow-strength and variance light-bleed arithmetic
   with CPU regressions, including the maximum-bias boundary.
+- `csmShadow.cmn` shares cascade overlap, blend-weight and depth-scale
+  arithmetic between directional shadow sampling, frustum construction and
+  CPU regressions.
 - `PreprocessIncludes` runs **before** `PreProcessMacros`, so every `#include` must resolve even inside a disabled `#if`.
 - Include directives may end with whitespace or a single-line comment. Malformed, missing, cyclic, or nested includes beyond 64 levels stop source loading instead of being silently dropped by the macro preprocessor. Expansion uses an explicit stack; cached atoms retain their dependency depth so cache hits cannot bypass the limit. Only successfully expanded atoms are cached, and changing a dependency invalidates every cached parent.
 - A missing GLSW section or failed macro preprocessing aborts source loading before uniform extraction, shader compilation, or cache writes.

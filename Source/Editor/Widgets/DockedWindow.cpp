@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "Headers/DockedWindow.h"
 
 #include "Editor/Headers/Editor.h"
@@ -12,6 +14,7 @@
 #include <IconsForkAwesome.h>
 #include <IEntity.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 
 namespace Divide {
 
@@ -24,6 +27,39 @@ namespace Divide {
     void DockedWindow::backgroundUpdate()
     {
         backgroundUpdateInternal();
+    }
+
+    void DockedWindow::FocusOnFirstDraw(bool& pending) noexcept
+    {
+        if (!pending)
+        {
+            return;
+        }
+
+        ImGuiWindow* window = ImGui::GetCurrentWindow();
+        if (ImGuiDockNode* node = window->DockNode)
+        {
+            if (node->TabBar != nullptr)
+            {
+                ImGuiTabItem* tab = ImGui::TabBarFindTabByID(node->TabBar, window->TabId);
+                if (tab == nullptr)
+                {
+                    return;
+                }
+                ImGui::TabBarQueueFocus(node->TabBar, tab);
+            }
+            else if (node->Windows.Size > 1)
+            {
+                return;
+            }
+        }
+        else if (window->DockId != 0u)
+        {
+            return;
+        }
+
+        ImGui::SetWindowFocus();
+        pending = false;
     }
 
     void DockedWindow::draw(const bool readOnly)
@@ -41,7 +77,9 @@ namespace Divide {
             ImGui::BeginDisabled();
         }
 
-        if (ImGui::Begin(_descriptor.name.c_str(), nullptr, windowFlags() | _descriptor.flags)) [[likely]]
+        const bool windowOpen = ImGui::Begin(_descriptor.name.c_str(), nullptr, windowFlags() | _descriptor.flags);
+        FocusOnFirstDraw(_descriptor.focusOnFirstDraw);
+        if (windowOpen) [[likely]]
         {
             _visible = true;
             _focused = ImGui::IsWindowFocused();

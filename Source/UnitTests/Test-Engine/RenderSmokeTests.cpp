@@ -11,12 +11,16 @@
 
 namespace Divide
 {
-    TEST_CASE( "Smoke runs start simulation while ordinary editor startup is preserved", "[render_smoke][runtime]" )
+    TEST_CASE( "Smoke runs can diagnose paused editor startup without changing ordinary startup", "[render_smoke][runtime]" )
     {
-        CHECK_FALSE( RenderSmokeTest::InitialSimulationPaused( true, true ) );
-        CHECK_FALSE( RenderSmokeTest::InitialSimulationPaused( true, false ) );
-        CHECK( RenderSmokeTest::InitialSimulationPaused( false, true ) );
-        CHECK_FALSE( RenderSmokeTest::InitialSimulationPaused( false, false ) );
+        CHECK_FALSE( RenderSmokeTest::InitialSimulationPaused( true, true, false ) );
+        CHECK_FALSE( RenderSmokeTest::InitialSimulationPaused( true, false, false ) );
+        CHECK( RenderSmokeTest::InitialSimulationPaused( true, true, true ) );
+        CHECK( RenderSmokeTest::InitialSimulationPaused( true, false, true ) );
+        CHECK( RenderSmokeTest::InitialSimulationPaused( false, true, false ) );
+        CHECK_FALSE( RenderSmokeTest::InitialSimulationPaused( false, false, false ) );
+        CHECK( RenderSmokeTest::InitialSimulationPaused( false, true, true ) );
+        CHECK_FALSE( RenderSmokeTest::InitialSimulationPaused( false, false, true ) );
     }
 
 #if defined(IS_WINDOWS_BUILD) && defined(_MSC_VER)
@@ -158,6 +162,20 @@ namespace Divide
         CHECK( options._windowCapture );
         CHECK( options._supervisorGate );
         CHECK_FALSE( options._renderDocCapture );
+        CHECK_FALSE( options._pausedEditor );
+
+        const std::array pausedEditor{ std::string_view{ "--vulkanSmokeTest" },
+                                       std::string_view{ "--smokeOutput=C:\\smoke" },
+                                       std::string_view{ "--smokeRun=attempt-01" },
+                                       std::string_view{ "--smokeEditorPaused" } };
+        REQUIRE( ParseOptions( pausedEditor, options, error ) == ParseResult::ENABLED );
+        CHECK( options._pausedEditor );
+        const std::array pausedWithoutMode{ std::string_view{ "--smokeEditorPaused" } };
+        CHECK( ParseOptions( pausedWithoutMode, options, error ) == ParseResult::ERROR );
+        const std::array duplicatePaused{ std::string_view{ "--vulkanSmokeTest" },
+                                          std::string_view{ "--smokeEditorPaused" },
+                                          std::string_view{ "--smokeEditorPaused" } };
+        CHECK( ParseOptions( duplicatePaused, options, error ) == ParseResult::ERROR );
 
         const std::array renderDoc{ std::string_view{ "--vulkanSmokeTest" },
                                     std::string_view{ "--smokeOutput=C:\\smoke" },
@@ -374,7 +392,10 @@ namespace Divide
     TEST_CASE( "Vulkan smoke completion requires scene presents and a completed capture", "[render_smoke][progress]" )
     {
         RenderSmokeTest::Progress progress{ 2u };
+        progress.beginFrame();
+        progress.markSceneFrame();
         CHECK_FALSE( progress.recordPresent( true, true, false ) );
+        CHECK( progress.presentCount() == 0u );
         progress.markSceneReady();
         CHECK_FALSE( progress.recordPresent( true, true, false ) );
         progress.markSceneFrame();

@@ -14,6 +14,13 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 `PlatformContext` owns `HIGH_PRIORITY`, `LOW_PRIORITY`, `RENDERER`, and `ASSET_LOADER` pools.
 Reuse these semantics for asynchronous asset/GPU preparation rather than introducing ad-hoc threads.
+`ThreadPoolSizing::Calculate` assigns four to eight asset-loader workers from
+the configured `runtime.maxWorkerThreads` budget, reserving the existing render,
+low-priority and at least four high-priority workers. The historical minimum
+budget of 16 retains its one-thread oversubscription. `runtime.assetLoaderThreads`
+defaults to 0 for automatic sizing; an explicit value is clamped to 4-8 and the
+available budget, with a warning when it cannot be honored. OpenGL creates a
+shared context for each asset and render worker using the same calculated counts.
 DDS/NVTT cache generation uses `HIGH_PRIORITY` when available.
 Render preparation uses partitions (`g_nodesPerPrepareDrawPartition`) and shared locks around dirty ranges.
 When the main thread waits for `Parallel_For` partitions, it also services
@@ -30,7 +37,10 @@ Resource creation without an external task counter does not retain a pointer
 to a temporary counter; supplied counters must outlive their asynchronous work.
 Resource states use release/acquire ordering to publish completed resource data.
 Resource-pool reference-count increments and decrements both require the pool's
-exclusive lock.
+exclusive lock. `ResourceCache::Inspect` captures state and GUID under the pool's
+shared lock, including stale-handle and bounds checks, so polling cannot race a
+failed load's deallocation. A raw pointer returned by `Get` does not retain
+that lock or acquire a reference; callers must separately ensure its lifetime.
 Texture alpha workers write separate partition summaries and merge only after
 the task wait; versioned metadata reads and publications are synchronized.
 The per-node frustum-plane cache is a relaxed atomic hint, not a substitute for
@@ -84,6 +94,11 @@ that another worker may still be populating or invalidating.
 Debug-view registration, removal, selection and rendering use their respective
 locks. A removed view is retained until the main-window queue is flushed, so
 recorded push-constant commands cannot reference freed view data.
+`IMPrimitive` serializes recording of a shared primitive and retains separate
+uniform snapshots for every draw until window flush. Display and node-preview
+passes can record the same editor axis and grid concurrently; their matrices
+and pending buffer barriers must not overwrite each other. Snapshot storage
+reuses its high-water capacity after the frame changes.
 The rendering component's package lock also protects reflection/refraction
 texture selections and descriptor-update flags. Callbacks publish selections
 after recording their views; dependent stages wait for those producers before

@@ -30,9 +30,11 @@ and `-Scene` parameters can select a particular scene, for example
 explicitly selected scene is an error.
 
 Smoke runs start in Play mode, using the loaded player camera and advancing
-game time. Pausing uses the independent editor camera instead. WarScene's HUD
-reports the player camera even while that override is active, so its coordinates
-do not identify a paused editor view.
+game time. The `-EditorPaused` diagnostic option starts the editor paused and
+requires `-DiagnosticPresents`; it does not count as Play-mode acceptance.
+Pausing uses the independent editor camera instead. WarScene's HUD reports
+the player camera even while that override is active, so its coordinates do
+not identify a paused editor view.
 
 1. `Project::switchScene()` verifies both the scene directory and
    `Scenes/<scene>.xml`. `ScenePool::getOrCreateScene()` creates the registered
@@ -53,6 +55,12 @@ do not identify a paused editor view.
 5. On activation, `Project::setActiveScene()` calls `LoadSave::loadScene()`;
    unless save loading is disabled for that scene, `current_save.sav` can
    overlay loaded state.
+
+Asset loading uses the bounded, automatically sized pool described in
+[Threading](threading.md); increasing its workers does not make project
+activation asynchronous. Startup still completes scene loading and one
+render warmup frame before exposing the editor. Shaders required by later
+frames may continue loading after the editor becomes available.
 
 ## Invariants and troubleshooting
 
