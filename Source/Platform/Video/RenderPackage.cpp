@@ -14,6 +14,10 @@ RenderPackage::RenderPackage()
 
 RenderPackage::~RenderPackage()
 {
+    if ( _occlusionCommands != INVALID_HANDLE<GFX::CommandBuffer> )
+    {
+        GFX::DeallocateCommandBuffer( _occlusionCommands );
+    }
     if ( _additionalCommands != INVALID_HANDLE<GFX::CommandBuffer> )
     {
         GFX::DeallocateCommandBuffer( _additionalCommands );
@@ -33,8 +37,13 @@ GFX::SendPushConstantsCommand RenderPackage::additionalPushConstantsCmd() noexce
 
 void Clear(RenderPackage& pkg) noexcept
 {
+    if ( pkg._occlusionCommands != INVALID_HANDLE<GFX::CommandBuffer> )
+    {
+        GFX::DeallocateCommandBuffer( pkg._occlusionCommands );
+    }
     pkg.drawCmdOffset(RenderPackage::INVALID_CMD_OFFSET);
     pkg.stagePassBaseIndex(RenderPackage::INVALID_STAGE_INDEX);
+    pkg.drawCommandsOverride(nullptr);
     pkg.pipelineCmd(GFX::BindPipelineCommand{});
     pkg.descriptorSetCmd(GFX::BindShaderResourcesCommand{});
     pkg.pushConstantsCmd(GFX::SendPushConstantsCommand{});
@@ -73,6 +82,20 @@ Handle<GFX::CommandBuffer> GetPreparationCommandBuffer( RenderPackage& pkg )
 void AppendPreparationCommands( const RenderPackage& pkg, GFX::CommandBuffer& buffer )
 {
     buffer.add( pkg._preparationCommands );
+}
+
+Handle<GFX::CommandBuffer> GetOcclusionCommandBuffer( RenderPackage& pkg )
+{
+    if ( pkg._occlusionCommands == INVALID_HANDLE<GFX::CommandBuffer> )
+    {
+        pkg._occlusionCommands = GFX::AllocateCommandBuffer( "Render Package Occlusion" );
+    }
+    return pkg._occlusionCommands;
+}
+
+void AppendOcclusionCommands( const RenderPackage& pkg, GFX::CommandBuffer& buffer )
+{
+    buffer.add( pkg._occlusionCommands );
 }
 
 }//namespace Divide

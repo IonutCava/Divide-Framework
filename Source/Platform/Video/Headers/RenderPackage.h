@@ -57,15 +57,19 @@ struct RenderPackage
 
     PROPERTY_RW(U32, drawCmdOffset, INVALID_CMD_OFFSET);
     PROPERTY_RW(U8,  stagePassBaseIndex, INVALID_STAGE_INDEX);
+    PROPERTY_RW(const GenericDrawCommandContainer*, drawCommandsOverride, nullptr);
 
 private:
     friend Handle<GFX::CommandBuffer> GetCommandBuffer( RenderPackage& pkg );
     friend Handle<GFX::CommandBuffer> GetPreparationCommandBuffer( RenderPackage& pkg );
     friend void AppendPreparationCommands( const RenderPackage& pkg, GFX::CommandBuffer& buffer );
+    friend Handle<GFX::CommandBuffer> GetOcclusionCommandBuffer( RenderPackage& pkg );
+    friend void AppendOcclusionCommands( const RenderPackage& pkg, GFX::CommandBuffer& buffer );
     friend void Clear( RenderPackage& pkg ) noexcept;
 
     Handle<GFX::CommandBuffer> _additionalCommands =  INVALID_HANDLE<GFX::CommandBuffer>;
     Handle<GFX::CommandBuffer> _preparationCommands = INVALID_HANDLE<GFX::CommandBuffer>;
+    Handle<GFX::CommandBuffer> _occlusionCommands = INVALID_HANDLE<GFX::CommandBuffer>;
 
     UniformData _uniforms{};
 };
@@ -74,6 +78,8 @@ void Clear(RenderPackage& pkg) noexcept;
 Handle<GFX::CommandBuffer> GetCommandBuffer(RenderPackage& pkg);
 Handle<GFX::CommandBuffer> GetPreparationCommandBuffer(RenderPackage& pkg);
 void AppendPreparationCommands(const RenderPackage& pkg, GFX::CommandBuffer& buffer);
+Handle<GFX::CommandBuffer> GetOcclusionCommandBuffer(RenderPackage& pkg);
+void AppendOcclusionCommands(const RenderPackage& pkg, GFX::CommandBuffer& buffer);
 }; // namespace Divide
 
 #endif //DVD_RENDER_PACKAGE_H_

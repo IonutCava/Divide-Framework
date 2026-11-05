@@ -56,8 +56,19 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
   radiance mixing shared by the water shader and its CPU arithmetic regressions.
 - `ssaoResampling.cmn` shares half-resolution depth/normal block and AO
   reconstruction coordinates with the CPU edge and footprint regressions.
+  The half-depth/normal target's alpha stores the selected 2x2 source offset;
+  half-resolution generation binds the full depth image at slot 2 for its
+  source dimensions rather than treating rounded-up target UVs as source UVs.
 - `spotShadowProjection.cmn` shares the biased homogeneous clip-volume predicate
   between spot-shadow sampling and its CPU boundary regression tests.
+- `hizConservative.cmn` shares near-plane, depth-tolerance, mip-selection and
+  texel-footprint predicates with CPU regressions. Hi-Z queries use exact
+  `texelFetch` taps and retain partially clipped bounds.
+- `treeWind.cmn` shares tree sway amplitude, height/LoD eligibility and maximum
+  displacement with CPU regressions and vegetation culling. Wind uses the same
+  `PER_FRAME` scene data in compute and draw variants.
+  Its shadow variant opts into the generic `dvd_enableDeformation` pass
+  uniform; render infrastructure does not dispatch on vegetation flags.
 - `shadowStrength.cmn` shares shadow-strength and variance light-bleed arithmetic
   with CPU regressions, including the maximum-bias boundary.
 - `PreprocessIncludes` runs **before** `PreProcessMacros`, so every `#include` must resolve even inside a disabled `#if`.
@@ -100,7 +111,10 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
   `additionalPushConstantsCmd()` to share its persistent uniform storage. This
   lets vegetation culling supply chunk-specific uniforms without referring to a
   stack object that expires before deferred command submission. Preparation
-  commands are copied separately before the view's render passes; ordinary
+  commands are copied separately before the view's render passes. Occlusion
+  commands are copied after current-view Hi-Z construction, with its texture
+  bound at `PER_DRAW` slot 0. Vegetation's occlusion variant receives the same
+  camera's view-projection matrix through persistent package uniforms. Ordinary
   additional commands remain part of the draw packet. Packages are non-copyable
   and remain at stable addresses when a rendering component adds packages for
   new passes; queued commands retain pointers into those packages.

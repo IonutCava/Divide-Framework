@@ -109,6 +109,13 @@ Each window has exactly `Config::MAX_FRAMES_IN_FLIGHT` command-buffer and fence
 slots, independent of swapchain image count; render-finished semaphores remain
 per image. Waiting on the main window's recycled slot before scene preparation
 bounds in-flight uses of the per-node buffer ring.
+Particle uploads use the same frame-slot index, with independently allocated,
+single-slot position/colour buffers for every distinct view in that frame.
+They are reused only when the main-window frame fence has been waited, not
+after an arbitrary number of cameras or CPU recording tasks. Particle scene
+draws belong to the main window; moving them to independently submitted windows
+requires extending this lifetime contract. Every consuming pass also records
+the upload range locks so OpenGL waits for the final consumer before reuse.
 Swapchain recreation waits for device idle for every window, with queue
 operations synchronized by Vulkan queue handle. Image views and frame command
 buffers are released during teardown, and a failed recreation is retried

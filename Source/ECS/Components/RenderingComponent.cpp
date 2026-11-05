@@ -31,6 +31,7 @@
 
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
+#include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
 #include "Rendering/RenderPass/Headers/RenderPassExecutor.h"
 
@@ -656,6 +657,12 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         RenderPackage& pkg = getDrawPackage( stagePass );
+        if (stagePass._passType != RenderPassType::MAIN_PASS)
+        {
+            RenderStagePass preparedPass = stagePass;
+            preparedPass._passType = RenderPassType::MAIN_PASS;
+            pkg.drawCommandsOverride(getDrawPackage(preparedPass).drawCommandsOverride());
+        }
         if ( isInstanced() )
         {
             pkg.pushConstantsCmd()._uniformData->set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, _indirectionBufferEntry);
@@ -668,7 +675,9 @@ namespace Divide
         const bool autoIndex = offset != 0u || count != 0u;
 
         SharedLock<SharedMutex> r_lock2( _drawCommands._dataLock );
-        for ( const GenericDrawCommand& gCmd : _drawCommands._data )
+        const GenericDrawCommandContainer& commands = pkg.drawCommandsOverride() != nullptr
+            ? *pkg.drawCommandsOverride() : _drawCommands._data;
+        for ( const GenericDrawCommand& gCmd : commands )
         {
             IndirectIndexedDrawCommand& iCmd = cmdsInOut.emplace_back(gCmd._cmd);
 
@@ -696,7 +705,9 @@ namespace Divide
 
         {
             SharedLock<SharedMutex> r_lock( _drawCommands._dataLock );
-            drawCmd = GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ _drawCommands._data });
+            drawCmd = GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+            drawCmd->_drawCommands = pkg->drawCommandsOverride() != nullptr
+                ? *pkg->drawCommandsOverride() : _drawCommands._data;
         }
 
         U32 startOffset = pkg->drawCmdOffset();

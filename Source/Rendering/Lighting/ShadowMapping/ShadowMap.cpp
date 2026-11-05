@@ -483,7 +483,7 @@ namespace Divide
         return true;
     }
 
-    bool ShadowMap::generateShadowMaps( const Camera& playerCamera, Light& light, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+    bool ShadowMap::generateShadowMaps( const Camera& playerCamera, Light& light, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, const U32 layerMask )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -496,7 +496,7 @@ namespace Divide
 
         if ( markShadowMapsUsed( light ) ) [[likely]]
         {
-            s_shadowMapGenerators[shadowTypeIdx]->render( playerCamera, light, s_shadowPassIndex[shadowTypeIdx]++, pendingCastersOut, bufferInOut, memCmdInOut );
+            s_shadowMapGenerators[shadowTypeIdx]->render( playerCamera, light, s_shadowPassIndex[shadowTypeIdx]++, pendingCastersOut, bufferInOut, memCmdInOut, layerMask );
             return true;
         }
 

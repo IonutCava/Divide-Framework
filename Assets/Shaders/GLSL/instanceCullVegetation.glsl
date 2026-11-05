@@ -28,6 +28,13 @@ uniform float dvd_globalWaterHeight;
 
 #include "frustumCulling.cmn"
 #include "vegetationData.cmn"
+#include "sceneData.cmn"
+#include "treeWind.cmn"
+#if defined(OCCLUSION_PASS)
+uniform mat4 dvd_occlusionViewProjection;
+#define viewProjectionMatrix dvd_occlusionViewProjection
+#include "HiZCullingAlgorithm.cmn"
+#endif
 
 vec3 rotate_vertex_position(vec3 position, vec4 q) {
     vec3 v = position.xyz;
@@ -59,18 +66,38 @@ void main(void) {
 
     const uint nodeIndex = (dvd_terrainChunkOffset * MAX_INSTANCES) + ident;
     VegetationData instance = Data[nodeIndex];
+#if defined(OCCLUSION_PASS)
+    if (instance.data.z < 0.f)
+    {
+        return;
+    }
+#endif
     if (instance.positionAndScale.y < dvd_globalWaterHeight) {
         CullItem(nodeIndex);
         return;
     }
 
-    const float scale    = instance.positionAndScale.w;
+    const float scale    = abs(instance.positionAndScale.w);
 #if defined(CULL_TREES)
-    const vec4 extents = vec4(0.f, 0.f, 0.f, instance.data.y * scale);
+    const float treeRadius = instance.data.y * scale;
+    const vec4 extents = vec4(0.f, 0.f, 0.f, treeRadius + TREE_WIND_PADDING(treeRadius, length(dvd_windDetails.xz)));
 #else
     const vec4 extents = Extents * scale;
 #endif
 
+#if defined(OCCLUSION_PASS)
+    float radius = extents.w;
+#if !defined(CULL_TREES)
+    // Bound wind, camera displacement and the fade-dependent vertical offset.
+    const float windPadding = 0.075f * (3.f * abs(dvd_windDetails.x) + 1.5f * abs(dvd_windDetails.z) + 0.128f);
+    radius += extents.w * windPadding + 0.5f + 0.25f * (1.f + scale);
+#endif
+    if (HiZCull(instance.positionAndScale.xyz, radius))
+    {
+        CullItem(nodeIndex);
+    }
+    return;
+#else
     // Bounding volume centre: half way up the (already scaled) extents, rotated into world space.
     const vec3 vert = rotate_vertex_position(vec3(0.0f, extents.y * 0.5f, 0.0f), instance.orientationQuad);
     const vec3 positionW = vert + instance.positionAndScale.xyz;
@@ -89,4 +116,5 @@ void main(void) {
         Data[nodeIndex].data.y = getLoD(dist);
 #   endif //CULL_TREES
     Data[nodeIndex].data.w = dist;
+#endif
 }

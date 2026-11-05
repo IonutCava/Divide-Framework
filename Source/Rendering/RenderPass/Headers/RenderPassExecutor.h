@@ -272,6 +272,7 @@ private:
     DrawCommandContainer _drawCommands{};
     RenderQueuePackages _renderQueuePackages{};
     vector<std::pair<RenderingComponent*, RenderPackage*>> _preparationOwners{};
+    vector<RenderPackage*> _preparedPackages{};
 
     ShaderBuffer_uptr _cmdBuffer;
 

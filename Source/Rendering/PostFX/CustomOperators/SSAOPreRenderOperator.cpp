@@ -144,6 +144,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     {
         TextureDescriptor outputDescriptor{};
         outputDescriptor._dataType = GFXDataFormat::FLOAT_32;
+        outputDescriptor._baseFormat = GFXImageFormat::RGBA;
         outputDescriptor._packing = GFXImagePacking::UNNORMALIZED;
         outputDescriptor._mipMappingState = MipMappingState::OFF;
 
@@ -625,6 +626,10 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, halfDepthAtt->texture(), halfDepthAtt->_descriptor._sampler );
+            }
+            {
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, depthAtt->texture(), depthAtt->_descriptor._sampler );
             }
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();

@@ -12,6 +12,7 @@ See "license.txt" or "http://copyfree.org/licenses/mit/license.txt".
 
 #include "utility.frag"
 #include "sceneData.cmn"
+#include "ssaoResampling.cmn"
 
 #define projectionMatrix PushData0
 #define invProjectionMatrix PushData1
@@ -31,9 +32,8 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texDepthMap;
 
 #if !defined(COMPUTE_HALF_RES)
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texNormals;
-#define GetNormal(UV) texture(texNormals, UV).rg
 #else //!COMPUTE_HALF_RES
-#define GetNormal(UV) texture(texDepthMap, UV).gb
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texFullDepthMap;
 #endif //!COMPUTE_HALF_RES
 
 // This constant removes artifacts caused by neighbour fragments with minimal depth difference.
@@ -53,13 +53,27 @@ void main(void) {
         return;
     }
 
-    const float sceneRange = _zPlanes.y - _zPlanes.x;
+#if defined(COMPUTE_HALF_RES)
+    const ivec2 fullSize = textureSize(texFullDepthMap, 0);
+    const ivec2 halfSize = textureSize(texDepthMap, 0);
+    const ivec2 halfPixel = min(ivec2(VAR._texCoord * vec2(halfSize)), halfSize - 1);
+    const vec4 depthAndNormal = texelFetch(texDepthMap, halfPixel, 0);
+    const int sampleOffset = int(depthAndNormal.a);
+    const ivec2 sourcePixel = SSAO_DOWNSAMPLE_SOURCE_PIXEL(halfPixel, ivec2(sampleOffset & 1, sampleOffset >> 1), fullSize - 1);
+    const vec2 sceneUV = SSAO_SOURCE_UV(vec2(sourcePixel), vec2(fullSize));
+    const float sceneDepth = depthAndNormal.r;
+    const vec2 encodedNormal = depthAndNormal.gb;
+#else
+    const vec2 sceneUV = VAR._texCoord;
     const float sceneDepth = texture(texDepthMap, VAR._texCoord).r;
+    const vec2 encodedNormal = texture(texNormals, VAR._texCoord).rg;
+#endif
+    const float sceneRange = _zPlanes.y - _zPlanes.x;
     const float linDepth01 = ToLinearDepth( sceneDepth, _zPlanes ) / sceneRange;
     if ( linDepth01 <= maxRange )
     {
         // Normal gathering.
-        const vec3 normalView = normalize(unpackNormal(GetNormal(VAR._texCoord)));
+        const vec3 normalView = normalize(unpackNormal(encodedNormal));
         // Calculate the rotation  for the kernel.
         const vec3 randomVector = texture(texNoise, VAR._texCoord * SSAO_NOISE_SCALE).rgb;
         // Using Gram-Schmidt process to get an orthogonal vector to the normal vector.
@@ -71,7 +85,7 @@ void main(void) {
         // Final matrix to reorient the kernel depending on the normal and the random vector.
         const mat3 kernelMatrix = mat3(tangentView, bitangentView, normalView);
 
-        const vec3 fragPos = ViewSpacePos(VAR._texCoord, sceneDepth, invProjectionMatrix);
+        const vec3 fragPos = ViewSpacePos(sceneUV, sceneDepth, invProjectionMatrix);
         float occlusion = 0.f;
         // Go through the kernel samples and create occlusion factor.
         for (int i = 0; i < SSAO_SAMPLE_COUNT; ++i)
@@ -86,7 +100,12 @@ void main(void) {
             const vec3 samplePointNDC = Homogenize(projectionMatrix * vec4(samplePos, 1.f));
             const vec2 samplePointUv = samplePointNDC.xy * 0.5f + 0.5f;
 
-            const float sampleDepth = ViewSpaceZ(texture(texDepthMap, samplePointUv).r, invProjectionMatrix );
+#if defined(COMPUTE_HALF_RES)
+            const ivec2 samplePixel = clamp(ivec2(SSAO_HALF_SAMPLE_POSITION(samplePointUv, vec2(fullSize))), ivec2(0), halfSize - 1);
+            const float sampleDepth = ViewSpaceZ(texelFetch(texDepthMap, samplePixel, 0).r, invProjectionMatrix);
+#else
+            const float sampleDepth = ViewSpaceZ(texture(texDepthMap, samplePointUv).r, invProjectionMatrix);
+#endif
 
             // If the depth for that XY position in the scene is larger than
             // the sample's, then the sample is occluded by scene's geometry and
@@ -285,7 +304,7 @@ void main() {
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texDepthMap;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texNormal;
 
-layout(location = 0) out vec3 _outColour;
+layout(location = 0) out vec4 _outColour;
 
 int representativeDepthIndex(in vec4 samples) {
     const float center = dot(samples, vec4(0.25f));
@@ -333,7 +352,7 @@ void main()
    }
 
    const int i = representativeDepthIndex(vec4(d[0], d[1], d[2], d[3]));
-   _outColour = vec3(d[i], pn[i]);
+   _outColour = vec4(d[i], pn[i], float(offsets[i].x + offsets[i].y * 2));
 }
 
 --Fragment.SSAOUpsample
@@ -355,7 +374,10 @@ void main()
                                     ivec2(1, 0),
                                     ivec2(1, 1));
     const ivec2 sourceSize = textureSize(texSSAONormalsDepth, 0);
-    const ivec2 base = ivec2(SSAO_UPSAMPLE_SOURCE_POSITION(VAR._texCoord, vec2(sourceSize)));
+    const ivec2 fullSize = textureSize(texDepthMap, 0);
+    const vec2 halfPosition = SSAO_HALF_GRID_POSITION(VAR._texCoord * vec2(fullSize), vec2(fullSize), vec2(fullSize & ivec2(1)));
+    const ivec2 base = ivec2(floor(halfPosition));
+    const vec2 halfUV = SSAO_SOURCE_UV(halfPosition, vec2(sourceSize));
     const ivec2 sourceMax = sourceSize - 1;
     float d[4];
     float ao[4];
@@ -389,5 +411,5 @@ void main()
     float min_dot = min(dot01, min(dot02, dot03));
     float s = step(0.997f, min_dot);
 
-    _ssaoOut = mix(ao[best_depth_idx], texture(texSSAOLinear, VAR._texCoord).r, s);
+    _ssaoOut = mix(ao[best_depth_idx], texture(texSSAOLinear, halfUV).r, s);
 }

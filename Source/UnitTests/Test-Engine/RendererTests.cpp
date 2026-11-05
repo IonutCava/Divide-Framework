@@ -5,6 +5,7 @@
 #include "Core/Headers/ErrorCodes.h"
 #include "Core/Headers/RingBuffer.h"
 #include "GUI/Headers/FontVertexFormat.h"
+#include "Dynamics/Entities/Particles/Headers/ParticleEmitter.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h"
@@ -24,13 +25,160 @@
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Platform/Video/Headers/fontstash.h"
 #include "Rendering/PostFX/CustomOperators/Headers/SSAOState.h"
+#include "Rendering/Lighting/Headers/LightPool.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
 #include "Rendering/RenderPass/Headers/RenderPassExecutor.h"
 #include "Rendering/RenderPass/Headers/RenderQueue.h"
 #include "../../../Assets/Shaders/GLSL/Common/ssaoResampling.cmn"
+#include "../../../Assets/Shaders/GLSL/Common/hizConservative.cmn"
 
 namespace Divide
 {
+    TEST_CASE("Shadow invalidation selects layers without hiding full cache changes", "[renderer][shadow]")
+    {
+        CHECK(ShadowLayerUpdateMask(4u, 1u, true, false) == 1u);
+        CHECK(ShadowLayerUpdateMask(4u, 0b1010u, true, false) == 0b1010u);
+        CHECK(ShadowLayerUpdateMask(4u, 1u | 4u, true, false) == 5u);
+        CHECK(ShadowLayerUpdateMask(4u, 0u, true, false) == 0u);
+        CHECK(ShadowLayerUpdateMask(4u, 1u, false, false) == 15u);
+        CHECK(ShadowLayerUpdateMask(4u, 1u, true, true) == 15u);
+        CHECK(ShadowLayerUpdateMask(4u, 0u, false, false) == 15u);
+        CHECK(ShadowLayerUpdateMask(4u, 0b10000u, true, false) == 0u);
+        CHECK(ShadowLayerUpdateMask(1u, 1u, true, false) == 1u);
+        CHECK(ShadowLayerUpdateMask(0u, U32_MAX, false, true) == 0u);
+        CHECK(ShadowLayerMask(32u) == U32_MAX);
+        CHECK(ShadowLayerSelected(U32_MAX, 31u));
+        CHECK_FALSE(ShadowLayerSelected(U32_MAX, 32u));
+    }
+
+    TEST_CASE("Shadow blur and mip ranges cover only selected layers", "[renderer][shadow]")
+    {
+        for (U32 mask = 0u; mask < 16u; ++mask)
+        {
+            CAPTURE(mask);
+            U32 visited = 0u;
+            U8 previousEnd = 0u;
+            bool firstRange = true;
+            ForEachShadowLayerRange(mask, 4u, [&](const U8 first, const U8 count)
+            {
+                CHECK(count > 0u);
+                CHECK(first + count <= 4u);
+                CHECK((firstRange || first > previousEnd));
+                firstRange = false;
+                previousEnd = first + count;
+                for (U8 layer = first; layer < first + count; ++layer)
+                {
+                    CHECK(ShadowLayerSelected(mask, layer));
+                    CHECK_FALSE(ShadowLayerSelected(visited, layer));
+                    visited |= U32{1u} << layer;
+                }
+            });
+            CHECK(visited == mask);
+        }
+        for (U8 first = 0u; first < 4u; ++first)
+        {
+            for (U8 relative = 0u; relative < 4u - first; ++relative)
+            {
+                CHECK(ShadowBlurTexelScale(first) * ShadowBlurTexelScale(relative) ==
+                      ShadowBlurTexelScale(to_U8(first + relative)));
+            }
+        }
+        CHECK(ShadowBlurTexelScale(0u) == 1.f);
+        CHECK(ShadowBlurTexelScale(3u) == 0.125f);
+        U32 calls = 0u;
+        ForEachShadowLayerRange(U32_MAX, 32u, [&](const U8 first, const U8 count)
+        {
+            CHECK(first == 0u);
+            CHECK(count == 32u);
+            ++calls;
+        });
+        CHECK(calls == 1u);
+        ForEachShadowLayerRange(U32_MAX, 0u, [&](U8, U8) { FAIL("Empty layer sets must not schedule work"); });
+    }
+
+    TEST_CASE("Shadow invalidation filters light type and caller supplied bounds", "[renderer][shadow]")
+    {
+        const BoundingSphere source{float3{0.f}, 500.f};
+        const BoundingSphere influence{float3{0.f}, 100.f};
+        LightPool::MovingVolume request{source, false, 1u, LightType::POINT, influence};
+        CHECK(request.affectsLight(LightType::POINT, BoundingSphere{float3{109.f, 0.f, 0.f}, 10.f}));
+        CHECK_FALSE(request.affectsLight(LightType::POINT, BoundingSphere{float3{111.f, 0.f, 0.f}, 10.f}));
+        CHECK_FALSE(request.affectsLight(LightType::SPOT, BoundingSphere{float3{0.f}, 10.f}));
+        CHECK_FALSE(request.affectsLight(LightType::DIRECTIONAL, BoundingSphere{float3{0.f}, 10.f}));
+        request._volume = BoundingSphere{float3{1000.f}, 10.f};
+        CHECK_FALSE(request.affectsLight(LightType::POINT, BoundingSphere{float3{0.f}, 10.f}));
+        request._lightType = LightType::DIRECTIONAL;
+        request._influenceBounds.reset();
+        CHECK(request.affectsLight(LightType::DIRECTIONAL, BoundingSphere{float3{0.f}, 10.f}));
+        const LightPool::MovingVolume geometryChange{source, true};
+        CHECK(geometryChange._layerMask == 0u);
+        CHECK(geometryChange.affectsLight(LightType::POINT, BoundingSphere{float3{0.f}, 10.f}));
+        CHECK(geometryChange.affectsLight(LightType::SPOT, BoundingSphere{float3{0.f}, 10.f}));
+    }
+
+    struct ParticleEmitterTestAccess
+    {
+        static auto& Upload(ParticleEmitter& emitter, const U64 frame, const float3& eye)
+        {
+            return emitter.getUpload(frame, eye);
+        }
+    };
+
+    TEST_CASE("Particle uploads retain every view until its frame slot is recycled", "[renderer][particles]")
+    {
+        platformInitRunListener::PlatformInit();
+        ParticleEmitter emitter{ ResourceDescriptor<ParticleEmitter>{ "particle_upload_lifetime" } };
+        auto& first = ParticleEmitterTestAccess::Upload(emitter, 0u, float3{0.f});
+        first._uploaded = true;
+        first._handles[1] = { 7u, 1u };
+        GenericDrawCommand& command = first._commands.emplace_back();
+        command._sourceBuffers = first._handles.data();
+        command._sourceBuffersCount = to_U16(first._handles.size());
+        command._cmd.instanceCount = 17u;
+        const GenericDrawCommand queued = command;
+
+        // More views than the old three-slot ring and four-player modulo.
+        for (U32 i = 1u; i < 32u; ++i)
+        {
+            auto& other = ParticleEmitterTestAccess::Upload(emitter, 0u, float3{to_F32(i), 0.f, 0.f});
+            CHECK(&other != &first);
+            other._handles[1] = { to_U16(i + 8u), 1u };
+            CHECK(queued._sourceBuffers[1] == GPUBuffer::Handle{7u, 1u});
+        }
+        CHECK(&ParticleEmitterTestAccess::Upload(emitter, 0u, float3{0.f}) == &first);
+        CHECK(first._uploaded);
+        CHECK(queued._cmd.instanceCount == 17u);
+
+        for (U64 frame = 1u; frame < Config::MAX_FRAMES_IN_FLIGHT; ++frame)
+        {
+            auto& inFlight = ParticleEmitterTestAccess::Upload(emitter, frame, float3{0.f});
+            CHECK(&inFlight != &first);
+            CHECK(first._uploaded);
+        }
+        auto& recycled = ParticleEmitterTestAccess::Upload(emitter, Config::MAX_FRAMES_IN_FLIGHT, float3{0.f});
+        CHECK(&recycled == &first);
+        CHECK_FALSE(recycled._uploaded);
+    }
+
+    TEST_CASE("Render packages retain immutable per-view particle commands", "[renderer][particles]")
+    {
+        GenericDrawCommandContainer first;
+        first.emplace_back()._cmd.instanceCount = 2u;
+        GenericDrawCommandContainer second;
+        second.emplace_back()._cmd.instanceCount = 9u;
+        RenderPackage firstPackage;
+        RenderPackage secondPackage;
+        firstPackage.drawCommandsOverride(&first);
+        secondPackage.drawCommandsOverride(&second);
+        GFX::DrawCommand queued;
+        queued._drawCommands = *firstPackage.drawCommandsOverride();
+        firstPackage.drawCommandsOverride(&second);
+        CHECK(queued._drawCommands.front()._cmd.instanceCount == 2u);
+        CHECK(secondPackage.drawCommandsOverride()->front()._cmd.instanceCount == 9u);
+        Clear(firstPackage);
+        CHECK(firstPackage.drawCommandsOverride() == nullptr);
+    }
+
     template<typename T>
     concept UniformScalarCanBeSet = requires( UniformData& uniforms, const T& value )
     {
@@ -129,11 +277,13 @@ namespace Divide
     {
         using std::clamp;
         using std::floor;
+        using std::max;
 
         const auto sourcePixels = []( const I32 fullPixel, const I32 fullSize, const I32 halfSize )
         {
             const F32 uv = ( to_F32( fullPixel ) + 0.5f ) / to_F32( fullSize );
-            const I32 base = to_I32( SSAO_UPSAMPLE_SOURCE_POSITION( uv, to_F32( halfSize ) ) );
+            const F32 halfPosition = SSAO_HALF_GRID_POSITION( uv * to_F32( fullSize ), to_F32( fullSize ), to_F32( fullSize & 1 ) );
+            const I32 base = to_I32( floor( halfPosition ) );
             return std::array<I32, 2>{ {
                 SSAO_CLAMP_SOURCE_PIXEL( base, 0, 0, halfSize - 1 ),
                 SSAO_CLAMP_SOURCE_PIXEL( base, 1, 0, halfSize - 1 )
@@ -147,9 +297,37 @@ namespace Divide
         CHECK( ( sourcePixels( 3, 4, 2 ) == std::array<I32, 2>{ { 1, 1 } } ) );
         CHECK( ( sourcePixels( 0, 5, 3 ) == std::array<I32, 2>{ { 0, 0 } } ) );
         CHECK( ( sourcePixels( 1, 5, 3 ) == std::array<I32, 2>{ { 0, 1 } } ) );
-        CHECK( ( sourcePixels( 2, 5, 3 ) == std::array<I32, 2>{ { 1, 2 } } ) );
+        CHECK( ( sourcePixels( 2, 5, 3 ) == std::array<I32, 2>{ { 0, 1 } } ) );
         CHECK( ( sourcePixels( 3, 5, 3 ) == std::array<I32, 2>{ { 1, 2 } } ) );
         CHECK( ( sourcePixels( 4, 5, 3 ) == std::array<I32, 2>{ { 2, 2 } } ) );
+    }
+
+    TEST_CASE( "Half-resolution SSAO reconstructs the selected source pixel without stretching odd edges", "[renderer][shader][ssao]" )
+    {
+        using std::floor;
+        using std::max;
+        using std::min;
+
+        for ( const I32 fullSize : { 1, 2, 3, 4, 5, 719, 1279, 1920, 65535 } )
+        {
+            CAPTURE( fullSize );
+            const I32 halfSize = (fullSize + 1) / 2;
+            for ( I32 halfPixel = 0; halfPixel < halfSize; ++halfPixel )
+            {
+                const F32 blockCenter = min( to_F32( halfPixel * 2 + 1 ), to_F32( fullSize ) - 0.5f );
+                const F32 halfPosition = SSAO_HALF_GRID_POSITION( blockCenter, to_F32( fullSize ), to_F32( fullSize & 1 ) );
+                REQUIRE( halfPosition == Catch::Approx( to_F32( halfPixel ) ).margin( 0.00001f ) );
+
+                for ( const I32 offset : { 0, 1 } )
+                {
+                    const I32 sourcePixel = SSAO_DOWNSAMPLE_SOURCE_PIXEL( halfPixel, offset, fullSize - 1 );
+                    const F32 uv = SSAO_SOURCE_UV( to_F32( sourcePixel ), to_F32( fullSize ) );
+                    const F32 reconstructedPixel = uv * to_F32( fullSize ) - 0.5f;
+                    REQUIRE( reconstructedPixel == Catch::Approx( to_F32( sourcePixel ) ).margin( 0.004f ) );
+                    REQUIRE( to_I32( SSAO_HALF_SAMPLE_POSITION( uv, to_F32( fullSize ) ) ) == halfPixel );
+                }
+            }
+        }
     }
 
     TEST_CASE( "SSAO uploads kernel elements independently for both quality modes", "[renderer][ssao]" )
@@ -655,6 +833,75 @@ namespace Divide
         GFX::CommandBuffer afterClear;
         AppendPreparationCommands( package, afterClear );
         CHECK( afterClear.commands().empty() );
+    }
+
+    TEST_CASE("Vegetation occlusion commands remain outside depth and colour passes", "[renderer][vegetation][commands]")
+    {
+        GFX::InitPools(4u);
+        SCOPE_EXIT { GFX::DestroyPools(); };
+        RenderPackage package;
+        GFX::CommandBuffer view;
+        AppendOcclusionCommands(package, view);
+        CHECK(view.commands().empty());
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(*GFX::Get(GetPreparationCommandBuffer(package)))->_workGroupSize.x = 1u;
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(*GFX::Get(GetOcclusionCommandBuffer(package)))->_workGroupSize.x = 2u;
+        AppendPreparationCommands(package, view);
+        GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(view);
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(view);
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(view)->_workGroupSize.x = 3u; // Current-view Hi-Z.
+        AppendOcclusionCommands(package, view);
+        GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(view);
+        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(view);
+        GFX::Get(GetOcclusionCommandBuffer(package))->clear();
+        REQUIRE(view.commands().size() == 7u);
+        CHECK(view.commands()[0]->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize.x == 1u);
+        CHECK(view.commands()[3]->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize.x == 3u);
+        CHECK(view.commands()[4]->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize.x == 2u);
+        Clear(package);
+        GFX::CommandBuffer afterClear;
+        AppendOcclusionCommands(package, afterClear);
+        CHECK(afterClear.commands().empty());
+    }
+
+    TEST_CASE("Hi-Z occlusion keeps near-plane intersections and equal-depth surfaces", "[renderer][vegetation][hiz]")
+    {
+        CHECK_FALSE(HIZ_PROJECTABLE_CORNER(-1.f, 0.5f));
+        CHECK_FALSE(HIZ_PROJECTABLE_CORNER(0.f, 0.5f));
+        CHECK_FALSE(HIZ_PROJECTABLE_CORNER(1.f, 0.f));
+        CHECK_FALSE(HIZ_PROJECTABLE_CORNER(1.f, -0.1f));
+        CHECK(HIZ_PROJECTABLE_CORNER(1.f, 0.5f));
+        CHECK_FALSE(HIZ_OCCLUDED(0.5f, 0.5f));
+        CHECK_FALSE(HIZ_OCCLUDED(0.500001f, 0.5f));
+        CHECK_FALSE(HIZ_OCCLUDED(0.1f, 0.5f));
+        CHECK_FALSE(HIZ_OCCLUDED(0.99f, 1.f));
+        CHECK(HIZ_OCCLUDED(0.8f, 0.5f));
+    }
+
+    TEST_CASE("Hi-Z four-tap footprints cover rectangular and odd-sized pyramids", "[renderer][vegetation][hiz]")
+    {
+        using std::ceil;
+        using std::floor;
+        using std::log2;
+        using std::min;
+        using std::max;
+        for (const U32 size : {1u, 3u, 5u, 719u, 1279u, 1920u})
+        {
+            for (const F32 width : {0.f, 0.00001f, 0.001f, 0.1f, 0.5f, 1.f})
+            {
+                const U32 mip = to_U32(HIZ_MIP_LEVEL(width * to_F32(size)));
+                const F32 dimension = to_F32(max(size >> mip, 1u));
+                for (const F32 start : {0.f, 0.2f, 0.51f, 0.99f})
+                {
+                    const F32 end = min(start + width, 1.f);
+                    const F32 first = HIZ_TEXEL(start, dimension);
+                    const F32 last = HIZ_TEXEL(end, dimension);
+                    CHECK(first >= 0.f);
+                    CHECK(last < dimension);
+                    CHECK(HIZ_FOUR_TAP_COVERS(first, last));
+                }
+            }
+        }
+        CHECK_FALSE(HIZ_FOUR_TAP_COVERS(0, 2));
     }
 
     TEST_CASE( "Visible tree consumers schedule their preparation owner once", "[render_smoke][vegetation][commands]" )

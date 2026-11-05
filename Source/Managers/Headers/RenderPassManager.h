@@ -95,6 +95,7 @@ namespace Divide
                        1 << to_base( Flags::DRAW_TRANSLUCENT_NODES );
 
         bool _refreshLightData{true};
+        bool _enableDeformation{true};
         bool _useMSAA{false};
     };
 

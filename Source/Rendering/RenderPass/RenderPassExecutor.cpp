@@ -940,12 +940,14 @@ namespace Divide
 
         const size_t queueSize = buildDrawCommands( index, params, doPrePass, doOITPass, bufferInOut, memCmdInOut );
         _preparationOwners.clear();
+        _preparedPackages.clear();
         for ( const auto& [rComp, pkg] : _renderQueuePackages )
         {
             RenderingComponent* owner = Attorney::RenderingCompRenderPass::preparationOwner( *rComp );
             if ( owner == nullptr )
             {
                 AppendPreparationCommands( *pkg, bufferInOut );
+                _preparedPackages.push_back( pkg );
             }
             else
             {
@@ -959,6 +961,7 @@ namespace Divide
                 prepared = &Attorney::RenderingCompRenderPass::prepareDependency( owner, cameraSnapshot, stagePass, memCmdInOut );
             }
             AppendPreparationCommands( *prepared, bufferInOut );
+            _preparedPackages.push_back( prepared );
         } );
 
         return queueSize;
@@ -1024,6 +1027,8 @@ namespace Divide
 
         for ( const auto& [rComp, pkg] : _renderQueuePackages )
         {
+            pkg->pushConstantsCmd()._uniformData->set(_ID("dvd_enableDeformation"), PushConstantType::UINT,
+                                                      params._enableDeformation ? 1u : 0u);
             Attorney::RenderingCompRenderPassExecutor::getCommandBuffer( rComp, pkg, bufferInOut );
         }
 
@@ -1083,6 +1088,15 @@ namespace Divide
 
         // Update HiZ Target
         const auto [hizTexture, hizSampler] = _context.constructHIZ( sourceDepthBuffer, targetHiZBuffer, bufferInOut );
+        {
+            auto bindHiZ = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
+            bindHiZ->_usage = DescriptorSetUsage::PER_DRAW;
+            Set( AddBinding( bindHiZ->_set, 0u, ShaderStageVisibility::COMPUTE )._data, hizTexture, hizSampler );
+            for ( const RenderPackage* package : _preparedPackages )
+            {
+                AppendOcclusionCommands( *package, bufferInOut );
+            }
+        }
         // Run occlusion culling CS
         _context.occlusionCull( _parent.getPassForStage( _stage ).getPassData(),
                                 hizTexture,

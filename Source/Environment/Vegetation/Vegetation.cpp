@@ -16,6 +16,7 @@
 #include "Scenes/Headers/SceneState.h"
 #include "Scenes/Headers/Scene.h"
 #include "Rendering/Camera/Headers/Camera.h"
+#include "Rendering/Lighting/Headers/LightPool.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/RenderPackage.h"
@@ -145,6 +146,8 @@ namespace Divide
         DestroyResource( _vegetationMaterial );
         DestroyResource( _cullShaderGrass );
         DestroyResource( _cullShaderTrees );
+        DestroyResource( _occlusionShaderGrass );
+        DestroyResource( _occlusionShaderTrees );
 
         _treeData.reset();
         _grassData.reset();
@@ -453,12 +456,24 @@ namespace Divide
 
         _cullShaderGrass = CreateResource( instanceCullShaderGrass, loadTasks );
 
+        ResourceDescriptor<ShaderProgram> occlusionGrass( "occludeVegetation_Grass" );
+        occlusionGrass.waitForReady( false );
+        occlusionGrass._propertyDescriptor._modules.push_back( compModule );
+        occlusionGrass._propertyDescriptor._modules.back()._defines.emplace_back( "OCCLUSION_PASS" );
+        _occlusionShaderGrass = CreateResource( occlusionGrass, loadTasks );
+
         compModule._defines.emplace_back( "CULL_TREES" );
         ResourceDescriptor<ShaderProgram> instanceCullShaderTrees( "instanceCullVegetation_Trees" );
         instanceCullShaderTrees.waitForReady( false );
         ShaderProgramDescriptor& shaderCompDescriptorTrees = instanceCullShaderTrees._propertyDescriptor;
         shaderCompDescriptorTrees._modules.push_back( compModule );
         _cullShaderTrees = CreateResource( instanceCullShaderTrees, loadTasks );
+
+        ResourceDescriptor<ShaderProgram> occlusionTrees( "occludeVegetation_Trees" );
+        occlusionTrees.waitForReady( false );
+        occlusionTrees._propertyDescriptor._modules.push_back( compModule );
+        occlusionTrees._propertyDescriptor._modules.back()._defines.emplace_back( "OCCLUSION_PASS" );
+        _occlusionShaderTrees = CreateResource( occlusionTrees, loadTasks );
 
         WAIT_FOR_CONDITION( loadTasks.load() == 0u );
 
@@ -468,6 +483,10 @@ namespace Divide
         _cullPipelineGrass = context.gfx().newPipeline( pipeDesc );
         pipeDesc._shaderProgramHandle = _cullShaderTrees;
         _cullPipelineTrees = context.gfx().newPipeline( pipeDesc );
+        pipeDesc._shaderProgramHandle = _occlusionShaderGrass;
+        _occlusionPipelineGrass = context.gfx().newPipeline( pipeDesc );
+        pipeDesc._shaderProgramHandle = _occlusionShaderTrees;
+        _occlusionPipelineTrees = context.gfx().newPipeline( pipeDesc );
 
         Get( _vegetationMaterial )->computeShaderCBK( [grassInstances = _maxGrassInstances]( [[maybe_unused]] Material* material, const RenderStagePass stagePass )
         {
@@ -637,6 +656,7 @@ namespace Divide
         material->baseShaderData( shaderData );
         material->addShaderDefine( Util::StringFormat( "MAX_TREE_INSTANCES {}", _maxTreeInstances ) );
         material->properties().isInstanced( true );
+        material->properties().isStatic( false );
         const U32 updateResult = material->update( 0u );
         DIVIDE_UNUSED( updateResult );
         _treeMaterials.emplace_back( source, variant );
@@ -748,6 +768,7 @@ namespace Divide
             preparationHandle = GetPreparationCommandBuffer( pkg );
             DIVIDE_ASSERT( preparationHandle != INVALID_HANDLE<GFX::CommandBuffer> );
             GFX::Get( preparationHandle )->clear();
+            GFX::Get( GetOcclusionCommandBuffer( pkg ) )->clear();
         }
 
         VegetationInstance* instance = findInstance( sgn->dataFlag() );
@@ -816,9 +837,8 @@ namespace Divide
                 uniforms->set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, sgn->dataFlag() );
                 uniforms->set( _ID( "dvd_grassInstanceCount" ), PushConstantType::UINT, instance->_drawState._grassInstanceCount );
                 uniforms->set( _ID( "dvd_treeInstanceCount" ), PushConstantType::UINT, instance->_drawState._treeInstanceCount );
-
-                GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( preparation )->_scopeName = "Cull Vegetation";
-                bindVegetationData( preparation );
+                uniforms->set( _ID( "dvd_occlusionViewProjection" ), PushConstantType::MAT4,
+                               cameraSnapshot._projectionMatrix * cameraSnapshot._viewMatrix );
 
                 const bool cullGrass = renderStagePass._stage != RenderStage::SHADOW &&
                                        instance->_drawState._grassInstanceCount > 0u;
@@ -846,29 +866,38 @@ namespace Divide
                     }
                 };
 
-                auto beforeCull = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( preparation );
-                addInstanceLocks( *beforeCull, BufferSyncUsage::GPU_READ_TO_GPU_WRITE );
-                addInstanceLocks( *beforeCull, BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE );
-
-                GFX::DispatchShaderTaskCommand computeCmd = {};
-                if ( cullGrass )
+                const auto recordCull = [&]( GFX::CommandBuffer& commands, const bool occlusion )
                 {
-                    computeCmd._workGroupSize.set( (instance->_drawState._grassInstanceCount + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
-                    GFX::EnqueueCommand<GFX::BindPipelineCommand>( preparation )->_pipeline = _cullPipelineGrass;
-                    GFX::EnqueueCommand( preparation, cullConstantsCmd );
-                    GFX::EnqueueCommand( preparation, computeCmd );
-                }
-                if ( instance->_drawState._treeInstanceCount > 0u )
-                {
-                    computeCmd._workGroupSize.set( (instance->_drawState._treeInstanceCount + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
-                    GFX::EnqueueCommand<GFX::BindPipelineCommand>( preparation )->_pipeline = _cullPipelineTrees;
-                    GFX::EnqueueCommand( preparation, cullConstantsCmd );
-                    GFX::EnqueueCommand( preparation, computeCmd );
-                }
+                    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( commands )->_scopeName = occlusion ? "Occlude Vegetation" : "Cull Vegetation";
+                    bindVegetationData( commands );
+                    auto beforeCull = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( commands );
+                    addInstanceLocks( *beforeCull, BufferSyncUsage::GPU_READ_TO_GPU_WRITE );
+                    addInstanceLocks( *beforeCull, BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE );
+                    GFX::DispatchShaderTaskCommand computeCmd = {};
+                    if ( cullGrass )
+                    {
+                        computeCmd._workGroupSize.set( (instance->_drawState._grassInstanceCount + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
+                        GFX::EnqueueCommand<GFX::BindPipelineCommand>( commands )->_pipeline = occlusion ? _occlusionPipelineGrass : _cullPipelineGrass;
+                        GFX::EnqueueCommand( commands, cullConstantsCmd );
+                        GFX::EnqueueCommand( commands, computeCmd );
+                    }
+                    if ( instance->_drawState._treeInstanceCount > 0u )
+                    {
+                        computeCmd._workGroupSize.set( (instance->_drawState._treeInstanceCount + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
+                        GFX::EnqueueCommand<GFX::BindPipelineCommand>( commands )->_pipeline = occlusion ? _occlusionPipelineTrees : _cullPipelineTrees;
+                        GFX::EnqueueCommand( commands, cullConstantsCmd );
+                        GFX::EnqueueCommand( commands, computeCmd );
+                    }
 
-                auto afterCull = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( preparation );
-                addInstanceLocks( *afterCull, BufferSyncUsage::GPU_WRITE_TO_GPU_READ );
-                GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( preparation );
+                    auto afterCull = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( commands );
+                    addInstanceLocks( *afterCull, BufferSyncUsage::GPU_WRITE_TO_GPU_READ );
+                    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( commands );
+                };
+                recordCull( preparation, false );
+                if ( renderStagePass._stage != RenderStage::SHADOW )
+                {
+                    recordCull( *GFX::Get( GetOcclusionCommandBuffer( pkg ) ), true );
+                }
             }
         }
 
@@ -886,15 +915,34 @@ namespace Divide
         {
             assert( getState() == ResourceState::RES_LOADED );
             LockGuard<Mutex> w_lock( _sceneUpdateLock );
-            // Query shadow state every "_stateRefreshInterval" microseconds
-            if ( _stateRefreshIntervalBufferUS >= _stateRefreshIntervalUS )
+            const F32 windX = sceneState.windDirX();
+            const F32 windZ = sceneState.windDirZ();
+            const F32 windPadding = _instanceBoundsPadding *
+                (1.f + 0.075f * (3.f * std::abs(windX) + 1.5f * std::abs(windZ) + 0.128f)) + 0.75f;
+            if (windPadding > _windBoundsPadding)
             {
-                _windX = sceneState.windDirX();
-                _windZ = sceneState.windDirZ();
-                _windS = sceneState.windSpeed();
-                _stateRefreshIntervalBufferUS -= _stateRefreshIntervalUS;
+                _windBoundsPadding = windPadding;
+                const BoundingBox& terrainBounds = _descriptor.parentTerrain->getBounds();
+                const float3 padding{windPadding};
+                setBounds(BoundingBox{terrainBounds._min - padding, terrainBounds._max + padding});
+                sgn->sceneGraph()->invalidateStaticGeometryBounds(*sgn);
             }
-            _stateRefreshIntervalBufferUS += deltaTimeUS;
+            if (instance->_drawState._treeInstanceCount > 0u &&
+                _windShadowState.update(GFXDevice::FrameCount(), deltaTimeUS, float3{windX, windZ, sceneState.windSpeed()}))
+            {
+                BoundingSphere bounds;
+                bounds.fromBoundingBox(getBounds());
+                LightPool& lights = *sceneState.parentScene().lightPool();
+                lights.invalidateShadowLayers(bounds, 1u, LightType::DIRECTIONAL);
+                const F32 nearTreeRange = 0.33f *
+                    std::min(sceneState.renderState().treeVisibility(), sceneState.renderState().generalVisibility());
+                if (nearTreeRange > 0.f)
+                {
+                    const BoundingSphere nearBounds{sceneState.parentScene().playerCamera()->snapshot()._eye, nearTreeRange};
+                    lights.invalidateShadowLayers(bounds, 1u, LightType::POINT, nearBounds);
+                    lights.invalidateShadowLayers(bounds, 1u, LightType::SPOT, nearBounds);
+                }
+            }
 
             const SceneRenderState& renderState = sceneState.renderState();
 

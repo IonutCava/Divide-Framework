@@ -130,6 +130,7 @@ public:
 
     PROPERTY_RW(bool, staticShadowsDirty, true);
     PROPERTY_RW(bool, dynamicShadowsDirty, true);
+    PROPERTY_RW(U32, shadowLayersDirty, 0u);
 
     /// Same as showDirectionCone but triggered differently (i.e. on selection in editor)
     PROPERTY_R_IW(bool, drawImpostor, false);

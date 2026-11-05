@@ -114,6 +114,10 @@ workers without a context.
 
 Audit dirty-range locks, allocator free-list locks, command-buffer queue locks, and background asset work that can race render/main-thread resource finalization.
 Separate CPU work completion from GPU submission and completion: recorded commands execute later at window flush, as described in [rendering](rendering.md).
+Particle sorting and upload-cache selection are serialized per emitter.
+Frame-local uploads and their handle arrays have stable addresses even when
+another camera grows the cache. Render packages reference immutable draw
+snapshots rather than mutating the component's shared command template.
 For changes to mapped writes or staging uploads, also read [GPU resources](gpu-resources.md).
 
 ## Vulkan queues and async compute
