@@ -238,9 +238,16 @@ override is the exception to strict rejection of unsupported x86 requests.
 ## Continuous integration
 
 CI checks `master` and all open pull requests daily at 00:00 UTC (GitHub may delay scheduled runs).
-Linux, Windows, and macOS builds run only for head commits not previously queued for that target.
-Commit statuses record queued and completed builds; unchanged commits are
-not rebuilt, even after a failed build. Failed dispatches are retried at the next daily check.
+To validate one open PR sooner, select `master` and enter its number under
+**Actions > Daily CI Scheduler > Run workflow**, or use
+`gh workflow run DailyCI.yml --ref master -f pull_request=<number>`. Manual
+runs select the PR's current head and queue only its missing or failed platform
+builds; already successful or pending builds are not duplicated. Rerun a
+cancelled platform workflow if it left its status pending.
+Scheduled Linux, Windows, and macOS builds run only for head commits not
+previously queued for that target. Commit statuses record queued and completed
+builds; scheduled runs do not rebuild unchanged commits after a failed build.
+Failed dispatches are retried at the next daily check.
 Platform reporters also publish each matrix job's result under its exact job name
 on `ci_sha`, preserving the existing per-job branch-protection requirements when
 workflow dispatches execute on a different commit. Missing, skipped, cancelled,
@@ -250,7 +257,12 @@ Failed Linux builds run existing test executables under GDB in list-only mode
 to capture startup crashes, including the faulting instruction and backtrace.
 The first check builds every current target. PRs are built at their head commit, not a test merge.
 The platform workflows use `workflow_dispatch` for the scheduler, not push or PR triggers.
-These workflows must be present on the repository's default branch before scheduling takes effect.
+The scheduler and platform workflows must be present on the repository's default
+branch before scheduled or manual dispatch takes effect.
+Before the manual scheduler is available on `master`, a same-repository PR can
+be validated by dispatching `Linux.yml`, `Windows.yml`, and `MacOS.yml` from
+`master`, each with `ci_sha` set to the pushed PR head and `ci_target` set to
+`pr-<number>`. Do not use this fallback for fork heads.
 
 The daily scheduler executes only master and same-repository PR heads. Fork or
 unavailable head repositories receive an explicit error status without dispatch:
