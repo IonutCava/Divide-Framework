@@ -333,7 +333,8 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
                 params._elementSize = sizeof(UColour4);
                 params._bindIdx = g_particleColourBuffer;
                 const BufferLock colourLock = upload._colours->setBuffer(params);
-                DIVIDE_UNUSED(positionLock, colourLock);
+                DIVIDE_UNUSED(positionLock);
+                DIVIDE_UNUSED(colourLock);
                 upload._handles = { _geometryBuffer->_handle, upload._positions->_handle,
                                     upload._colours->_handle, _indexBuffer->_handle };
             }
