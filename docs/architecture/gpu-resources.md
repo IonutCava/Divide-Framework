@@ -1,9 +1,5 @@
 # GPU resources and backend conventions
 
-Non-sRGB screen fallback paths can blend translucent UI in encoded space.
-Linear-space fallback compositing is deferred; do not claim identical alpha
-blending between sRGB and non-sRGB presentation paths.
-
 <!-- Copyright (c) 2026 DIVIDE-Studio -->
 
 See the [index](index.md) for debugging routes and note-maintenance guidance.
@@ -313,6 +309,10 @@ OpenGL is the reference. Client code does not branch on the API for Y: projectio
 - `DeviceInformation::_screenSRGB` reports default framebuffer/swapchain encoding. GL queries colour encoding and disables screen `GL_FRAMEBUFFER_SRGB` if unsupported; Vulkan uses `*_SRGB` format detection.
 - Without screen encoding, final screen blit, editor ImGui, and splash shaders encode/skip linearisation appropriately.
 - `Assets/Shaders/GLSL/IMGUI.glsl` linearises vertex colours and only plain UNORM non-render-target textures. `lineariseTexture` is set per texture bind by `Editor::renderDrawList`; render targets, sRGB, and float textures are sampled as linear.
+
+Non-sRGB screen fallback paths can blend translucent UI in encoded space.
+Linear-space fallback compositing is deferred; do not claim identical alpha
+blending between sRGB and non-sRGB presentation paths.
 
 ImGui atlas textures honour deferred destruction: `Editor::updateFontTextures`
 destroys `WantDestroy` textures only after `UnusedFrames > 0`, then clears TexID.

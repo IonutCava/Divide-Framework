@@ -221,10 +221,11 @@ override is the exception to strict rejection of unsupported x86 requests.
 | GLSL/SPIR-V, reflection, shader caches, descriptor bindings | [Shaders and descriptors](docs/architecture/shader-descriptors.md) |
 | GL/Vulkan allocation, uploads, device capabilities, presentation conventions | [GPU resources](docs/architecture/gpu-resources.md) |
 | Mesh import, LoD, vertex layout, texture decode/cache | [Asset pipeline](docs/architecture/asset-pipeline.md) |
-| Project/scene selection, scene graph XML, scene activation and saves | [Scene loading](docs/architecture/scene-loading.md) |
-| Editor windows, scene/node previews, docking | [Editor windows](docs/architecture/editor.md) |
+| Project/scene selection, scene graph, transforms, bounds, XML and saves | [Scene loading](docs/architecture/scene-loading.md) |
+| Editor windows, docking, properties, undo, gizmos and output | [Editor windows](docs/architecture/editor.md) |
 | Task pools, dirty ranges, asynchronous work, queue synchronization | [Threading](docs/architecture/threading.md) |
 | Client connections, heartbeat timers, networking test fixtures | [Networking](docs/architecture/networking.md) |
+| Assertions and fatal unexpected calls | [Assertion contract](docs/architecture/index.md#assertions-and-fatal-calls) |
 
 ## Continuous integration
 
