@@ -221,7 +221,9 @@ attempt stops again. A completed diagnostic records presentation progress and
 breaks the repeated-failure sequence but does not satisfy the 300-present
 contract. When no engine failure record exists, a captured
 debugger event and fault symbol distinguish unexpected exits; assertions also
-include their logged source and message. The repair budget defaults to 25
+include their logged source and message. Unexpected-call failures abort even
+when ordinary Debug assertions continue; their diagnostics also reach stderr.
+The repair budget defaults to 25
 iterations; after explicit user approval, `-MaxAttempts` can extend it or set
 it to `0` for no overall attempt limit. This does not reset recorded attempts
 or the repeated-failure guards.

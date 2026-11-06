@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/FileManagement.h"
 #include "Headers/ResourcePath.h"
 
@@ -265,14 +265,20 @@ size_t numberOfFilesInDirectory( const ResourcePath& path )
 
 bool createFileInternal(const ResourcePath& filePathAndName, const bool overwriteExisting)
 {
-    if (overwriteExisting && fileExists(filePathAndName))
+    if (!overwriteExisting && fileExists(filePathAndName))
     {
-        return std::ofstream(filePathAndName.string().c_str(), std::fstream::in | std::fstream::trunc).good();
+        return std::ifstream(filePathAndName.fileSystemPath(), std::ios::in).good();
     }
 
-    DIVIDE_EXPECTED_CALL(createDirectory(const_sysInfo()._workingDirectory / splitPathToNameAndLocation(filePathAndName)._path) == FileError::NONE );
+    if (createDirectory(const_sysInfo()._workingDirectory / splitPathToNameAndLocation(filePathAndName)._path) != FileError::NONE)
+    {
+        return false;
+    }
 
-    return std::ifstream(filePathAndName.string().c_str(), std::fstream::in).good();
+    const std::ios::openmode mode = std::ios::out | (overwriteExisting ? std::ios::trunc : std::ios::app);
+    std::ofstream file(filePathAndName.fileSystemPath(), mode);
+    file.close();
+    return file.good();
 }
 
 bool createFile(const ResourcePath& filePathAndName, const bool overwriteExisting)
@@ -284,6 +290,11 @@ bool createFile(const ResourcePath& filePathAndName, const bool overwriteExistin
     {
         state = createFileInternal(filePathAndName, overwriteExisting);
     } while (!state && ++retryCount < s_maxIORetries);
+
+    if (!state)
+    {
+        Console::errorfn("Failed to create file '{}'", filePathAndName);
+    }
 
     return state;
 }

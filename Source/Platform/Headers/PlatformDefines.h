@@ -901,6 +901,8 @@ namespace Assert
 {
     /// It is safe to call evaluate expressions and call functions inside the assert check as it will compile for every build type
     bool Callback(bool expression, std::string_view expressionStr, std::string_view file, int line, std::string_view failMessage) noexcept;
+    /// Reports an unexpected call and aborts even when assertions can continue.
+    void UnexpectedCall(std::string_view file, int line, std::string_view failMessage) noexcept;
 }
 
 #define DIVIDE_ASSERT_2_ARGS(expression, msg) Divide::Assert::Callback(expression, #expression, __FILE__, __LINE__, msg)
@@ -909,17 +911,17 @@ namespace Assert
 #define ___DETAIL_DIVIDE_ASSERT(...) EXP(GET_3RD_ARG(__VA_ARGS__, DIVIDE_ASSERT_2_ARGS, DIVIDE_ASSERT_1_ARGS, ))
 #define DIVIDE_ASSERT(...) EXP(___DETAIL_DIVIDE_ASSERT(__VA_ARGS__)(__VA_ARGS__))
 
-#define DIVIDE_UNEXPECTED_CALL_MSG(MSG) DIVIDE_ASSERT(false, MSG)
+#define DIVIDE_UNEXPECTED_CALL_MSG(MSG) Divide::Assert::UnexpectedCall(__FILE__, __LINE__, MSG)
 #define DIVIDE_UNEXPECTED_CALL() DIVIDE_UNEXPECTED_CALL_MSG("UNEXPECTED CALL")
 
-#define DIVIDE_EXPECTED_CALL( X ) if ( !(X) ) [[unlikely]] { DIVIDE_UNEXPECTED_CALL_MSG("Expected call failed: " #X); }
-#define DIVIDE_EXPECTED_CALL_MSG( X, MSG ) if ( !(X) ) [[unlikely]] { DIVIDE_UNEXPECTED_CALL_MSG( MSG ); }
+#define DIVIDE_EXPECTED_CALL( X ) if ( !(X) ) [[unlikely]] { DIVIDE_ASSERT(false, "Expected call failed: " #X); }
+#define DIVIDE_EXPECTED_CALL_MSG( X, MSG ) if ( !(X) ) [[unlikely]] { DIVIDE_ASSERT(false, MSG); }
 
 #define DIVIDE_EXPECTED_GPU_CALL_MSG( X, MSG )                                     \
     do {                                                                           \
         if constexpr (Divide::Config::ENABLE_GPU_VALIDATION) {                     \
             if ( !static_cast<bool>(X) ) [[unlikely]] {                             \
-                DIVIDE_UNEXPECTED_CALL_MSG(MSG);                                   \
+                DIVIDE_ASSERT(false, MSG);                                        \
             }                                                                      \
         } else {                                                                   \
             static_cast<void>(static_cast<bool>(X));                               \

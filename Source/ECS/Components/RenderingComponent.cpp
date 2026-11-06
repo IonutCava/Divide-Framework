@@ -49,10 +49,9 @@ namespace Divide
     {
         if ( instanced )
         {
-            if ( !DIVIDE_ASSERT( indirectionIndex != NodeIndirectionData::INVALID_IDX,
-                                 "Instanced draw has no node indirection index" ) )
+            if ( indirectionIndex == NodeIndirectionData::INVALID_IDX )
             {
-                std::terminate();
+                DIVIDE_UNEXPECTED_CALL_MSG( "Instanced draw has no node indirection index" );
             }
             package.pushConstantsCmd()._uniformData->set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, indirectionIndex );
         }

@@ -554,7 +554,7 @@ namespace Divide
                 }
                 else
                 {
-                    DIVIDE_UNEXPECTED_CALL_MSG( "Editor::Platform_CreateWindow failed!" );
+                    DIVIDE_ASSERT( false, "Editor::Platform_CreateWindow failed!" );
                     g_windowManager->destroyWindow( newWindow );
                 }
             }
@@ -601,7 +601,7 @@ namespace Divide
                 const int2 pos = data->_window->getPosition();
                 return ImVec2( (F32)pos.x, (F32)pos.y );
             }
-            DIVIDE_UNEXPECTED_CALL_MSG( "Editor::Platform_GetWindowPos failed!" );
+            DIVIDE_ASSERT( false, "Editor::Platform_GetWindowPos failed!" );
             return {};
         };
 
@@ -612,7 +612,7 @@ namespace Divide
                 const vec2<U16> dim = data->_window->getDimensions();
                 return ImVec2( (F32)dim.width, (F32)dim.height );
             }
-            DIVIDE_UNEXPECTED_CALL_MSG( "Editor::Platform_GetWindowSize failed!" );
+            DIVIDE_ASSERT( false, "Editor::Platform_GetWindowSize failed!" );
             return {};
         };
 
@@ -622,7 +622,7 @@ namespace Divide
             {
                 return data->_window->hasFocus();
             }
-            DIVIDE_UNEXPECTED_CALL_MSG( "Editor::Platform_GetWindowFocus failed!" );
+            DIVIDE_ASSERT( false, "Editor::Platform_GetWindowFocus failed!" );
             return false;
         };
 

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 DIVIDE-Studio
 #include "UnitTests/unitTestCommon.h"
 
 #include "Platform/File/Headers/FileManagement.h"
@@ -30,6 +31,49 @@ TEST_CASE( "Path Existence Check" "[file_management]" )
 
     CHECK_TRUE(Divide::pathExists(Divide::Paths::g_assetsLocation));
     CHECK_FALSE(Divide::pathExists(invalidPath));
+}
+
+TEST_CASE( "Creating files preserves existing contents unless overwrite is requested", "[file_management]" )
+{
+    platformInitRunListener::PlatformInit();
+    const auto suffix = std::chrono::steady_clock::now().time_since_epoch().count();
+    const std::filesystem::path directory = std::filesystem::temp_directory_path() /
+                                            ( "divide-create-file-" + std::to_string( suffix ) );
+    REQUIRE( std::filesystem::create_directory( directory ) );
+    SCOPE_EXIT
+    {
+        std::error_code error;
+        std::filesystem::remove( directory / "nested" / "file.txt", error );
+        std::filesystem::remove( directory / "nested", error );
+        std::filesystem::remove( directory / "blocker", error );
+        std::filesystem::remove( directory, error );
+    };
+
+    const std::filesystem::path file = directory / "nested" / "file.txt";
+    const ResourcePath filePath{ file.string() };
+    REQUIRE( createFile( filePath, false ) );
+    REQUIRE( std::filesystem::is_regular_file( file ) );
+    {
+        std::ofstream output{ file };
+        output << "preserve";
+        REQUIRE( output.good() );
+    }
+    REQUIRE( createFile( filePath, false ) );
+    {
+        std::ifstream input{ file };
+        std::string contents;
+        input >> contents;
+        CHECK( contents == "preserve" );
+    }
+    REQUIRE( createFile( filePath, true ) );
+    CHECK( std::filesystem::file_size( file ) == 0u );
+
+    const std::filesystem::path blocker = directory / "blocker";
+    {
+        std::ofstream output{ blocker };
+        REQUIRE( output.good() );
+    }
+    CHECK_FALSE( createFile( ResourcePath{ ( blocker / "file.txt" ).string() }, false ) );
 }
 
 TEST_CASE( "Extension Check" "[file_management]" )

@@ -1,5 +1,4 @@
-
-
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/XMLParser.h"
 
 #include "Core/Headers/Configuration.h"
@@ -47,10 +46,7 @@ namespace detail
                 backupReturnCode != FileError::FILE_NOT_FOUND &&
                 backupReturnCode != FileError::FILE_EMPTY)
             {
-                if constexpr(!Config::Build::IS_SHIPPING_BUILD)
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                Console::errorfn("Failed to restore XML backup for '{}': {}", loadPath, Names::fileError[to_base(backupReturnCode)]);
             }
         }
 
@@ -87,12 +83,12 @@ namespace detail
                 backupReturnCode != FileError::FILE_NOT_FOUND &&
                 backupReturnCode != FileError::FILE_EMPTY)
             {
-                    DIVIDE_UNEXPECTED_CALL();
+                Console::errorfn("Failed to back up XML file '{}': {}", savePath, Names::fileError[to_base(backupReturnCode)]);
             }
         }
         else if (!createFile(savePath, true))
         {
-            DIVIDE_UNEXPECTED_CALL();
+            return false;
         }
 
         try

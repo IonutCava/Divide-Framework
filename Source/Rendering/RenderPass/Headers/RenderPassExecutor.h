@@ -100,9 +100,9 @@ public:
             const size_t count = commands.size();
             commands.clear();
             record( 0u );
-            if ( !DIVIDE_ASSERT( commands.size() == count, "Indirect commands changed during preparation" ) )
+            if ( commands.size() != count )
             {
-                std::terminate();
+                DIVIDE_UNEXPECTED_CALL_MSG( "Indirect commands changed during preparation" );
             }
             return 0u;
         }
@@ -159,10 +159,9 @@ public:
 
         [[nodiscard]] Allocation acquire( const U16 passIndex, const U32 commandCount ) noexcept
         {
-            if ( !DIVIDE_ASSERT( _frameStarted && passIndex < _passUses.size(),
-                                 "Invalid indirect command pass or missing frame preparation" ) )
+            if ( !_frameStarted || passIndex >= _passUses.size() )
             {
-                std::terminate();
+                DIVIDE_UNEXPECTED_CALL_MSG( "Invalid indirect command pass or missing frame preparation" );
             }
             const bool overflow = commandCount > Config::MAX_VISIBLE_NODES;
             return { overflow ? _overflowUses++ : _passUses[passIndex]++, _slots.queueIndex(), overflow };

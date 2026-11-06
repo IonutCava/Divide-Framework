@@ -17,6 +17,18 @@ Source paths below and in the guides are relative to the repository root.
 | [Threading](threading.md) | `PlatformContext`, task pools, render preparation, resource synchronization, Vulkan queue usage |
 | [Networking](networking.md) | `Client`, `Connection`; context ownership, heartbeat cancellation and loopback test initialization |
 
+## Assertions and fatal calls
+
+`Source/Platform/Headers/PlatformDefines.h` routes assertions through
+`Assert::Callback`, which may continue after a Debug assertion. The
+`DIVIDE_UNEXPECTED_CALL` and `DIVIDE_UNEXPECTED_CALL_MSG` macros instead report
+the source and message, flush the console when available, and abort in every
+build even when assertions can continue. They do not perform normal shutdown.
+Expected-call and GPU-validation macros retain their existing assertion and
+validation-gating behavior. Use a recoverable assertion or explicit error
+return when a fallback is intended; changing the unexpected-call contract
+affects all its callers.
+
 ## Debugging routes
 
 - Both GL and Vulkan fail: start in shared `GFXDevice`, `ShaderProgram`, `RenderPassExecutor`, and descriptor setup.
