@@ -21,7 +21,9 @@ and driver work and are not GPU execution times.
 
 ## Vulkan capabilities
 
-Device extension/feature notes below were checked in `vkDevice.cpp` at commit `1508b95`; recheck on later branches.
+Device extension/feature notes below were checked in `VKDevice::VKDevice` at
+commit `6b0a49883`; recheck when device selection changes. This source review
+does not establish runtime support on other devices.
 
 Commit `7b09ed5` raises the minimum supported version to Vulkan 1.4: device selection unconditionally requires `maintenance5`, `maintenance6`, and `pushDescriptor`, with no 1.3 retry. VMA also uses Vulkan API version 1.4.
 
@@ -96,6 +98,14 @@ nonempty allocator, so leaked allocation names are available even if VMA asserts
 VMA's routine call trace is disabled by default. Set
 `debug.renderer.enableVMADebugLogging` in `XML/config.xml` before Vulkan
 initialization to enable it; this does not disable VMA assertions or leak reports.
+
+At commit `6b0a49883`, `VMABuffer`, `AllocatedImage`, cached image views and
+samplers retire through `VK_API::RegisterCustomAPIDelete(..., true)`. Shader-reload
+pipelines use the same transient queue, whose entries are delayed by
+`MAX_FRAMES_IN_FLIGHT + 1`; pipeline-cache teardown instead destroys pipelines
+directly after requesting device idle. Other deletes may use the device queue.
+Do not assume every Vulkan resource follows the transient timer or treat it as
+a substitute for establishing completion for new resource pools.
 
 - `vkBufferImpl` generally prefers device-local memory. Frequently updated buffers request persistent mapping; initial uploads temporarily map host-visible allocations when host access was requested. Initial and post-creation writes flush non-coherent mapped ranges before GPU use.
 - Non-mappable buffers and initial allocations without VMA host-access flags use staging allocations and explicit transfer commands. Initial and later staged writes flush the staging range before the transfer. Inspect mapping assumptions, staging lifetime, copies, and synchronization separately.

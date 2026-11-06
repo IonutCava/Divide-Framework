@@ -34,7 +34,7 @@ unrelated work. The original no-commit instruction was subsequently replaced by
 explicit authorization to commit and push renderer fixes first, followed by a
 standalone harness commit.
 
-The inspected logs contain:
+At planning time, the inspected logs contained:
 
 - `VUID-vkCmdBeginRendering-pRenderingInfo-09589`: a depth resolve image is tracked as read-only where attachment layout is required.
 - `VUID-vkCmdBeginRendering-pRenderingInfo-09593`: a colour resolve image has the corresponding mismatch.
@@ -47,14 +47,18 @@ Relevant integration points:
 - `Source\Platform\Video\RenderBackend\Vulkan\VKWrapper.cpp`: debug callback, message filters, validation-layer and synchronization-validation setup.
 - `Source\Platform\Video\RenderBackend\Vulkan\vkSwapChain.cpp`: queue submission and actual presentation results.
 - `Source\Core\Kernel.cpp`: command-line options, scene startup, warmup and frame lifecycle.
-- `Source\Core\Application.cpp`: shutdown and profiler state changes; profiling currently can disable API debugging.
-- `Source\Core\Console.cpp`: buffered logging and flushing; the callback currently toggles shared console flags.
+- `Source\Core\Application.cpp`: shutdown and profiler state changes; profiling could disable API debugging.
+- `Source\Core\Console.cpp`: buffered logging and flushing. The callback formerly toggled shared flags; it now uses thread-local `Console::ScopedFlags`.
 - `Source\EngineMain.cpp` and `Source\Executable\main.cpp`: application result and process exit-code propagation.
 - `Source\UnitTests\Test-Engine\RendererTests.cpp`: existing engine regression tests.
 
-MSVC is installed at `C:\Program Files\Microsoft Visual Studio\18\Insiders`. Its x64 developer environment provides MSVC 19.51, CMake/CTest 4.3.1 and Ninja 1.13.2. WinDbg 1.2610.1001.0 is installed; its bundled x64 CDB passed a scripted stack-capture check, although it is not on PATH. Resolve its location from the installed package rather than hard-coding the versioned WindowsApps path.
+At planning time, MSVC was installed at `C:\Program Files\Microsoft Visual Studio\18\Insiders`. Its x64 developer environment provided MSVC 19.51, CMake/CTest 4.3.1 and Ninja 1.13.2. WinDbg 1.2610.1001.0 was installed; its bundled x64 CDB passed a scripted stack-capture check, although it was not on PATH. Resolve its location from the installed package rather than hard-coding the versioned WindowsApps path.
 
-The local machine reports Windows 11 and an AMD Radeon RX 9070 XT. Vulkan SDK 1.4.363.0 includes the Khronos validation manifest and DLL; activation during the renderer run still needs verification. Radeon GPU Detective 1.6.3.7, the Radeon Developer Panel, and RenderDoc 1.47 are installed. RenderDoc's Vulkan layer reports that it is registered.
+The planning inventory recorded Windows 11 and an AMD Radeon RX 9070 XT. Vulkan
+SDK 1.4.363.0 included the Khronos validation manifest and DLL, but activation
+during a renderer run had not yet been verified. Radeon GPU Detective 1.6.3.7,
+the Radeon Developer Panel and RenderDoc 1.47 were installed; RenderDoc's Vulkan
+layer was registered.
 
 ## Design
 
@@ -218,4 +222,9 @@ to the subsequent comparison task.
 
 ## Review boundary
 
-This plan describes a manually invoked local harness plus an agent repair procedure, not a cloud workflow or a group of background agents. The user authorized implementation and protected local GPU runs; it does not authorize unattended installation, scheduled tasks, TDR changes, commits, or pushes.
+This plan describes a manually invoked local harness plus an agent repair
+procedure, not a cloud workflow or a group of background agents. Its initial
+approval covered implementation and protected local GPU runs, not unattended
+installation, scheduled tasks, TDR changes, commits, or pushes. The user later
+explicitly authorized specific commits and pushes as described above; this
+historical plan is not authorization for future actions.
