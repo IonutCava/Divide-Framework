@@ -42,50 +42,55 @@
 - Moving lights are non-deterministic, so object colours can legitimately differ between captures/frames. Visual comparisons must tolerate this; correctness checks focus on geometry presence, culling, shadows and validation errors, not exact pixels.
 - Culling must stay correct: optimizations must not "win" by over-culling. Track visible-node counts per stage, HiZ-culled counts and light-cluster counts in the baseline, and compare them after every change.
 - Primary target: **Debug instrumented editor** (`windows-msvc-debug-editor-instrumentation`), WarScene.
-  - Debug: â‰¤ 33 ms (30 FPS) on both backends. Release/profile: < 16.6 ms (> 60 FPS).
+  - Debug: ≤ 33 ms (30 FPS) on both backends. Release/profile: < 16.6 ms (> 60 FPS).
   - Vulkan must be at least on par with, ideally faster than, OpenGL.
 - Baseline (Optick CPU wall-clock medians): GL Debug 181 ms / Release ~76 ms; VK Debug 517 ms / Release ~411 ms (validation ON).
 - Vulkan perf measured with **validation OFF**; validation-ON runs are correctness gates only.
 - Default Vulkan MSAA shading follows OpenGL's per-pixel behavior, as explicitly requested; preserve cross-backend visual parity.
 - Keep SceneGraphNode and RenderStage. Targeted rewrites of the command-buffer API are allowed where they help batching/submission.
-- Tests mostly at the end, except for high-risk changes (scheduler, geometry pool, bindless).
+- New engine functionality requires Catch2 coverage; Phase 5 collects final
+  validation rather than delaying tests for new behavior.
 - Existing code/architecture is a guide, not proven design: unusual choices may be plain mistakes. Question them, fix or replace freely when measurements or correctness justify it, and note any bugs found along the way.
 
 ## Key findings driving the plan
-1. **Stage chain is the CPU critical path.** Kernel.cpp declares SHADOW â†’ {REFLECTION, REFRACTION} â†’ {DISPLAY, NODE_PREVIEW}. Main thread spends ~50 ms in `TaskPool::wait`. Stage tasks only *append* command buffers to the window queue; translation runs serially on the main thread in `GFXDevice::flushWindow`. Much of the chain enforces submission order, not data order.
+
+These are initial observations, before the completed work in the status
+checklist below. Later measurements and fixes supersede some of the conclusions.
+
+1. **Stage chain is the CPU critical path.** Kernel.cpp declares SHADOW → {REFLECTION, REFRACTION} → {DISPLAY, NODE_PREVIEW}. Main thread spends ~50 ms in `TaskPool::wait`. Stage tasks only *append* command buffers to the window queue; translation runs serially on the main thread in `GFXDevice::flushWindow`. Much of the chain enforces submission order, not data order.
 2. **Real CPU data dependencies** between stages: `LightPool::generateShadowMaps` writes `_shadowBufferData`/`s_shadowBuffer` (consumed by later stages via GPU only); `sortLightData` per stage; shared static executor buffers (`s_materialBuffer`, `s_transformBuffer`, `s_indirectionBuffer`); env-probe refresh in REFLECTION; reflector budgets. These must be audited before parallel recording.
-3. **Vulkan is validation-dominated** (single vkQueueSubmit ~160 ms; ~12 Âµs per indirect draw) â†’ first measure validation-off.
-4. **Per-draw state cost**: ~6.2kâ€“7.8k draws, ~6.8k push-descriptor updates, ~7.3kâ€“8.9k `bindShaderResources`, ~10.2k `ShaderBuffer::writeBytes` + `LockManager::waitForLockedRange`, ~1.8k pipeline binds, ~1.27k VB/IB binds, ~1055 compute dispatches, 296 barrier calls. Indirect batching only merges consecutive draws with identical buffers/state/push constants.
-5. Shader stubbing had negligible effect â†’ CPU/driver bound.
+3. **Vulkan is validation-dominated** (single vkQueueSubmit ~160 ms; ~12 µs per indirect draw) → first measure validation-off.
+4. **Per-draw state cost**: ~6.2k–7.8k draws, ~6.8k push-descriptor updates, ~7.3k–8.9k `bindShaderResources`, ~10.2k `ShaderBuffer::writeBytes` + `LockManager::waitForLockedRange`, ~1.8k pipeline binds, ~1.27k VB/IB binds, ~1055 compute dispatches, 296 barrier calls. Indirect batching only merges consecutive draws with identical buffers/state/push constants.
+5. Shader stubbing had negligible effect → CPU/driver bound.
 6. Workers show large uninstrumented time inside `runTask`; the external parser only reports top exclusive scopes, so per-stage inclusive costs are invisible.
 7. Suspected `RenderQueue::sort` parent-task allocation leak (unconfirmed).
 8. EASTL already in vcpkg.json and partially used.
 
 ## Phases
 
-### Phase 0 â€” Measurement foundation (do first; everything else is judged against it)
+### Phase 0 — Measurement foundation (do first; everything else is judged against it)
 - **p0-harness-perf-mode**: add opt-in Vulkan validation-off perf mode to `Tools\FrameworkSmokeTest.ps1` (default stays validation-on); support both backends selecting API without silently editing config.xml (explicit flag).
 - **p0-parser**: extend Optick summary parser (kept in `Tools/` or session files, not as a test harness) to report inclusive time per scope, per thread, per frame call counts, and per-RenderStage inclusive times.
 - **p0-scopes**: add missing Optick scopes: per-stage inclusive (`RenderPass::render` per stage), `RenderPassExecutor::doCustomPass` sub-phases (prepareRenderQueues, sort, buildDrawCommands, PrepareGPUBuffers, pre/main/OIT/transparent), `flushCommandBufferInternal` per command type, `CommandBuffer::batch/clean`.
-- **p0-baseline**: capture Debug + Release on GL and VK (validation off and on) from the fixed reference camera â†’ `baseline.md` in session files with per-stage and per-command tables plus workload counters (visible nodes per stage, HiZ-culled, draws, active and shadow-casting lights). Also verify that HiZ culling and light culling are actually working; a broken cull is both a bug and a perf issue. Re-run this matrix after every phase.
+- **p0-baseline**: capture Debug + Release on GL and VK (validation off and on) from the fixed reference camera → `baseline.md` in session files with per-stage and per-command tables plus workload counters (visible nodes per stage, HiZ-culled, draws, active and shadow-casting lights). Also verify that HiZ culling and light culling are actually working; a broken cull is both a bug and a perf issue. Re-run this matrix after every phase.
 
-### Phase 1 â€” Critical path / scheduling (largest expected Debug win)
+### Phase 1 — Critical path / scheduling (largest expected Debug win)
 - **p1-prototype**: build, run, measure the ready-only scheduler prototype (`RenderStageSchedule.h`, `RenderPassManager`); check worker starvation; keep only if it helps.
 - **p1-data-deps-audit**: document every CPU-side cross-stage dependency (light sorting, shadow data, static executor buffers, probe pool, reflector budgets, `s_Nodes`, `PrepareGPUBuffers/FlushBuffersToGPU`) and make shared state per-stage or pre-computed before stage tasks start (e.g. move `sortLightData` / shadow matrix computation into a pre-pass on main/worker before recording).
-- **p1-ordered-slots**: pre-reserve ordered per-stage (per-pass) submission slots in the window CommandBufferQueue so stages record in parallel and submission order is preserved. Remove ordering-only edges from Kernel.cpp dependencies. (High risk â†’ Catch2 tests for slot ordering.)
+- **p1-ordered-slots**: pre-reserve ordered per-stage (per-pass) submission slots in the window CommandBufferQueue so stages record in parallel and submission order is preserved. Remove ordering-only edges from Kernel.cpp dependencies. (High risk → Catch2 tests for slot ordering.)
 - **p1-split-shadows**: split shadow stage per light/cascade, and reflection/refraction per probe/reflector, into parallel subtasks writing into their own slots.
 - **p1-sort-leak**: confirm/fix `RenderQueue::sort` task allocation leak.
 
-### Phase 2 â€” Command buffer system and main-thread translation
+### Phase 2 — Command buffer system and main-thread translation
 - **p2-cmdbuf-assess**: profile `CommandBuffer::batch()`/`clean()` and command storage (allocations, polymorphic commands, per-command vectors). Decide fix/remove from data.
 - **p2-cmdbuf-rewrite**: targeted rewrite of hot command paths: arena/linear-allocated command storage reused across frames, fewer per-command heap allocs, merge-friendly draw representation (multi-draw command carrying a range of indirect records).
 - **p2-parallel-translate**: translate per-slot command buffers to API commands in parallel. Vulkan: per-slot secondary command buffers (or separate primaries) recorded on workers with per-thread command pools and state trackers; GL: keep serial translation but cheaper. (High risk.)
 - **p2-submit-batching**: Vulkan: single submit per frame with batched barriers (`vkCmdPipelineBarrier2` coalescing in vkTexture/VKWrapper), reuse command buffers, avoid per-frame begin cost.
 
-### Phase 3 â€” Draw/state batching
+### Phase 3 — Draw/state batching
 - **p3-buffer-writes**: coalesce the ~10k `ShaderBuffer::writeBytes`/`waitForLockedRange` calls into per-frame bulk writes (one range lock per buffer per frame; persistent mapped ring).
-- **p3-bindless**: full bindless on both backends behind a simple command-buffer-facing interface (texture/sampler handles stored in material data; one global descriptor set). Vulkan: descriptor indexing, evaluate `VK_EXT_descriptor_buffer`; GL: existing bindless residency, batched `makeTextureViewResident`. Remove per-draw push descriptors for material textures. (High risk â†’ tests for handle allocation/lifetime/deferred free.)
-- **p3-geometry-pool**: shared vertex/index pools keyed by vertex layout + index width with suballocation (firstIndex/baseVertex), GPU-completion-safe free via existing deferred deletion; migrate static meshes, then dynamic. Audit `DrawIndex` semantics. (High risk â†’ tests for allocator.)
+- **p3-bindless**: full bindless on both backends behind a simple command-buffer-facing interface (texture/sampler handles stored in material data; one global descriptor set). Vulkan: descriptor indexing, evaluate `VK_EXT_descriptor_buffer`; GL: existing bindless residency, batched `makeTextureViewResident`. Remove per-draw push descriptors for material textures. (High risk → tests for handle allocation/lifetime/deferred free.)
+- **p3-geometry-pool**: shared vertex/index pools keyed by vertex layout + index width with suballocation (firstIndex/baseVertex), GPU-completion-safe free via existing deferred deletion; migrate static meshes, then dynamic. Audit `DrawIndex` semantics. (High risk → tests for allocator.)
 - **p3-mdi**: once state is uniform (bindless + pooled geometry + per-draw data via indirection buffer instead of push constants), emit one multi-draw-indirect per (pipeline, pool) bucket; adjust sort keys to maximise bucket length.
 - **p3-dispatch-audit**: explain the ~1055 compute dispatches per frame (HiZ per pass, culling, blur, grass/foliage, PostFX). Merge or skip redundant ones, e.g. a single-pass HiZ downsample or one shared culling dispatch per stage.
 - **p3-feature-costs**: per-feature cost breakdown for terrain, grass/trees (instancing path), water (reflection/refraction passes), sky, PostFX and the MSAA resolve. Cut redundant passes, such as reflection/refraction re-rendering heavy vegetation or terrain at full detail.
@@ -94,20 +99,22 @@
 - **p3-gpu-culling-count**: where HiZ culling already runs on GPU, write compacted indirect args + draw count and use DrawIndirectCount on both backends (removes CPU-side per-draw work).
 - **p3-shadow-caching**: cache shadow maps for static casters and unmoved lights. **Staggered updates are allowed:** distant CSM cascades, point/spot shadows of far lights, environment probes and planar/cube reflection/refraction targets may refresh at half rate (or round-robin across frames), with near cascades and the main view kept per-frame. Make the rates configurable per feature (e.g. in config.xml/scene settings) and expose a "force every frame" debug toggle. Use low-detail scene lists for reflection/refraction passes. Make sure staggered targets stay consistent: matrices stored with the map, and no sampling of half-written layers.
 
-### Phase 4 â€” Debug-build CPU cost
+### Phase 4 — Debug-build CPU cost
 - **p4-debug-profile**: identify Debug-only hot spots (STL debug iterators, non-inlined helpers) from Phase 0 data.
 - **p4-containers**: migrate hot-path containers to EASTL/custom containers with custom (arena/frame) allocators: render queues, command buffers, draw lists, visible-node lists.
 - **p4-inlining**: enable selective inlining (/Ob1) for engine Debug or force-inline hot helpers; change `_ITERATOR_DEBUG_LEVEL` only if proven necessary and compatible with vcpkg deps.
 
-### Phase 5 â€” Validation, tests, docs
+### Phase 5 — Validation, tests, docs
 - **p5-tests**: Catch2 tests for scheduler slots, geometry pool allocator, bindless handle allocator, command buffer changes.
 - **p5-acceptance**: harness 300-present acceptance on both backends with validation ON; perf matrix with validation OFF; RGP capture for GPU-side bottlenecks once CPU < 33 ms.
 - **p5-docs**: update docs/architecture (rendering, threading, gpu-resources, shader-descriptors), AGENTS.md as needed; decision records for bindless and geometry pooling in docs/decisions/.
 
 ## Risks / notes
-- Parallel recording + parallel Vulkan translation touch global state trackers â†’ highest risk; gated behind measured wins and tests.
-- Bindless changes shader descriptor layouts â†’ shader cache invalidation via AppendToShaderHeader / preprocessing version bump.
-- Vulkan lifetime rule: all resource destruction deferred MAX_FRAMES_IN_FLIGHT+1 frames; pools must respect it.
+- Parallel recording + parallel Vulkan translation touch global state trackers → highest risk; gated behind measured wins and tests.
+- Bindless changes shader descriptor layouts → shader cache invalidation via AppendToShaderHeader / preprocessing version bump.
+- Vulkan buffer, image, view and sampler retirement and shader-reload pipelines
+  use transient deferred deletion; pipeline-cache teardown is different. New
+  pools need a GPU-completion proof; see [GPU resources](../architecture/gpu-resources.md#vulkan-memory).
 - No commits/pushes without explicit request.
 
 ## Optional tooling (for user to review/install)
@@ -123,7 +130,7 @@
 - [x] p0-parser — `Tools/Profiling/optick_capture.py` (CPU capture from a running smoke attempt) and `Tools/Profiling/optick_summary.py` (frame stats, per-thread-group self/inclusive tables, per-stage record/submit tables, `--json`). Documented in `docs/architecture/rendering.md` (Performance diagnosis).
 - [x] p0-callers — The Optick summary supports repeatable `--callers` filters and reports immediate parent scopes and call counts in text and JSON.
 - [x] p0-scopes — most scopes already existed (per-command types, batch/clean, doCustomPass phases). Added `PROFILE_SCOPE_DYNAMIC` plus `Record stage: <STAGE>` (RenderPassManager stage task) and `Submit: <buffer>` (GFXDevice::flushWindow) scopes.
-- [x] p0-baseline — Debug/Release perf mode captured on both backends (see Findings). Harness gained `-Configuration Debug|Release` (Release restricted to `-PerfMode`). The backend switch now overrides the configured API in memory for OpenGL too. Workload counters (per-stage draws/bin items, HiZ culled/overflow/skipped) and per-pass GPU times are logged as `[PerfMetrics]`. HiZ culling is active (~1000 items culled, 58 overflow). Clustered light culling is dispatched every pass. Validation-on runs are deferred to p5-acceptance (correctness gate only).
+- [x] p0-baseline — Debug/Release perf mode captured on both backends (see Findings). Harness gained `-Configuration Debug|Release` (Release restricted to `-PerfMode`). The backend switch now overrides the configured API in memory for OpenGL too. Workload counters (per-stage draws/bin items, HiZ culled/overflow/skipped) and per-pass GPU times are logged as `[PerfMetrics]`. HiZ culling is active (~1000 items culled, 58 overflow). Clustered light culling is dispatched every pass. Validation-on acceptance was subsequently run as a correctness gate; see the stabilization checkpoint.
 - [x] p0-gpu-timers (new) — Frame GPU time on both backends (VK timestamp pool per frame slot; GL fixed `RingBufferSeparateWrite` precedence bug and query ring writing ahead of the read slot). Per-command-buffer GPU timestamps (`writePassTimestamp`/`readPassTimestamps`, `GPUPassTimingTable`) logged as `[PerfMetrics] gpuPasses`. Pipeline-statistics queries are now opt-in (`queryPipelineStatistics`): on AMD GL they cost about 10x the frame time. Editor panel no longer overrides perf-mode stats.
 - [x] p1-taskpool-wakeups (new, found during baseline) — `TaskPool::runTask` woke waiters with `notify_one()` on a single CV shared by every waiter (main thread, stage tasks, nested `Parallel_For`), so the right waiter often slept the whole 2 ms timeout. Switched to `notify_all()`. Release VK 121→54 ms, Debug VK 217→131 ms; SHADOW record 62→10 ms (Release).
 - [x] p1-prototype — kept; it is now the ready-only recording schedule used by p1-ordered-slots.
@@ -138,11 +145,14 @@
 - [ ] p2-cmdbuf-rewrite
 - [ ] p2-parallel-translate
 - [ ] p2-submit-batching
-- [ ] p3-buffer-writes
+- [ ] p3-buffer-writes — The uniform upload arena reuses immutable snapshots
+  for unchanged data; broader bulk-write work and its measured benefit remain open.
 - [ ] p3-per-draw-uniforms — About 10k `writeBytes` calls/frame originate in uniform-block commits. A fast push-constant experiment made instanced terrain/vegetation disappear on both backends and was reverted; its root cause remains unconfirmed. Keep the existing per-draw uniforms until an alternative passes both image and performance checks.
 - [ ] p3-bindless
 - [ ] p3-geometry-pool
-- [ ] p3-mdi
+- [ ] p3-mdi — Vulkan can batch adjacent compatible, non-instanced indirect
+  draws with the same buffers and state. Full pooled-geometry/bindless batching
+  and OpenGL equivalents remain planned.
 - [ ] p3-dispatch-audit
 - [ ] p3-feature-costs
 - [ ] p3-pipeline-binds
@@ -159,9 +169,12 @@
 - [ ] p4-debug-profile
 - [ ] p4-containers
 - [ ] p4-inlining
-- [ ] p5-tests
-- [ ] p5-acceptance
-- [ ] p5-docs
+- [ ] p5-tests — Existing scheduler and renderer regressions are covered; add
+  tests for any remaining new engine functionality.
+- [ ] p5-acceptance — Both backends passed supervised 301-present acceptance
+  runs, but the performance goals and acceptance of future changes remain open.
+- [ ] p5-docs — Current implementation is documented; update the affected guides
+  alongside any further changes.
 
 ### Stabilization checkpoint
 
@@ -205,6 +218,12 @@ Any replacement must handle indirection indices beyond `MAX_VISIBLE_NODES`,
 avoid render-loop allocation churn, and include concurrent and overflow tests.
 
 ## Findings (perf mode, Vulkan, WarScene, CPU frame median)
+
+The following sections record successive historical captures and experiments.
+Their observations and proposed next steps describe the measured state at the
+time, not necessarily the current implementation; see the status above and the
+[renderer handoff](../../renderer-performance-handoff.md) for the later checkpoint.
+
 Captured with `Tools/Profiling` and the harness `-PerfMode` run (validation off, no debugger); 32-64 frames after present 150.
 
 | Build | Change | Frame ms (median/p95) | Main `TaskPool::wait` | Main translate+submit | Record SHADOW/REFR/REFL/DISPLAY |
@@ -274,7 +293,7 @@ Measured by disabling one render filter at a time:
 
 - Experiment: route grass to the opaque bin instead of W-OIT: 53.09 → 56.36 ms (worse). Reverted.
 - Experiment: route opacity-map materials to the opaque bin: saved only ~0.8 ms. Reverted.
-- **Root cause:** trees cost ~32 ms. `tree.glsl` draws every instance in every pass; the vegetation cull only marks culled instances (`data.z = -1`) and the vertex shader collapses them, so culled instances still pay the full vertex cost (and `meshes` overlaps because tree submeshes are meshes). The fix is GPU instance compaction with GPU-written instance counts (p3-tree-instance-compaction).
+- **Root cause at that baseline:** trees cost ~32 ms. `tree.glsl` drew every instance in every pass; the vegetation cull only marked culled instances (`data.z = -1`) and the vertex shader collapsed them, so culled instances still paid the full vertex cost (and `meshes` overlaps because tree submeshes are meshes). GPU instance compaction with GPU-written instance counts was subsequently implemented (p3-tree-instance-compaction).
 
 ### Tree compaction results (Release, perf mode)
 | Backend | CPU frame (median/p95) | GPU frame | DISPLAY | SHADOW | REFLECTION | REFRACTION |

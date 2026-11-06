@@ -1,5 +1,7 @@
 # Third-party dependencies
 
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
+
 `vcpkg.json` manages many dependencies that receive ongoing fixes and updates.
 Some larger dependencies are fetched through CMake. Small, infrequently changing
 libraries may instead be vendored in `Source/ThirdParty` when their licenses

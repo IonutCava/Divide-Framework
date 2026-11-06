@@ -309,7 +309,7 @@ repair budget without overwriting the successful evidence.
 - `DISPLAY` and `NODE_PREVIEW` depend on both `REFLECTION` and `REFRACTION`,
   for both submission and recording.
 
-`RenderManager::setRenderPass(stage, dependencies, recordingDependencies)` takes
+`RenderPassManager::setRenderPass(stage, dependencies, recordingDependencies)` takes
 two lists:
 
 - `dependencies` sets the GPU submission order.
@@ -402,12 +402,15 @@ surface.
 
 `RenderPassExecutor` compacts scene data into buffers for transforms, materials, indirection, and indirect draw commands. Relevant data structures include `NodeTransformData`, `NodeMaterialData`, and `NodeIndirectionData`.
 
-Instanced nodes use the `INDIRECT_DATA_IDX` push constant; ordinary draws use
-`baseInstance - 1` for the indirection index. `RenderingComponent` considers the
-scene-node instance count before material readiness and also detects instancing
-when commands are built. Command collection and subsequent pass-package
-initialization both retain the component's actual indirection index; a new
-prepass, transparency, or OIT package must not replace it with a placeholder.
+Instanced nodes set the `INDIRECT_DATA_IDX` loose uniform through the render
+package's `pushConstantsCmd()._uniformData`; preprocessing packs it into a
+per-draw uniform block, not the `PushData0`/`PushData1` fast constants. Ordinary
+draws use `baseInstance - 1` for the indirection index. `RenderingComponent`
+considers the scene-node instance count before material readiness and also
+detects instancing when commands are built. Command collection and subsequent
+pass-package initialization both retain the component's actual indirection
+index; a new prepass, transparency, or OIT package must not replace it with a
+placeholder.
 Shader-defining changes defer drawing until the scene
 update invalidates the old shader and the replacement is ready. A shader
 discovered to be pending during preparation also keeps shadow casters dirty,
@@ -610,7 +613,13 @@ spot shadow camera does not cover all illumination from wider cones.
 
 ### Vegetation culling data
 
-Vegetation instance buffers are partitioned by terrain chunk, with fixed-capacity slots per chunk and separate active instance counts. Compute culling must check the active count before indexing a chunk's slots. Tree culling stores a negative `data.z` sentinel for hidden instances and positive integer-valued LOD flags for visible ones; the tree vertex shader must test the sentinel before converting the value to `uint`. LOD 3 is reserved by the vertex shader for the culled fallback.
+Vegetation instance buffers are partitioned by terrain chunk, with fixed-capacity
+slots per chunk and separate active instance counts. Compute culling must check
+the active count before indexing a chunk's slots. Tree culling compacts visible
+instances with positive integer-valued LOD flags and marks the unused draw-buffer
+tail with a negative `data.z` sentinel for the full-count fallback. The tree
+vertex shader tests the sentinel before converting it to `uint`; LOD 3 is
+reserved for that culled fallback.
 
 Tree mesh draws use separate child `RenderingComponent` packages per species.
 Each child binds its own instance buffer and supplies `dvd_instanceDataIndex`

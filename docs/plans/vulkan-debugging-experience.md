@@ -2,9 +2,9 @@
 
 <!-- Copyright (c) 2026 DIVIDE-Studio -->
 
-This is an untracked working account for a potential X post, not a claim that
-the renderer is fully validated. The facts below describe a local Windows run
-on an AMD Radeon RX 9070 XT using the MSVC Debug editor build.
+This historical account was drafted for a potential X post; it does not claim
+that the renderer is fully validated. The facts below describe a local Windows
+run on an AMD Radeon RX 9070 XT using the MSVC Debug editor build.
 
 ## The problem
 
