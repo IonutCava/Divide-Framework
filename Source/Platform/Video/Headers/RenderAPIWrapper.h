@@ -93,6 +93,29 @@ struct VideoModes {
 /// Queries are expensive, so this result MAY BE SEVERAL frames out of date!
 struct PerformanceMetrics
 {
+    PerformanceMetrics() = default;
+    PerformanceMetrics( const PerformanceMetrics& other ) noexcept
+    {
+        *this = other;
+    }
+
+    PerformanceMetrics& operator=( const PerformanceMetrics& other ) noexcept
+    {
+        _gpuTimeInMS = other._gpuTimeInMS;
+        _verticesSubmitted = other._verticesSubmitted;
+        _primitivesGenerated = other._primitivesGenerated;
+        _tessellationPatches = other._tessellationPatches;
+        _tessellationInvocations = other._tessellationInvocations;
+        _generatedRenderTargetCount = other._generatedRenderTargetCount;
+        _queuedGPUFrames = other._queuedGPUFrames;
+        std::copy( std::begin( other._syncObjectsInFlight ), std::end( other._syncObjectsInFlight ), std::begin( _syncObjectsInFlight ) );
+        std::copy( std::begin( other._scratchBufferQueueUsage ), std::end( other._scratchBufferQueueUsage ), std::begin( _scratchBufferQueueUsage ) );
+        _uniformBufferVRAMUsage = other._uniformBufferVRAMUsage;
+        _bufferVRAMUsage.store( other._bufferVRAMUsage.load( std::memory_order_relaxed ), std::memory_order_relaxed );
+        _gpuBufferCount.store( other._gpuBufferCount.load( std::memory_order_relaxed ), std::memory_order_relaxed );
+        return *this;
+    }
+
     F32 _gpuTimeInMS{ 0.f };
     /// Returns the time in milliseconds that it took to render one frame
     U64 _verticesSubmitted{ 0u };
@@ -113,9 +136,9 @@ struct PerformanceMetrics
     /// Total retained bytes allocated for shader uniform upload pages
     size_t _uniformBufferVRAMUsage{0u};
     /// Total VRAM usage for all shader buffers
-    size_t _bufferVRAMUsage{ 0u };
+    std::atomic_size_t _bufferVRAMUsage{ 0u };
     /// Total buffers created
-    size_t _gpuBufferCount{ 0u };
+    std::atomic_size_t _gpuBufferCount{ 0u };
 };
 
 struct DeviceInformation

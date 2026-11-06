@@ -405,6 +405,7 @@ namespace Divide
     TEST_CASE( "Material shader inspection preserves the render-ready notification", "[materials][startup]" )
     {
         Material material{ ResourceDescriptor<Material>{ "readiness-test" } };
+        static_cast<void>( material.update( 0u ) );
         const RenderStagePass pass{ RenderStage::DISPLAY, RenderPassType::MAIN_PASS };
         ShaderProgramInfo& info = MaterialTestAccess::Slot( material, pass );
         CHECK( material.computeAndGetProgramHandle( pass ) == INVALID_HANDLE<ShaderProgram> );
@@ -431,6 +432,7 @@ namespace Divide
         platformInitRunListener::PlatformInit();
         const platformInitRunListener::LocalizationScope localization{};
         Material material{ ResourceDescriptor<Material>{ "missing-shader-test" } };
+        static_cast<void>( material.update( 0u ) );
         const RenderStagePass pass{ RenderStage::DISPLAY, RenderPassType::MAIN_PASS };
         ShaderProgramInfo& info = MaterialTestAccess::Slot( material, pass );
         info._shaderCompStage = ShaderBuildStage::COMPUTED;
@@ -439,6 +441,42 @@ namespace Divide
         CHECK_FALSE( material.canDraw( pass, justFinished ) );
         CHECK_FALSE( justFinished );
         CHECK( info._shaderCompStage == ShaderBuildStage::FAILED );
+        CHECK_FALSE( material.shaderPending( pass ) );
+    }
+
+    TEST_CASE( "Material defers a stale shader when instancing changes", "[materials][instancing][startup]" )
+    {
+        Material material{ ResourceDescriptor<Material>{ "instancing-readiness-test" } };
+        static_cast<void>( material.update( 0u ) );
+        const RenderStagePass pass{ RenderStage::SHADOW, RenderPassType::MAIN_PASS };
+        ShaderProgramInfo& info = MaterialTestAccess::Slot( material, pass );
+        info._shaderRef = Handle<ShaderProgram>{ ._generation = 0u, ._index = 0u };
+        SCOPE_EXIT
+        {
+            info._shaderRef = INVALID_HANDLE<ShaderProgram>;
+        };
+        info._shaderCompStage = ShaderBuildStage::READY;
+
+        bool justFinished = true;
+        REQUIRE( material.canDraw( pass, justFinished ) );
+        CHECK_FALSE( material.shaderPending( pass ) );
+
+        material.properties().isInstanced( true );
+        justFinished = true;
+        CHECK_FALSE( material.canDraw( pass, justFinished ) );
+        CHECK_FALSE( justFinished );
+        CHECK( material.shaderPending( pass ) );
+        CHECK( info._shaderCompStage == ShaderBuildStage::READY );
+
+        const U32 update = material.update( 0u );
+        CHECK( (update & to_base( MaterialUpdateResult::NEW_SHADER )) != 0u );
+        CHECK( info._shaderCompStage == ShaderBuildStage::REQUESTED );
+        CHECK( material.shaderPending( pass ) );
+
+        info._shaderCompStage = ShaderBuildStage::COMPUTED;
+        REQUIRE( info.updateReadiness( ResourceState::RES_LOADED, 17 ) == ShaderResourceStatus::READY );
+        CHECK( material.canDraw( pass, justFinished ) );
+        CHECK( justFinished );
         CHECK_FALSE( material.shaderPending( pass ) );
     }
 

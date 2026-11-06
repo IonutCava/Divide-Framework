@@ -32,6 +32,8 @@ namespace Divide {
 
         for (TransformComponent* comp : _componentCache)
         {
+            AdvanceWorldTransformHistory(comp->_world);
+
             // Cleanup our dirty transforms
             const U32 previousMask = comp->_transformUpdatedMask.exchange(to_U32(TransformType::NONE));
             if (previousMask != to_U32(TransformType::NONE))

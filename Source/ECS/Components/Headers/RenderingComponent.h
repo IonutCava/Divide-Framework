@@ -1,6 +1,6 @@
 /*
 Copyright (c) 2018-2026 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -122,7 +122,7 @@ struct RenderCbkParams
 
 using RenderCallback = DELEGATE<bool, RenderCbkParams&, GFX::CommandBuffer&, GFX::MemoryBarrierCommand&>;
 
-using DrawCommandContainer = fixed_vector<IndirectIndexedDrawCommand, Config::MAX_VISIBLE_NODES>;
+using DrawCommandContainer = fixed_vector<IndirectIndexedDrawCommand, Config::MAX_VISIBLE_NODES, true>;
 
 BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     friend class Attorney::RenderingCompRenderPass;
@@ -149,7 +149,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
        struct DrawCommands
        {
            GenericDrawCommandContainer _data;
-           SharedMutex _dataLock;
+           mutable SharedMutex _dataLock;
        };
 
    public:
@@ -190,6 +190,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     inline void setRefractionCallback(const RenderCallback& cbk) { _refractionCallback = cbk; }
 
     [[nodiscard]] bool canDraw(const RenderStagePass& renderStagePass);
+    [[nodiscard]] bool shaderPending(const RenderStagePass& renderStagePass) const;
 
     void drawDebugAxis();
     void drawSelectionGizmo();

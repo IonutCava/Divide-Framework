@@ -27,6 +27,7 @@
 #include "Platform/Video/Headers/BlurPass.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/IMPrimitiveDrawSnapshots.h"
+#include "Platform/Video/Headers/OcclusionCullDispatch.h"
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Platform/Video/Headers/fontstash.h"
 #include "Rendering/PostFX/CustomOperators/Headers/SSAOState.h"
@@ -37,6 +38,7 @@
 #include "Rendering/RenderPass/Headers/RenderBin.h"
 #include "../../../Assets/Shaders/GLSL/Common/ssaoResampling.cmn"
 #include "../../../Assets/Shaders/GLSL/Common/hizConservative.cmn"
+#include "../../../Assets/Shaders/GLSL/Common/hizDispatchIndex.cmn"
 
 #include <bit>
 
@@ -55,6 +57,105 @@ namespace Divide
             }
             Set( data, view, sampler );
         }
+    }
+
+    TEST_CASE( "Hi-Z dispatch covers indirect commands within device limits", "[renderer][occlusion][render_smoke]" )
+    {
+        struct TestCase
+        {
+            U32 _count;
+            U32 _maxX;
+            U32 _maxY;
+            bool _valid;
+            U32 _x;
+            U32 _y;
+        };
+        constexpr std::array cases{
+            TestCase{ 0u, 0u, 0u, true, 0u, 0u },
+            TestCase{ 1u, 0u, 1u, false, 0u, 0u },
+            TestCase{ 1u, 1u, 0u, false, 0u, 0u },
+            TestCase{ 1u, 1u, 1u, true, 1u, 1u },
+            TestCase{ 64u, 1u, 1u, true, 1u, 1u },
+            TestCase{ 65u, 1u, 1u, false, 0u, 0u },
+            TestCase{ 65u, 1u, 2u, true, 1u, 2u },
+            TestCase{ 269u, 3u, 2u, true, 3u, 2u },
+            TestCase{ 4194240u, 65535u, 1u, true, 65535u, 1u },
+            TestCase{ 4194241u, 65535u, 1u, false, 0u, 0u },
+            TestCase{ 4194241u, 65535u, 2u, true, 65535u, 2u },
+            TestCase{ U32_MAX, 65535u, 1024u, false, 0u, 0u },
+            TestCase{ U32_MAX, 65535u, 1025u, true, 65535u, 1025u },
+            TestCase{ U32_MAX, 1u, 67108864u, true, 1u, 67108864u }
+        };
+
+        for ( const TestCase& test : cases )
+        {
+            CAPTURE( test._count, test._maxX, test._maxY );
+            OcclusionCullDispatch dispatch{ 99u, 99u };
+            REQUIRE( TryPlanOcclusionCullDispatch( test._count, test._maxX, test._maxY, dispatch ) == test._valid );
+            CHECK( dispatch._groupsX == test._x );
+            CHECK( dispatch._groupsY == test._y );
+            if ( !test._valid || test._count == 0u )
+            {
+                continue;
+            }
+
+            const U64 required = (to_U64( test._count ) + OCCLUSION_CULL_GROUP_SIZE - 1u) / OCCLUSION_CULL_GROUP_SIZE;
+            CHECK( HIZ_CULL_GROUP_COUNT( test._count, OCCLUSION_CULL_GROUP_SIZE ) == required );
+            const U64 dispatched = to_U64( dispatch._groupsX ) * dispatch._groupsY;
+            CHECK( dispatched >= required );
+            CHECK( dispatched - required < dispatch._groupsX );
+            CHECK( dispatched <= U32_MAX );
+
+            const std::array<U64, 3u> entities{
+                0u, std::min( to_U64( dispatch._groupsX ) * OCCLUSION_CULL_GROUP_SIZE, to_U64( test._count ) - 1u ),
+                to_U64( test._count ) - 1u
+            };
+            for ( const U64 entity : entities )
+            {
+                const U32 group = to_U32( entity / OCCLUSION_CULL_GROUP_SIZE );
+                const U32 lane = to_U32( entity % OCCLUSION_CULL_GROUP_SIZE );
+                const U32 x = group % dispatch._groupsX;
+                const U32 y = group / dispatch._groupsX;
+                REQUIRE( y < dispatch._groupsY );
+                const U32 shaderGroup = HIZ_CULL_GROUP_INDEX( x, y, dispatch._groupsX );
+                CHECK( shaderGroup == group );
+                CHECK( HIZ_CULL_ENTITY_INDEX( shaderGroup, lane, OCCLUSION_CULL_GROUP_SIZE ) == entity );
+            }
+            const U32 lastGroup = HIZ_CULL_GROUP_INDEX( dispatch._groupsX - 1u, dispatch._groupsY - 1u, dispatch._groupsX );
+            CHECK( lastGroup == dispatched - 1u );
+        }
+
+        constexpr U32 count = 269u;
+        OcclusionCullDispatch dispatch{};
+        REQUIRE( TryPlanOcclusionCullDispatch( count, 3u, 2u, dispatch ) );
+        std::array<U8, count> visits{};
+        U32 padding = 0u;
+        for ( U32 y = 0u; y < dispatch._groupsY; ++y )
+        {
+            for ( U32 x = 0u; x < dispatch._groupsX; ++x )
+            {
+                const U32 group = HIZ_CULL_GROUP_INDEX( x, y, dispatch._groupsX );
+                if ( group >= HIZ_CULL_GROUP_COUNT( count, OCCLUSION_CULL_GROUP_SIZE ) )
+                {
+                    padding += OCCLUSION_CULL_GROUP_SIZE;
+                    continue;
+                }
+                for ( U32 lane = 0u; lane < OCCLUSION_CULL_GROUP_SIZE; ++lane )
+                {
+                    const U32 entity = HIZ_CULL_ENTITY_INDEX( group, lane, OCCLUSION_CULL_GROUP_SIZE );
+                    if ( entity >= count )
+                    {
+                        ++padding;
+                    }
+                    else
+                    {
+                        ++visits[entity];
+                    }
+                }
+            }
+        }
+        CHECK( padding == dispatch._groupsX * dispatch._groupsY * OCCLUSION_CULL_GROUP_SIZE - count );
+        CHECK( std::ranges::all_of( visits, []( const U8 visitCount ) { return visitCount == 1u; } ) );
     }
 
     TEST_CASE("Sampled image fallback resolution copies only when needed", "[renderer][descriptors][sampled-images]")
@@ -779,6 +880,35 @@ namespace Divide
                                                         RenderBinType::TRANSLUCENT, true ) );
         CHECK( Params::RequiresMaterialForPreparation( { RenderStage::SHADOW, RenderPassType::PRE_PASS },
                                                         RenderBinType::TRANSLUCENT, true ) );
+    }
+
+    TEST_CASE( "Only nodes with prepared main-pass draws reach later passes", "[renderer][render_queue][startup]" )
+    {
+        VisibleNodeList<VisibleNode, 4u> nodes{};
+        for ( U32 i = 0u; i < 4u; ++i )
+        {
+            VisibleNode node{};
+            node._distanceToCameraSq = to_F32( i );
+            nodes.append( node );
+        }
+
+        CHECK( nodes.node( 0u ).prepareDraw( [] { return true; } ) );
+        CHECK_FALSE( nodes.node( 1u ).prepareDraw( [] { return false; } ) );
+        CHECK( nodes.node( 2u ).prepareDraw( [] { return true; } ) );
+        CHECK( nodes.node( 3u ).prepareDraw( [] { return true; } ) );
+        CHECK_FALSE( nodes.node( 3u ).prepareDraw( [] { return false; } ) );
+
+        nodes.removeIf( []( const VisibleNode& node ) { return !node._drawPrepared; } );
+        REQUIRE( nodes.size() == 2u );
+        CHECK( nodes.node( 0u )._distanceToCameraSq == 0.f );
+        CHECK( nodes.node( 1u )._distanceToCameraSq == 2.f );
+        CHECK( nodes.node( 0u )._drawPrepared );
+        CHECK( nodes.node( 1u )._drawPrepared );
+
+        nodes.removeIf( []( const VisibleNode& ) { return true; } );
+        CHECK( nodes.size() == 0u );
+        nodes.removeIf( []( const VisibleNode& ) { return true; } );
+        CHECK( nodes.size() == 0u );
     }
 
     TEST_CASE( "OIT composition selects the destination and sample-count variant", "[render_smoke][oit]" )
@@ -1748,6 +1878,81 @@ namespace Divide
         CHECK( queued->_uniformData->entries().front()._bindingHash == binding );
     }
 
+    TEST_CASE( "Instanced pass packages keep their node indirection index during initialization", "[renderer][indirection][uniforms]" )
+    {
+        constexpr U32 nodeIndex = 37u;
+        std::array<RenderPackage, 3u> packages;
+        for ( RenderPackage& package : packages )
+        {
+            SetNodeIndirectionIndex( package, true, nodeIndex );
+            const GFX::SendPushConstantsCommand recorded = package.pushConstantsCmd();
+
+            SetNodeIndirectionIndex( package, true, nodeIndex );
+            REQUIRE( recorded._uniformData != nullptr );
+            REQUIRE( recorded._uniformData->entries().size() == 1u );
+            const UniformData::Entry& entry = recorded._uniformData->entries().front();
+            CHECK( entry._bindingHash == _ID( "INDIRECT_DATA_IDX" ) );
+            CHECK( entry._type == PushConstantType::UINT );
+            REQUIRE( entry._range._length == sizeof( U32 ) );
+            U32 stored = U32_MAX;
+            std::memcpy( &stored, recorded._uniformData->data( entry._range._startOffset ), sizeof( stored ) );
+            CHECK( stored == nodeIndex );
+
+            Clear( package );
+            SetNodeIndirectionIndex( package, true, 0u );
+            std::memcpy( &stored, package.pushConstantsCmd()._uniformData->data( entry._range._startOffset ), sizeof( stored ) );
+            CHECK( stored == 0u );
+        }
+
+        RenderPackage ordinary;
+        SetNodeIndirectionIndex( ordinary, false, NodeIndirectionData::INVALID_IDX );
+        CHECK( ordinary.pushConstantsCmd()._uniformData->entries().empty() );
+    }
+
+    TEST_CASE( "Buffer metrics support concurrent allocation accounting and snapshots", "[renderer][threading][metrics]" )
+    {
+        PerformanceMetrics metrics;
+        metrics._gpuTimeInMS = 1.5f;
+        metrics._syncObjectsInFlight[1] = 9u;
+        constexpr size_t threadCount = 8u;
+        constexpr size_t iterations = 4096u;
+        std::array<std::thread, threadCount> workers;
+        for ( size_t worker = 0u; worker < threadCount; ++worker )
+        {
+            workers[worker] = std::thread( [&, worker]
+            {
+                for ( size_t i = 0u; i < iterations; ++i )
+                {
+                    metrics._bufferVRAMUsage += 3u;
+                    metrics._gpuBufferCount = worker + 1u;
+                }
+            } );
+        }
+        for ( std::thread& worker : workers )
+        {
+            worker.join();
+        }
+
+        CHECK( metrics._bufferVRAMUsage.load() == threadCount * iterations * 3u );
+        CHECK( metrics._gpuBufferCount.load() >= 1u );
+        CHECK( metrics._gpuBufferCount.load() <= threadCount );
+
+        const PerformanceMetrics snapshot = metrics;
+        metrics._bufferVRAMUsage -= 3u;
+        metrics._gpuBufferCount = 0u;
+        CHECK( snapshot._bufferVRAMUsage.load() == threadCount * iterations * 3u );
+        CHECK( snapshot._gpuBufferCount.load() >= 1u );
+        CHECK( snapshot._gpuTimeInMS == 1.5f );
+        CHECK( snapshot._syncObjectsInFlight[1] == 9u );
+
+        PerformanceMetrics assigned;
+        assigned = snapshot;
+        CHECK( assigned._bufferVRAMUsage.load() == snapshot._bufferVRAMUsage.load() );
+        CHECK( assigned._gpuBufferCount.load() == snapshot._gpuBufferCount.load() );
+        CHECK( assigned._gpuTimeInMS == snapshot._gpuTimeInMS );
+        CHECK( assigned._syncObjectsInFlight[1] == snapshot._syncObjectsInFlight[1] );
+    }
+
     TEST_CASE( "File texture arrays validate loaded layers against the descriptor", "[render_smoke][texture]" )
     {
         TextureDescriptor descriptor{};
@@ -1926,6 +2131,199 @@ namespace Divide
                 }
             }
         }
+    }
+
+    TEST_CASE( "Indirect command pass snapshots outlast in-flight frames", "[renderer][indirect][frame_lifetime]" )
+    {
+        using Tracker = RenderPassExecutor::IndirectCommandBufferTracker;
+        constexpr size_t slotCount = Tracker::QUEUE_LENGTH;
+        constexpr size_t passCount = 9u;
+        constexpr size_t pageCount = 2u;
+        constexpr size_t playerCount = Config::MAX_LOCAL_PLAYER_COUNT;
+        std::array<Tracker, playerCount> trackers{};
+        std::array<std::array<std::array<std::array<I32, passCount>, slotCount>, pageCount>, playerCount> lastUse{};
+        for ( auto& player : lastUse )
+        {
+            for ( auto& page : player )
+            {
+                for ( auto& slot : page )
+                {
+                    slot.fill( -1 );
+                }
+            }
+        }
+
+        const std::array<U16, 5u> passes{ 2u, 1u, 0u, 8u, 1u };
+        for ( I32 frame = 0; frame < 20; ++frame )
+        {
+            for ( size_t player = 0u; player < playerCount; ++player )
+            {
+                if ( player > 0u && frame % 3 == 1 )
+                {
+                    continue;
+                }
+                Tracker& tracker = trackers[player];
+                tracker.beginFrame();
+                U16 frameSlot = U16_MAX;
+                for ( size_t i = 0u; i < passes.size(); ++i )
+                {
+                    const Tracker::Allocation allocation = tracker.acquire( passes[i], Config::MAX_VISIBLE_NODES );
+                    CHECK( allocation._pageIndex == (i == passes.size() - 1u ? 1u : 0u) );
+                    CHECK_FALSE( allocation._overflow );
+                    REQUIRE( allocation._pageIndex < pageCount );
+                    REQUIRE( allocation._queueIndex < slotCount );
+                    if ( frameSlot == U16_MAX )
+                    {
+                        frameSlot = allocation._queueIndex;
+                    }
+                    CHECK( allocation._queueIndex == frameSlot );
+                    I32& previous = lastUse[player][allocation._pageIndex][allocation._queueIndex][passes[i]];
+                    if ( previous >= 0 )
+                    {
+                        CHECK( frame - previous > Config::MAX_FRAMES_IN_FLIGHT );
+                    }
+                    previous = frame;
+                }
+            }
+        }
+    }
+
+    TEST_CASE( "Indirect command pages reset for sparse and repeated passes", "[renderer][indirect][frame_lifetime]" )
+    {
+        using Tracker = RenderPassExecutor::IndirectCommandBufferTracker;
+        const std::array<std::array<U16, 6u>, 8u> framePasses{ {
+            std::array<U16, 6u>{ { 2u, 1u, 0u, 8u, 1u, U16_MAX } },
+            std::array<U16, 6u>{ { 0u, U16_MAX, U16_MAX, U16_MAX, U16_MAX, U16_MAX } },
+            std::array<U16, 6u>{ { U16_MAX, U16_MAX, U16_MAX, U16_MAX, U16_MAX, U16_MAX } },
+            std::array<U16, 6u>{ { 8u, 8u, 8u, U16_MAX, U16_MAX, U16_MAX } },
+            std::array<U16, 6u>{ { 1u, 2u, U16_MAX, U16_MAX, U16_MAX, U16_MAX } },
+            std::array<U16, 6u>{ { 2u, 1u, 0u, 8u, U16_MAX, U16_MAX } },
+            std::array<U16, 6u>{ { 1u, 1u, 2u, 2u, U16_MAX, U16_MAX } },
+            std::array<U16, 6u>{ { U16_MAX, U16_MAX, U16_MAX, U16_MAX, U16_MAX, U16_MAX } }
+        } };
+
+        Tracker tracker;
+        for ( size_t frame = 0u; frame < framePasses.size() * 3u; ++frame )
+        {
+            tracker.beginFrame();
+            std::array<size_t, 9u> passUses{};
+            for ( const U16 pass : framePasses[frame % framePasses.size()] )
+            {
+                if ( pass == U16_MAX )
+                {
+                    continue;
+                }
+                const Tracker::Allocation allocation = tracker.acquire( pass, Config::MAX_VISIBLE_NODES );
+                CHECK( allocation._pageIndex == passUses[pass]++ );
+                CHECK_FALSE( allocation._overflow );
+                CHECK( allocation._queueIndex == (frame + 1u) % Tracker::QUEUE_LENGTH );
+            }
+        }
+    }
+
+    TEST_CASE( "Oversized indirect passes use distinct reusable pages", "[renderer][indirect][frame_lifetime]" )
+    {
+        using Tracker = RenderPassExecutor::IndirectCommandBufferTracker;
+        Tracker tracker{};
+        std::array<std::array<I32, Tracker::QUEUE_LENGTH>, 2u> lastOverflowUse{};
+        for ( auto& page : lastOverflowUse )
+        {
+            page.fill( -1 );
+        }
+
+        for ( I32 frame = 0; frame < 20; ++frame )
+        {
+            tracker.beginFrame();
+            const Tracker::Allocation normal = tracker.acquire( 2u, Config::MAX_VISIBLE_NODES );
+            const Tracker::Allocation firstOverflow = tracker.acquire( 2u, Config::MAX_VISIBLE_NODES + 1u );
+            const Tracker::Allocation repeatedNormal = tracker.acquire( 2u, 1u );
+            const Tracker::Allocation secondOverflow = tracker.acquire( 8u, Config::MAX_VISIBLE_NODES + 2u );
+            const Tracker::Allocation otherNormal = tracker.acquire( 8u, 0u );
+
+            CHECK_FALSE( normal._overflow );
+            CHECK( normal._pageIndex == 0u );
+            CHECK_FALSE( repeatedNormal._overflow );
+            CHECK( repeatedNormal._pageIndex == 1u );
+            CHECK_FALSE( otherNormal._overflow );
+            CHECK( otherNormal._pageIndex == 0u );
+            CHECK( firstOverflow._overflow );
+            CHECK( firstOverflow._pageIndex == 0u );
+            CHECK( secondOverflow._overflow );
+            CHECK( secondOverflow._pageIndex == 1u );
+
+            for ( const Tracker::Allocation allocation : { firstOverflow, secondOverflow } )
+            {
+                REQUIRE( allocation._queueIndex < Tracker::QUEUE_LENGTH );
+                CHECK( allocation._queueIndex == normal._queueIndex );
+                I32& previous = lastOverflowUse[allocation._pageIndex][allocation._queueIndex];
+                if ( previous >= 0 )
+                {
+                    CHECK( frame - previous > Config::MAX_FRAMES_IN_FLIGHT );
+                }
+                previous = frame;
+            }
+        }
+    }
+
+    TEST_CASE( "Indirect command collection rebases oversized pass packages", "[renderer][indirect][frame_lifetime]" )
+    {
+        using Tracker = RenderPassExecutor::IndirectCommandBufferTracker;
+        constexpr U16 passIndex = 5u;
+        DrawCommandContainer commands{};
+        std::array<RenderPackage, 3u> packages{};
+
+        for ( const bool overflow : { false, true } )
+        {
+            const std::array<U32, 3u> perPassCounts{{
+                Config::MAX_VISIBLE_NODES - 2u, overflow ? 2u : 1u, 1u
+            }};
+            U32 recordings = 0u;
+            const U32 startOffset = Tracker::CollectCommands( passIndex, commands, [&]( const U32 baseOffset )
+            {
+                ++recordings;
+                for ( size_t pass = 0u; pass < packages.size(); ++pass )
+                {
+                    packages[pass].drawCmdOffset( baseOffset + to_U32( commands.size() ) );
+                    for ( U32 i = 0u; i < perPassCounts[pass]; ++i )
+                    {
+                        IndirectIndexedDrawCommand& cmd = commands.emplace_back();
+                        cmd.indexCount = to_U32( pass ) + 1u;
+                    }
+                }
+            } );
+
+            const U32 expectedCount = Config::MAX_VISIBLE_NODES + (overflow ? 1u : 0u);
+            CHECK( recordings == (overflow ? 2u : 1u) );
+            CHECK( startOffset == (overflow ? 0u : Config::MAX_VISIBLE_NODES * passIndex) );
+            REQUIRE( commands.size() == expectedCount );
+            CHECK( packages[0].drawCmdOffset() == startOffset );
+            CHECK( packages[1].drawCmdOffset() == startOffset + perPassCounts[0] );
+            CHECK( packages[2].drawCmdOffset() == startOffset + perPassCounts[0] + perPassCounts[1] );
+            CHECK( commands.front().indexCount == 1u );
+            CHECK( commands[perPassCounts[0]].indexCount == 2u );
+            CHECK( commands.back().indexCount == 3u );
+        }
+
+        constexpr U32 requiredCount = 8193u;
+        const std::array<std::pair<size_t, U32>, 6u> alignments{{
+            { 1u, 8193u }, { 4u, 8193u }, { 16u, 8196u },
+            { 24u, 8196u }, { 256u, 8256u }, { 4096u, 9216u }
+        }};
+        for ( const auto& [alignment, expectedCapacity] : alignments )
+        {
+            CAPTURE( alignment );
+            U32 capacity = 0u;
+            REQUIRE( Tracker::TryOverflowCapacity( requiredCount, alignment, SIZE_MAX, capacity ) );
+            CHECK( capacity == expectedCapacity );
+            CHECK( (to_size( capacity ) * sizeof( IndirectIndexedDrawCommand )) % alignment == 0u );
+            const size_t requiredBytes = to_size( capacity ) * sizeof( IndirectIndexedDrawCommand );
+            CHECK( Tracker::TryOverflowCapacity( requiredCount, alignment, requiredBytes, capacity ) );
+            CHECK_FALSE( Tracker::TryOverflowCapacity( requiredCount, alignment, requiredBytes - 1u, capacity ) );
+        }
+        U32 capacity = 0u;
+        CHECK_FALSE( Tracker::TryOverflowCapacity( requiredCount, 0u, SIZE_MAX, capacity ) );
+        CHECK_FALSE( Tracker::TryOverflowCapacity( 0u, 256u, SIZE_MAX, capacity ) );
+        CHECK_FALSE( Tracker::TryOverflowCapacity( U32_MAX, 256u, SIZE_MAX, capacity ) );
     }
 
     TEST_CASE( "Vulkan rendering attachments discard resolve state between passes", "[render_smoke][render_target]" )

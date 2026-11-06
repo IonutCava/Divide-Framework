@@ -3,6 +3,7 @@
 // Copyright (c) 2026 DIVIDE-Studio
 
 #include "HiZCullingAlgorithm.cmn"
+#include "hizDispatchIndex.cmn"
 #include "nodeDataDefinition.cmn"
 
 #define INVS_SQRT_3 0.57735026919f
@@ -53,7 +54,18 @@ void CullItem(in uint idx)
 layout(local_size_x = WORK_GROUP_SIZE) in;
 void main()
 {
-    const uint ident = gl_GlobalInvocationID.x;
+    const uint groupIndex = HIZ_CULL_GROUP_INDEX(gl_WorkGroupID.x, gl_WorkGroupID.y, gl_NumWorkGroups.x);
+    // Padded workgroups must return before their entity index can wrap.
+    if (groupIndex >= HIZ_CULL_GROUP_COUNT(dvd_numEntities, uint(WORK_GROUP_SIZE)))
+    {
+        if (dvd_countCulledItems == 1u && gl_LocalInvocationID.x == 0u)
+        {
+            atomicAdd(culledCount[1], uint(WORK_GROUP_SIZE));
+        }
+        return;
+    }
+
+    const uint ident = HIZ_CULL_ENTITY_INDEX(groupIndex, gl_LocalInvocationID.x, uint(WORK_GROUP_SIZE));
 
     if (ident >= dvd_numEntities)
     {

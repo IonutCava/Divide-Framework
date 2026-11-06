@@ -36,6 +36,7 @@
 #include "NodeBufferedData.h"
 #include "RenderPass.h"
 #include "RenderBin.h"
+#include "Core/Headers/RingBuffer.h"
 #include "ECS/Components/Headers/RenderingComponent.h"
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Rendering/RenderPass/Headers/RenderPassCuller.h"
@@ -79,6 +80,100 @@ public:
                                                                   std::span<BufferUpdateRange> slots,
                                                                   size_t slotIndex ) noexcept;
     [[nodiscard]] static U16 BufferQueueLengthForPlayers( U8 playerCount ) noexcept;
+
+    class IndirectCommandBufferTracker
+    {
+    public:
+        static constexpr U16 QUEUE_LENGTH = Config::MAX_FRAMES_IN_FLIGHT + U16_ONE;
+
+        template<typename RecordCommands>
+        [[nodiscard]] static U32 CollectCommands( const U16 passIndex, DrawCommandContainer& commands, RecordCommands&& record )
+        {
+            commands.clear();
+            const U32 regularOffset = Config::MAX_VISIBLE_NODES * passIndex;
+            record( regularOffset );
+            if ( commands.size() <= Config::MAX_VISIBLE_NODES )
+            {
+                return regularOffset;
+            }
+
+            const size_t count = commands.size();
+            commands.clear();
+            record( 0u );
+            if ( !DIVIDE_ASSERT( commands.size() == count, "Indirect commands changed during preparation" ) )
+            {
+                std::terminate();
+            }
+            return 0u;
+        }
+
+        [[nodiscard]] static bool TryOverflowCapacity( const U32 commandCount,
+                                                       const size_t alignment,
+                                                       const size_t maxBytes,
+                                                       U32& capacityOut ) noexcept
+        {
+            if ( commandCount == 0u || alignment == 0u )
+            {
+                return false;
+            }
+
+            size_t common = alignment;
+            size_t divisor = sizeof( IndirectIndexedDrawCommand );
+            while ( divisor != 0u )
+            {
+                const size_t remainder = common % divisor;
+                common = divisor;
+                divisor = remainder;
+            }
+
+            const size_t elementAlignment = alignment / common;
+            const size_t remainder = to_size( commandCount ) % elementAlignment;
+            const size_t padding = remainder == 0u ? 0u : elementAlignment - remainder;
+            if ( padding > to_size( U32_MAX ) - commandCount )
+            {
+                return false;
+            }
+            const size_t capacity = to_size( commandCount ) + padding;
+            if ( capacity > maxBytes / sizeof( IndirectIndexedDrawCommand ) )
+            {
+                return false;
+            }
+            capacityOut = to_U32( capacity );
+            return true;
+        }
+
+        struct Allocation
+        {
+            size_t _pageIndex;
+            U16 _queueIndex;
+            bool _overflow;
+        };
+
+        void beginFrame() noexcept
+        {
+            _passUses.fill( 0u );
+            _overflowUses = 0u;
+            _slots.incQueue();
+            _frameStarted = true;
+        }
+
+        [[nodiscard]] Allocation acquire( const U16 passIndex, const U32 commandCount ) noexcept
+        {
+            if ( !DIVIDE_ASSERT( _frameStarted && passIndex < _passUses.size(),
+                                 "Invalid indirect command pass or missing frame preparation" ) )
+            {
+                std::terminate();
+            }
+            const bool overflow = commandCount > Config::MAX_VISIBLE_NODES;
+            return { overflow ? _overflowUses++ : _passUses[passIndex]++, _slots.queueIndex(), overflow };
+        }
+
+    private:
+        RingBuffer _slots{ QUEUE_LENGTH };
+        std::array<size_t, U8_MAX + 1u> _passUses{};
+        size_t _overflowUses = 0u;
+        bool _frameStarted = false;
+    };
 
     struct MaterialLookupInfo
     {
@@ -178,6 +273,7 @@ public:
     static void ResizeGPUBuffers(GFXDevice& context, size_t indirectionCount, size_t transformCount, size_t materialCount, U16 ringLength);
     static void FlushBuffersToGPU(GFX::MemoryBarrierCommand& memCmdInOut);
     static void PrepareGPUBuffers(GFXDevice& context, U8 playerCount);
+    void prepareCommandBuffers(PlayerIndex index);
     static void OnStartup(GFXDevice& gfx);
     static void OnShutdown(GFXDevice& gfx);
 
@@ -188,13 +284,19 @@ private:
         bool _updateIndirection{false};
     };
 
+    struct PreparedNodeData
+    {
+        size_t _visibleNodeCount;
+        ShaderBuffer* _commandBuffer;
+    };
+
     // Returns false if we skipped the pre-pass step
     void prePass(const RenderPassParams& params,
                  const CameraSnapshot& cameraSnapshot,
                  GFX::CommandBuffer& bufferInOut,
                  GFX::MemoryBarrierCommand& memCmdInOut);
 
-    void occlusionPass(PlayerIndex idx, 
+    void occlusionPass(ShaderBuffer& commandBuffer,
                        const CameraSnapshot& cameraSnapshot,
                        size_t visibleNodeCount,
                        const RenderTargetID& sourceDepthBuffer,
@@ -231,21 +333,21 @@ private:
     // Returns true on a cache hit
     ParseResult processVisibleNodeMaterial( RenderingComponent* rComp, U32& materialIDXOut, U32& indirectionIDXOut );
 
-    size_t buildDrawCommands(PlayerIndex index, 
-                             const RenderPassParams& params,
-                             bool doPrePass,
-                             bool doOITPass,
-                             GFX::CommandBuffer& bufferInOut,
-                             GFX::MemoryBarrierCommand& memCmdInOut);
+    PreparedNodeData buildDrawCommands(PlayerIndex index,
+                                       const RenderPassParams& params,
+                                       bool doPrePass,
+                                       bool doOITPass,
+                                       GFX::CommandBuffer& bufferInOut,
+                                       GFX::MemoryBarrierCommand& memCmdInOut);
 
-    size_t prepareNodeData(PlayerIndex index, 
-                           const RenderPassParams& params,
-                           const CameraSnapshot& cameraSnapshot,
-                           bool hasInvalidNodes,
-                           const bool doPrePass,
-                           const bool doOITPass,
-                           GFX::CommandBuffer& bufferInOut,
-                           GFX::MemoryBarrierCommand& memCmdInOut);
+    PreparedNodeData prepareNodeData(PlayerIndex index,
+                                     const RenderPassParams& params,
+                                     const CameraSnapshot& cameraSnapshot,
+                                     bool hasInvalidNodes,
+                                     const bool doPrePass,
+                                     const bool doOITPass,
+                                     GFX::CommandBuffer& bufferInOut,
+                                     GFX::MemoryBarrierCommand& memCmdInOut);
 
     [[nodiscard]] U32 renderQueueSize() const;
 
@@ -254,6 +356,7 @@ private:
     [[nodiscard]] bool validateNodesForStagePass(RenderStagePass stagePass, bool* pendingShaderOut);
     void parseTransformRange(RenderBin::SortedQueue& queue, U32 start, U32 end, const PlayerIndex index, D64 interpolationFactor);
     void parseMaterialRange(RenderBin::SortedQueue& queue, U32 start, U32 end);
+    [[nodiscard]] ShaderBuffer_uptr createCommandBuffer(PlayerIndex index, size_t pageIndex, U32 overflowCapacity = 0u) const;
 
 private:
     friend class RenderingComponent;
@@ -275,7 +378,13 @@ private:
     vector<RenderPackage*> _preparedPackages{};
     BufferLocks _computeBatchRanges{};
 
-    ShaderBuffer_uptr _cmdBuffer;
+    struct PlayerCommandBuffers
+    {
+        IndirectCommandBufferTracker _tracker;
+        vector<ShaderBuffer_uptr> _pages;
+        vector<ShaderBuffer_uptr> _overflowPages;
+    };
+    std::array<PlayerCommandBuffers, Config::MAX_LOCAL_PLAYER_COUNT> _commandBuffers;
 
     static ExecutorBuffer<BufferMaterialData>    s_materialBuffer;
     static ExecutorBuffer<BufferTransformData>   s_transformBuffer;

@@ -450,8 +450,8 @@ namespace Divide {
                 perfMetrics._scratchBufferQueueUsage[0] = perfMetricsSource._scratchBufferQueueUsage[0];
                 perfMetrics._scratchBufferQueueUsage[1] = perfMetricsSource._scratchBufferQueueUsage[1];
                 perfMetrics._uniformBufferVRAMUsage = perfMetricsSource._uniformBufferVRAMUsage;
-                perfMetrics._bufferVRAMUsage = perfMetricsSource._bufferVRAMUsage;
-                perfMetrics._gpuBufferCount = perfMetricsSource._gpuBufferCount;
+                perfMetrics._bufferVRAMUsage.store( perfMetricsSource._bufferVRAMUsage.load( std::memory_order_relaxed ), std::memory_order_relaxed );
+                perfMetrics._gpuBufferCount.store( perfMetricsSource._gpuBufferCount.load( std::memory_order_relaxed ), std::memory_order_relaxed );
             }
             const uint4& cullCount = context().gfx().lastCullCount();
             static U32 cachedSyncCount[3]{};
@@ -557,9 +557,9 @@ namespace Divide {
             ImGui::NewLine();  
             ImGui::Text("Shader uniform upload arena allocation: %.2f KiB", (perfMetrics._uniformBufferVRAMUsage / 1024.f));
             ImGui::NewLine();
-            ImGui::Text("Total buffers VRAM usage: %.2f Mb", (perfMetrics._bufferVRAMUsage / 1024.f / 1024.f));
+            ImGui::Text("Total buffers VRAM usage: %.2f Mb", (perfMetrics._bufferVRAMUsage.load( std::memory_order_relaxed ) / 1024.f / 1024.f));
             ImGui::NewLine();
-            ImGui::Text("Buffer objects in flight: %d", perfMetrics._gpuBufferCount);
+            ImGui::Text("Buffer objects in flight: %zu", perfMetrics._gpuBufferCount.load( std::memory_order_relaxed ));
             ImGui::NewLine();
             ImGui::Text("Sync objects in flight : %d / %d / %d   Max: %d", cachedSyncCount[0], cachedSyncCount[1], cachedSyncCount[2], s_maxLocksInFlight);
 

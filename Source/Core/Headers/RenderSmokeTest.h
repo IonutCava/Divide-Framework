@@ -50,7 +50,19 @@ namespace Divide::RenderSmokeTest
         bool _supervisorGate{ false };
         bool _renderDocCapture{ false };
         bool _pausedEditor{ false };
+        bool _pipelineTrace{ false };
     };
+
+    struct PipelineTraceStage
+    {
+        const char* _name{ nullptr };
+        U64 _module{ 0u };
+        U32 _stage{ 0u };
+        U32 _generation{ 0u };
+    };
+
+    [[nodiscard]] bool WritePipelineTrace( std::FILE* output, const char* program, I64 guid, bool graphics, bool wireframe,
+                                           std::span<const PipelineTraceStage> stages ) noexcept;
 
     [[nodiscard]] constexpr bool IsValidContentName( const std::string_view name ) noexcept
     {
@@ -220,6 +232,7 @@ namespace Divide::RenderSmokeTest
     [[nodiscard]] bool PausedEditorRequested() noexcept;
     [[nodiscard]] bool WindowCaptureRequested() noexcept;
     [[nodiscard]] bool RenderDocCaptureRequested() noexcept;
+    [[nodiscard]] bool PipelineTraceRequested() noexcept;
     [[nodiscard]] const std::string& OutputDirectory() noexcept;
     [[nodiscard]] const std::string& ExpectedGPU() noexcept;
     [[nodiscard]] const std::string& Project() noexcept;
@@ -229,6 +242,8 @@ namespace Divide::RenderSmokeTest
     void ReportDeviceFaultSupport( bool enabled, bool vendorBinary ) noexcept;
     void ReportValidationAdvisory( const char* messageID, const char* message ) noexcept;
     void ReportVulkanToolEnumerationSkipped() noexcept;
+    void ReportPipelineTrace( const char* program, I64 guid, bool graphics, bool wireframe,
+                              std::span<const PipelineTraceStage> stages ) noexcept;
     [[nodiscard]] bool WriteDeviceFaultBinary( std::span<const U8> bytes ) noexcept;
     void MarkSceneReady() noexcept;
     void BeginFrame() noexcept;

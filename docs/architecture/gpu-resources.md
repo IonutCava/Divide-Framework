@@ -144,6 +144,11 @@ per image. `VK_API::frameStarted` waits for the recycled slot of every retained
 window before the uniform arena releases retired slots. Waiting on the main
 window's recycled slot before scene preparation bounds in-flight uses of the
 per-node buffer ring.
+Indirect command pages use per-player rings that advance once per rendered
+frame, never once per pass. The same fence waits protect their Vulkan reuse;
+OpenGL additionally uses its buffer-range synchronization. Repeated stage-pass
+indices use separate pages rather than overwriting commands already recorded
+for that frame. Scene passes currently submit through the main window.
 Particle uploads use the same frame-slot index, with independently allocated,
 single-slot position/colour buffers for every distinct view in that frame.
 They are reused only when the main-window frame fence has been waited, not
