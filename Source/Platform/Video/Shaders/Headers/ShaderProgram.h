@@ -306,6 +306,20 @@ namespace Divide
     private:
         friend struct ShaderProgramTestAccess;
 
+        struct BindingSlotCounters
+        {
+            U8 _texture{ 0u };
+            U8 _image{ 0u };
+            U8 _uniformBuffer{ 0u };
+            U8 _storageBuffer{ 0u };
+        };
+        static BindingSlotCounters s_bindingSlots;
+
+        [[nodiscard]] static constexpr bool IsStorageBindingWithinLimit( const RenderAPI api, const U8 binding, const U32 limit ) noexcept
+        {
+            return api != RenderAPI::OpenGL || binding < limit;
+        }
+
         static bool InitGLSW( RenderAPI renderingAPI, const Configuration& config );
         static bool InitShaderThread( RenderAPI renderingAPI, const Configuration& config );
         static void InitAtomLocations();

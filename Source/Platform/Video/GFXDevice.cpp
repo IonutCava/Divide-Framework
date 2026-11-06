@@ -102,6 +102,7 @@ namespace Divide
         constexpr size_t TargetBufferSizeCam = 1024u;
 
         constexpr U32 GROUP_SIZE_AABB = OCCLUSION_CULL_GROUP_SIZE;
+        constexpr U32 INSTANCE_COUNT_PATCH_GROUP_SIZE = 64u;
         constexpr U32 MAX_INVOCATIONS_BLUR_SHADER_LAYERED = 4u;
         // HiZ reduction has no shared memory, so 16x16 (256 invocations) keeps occupancy good without needing 1024-invocation groups.
         constexpr U32 DEPTH_REDUCE_LOCAL_SIZE = 16u;
@@ -113,11 +114,12 @@ namespace Divide
         };
 
         /// Every fixed compute workgroup shape the engine dispatches. Literal shapes mirror the layout declared in the named shader/source.
-        constexpr std::array<RequiredComputeWorkgroup, 9> REQUIRED_COMPUTE_WORKGROUPS
+        constexpr std::array<RequiredComputeWorkgroup, 10> REQUIRED_COMPUTE_WORKGROUPS
         { {
             { "lightCull.glsl", Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS, Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS, Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS },
             { "HiZConstruct.glsl", DEPTH_REDUCE_LOCAL_SIZE, DEPTH_REDUCE_LOCAL_SIZE, 1u },
             { "HiZOcclusionCull.glsl", GROUP_SIZE_AABB, 1u, 1u },
+            { "instanceCountPatch.glsl", INSTANCE_COUNT_PATCH_GROUP_SIZE, 1u, 1u },
             { "instanceCullVegetation.glsl", 64u, 1u, 1u },               // Vegetation.cpp WORK_GROUP_SIZE
             { "luminanceCalc.glsl (histogram)", 16u, 16u, 1u },           // PreRenderBatch.cpp GROUP_X/Y_THREADS
             { "luminanceCalc.glsl (average)", 256u, 1u, 1u },             // PreRenderBatch.cpp GROUP_SIZE
@@ -298,6 +300,8 @@ namespace Divide
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 11,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_FRAGMENT ); // LIGHT_GRID;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 12,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE );              // LIGHT_CLUSTER_AABB;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 13,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE );              // LIGHT_GLOBAL_INDEX_COUNT;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 14,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE );              // COMPACTED_INSTANCE_DATA;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 15,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE );              // VISIBLE_INSTANCE_COUNTS;
         
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 0,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // ENV Prefiltered
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 1,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // ENV Irradiance
@@ -354,6 +358,130 @@ namespace Divide
         DIVIDE_ASSERT( _impl._bindingCount < MAX_BINDINGS_PER_DESCRIPTOR_SET - 1u);
         _impl._bindings[_impl._bindingCount++] = newBindingData;
         dirty( true );
+    }
+
+    void AccumulateGPUPassTimings( const std::span<const F32> timestampsMS, const std::span<const GPUPassTimingTable::Name> passNames, GPUPassTimingTable& table ) noexcept
+    {
+        if ( passNames.empty() || timestampsMS.size() < passNames.size() + 1u )
+        {
+            return;
+        }
+
+        for ( size_t i = 0u; i < passNames.size(); ++i )
+        {
+            const D64 durationMS = std::max( to_D64( timestampsMS[i + 1u] ) - to_D64( timestampsMS[i] ), 0.0 );
+
+            size_t entry = 0u;
+            while ( entry < table._entryCount && table._entries[entry]._name != passNames[i] )
+            {
+                ++entry;
+            }
+
+            if ( entry == table._entryCount )
+            {
+                if ( table._entryCount == table._entries.size() ) [[unlikely]]
+                {
+                    continue;
+                }
+                table._entries[entry]._name = passNames[i];
+                table._entries[entry]._totalMS = 0.0;
+                ++table._entryCount;
+            }
+            table._entries[entry]._totalMS += durationMS;
+        }
+        ++table._frameCount;
+    }
+
+    std::string_view NormalizeGPUScopeName( std::string_view scopeName ) noexcept
+    {
+        while ( !scopeName.empty() && (scopeName.front() == ' ' || scopeName.front() == '-') )
+        {
+            scopeName.remove_prefix( 1u );
+        }
+
+        const size_t paren = scopeName.find( " (" );
+        const size_t bracket = scopeName.find( " [" );
+        scopeName = scopeName.substr( 0u, std::min( paren, bracket ) );
+
+        while ( !scopeName.empty() && scopeName.back() == ' ' )
+        {
+            scopeName.remove_suffix( 1u );
+        }
+        return scopeName;
+    }
+
+    void GFXDevice::writeGPUPassTimestamp( const GPUPassTimingTable::Name& name )
+    {
+        // The last slot is reserved for the closing timestamp written after the final command buffer.
+        if ( _gpuScopeNames != nullptr && _gpuScopeNames->_count + 1u < GPU_PASS_TIMESTAMP_CAPACITY ) [[likely]]
+        {
+            _api->writePassTimestamp( _gpuScopeNames->_count );
+            _gpuScopeNames->_names[_gpuScopeNames->_count++] = name;
+        }
+    }
+
+    void GFXDevice::pushGPUScopeTimestamp( const std::string_view scopeName )
+    {
+        if ( _gpuScopeDepth < GPU_SCOPE_MAX_DEPTH ) [[likely]]
+        {
+            GPUPassTimingTable::Name& label = _gpuScopeStack[_gpuScopeDepth + 1u];
+            label = _gpuScopeStack[0u];
+            // Stay within the inline capacity: Str overflows to the heap.
+            constexpr size_t MaxLabelLength = 63u;
+            const std::string_view normalized = NormalizeGPUScopeName( scopeName );
+            if ( label.size() + 1u < MaxLabelLength )
+            {
+                label.append( "/" );
+                label.append( normalized.data(), std::min( normalized.size(), MaxLabelLength - label.size() ) );
+            }
+            if ( _gpuScopePendingPop )
+            {
+                _gpuScopePendingPop = false;
+                // A repeated sibling scope (e.g. per-chunk culling) continues the previous one instead of spending
+                // two more timestamps. Only barriers can separate them (see flushPendingGPUScopeTimestamp's caller).
+                const bool repeatsLastScope = _gpuScopeNames != nullptr &&
+                                              _gpuScopeNames->_count > 0u &&
+                                              _gpuScopeNames->_names[_gpuScopeNames->_count - 1u] == label;
+                if ( repeatsLastScope )
+                {
+                    ++_gpuScopeDepth;
+                    return;
+                }
+                writeGPUScopeTimestamp( _gpuScopeStack[_gpuScopeDepth] );
+            }
+            writeGPUScopeTimestamp( label );
+        }
+        ++_gpuScopeDepth;
+    }
+
+    void GFXDevice::flushPendingGPUScopeTimestamp()
+    {
+        if ( _gpuScopePendingPop )
+        {
+            _gpuScopePendingPop = false;
+            writeGPUScopeTimestamp( _gpuScopeStack[_gpuScopeDepth] );
+        }
+    }
+
+    void GFXDevice::writeGPUScopeTimestamp( const GPUPassTimingTable::Name& name )
+    {
+        // Past this buffer's slot budget, the rest of its GPU time is attributed to the last timed scope.
+        if ( _gpuScopeNames != nullptr && _gpuScopeNames->_count < _gpuScopeSlotLimit ) [[likely]]
+        {
+            writeGPUPassTimestamp( name );
+        }
+    }
+
+    void GFXDevice::popGPUScopeTimestamp()
+    {
+        if ( _gpuScopeDepth == 0u ) [[unlikely]]
+        {
+            return;
+        }
+        --_gpuScopeDepth;
+        // Time after a scope closes belongs to its parent (or to the command buffer itself at depth 0).
+        // The parent's timestamp is deferred until the next non-barrier command so repeated siblings can merge.
+        _gpuScopePendingPop = _gpuScopeDepth < GPU_SCOPE_MAX_DEPTH;
     }
 
     GFXDevice::GFXDevice( PlatformContext& context )
@@ -1097,6 +1225,24 @@ namespace Divide
             _hIZCullPipeline = newPipeline( pipelineDescriptor );
         }
         {
+            ShaderModuleDescriptor compModule = {};
+            compModule._moduleType = ShaderType::COMPUTE;
+            compModule._defines.emplace_back( Util::StringFormat( "WORK_GROUP_SIZE {}", INSTANCE_COUNT_PATCH_GROUP_SIZE ) );
+            compModule._sourceFile = "instanceCountPatch.glsl";
+
+            ShaderProgramDescriptor shaderDescriptor = {};
+            shaderDescriptor._modules.push_back( compModule );
+
+            ResourceDescriptor<ShaderProgram> descriptor( "InstanceCountPatch", shaderDescriptor );
+            descriptor.waitForReady( false );
+            _instanceCountPatchProgram = CreateResource( descriptor, loadTasks );
+
+            PipelineDescriptor pipelineDescriptor = {};
+            pipelineDescriptor._shaderProgramHandle = _instanceCountPatchProgram;
+            pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
+            _instanceCountPatchPipeline = newPipeline( pipelineDescriptor );
+        }
+        {
             ShaderModuleDescriptor vertModule = {};
             vertModule._moduleType = ShaderType::VERTEX;
             vertModule._sourceFile = "baseVertexShaders.glsl";
@@ -1394,6 +1540,7 @@ namespace Divide
         DestroyResource(_renderTargetDraw );
         DestroyResource(_hIZConstructProgram );
         DestroyResource(_hIZCullProgram );
+        DestroyResource( _instanceCountPatchProgram );
         DestroyResource(_displayShader );
         DestroyResource(_depthShader );
         DestroyResource(_blurBoxShaderSingle );
@@ -1487,10 +1634,65 @@ namespace Divide
             GFX::CommandBufferQueue& queue = window.getCurrentCommandBufferQueue();
             if ( canFlush )
             {
-                for ( const GFX::CommandBufferQueue::Entry& entry : queue._commandBuffers )
+                const bool isMainWindow = window.getGUID() == context().mainWindow().getGUID();
+                const bool timePasses = isMainWindow && queryPerformanceStats();
+                GPUPassNameFrame& passNames = _gpuPassNames[FrameCount() % GPU_PASS_NAME_HISTORY];
+                if ( timePasses )
                 {
+                    U64 resolvedFrame = U64_MAX;
+                    const U32 timestampCount = _api->readPassTimestamps( _gpuPassTimestampScratch, resolvedFrame );
+                    const GPUPassNameFrame& resolvedNames = _gpuPassNames[resolvedFrame % GPU_PASS_NAME_HISTORY];
+                    if ( timestampCount > 0u && resolvedNames._frameNumber == resolvedFrame && resolvedNames._count + 1u == timestampCount )
+                    {
+                        AccumulateGPUPassTimings( { _gpuPassTimestampScratch.data(), timestampCount },
+                                                  { resolvedNames._names.data(), resolvedNames._count },
+                                                  _gpuPassTimings );
+                    }
+                }
+                if ( isMainWindow )
+                {
+                    passNames._frameNumber = FrameCount();
+                    passNames._count = 0u;
+                }
+                _gpuScopeNames = timePasses ? &passNames : nullptr;
+                _gpuScopeTimingActive = timePasses && queryGPUScopeTimings();
+
+                const size_t bufferCount = queue._commandBuffers.size();
+                for ( size_t bufferIdx = 0u; bufferIdx < bufferCount; ++bufferIdx )
+                {
+                    const GFX::CommandBufferQueue::Entry& entry = queue._commandBuffers[bufferIdx];
+                    const GFX::CommandBuffer* buffer = GFX::Get( entry._buffer );
+#if USE_OPTICK
+                    Str<96> submitScopeName{ "Submit: " };
+                    submitScopeName.append( buffer->name().c_str() );
+                    PROFILE_SCOPE_DYNAMIC( submitScopeName.c_str() );
+#endif //USE_OPTICK
+                    // Past capacity, the remaining GPU time is attributed to the last timed entry.
+                    if ( timePasses )
+                    {
+                        _gpuScopeStack[0u] = buffer->name();
+                        _gpuScopeDepth = 0u;
+                        _gpuScopePendingPop = false;
+                        writeGPUPassTimestamp( _gpuScopeStack[0u] );
+                        if ( _gpuScopeTimingActive )
+                        {
+                            // Split the free slots evenly between this and the remaining buffers so a scope-heavy
+                            // stage (e.g. SHADOW) cannot starve later buffers of their boundary timestamps.
+                            const U32 remainingBuffers = to_U32( bufferCount - bufferIdx - 1u );
+                            const U32 reserved = passNames._count + remainingBuffers + 1u;
+                            const U32 freeSlots = reserved < GPU_PASS_TIMESTAMP_CAPACITY ? GPU_PASS_TIMESTAMP_CAPACITY - reserved : 0u;
+                            _gpuScopeSlotLimit = passNames._count + freeSlots / (remainingBuffers + 1u);
+                        }
+                    }
                     flushCommandBufferInternal( entry._buffer );
                 }
+
+                if ( timePasses && passNames._count > 0u )
+                {
+                    _api->writePassTimestamp( passNames._count );
+                }
+                _gpuScopeNames = nullptr;
+                _gpuScopeTimingActive = false;
             }
             ResetCommandBufferQueue(queue);
         }
@@ -2338,6 +2540,17 @@ namespace Divide
         for ( size_t commandIndex = 0u; commandIndex < commands.size(); ++commandIndex )
         {
             GFX::CommandBase* cmd = commands[commandIndex];
+            if ( _gpuScopeTimingActive ) [[unlikely]]
+            {
+                switch ( cmd->type() )
+                {
+                    case GFX::CommandType::BEGIN_DEBUG_SCOPE: pushGPUScopeTimestamp( cmd->As<GFX::BeginDebugScopeCommand>()->_scopeName.c_str() ); break;
+                    case GFX::CommandType::END_DEBUG_SCOPE: popGPUScopeTimestamp(); break;
+                    case GFX::CommandType::MEMORY_BARRIER: break;
+                    default: flushPendingGPUScopeTimestamp(); break;
+                }
+            }
+
             if ( IsSubmitCommand( cmd->type() ) && !validateAndUploadDescriptorSets() )
             {
                 continue;
@@ -2756,6 +2969,37 @@ namespace Divide
 
             cullBuffer->incQueue();
         }
+    }
+
+    void GFXDevice::patchInstanceCounts( ShaderBuffer* countBuffer, const U32 recordOffset, const U32 recordCount, GFX::CommandBuffer& bufferInOut )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        if ( countBuffer == nullptr || recordCount == 0u )
+        {
+            return;
+        }
+
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Patch Instance Counts";
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _instanceCountPatchPipeline;
+        {
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 13u, ShaderStageVisibility::COMPUTE );
+            Set( binding._data, countBuffer, { 0u, countBuffer->getPrimitiveCount() } );
+        }
+
+        // Fast constants are copied into the command, so consecutive passes cannot overwrite each other's ranges.
+        auto pushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
+        pushConstantsCmd->_fastData.data[0] = MAT4_ZERO;
+        pushConstantsCmd->_fastData.data[0].m[0][0] = to_F32( recordOffset );
+        pushConstantsCmd->_fastData.data[0].m[0][1] = to_F32( recordCount );
+
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( bufferInOut )->_workGroupSize =
+        {
+            (recordCount + INSTANCE_COUNT_PATCH_GROUP_SIZE - 1u) / INSTANCE_COUNT_PATCH_GROUP_SIZE, 1u, 1u
+        };
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 #pragma endregion
 

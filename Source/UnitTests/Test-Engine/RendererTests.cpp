@@ -11,6 +11,7 @@
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkDescriptorState.h"
+#include "Platform/Video/RenderBackend/Vulkan/Headers/vkInitializers.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkSwapChain.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkToolProperties.h"
@@ -918,6 +919,20 @@ namespace Divide
         CHECK( RenderPassExecutor::SelectOITCompositionVariant( false, true ) == Variant::COLOUR_MSAA );
         CHECK( RenderPassExecutor::SelectOITCompositionVariant( true, false ) == Variant::COLOUR_NORMALS );
         CHECK( RenderPassExecutor::SelectOITCompositionVariant( true, true ) == Variant::COLOUR_NORMALS_MSAA );
+    }
+
+    TEST_CASE( "Vulkan MSAA state defaults to per-pixel shading", "[render_smoke][pipeline][msaa]" )
+    {
+        constexpr std::array<VkSampleCountFlagBits, 4> sampleCounts{{ VK_SAMPLE_COUNT_1_BIT, VK_SAMPLE_COUNT_2_BIT,
+                                                                    VK_SAMPLE_COUNT_4_BIT, VK_SAMPLE_COUNT_8_BIT }};
+        for ( const VkSampleCountFlagBits sampleCount : sampleCounts )
+        {
+            const VkPipelineMultisampleStateCreateInfo state = vk::pipelineMultisampleStateCreateInfo( sampleCount );
+            CHECK( state.sType == VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO );
+            CHECK( state.rasterizationSamples == sampleCount );
+            CHECK( state.sampleShadingEnable == VK_FALSE );
+            CHECK( state.minSampleShading == 0.f );
+        }
     }
 
     TEST_CASE( "Vulkan pipeline variants retain the complete rendering signature", "[render_smoke][pipeline]" )
@@ -1899,6 +1914,7 @@ namespace Divide
             CHECK( stored == nodeIndex );
 
             Clear( package );
+            CHECK( package.pushConstantsCmd()._fastData.dataFlags() == PushConstantsStruct::DataFlags::NONE );
             SetNodeIndirectionIndex( package, true, 0u );
             std::memcpy( &stored, package.pushConstantsCmd()._uniformData->data( entry._range._startOffset ), sizeof( stored ) );
             CHECK( stored == 0u );
@@ -1907,6 +1923,7 @@ namespace Divide
         RenderPackage ordinary;
         SetNodeIndirectionIndex( ordinary, false, NodeIndirectionData::INVALID_IDX );
         CHECK( ordinary.pushConstantsCmd()._uniformData->entries().empty() );
+        CHECK( ordinary.pushConstantsCmd()._fastData.dataFlags() == PushConstantsStruct::DataFlags::NONE );
     }
 
     TEST_CASE( "Buffer metrics support concurrent allocation accounting and snapshots", "[renderer][threading][metrics]" )
@@ -2131,6 +2148,71 @@ namespace Divide
                 }
             }
         }
+    }
+
+    TEST_CASE( "Separate-write ring indices stay in range and read the oldest write", "[renderer][ring_buffer]" )
+    {
+        constexpr U16 length = 6u;
+        RingBufferSeparateWrite ahead{ length, true, true };
+        RingBufferSeparateWrite behind{ length, true, false };
+        vector<I32> writtenAt( length, -1 );
+        for ( I32 frame = 0; frame < 3 * length; ++frame )
+        {
+            CHECK( ahead.queueWriteIndex() < length );
+            CHECK( ahead.queueWriteIndex() == (ahead.queueReadIndex() + 1u) % length );
+            REQUIRE( behind.queueWriteIndex() < length );
+            writtenAt[behind.queueWriteIndex()] = frame;
+            const I32 readFrame = writtenAt[behind.queueReadIndex()];
+            if ( frame >= length )
+            {
+                CHECK( frame - readFrame == length - 1 );
+            }
+            ahead.incQueue();
+            behind.incQueue();
+        }
+    }
+
+    TEST_CASE( "GPU pass timings sum by command buffer name across frames", "[renderer][profiling]" )
+    {
+        using Name = GPUPassTimingTable::Name;
+        GPUPassTimingTable table{};
+
+        const std::array<Name, 3> names{ Name{ "Shadow" }, Name{ "Display" }, Name{ "Shadow" } };
+        const std::array<F32, 4> frame0{ 0.f, 2.f, 5.f, 6.f };
+        AccumulateGPUPassTimings( frame0, names, table );
+
+        REQUIRE( table._frameCount == 1u );
+        REQUIRE( table._entryCount == 2u );
+        CHECK( table._entries[0]._name == Name{ "Shadow" } );
+        CHECK( table._entries[0]._totalMS == Catch::Approx( 3.0 ) );
+        CHECK( table._entries[1]._name == Name{ "Display" } );
+        CHECK( table._entries[1]._totalMS == Catch::Approx( 3.0 ) );
+
+        // Out-of-order timestamps clamp to zero instead of subtracting time.
+        const std::array<F32, 4> frame1{ 0.f, 1.f, 0.5f, 1.5f };
+        AccumulateGPUPassTimings( frame1, names, table );
+        CHECK( table._frameCount == 2u );
+        CHECK( table._entries[0]._totalMS == Catch::Approx( 5.0 ) );
+        CHECK( table._entries[1]._totalMS == Catch::Approx( 3.0 ) );
+
+        // Too few timestamps for the supplied names: the frame is ignored.
+        const std::array<F32, 3> truncated{ 0.f, 1.f, 2.f };
+        AccumulateGPUPassTimings( truncated, names, table );
+        CHECK( table._frameCount == 2u );
+
+        table.reset();
+        CHECK( table._frameCount == 0u );
+        CHECK( table._entryCount == 0u );
+    }
+
+    TEST_CASE( "GPU scope names drop per-instance decorations", "[renderer][profiling]" )
+    {
+        CHECK( NormalizeGPUScopeName( " - MainPass" ) == "MainPass" );
+        CHECK( NormalizeGPUScopeName( "Custom pass ( SHADOW - Light 3 )" ) == "Custom pass" );
+        CHECK( NormalizeGPUScopeName( "Post Render pass for stage [ DISPLAY ]" ) == "Post Render pass for stage" );
+        CHECK( NormalizeGPUScopeName( "HiZ Construct & Cull" ) == "HiZ Construct & Cull" );
+        CHECK( NormalizeGPUScopeName( " - " ).empty() );
+        CHECK( NormalizeGPUScopeName( "" ).empty() );
     }
 
     TEST_CASE( "Indirect command pass snapshots outlast in-flight frames", "[renderer][indirect][frame_lifetime]" )
@@ -2741,6 +2823,15 @@ namespace Divide
         CHECK_FALSE( vkTexture::SupportsSmokeReadback( VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_4_BIT, 1u, 1u ) );
         CHECK_FALSE( vkTexture::SupportsSmokeReadback( VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, 2u, 1u ) );
         CHECK_FALSE( vkTexture::SupportsSmokeReadback( VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, 1u, 2u ) );
+    }
+
+    TEST_CASE( "Vulkan frame timestamps convert masked ticks to milliseconds", "[renderer][vulkan]" )
+    {
+        CHECK( VKSwapChain::TimestampDeltaMS( 100u, 200u, 0u, 1.f ) == 0.f );
+        CHECK( VKSwapChain::TimestampDeltaMS( 0u, 2'000'000u, 64u, 1.f ) == Catch::Approx( 2.f ) );
+        CHECK( VKSwapChain::TimestampDeltaMS( 0u, 1'000'000u, 64u, 10.f ) == Catch::Approx( 10.f ) );
+        // A 32-bit counter wrapping between the two samples still yields the forward delta.
+        CHECK( VKSwapChain::TimestampDeltaMS( 0xFFFFFF00ull, 0x00000100ull, 32u, 1.f ) == Catch::Approx( 0x200 * 1e-6 ) );
     }
 
     TEST_CASE( "Vulkan editor readback transitions directly from the last screen pass", "[render_smoke][readback]" )

@@ -714,7 +714,8 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     if ( RenderSmokeTest::Enabled() )
     {
         const bool vulkan = RenderSmokeTest::SelectedBackend() == RenderSmokeTest::Backend::VULKAN;
-        if ( !Config::Build::IS_EDITOR_BUILD || ( vulkan && !Config::ENABLE_GPU_VALIDATION ) ||
+        const bool perfMode = RenderSmokeTest::PerfModeRequested();
+        if ( !Config::Build::IS_EDITOR_BUILD || ( vulkan && !perfMode && !Config::ENABLE_GPU_VALIDATION ) ||
              Util::FindCommandLineArgument( _argc, _argv, "disableEditor" ) ||
              Util::FindCommandLineArgument( _argc, _argv, "disableRenderAPIDebugging" ) )
         {
@@ -724,16 +725,14 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
         config.startupProject = RenderSmokeTest::Project().empty() ? Config::DEFAULT_PROJECT_NAME : RenderSmokeTest::Project().c_str();
         config.runtime.enableEditor = true;
-        if ( vulkan )
+        // The smoke backend switch is explicit; override in memory only (config.xml is not written back).
+        config.runtime.targetRenderingAPI = to_U8( vulkan ? RenderAPI::Vulkan : RenderAPI::OpenGL );
+        // Perf mode measures renderer cost without validation layers / GL debug output.
+        config.debug.renderer.enableRenderAPIDebugging = !perfMode;
+        if ( perfMode )
         {
-            config.runtime.targetRenderingAPI = to_U8( RenderAPI::Vulkan );
+            config.debug.renderer.enableRenderAPIBestPractices = false;
         }
-        else if ( config.runtime.targetRenderingAPI != to_U8( RenderAPI::OpenGL ) )
-        {
-            Console::errorfn( "The OpenGL smoke test requires OpenGL in config.xml." );
-            return ErrorCode::RENDER_SMOKE_TEST_FAILED;
-        }
-        config.debug.renderer.enableRenderAPIDebugging = true;
     }
 
     if (config.runtime.targetRenderingAPI >= to_U8(RenderAPI::COUNT))
@@ -840,11 +839,13 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     _inputConsumers.emplace_back(_projectManager.get(), InputConsumerType::Scene);
 
     // Add our needed app-wide render passes. RenderPassManager is responsible for deleting these!
+    // Shadow maps only need to be submitted first: stages record in parallel with SHADOW and LightPool patches shadow indices afterwards.
+    // DISPLAY/NODE_PREVIEW still wait for reflection/refraction recording, which assigns the reflector/refractor textures they sample.
     _renderPassManager->setRenderPass(RenderStage::SHADOW,       {   });
     _renderPassManager->setRenderPass(RenderStage::REFLECTION,   { RenderStage::SHADOW });
     _renderPassManager->setRenderPass(RenderStage::REFRACTION,   { RenderStage::SHADOW });
-    _renderPassManager->setRenderPass(RenderStage::DISPLAY,      { RenderStage::REFLECTION, RenderStage::REFRACTION });
-    _renderPassManager->setRenderPass(RenderStage::NODE_PREVIEW, { RenderStage::REFLECTION, RenderStage::REFRACTION });
+    _renderPassManager->setRenderPass(RenderStage::DISPLAY,      { RenderStage::REFLECTION, RenderStage::REFRACTION }, { RenderStage::REFLECTION, RenderStage::REFRACTION });
+    _renderPassManager->setRenderPass(RenderStage::NODE_PREVIEW, { RenderStage::REFLECTION, RenderStage::REFRACTION }, { RenderStage::REFLECTION, RenderStage::REFRACTION });
 
     Console::printfn(LOCALE_STR("SCENE_ADD_DEFAULT_CAMERA"));
 

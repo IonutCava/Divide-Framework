@@ -248,6 +248,9 @@ struct DebugScope
     U32 _id{ U32_MAX };
 };
 
+/// Maximum GPU timestamps per frame for per-command-buffer GPU timing (one before each submitted command buffer plus one after the last).
+constexpr U32 GPU_PASS_TIMESTAMP_CAPACITY = 512u;
+
 /// Renderer Programming Interface
 NOINITVTABLE_CLASS(RenderAPIWrapper) : NonCopyable
 {
@@ -276,6 +279,12 @@ protected:
     virtual void flushCommand(GFX::CommandBase* cmd) = 0;
     virtual void postFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) = 0;
     [[nodiscard]] virtual bool supportsIndirectDrawBatching( const GenericDrawCommand& ) const noexcept { return false; }
+
+    /// Records GPU timestamp `index` (< GPU_PASS_TIMESTAMP_CAPACITY) at the current submission point of the main window's frame.
+    virtual void writePassTimestamp( [[maybe_unused]] U32 index ) {}
+    /// Copies the most recent resolved set of pass timestamps, in milliseconds relative to the first one, and the frame number they were written in.
+    /// Call before any writePassTimestamp() in the frame. Returns the number of timestamps copied (0 if unavailable).
+    [[nodiscard]] virtual U32 readPassTimestamps( [[maybe_unused]] std::span<F32> outMS, [[maybe_unused]] U64& frameNumberOut ) { return 0u; }
 
     virtual bool setViewportInternal(const Rect<I32>& newViewport) = 0;
     virtual bool setScissorInternal(const Rect<I32>& newScissor) = 0;

@@ -102,6 +102,8 @@ protected:
     void flushCommand( GFX::CommandBase* cmd ) noexcept override;
     void postFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer ) noexcept override;
     [[nodiscard]] bool supportsIndirectDrawBatching( const GenericDrawCommand& draw ) const noexcept override;
+    void writePassTimestamp( U32 index ) override;
+    [[nodiscard]] U32 readPassTimestamps( std::span<F32> outMS, U64& frameNumberOut ) override;
     bool setViewportInternal(const Rect<I32>& newViewport) noexcept override;
     bool setScissorInternal(const Rect<I32>& newScissor) noexcept override;
 

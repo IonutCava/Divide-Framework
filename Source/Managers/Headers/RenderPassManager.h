@@ -35,6 +35,7 @@
 
 #include "Core/Headers/KernelComponent.h"
 
+#include "RenderStageSchedule.h"
 #include "Rendering/RenderPass/Headers/RenderPass.h"
 #include "Rendering/RenderPass/Headers/RenderQueue.h"
 
@@ -123,7 +124,9 @@ namespace Divide
         void render( const RenderParams& params );
 
         /// Add a new pass that will run once for each of the RenderStages specified
-        RenderPass& setRenderPass( RenderStage renderStage, const vector<RenderStage>& dependencies = {} );
+        /// dependencies: stages submitted to the GPU before this one.
+        /// recordingDependencies: stages whose CPU recording must complete first (subset of dependencies).
+        RenderPass& setRenderPass( RenderStage renderStage, const vector<RenderStage>& dependencies = {}, const vector<RenderStage>& recordingDependencies = {} );
 
         [[nodiscard]] U32 getLastTotalBinSize( RenderStage renderStage ) const noexcept;
         [[nodiscard]] I32 drawCallCount( const RenderStage stage ) const noexcept
@@ -136,6 +139,10 @@ namespace Divide
 
         private:
         void startRenderTasks( const RenderParams& params, TaskPool& pool, Task* parentTask );
+        void logPerfMetrics() const;
+
+        static constexpr U64 PERF_METRICS_LOG_INTERVAL = 64u;
+        static constexpr size_t PERF_METRICS_TOP_GPU_PASSES = 48u;
 
         private:
         friend class RenderPassExecutor;
@@ -153,13 +160,12 @@ namespace Divide
             Task* _workTask{ nullptr };
             std::unique_ptr<RenderPass> _pass{ nullptr };
             GFX::MemoryBarrierCommand _memCmd{};
+            Handle<GFX::CommandBuffer> _cmdBuffer{ INVALID_HANDLE<GFX::CommandBuffer> };
         };
 
-        Mutex _waitForDependenciesLock;
-        std::condition_variable _waitForDependencies;
-
         std::array<RenderPassData, to_base(RenderStage::COUNT)> _renderPassData{};
-        std::array<std::atomic_bool, to_base( RenderStage::COUNT )> _renderPassCompleted{};
+        RenderStageSchedule _stageSchedule;
+        std::array<U8, to_base( RenderStage::COUNT )> _submissionOrder{};
         std::array<I64, Config::MAX_LOCAL_PLAYER_COUNT> _previousCameraGUID = create_array<Config::MAX_LOCAL_PLAYER_COUNT, I64>( -1 );
 
         std::array<RenderPassExecutor_uptr, to_base( RenderStage::COUNT )> _executors;

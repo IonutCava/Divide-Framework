@@ -220,6 +220,10 @@ DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
     std::array<U16, 3> _lodPartitions;
     VertexBuffer_uptr _buffer;
     ShaderBuffer_uptr _treeData;
+    /// Per chunk and species, visible tree instances compacted by the cull shader (draws read this).
+    ShaderBuffer_uptr _treeDrawData;
+    /// One visible-instance count per chunk and species (MAX_VEGETATION_TREE_MESHES per chunk).
+    ShaderBuffer_uptr _treeVisibleCounts;
     ShaderBuffer_uptr _grassData;
     vector<Handle<Mesh>> _treeMeshes;
     vector<std::pair<Handle<Material>, Handle<Material>>> _treeMaterials;

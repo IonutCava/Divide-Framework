@@ -183,6 +183,11 @@ from the requested clear value. Attachments use `LOAD` unless the pass explicitl
 clears them; the previous contents are available only if they were stored.
 `_keepMSAADataAfterResolve` controls the multisample store operation, not
 whether the current pass loads retained data.
+MSAA pipelines shade once per pixel on both backends: Vulkan leaves
+`sampleShadingEnable` off, matching OpenGL, which never enables
+`GL_SAMPLE_SHADING`. Shaders that read `gl_SampleID` or declare `sample` inputs
+still run per sample. Forcing `minSampleShading = 1` previously supersampled
+every MSAA pass and cost about 8 ms of DISPLAY GPU time in WarScene.
 Resolve-image usage trackers change
 when their layout barriers are recorded. An enabled resolve target transitions
 to shader-read after a pass and back to attachment use before a later resolve,

@@ -183,6 +183,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     [[nodiscard]] inline Handle<Material> getMaterialInstance() const noexcept { return _materialInstance; }
     void setInstanceShaderBuffer(ShaderBuffer* buffer, U32 dataIndex) noexcept;
     void setPreparationOwner(RenderingComponent* owner) noexcept { _preparationOwner = owner; }
+    /// Optional GPU-written instance count (one U32 at 'element' in 'buffer'). Indirect draws clamp their instance count to it after preparation.
+    void setInstanceCountSource(ShaderBuffer* buffer, U32 element) noexcept { _instanceCountSource = buffer; _instanceCountElement = element; }
 
     [[nodiscard]] inline DrawCommands& drawCommands() noexcept { return _drawCommands; }
 
@@ -273,7 +275,9 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     Handle<Material> _materialInstance{ INVALID_HANDLE<Material> };
     ShaderBuffer* _instanceShaderBuffer{ nullptr };
     RenderingComponent* _preparationOwner{ nullptr };
+    ShaderBuffer* _instanceCountSource{ nullptr };
     U32 _instanceShaderDataIndex{ 0u };
+    U32 _instanceCountElement{ 0u };
     RenderCallback _reflectionCallback{};
     RenderCallback _refractionCallback{};
 
@@ -361,6 +365,11 @@ class RenderingCompRenderPass
     [[nodiscard]] static RenderingComponent* preparationOwner(const RenderingComponent& renderable) noexcept
     {
         return renderable._preparationOwner;
+    }
+
+    [[nodiscard]] static std::pair<ShaderBuffer*, U32> instanceCountSource(const RenderingComponent& renderable) noexcept
+    {
+        return { renderable._instanceCountSource, renderable._instanceCountElement };
     }
 
     [[nodiscard]] static RenderPackage& prepareDependency(RenderingComponent& owner,

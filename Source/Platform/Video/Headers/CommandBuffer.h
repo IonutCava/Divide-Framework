@@ -147,6 +147,8 @@ class CommandBuffer : private NonCopyable
 
     PROPERTY_R( CommandList, commands);
 
+    [[nodiscard]] const Str<64>& name() const noexcept { return _name; }
+
   protected:
 
     void clean();

@@ -791,6 +791,16 @@ namespace Divide
         }
 
         s_textureViewCache.destroy();
+        if ( _passTimestampQueriesCreated )
+        {
+            for ( auto& queries : _passTimestampQueries )
+            {
+                gl46core::glDeleteQueries( to_I32( queries.size() ), queries.data() );
+                queries.fill( 0u );
+            }
+            _passTimestampCounts.fill( 0u );
+            _passTimestampQueriesCreated = false;
+        }
         if ( s_hardwareQueryPool != nullptr )
         {
             s_hardwareQueryPool->destroy();
@@ -814,11 +824,17 @@ namespace Divide
             PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
             // End the timing query started in beginFrame() in debug builds
-            for ( U8 i = 0; i < to_base( GlobalQueryTypes::COUNT ); ++i )
+            for ( U8 i = firstPerformanceQuery(); i < to_base( GlobalQueryTypes::COUNT ); ++i )
             {
                 _performanceQueries[i]->end();
             }
         }
+    }
+
+    U8 GL_API::firstPerformanceQuery() const noexcept
+    {
+        static_assert( to_base( GlobalQueryTypes::GPU_TIME ) + 1u == to_base( GlobalQueryTypes::COUNT ) );
+        return _runPipelineStatQueries ? 0u : to_base( GlobalQueryTypes::GPU_TIME );
     }
 
     /// Prepare the GPU for rendering a frame
@@ -961,7 +977,7 @@ namespace Divide
         // Start a duration query in debug builds
         if ( _runQueries )
         {
-            for ( U8 i = 0u; i < to_base( GlobalQueryTypes::COUNT ); ++i )
+            for ( U8 i = firstPerformanceQuery(); i < to_base( GlobalQueryTypes::COUNT ); ++i )
             {
                 _performanceQueries[i]->begin();
             }
@@ -1027,18 +1043,22 @@ namespace Divide
         {
             PROFILE_SCOPE( "GL_API: Time Query", Profiler::Category::Graphics );
 
+            const U8 firstQuery = firstPerformanceQuery();
             thread_local std::array<I64, to_base( GlobalQueryTypes::COUNT )> results{};
-            for ( U8 i = 0u; i < to_base( GlobalQueryTypes::COUNT ); ++i )
+            for ( U8 i = firstQuery; i < to_base( GlobalQueryTypes::COUNT ); ++i )
             {
                 results[i] = _performanceQueries[i]->getResultNoWait();
                 _performanceQueries[i]->incQueue();
             }
 
             _context.getPerformanceMetrics()._gpuTimeInMS             = Time::NanosecondsToMilliseconds<F32>( results[to_base( GlobalQueryTypes::GPU_TIME )] );
-            _context.getPerformanceMetrics()._verticesSubmitted       = to_U64( results[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] );
-            _context.getPerformanceMetrics()._primitivesGenerated     = to_U64( results[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] );
-            _context.getPerformanceMetrics()._tessellationPatches     = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] );
-            _context.getPerformanceMetrics()._tessellationInvocations = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] );
+            if ( _runPipelineStatQueries )
+            {
+                _context.getPerformanceMetrics()._verticesSubmitted       = to_U64( results[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] );
+                _context.getPerformanceMetrics()._primitivesGenerated     = to_U64( results[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] );
+                _context.getPerformanceMetrics()._tessellationPatches     = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] );
+                _context.getPerformanceMetrics()._tessellationInvocations = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] );
+            }
         }
 
         const size_t fenceSize = std::size( s_fenceSyncCounter );
@@ -1050,6 +1070,7 @@ namespace Divide
 
         _context.getPerformanceMetrics()._generatedRenderTargetCount = to_U32( _context.renderTargetPool().getRenderTargets().size() );
         _runQueries = _context.queryPerformanceStats();
+        _runPipelineStatQueries = _runQueries && _context.queryPipelineStatistics();
 
         gl46core::GLsync frameFence = CreateFenceSync();
         if ( frameFence == nullptr )
@@ -2018,6 +2039,62 @@ namespace Divide
         }
         GetStateTracker()._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
         GetStateTracker()._activeRenderTargetDimensions = _context.context().mainWindow().getDrawableSize();
+    }
+
+    void GL_API::writePassTimestamp( const U32 index )
+    {
+        if ( index >= GPU_PASS_TIMESTAMP_CAPACITY ) [[unlikely]]
+        {
+            return;
+        }
+
+        if ( !_passTimestampQueriesCreated ) [[unlikely]]
+        {
+            for ( auto& queries : _passTimestampQueries )
+            {
+                gl46core::glGenQueries( to_I32( queries.size() ), queries.data() );
+            }
+            _passTimestampQueriesCreated = true;
+        }
+
+        const size_t slot = GFXDevice::FrameCount() % GL_PASS_TIMESTAMP_FRAMES;
+        DIVIDE_ASSERT( index == _passTimestampCounts[slot] );
+        gl46core::glQueryCounter( _passTimestampQueries[slot][index], gl46core::GL_TIMESTAMP );
+        _passTimestampCounts[slot] = index + 1u;
+    }
+
+    U32 GL_API::readPassTimestamps( const std::span<F32> outMS, U64& frameNumberOut )
+    {
+        const U64 frameNumber = GFXDevice::FrameCount();
+        const size_t slot = frameNumber % GL_PASS_TIMESTAMP_FRAMES;
+        const U32 count = std::min( _passTimestampCounts[slot], to_U32( outMS.size() ) );
+        _passTimestampCounts[slot] = 0u;
+        frameNumberOut = _passTimestampFrames[slot];
+        _passTimestampFrames[slot] = frameNumber;
+        if ( count == 0u )
+        {
+            return 0u;
+        }
+
+        const auto& queries = _passTimestampQueries[slot];
+        // Timestamps complete in submission order: if the last one is ready, all of them are.
+        gl46core::GLint available = 0;
+        gl46core::glGetQueryObjectiv( queries[count - 1u], gl46core::GL_QUERY_RESULT_AVAILABLE, &available );
+        if ( available == 0 )
+        {
+            return 0u;
+        }
+
+        gl46core::GLuint64 first = 0u;
+        gl46core::glGetQueryObjectui64v( queries[0], gl46core::GL_QUERY_RESULT, &first );
+        outMS[0] = 0.f;
+        for ( U32 i = 1u; i < count; ++i )
+        {
+            gl46core::GLuint64 value = 0u;
+            gl46core::glGetQueryObjectui64v( queries[i], gl46core::GL_QUERY_RESULT, &value );
+            outMS[i] = value >= first ? to_F32( to_D64( value - first ) * 1e-6 ) : 0.f;
+        }
+        return count;
     }
 
     void GL_API::initDescriptorSets()

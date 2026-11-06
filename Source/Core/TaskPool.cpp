@@ -267,7 +267,7 @@ namespace Divide
         _runningTaskCount.fetch_sub(1);
 
         LockGuard<Mutex> lock(_taskFinishedMutex);
-        _taskFinishedCV.notify_one();
+        _taskFinishedCV.notify_all();
     }
 
     void TaskPool::wait( const Task& task )

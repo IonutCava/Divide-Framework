@@ -273,6 +273,45 @@ namespace Divide
                                           std::string_view{ "--smokeEditorPaused" } };
         CHECK( ParseOptions( duplicatePaused, options, error ) == ParseResult::ERROR );
 
+        const std::array perfMode{ std::string_view{ "--vulkanSmokeTest" },
+                                   std::string_view{ "--smokeOutput=C:\\smoke" },
+                                   std::string_view{ "--smokeRun=attempt-01" },
+                                   std::string_view{ "--smokePerfMode" } };
+        REQUIRE( ParseOptions( perfMode, options, error ) == ParseResult::ENABLED );
+        CHECK( options._perfMode );
+        const std::array perfWithoutMode{ std::string_view{ "--smokePerfMode" } };
+        CHECK( ParseOptions( perfWithoutMode, options, error ) == ParseResult::ERROR );
+        const std::array duplicatePerf{ std::string_view{ "--vulkanSmokeTest" },
+                                        std::string_view{ "--smokeOutput=C:\\smoke" },
+                                        std::string_view{ "--smokeRun=attempt-01" },
+                                        std::string_view{ "--smokePerfMode" },
+                                        std::string_view{ "--smokePerfMode" } };
+        CHECK( ParseOptions( duplicatePerf, options, error ) == ParseResult::ERROR );
+        const std::array perfWithDebugger{ std::string_view{ "--vulkanSmokeTest" },
+                                           std::string_view{ "--smokeOutput=C:\\smoke" },
+                                           std::string_view{ "--smokeRun=attempt-01" },
+                                           std::string_view{ "--smokeDebugger" },
+                                           std::string_view{ "--smokePerfMode" } };
+        CHECK( ParseOptions( perfWithDebugger, options, error ) == ParseResult::ERROR );
+        const std::array perfWithTrace{ std::string_view{ "--vulkanSmokeTest" },
+                                        std::string_view{ "--smokeOutput=C:\\smoke" },
+                                        std::string_view{ "--smokeRun=attempt-01" },
+                                        std::string_view{ "--smokePipelineTrace" },
+                                        std::string_view{ "--smokePerfMode" } };
+        CHECK( ParseOptions( perfWithTrace, options, error ) == ParseResult::ERROR );
+        const std::array perfScopes{ std::string_view{ "--vulkanSmokeTest" },
+                                     std::string_view{ "--smokeOutput=C:\\smoke" },
+                                     std::string_view{ "--smokeRun=attempt-01" },
+                                     std::string_view{ "--smokePerfMode" },
+                                     std::string_view{ "--smokeGpuScopeTimings" } };
+        REQUIRE( ParseOptions( perfScopes, options, error ) == ParseResult::ENABLED );
+        CHECK( options._gpuScopeTimings );
+        const std::array scopesWithoutPerf{ std::string_view{ "--vulkanSmokeTest" },
+                                            std::string_view{ "--smokeOutput=C:\\smoke" },
+                                            std::string_view{ "--smokeRun=attempt-01" },
+                                            std::string_view{ "--smokeGpuScopeTimings" } };
+        CHECK( ParseOptions( scopesWithoutPerf, options, error ) == ParseResult::ERROR );
+
         const std::array renderDoc{ std::string_view{ "--vulkanSmokeTest" },
                                     std::string_view{ "--smokeOutput=C:\\smoke" },
                                     std::string_view{ "--smokeRun=attempt-01" },

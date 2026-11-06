@@ -51,6 +51,10 @@ namespace Divide::RenderSmokeTest
         bool _renderDocCapture{ false };
         bool _pausedEditor{ false };
         bool _pipelineTrace{ false };
+        // Performance capture mode: render API validation/debug output is disabled. Not valid for acceptance runs.
+        bool _perfMode{ false };
+        // Perf mode only: splits per-pass GPU timings by debug scope (adds GPU timestamps per scope).
+        bool _gpuScopeTimings{ false };
     };
 
     struct PipelineTraceStage
@@ -233,6 +237,8 @@ namespace Divide::RenderSmokeTest
     [[nodiscard]] bool WindowCaptureRequested() noexcept;
     [[nodiscard]] bool RenderDocCaptureRequested() noexcept;
     [[nodiscard]] bool PipelineTraceRequested() noexcept;
+    [[nodiscard]] bool PerfModeRequested() noexcept;
+    [[nodiscard]] bool GPUScopeTimingsRequested() noexcept;
     [[nodiscard]] const std::string& OutputDirectory() noexcept;
     [[nodiscard]] const std::string& ExpectedGPU() noexcept;
     [[nodiscard]] const std::string& Project() noexcept;

@@ -150,6 +150,8 @@ namespace Divide
         DestroyResource( _occlusionShaderTrees );
 
         _treeData.reset();
+        _treeDrawData.reset();
+        _treeVisibleCounts.reset();
         _grassData.reset();
         _buffer.reset();
 
@@ -364,6 +366,18 @@ namespace Divide
             bufferDescriptor._elementCount = to_U32( _maxTreeInstances * chunks.size() );
             bufferDescriptor._name = "Tree_data";
             _treeData = context.gfx().newShaderBuffer( bufferDescriptor );
+            bufferDescriptor._name = "Tree_draw_data";
+            _treeDrawData = context.gfx().newShaderBuffer( bufferDescriptor );
+
+            ShaderBufferDescriptor countDescriptor = {};
+            countDescriptor._elementSize = sizeof( U32 );
+            countDescriptor._elementCount = to_U32( chunks.size() * MAX_VEGETATION_TREE_MESHES );
+            countDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
+            countDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
+            countDescriptor._name = "Tree_visible_counts";
+            vector<U32> zeroCounts( countDescriptor._elementCount, 0u );
+            countDescriptor._initialData = { zeroCounts.data(), zeroCounts.size() * sizeof( U32 ) };
+            _treeVisibleCounts = context.gfx().newShaderBuffer( countDescriptor );
         }
         if ( _maxGrassInstances > 0 )
         {
@@ -621,6 +635,17 @@ namespace Divide
                 ElementRange<>{ sgn->dataFlag() * _maxTreeInstances, instance->_drawState._treeInstanceCount },
                 instance->_treeCandidates.data() );
             DIVIDE_UNUSED( lock );
+
+            // Until the first cull compacts them, draw slots are explicitly culled.
+            for ( VegetationData& entry : instance->_treeCandidates )
+            {
+                entry._data.z = -1.f;
+            }
+            DIVIDE_ASSERT( _treeDrawData != nullptr );
+            const BufferLock drawLock = _treeDrawData->writeData(
+                ElementRange<>{ sgn->dataFlag() * _maxTreeInstances, instance->_drawState._treeInstanceCount },
+                instance->_treeCandidates.data() );
+            DIVIDE_UNUSED( drawLock );
         }
         vector<VegetationData>{}.swap( instance->_grassCandidates );
         vector<VegetationData>{}.swap( instance->_treeCandidates );
@@ -722,14 +747,15 @@ namespace Divide
             tComp->setPositionZ( offset.y + offset.w * 0.5f );
             tComp->setScale( _descriptor.treeScales[meshID] );
 
-            DIVIDE_ASSERT( _treeData != nullptr );
+            DIVIDE_ASSERT( _treeDrawData != nullptr && _treeVisibleCounts != nullptr );
             F32 cullRadius = 0.f;
             const U32 treeBase = to_U32( to_size( ID ) * _maxTreeInstances + range._offset );
-            ForEachTreeRenderingComponent( *range._parentNode, [this, ID, treeBase, treeData = _treeData.get(), owner, &cullRadius]( RenderingComponent& rComp )
+            ForEachTreeRenderingComponent( *range._parentNode, [this, ID, treeBase, countElement = to_U32( to_size( ID ) * MAX_VEGETATION_TREE_MESHES + meshID ), owner, &cullRadius]( RenderingComponent& rComp )
             {
                 rComp.parentSGN()->setFlag( SceneGraphNode::Flags::VEGETATION_TREE, false );
                 rComp.dataFlag( to_F32( ID ) );
-                rComp.setInstanceShaderBuffer( treeData, treeBase );
+                rComp.setInstanceShaderBuffer( _treeDrawData.get(), treeBase );
+                rComp.setInstanceCountSource( _treeVisibleCounts.get(), countElement );
                 rComp.setPreparationOwner( owner );
                 rComp.occlusionCull( false );
                 const SceneNode& node = rComp.parentSGN()->getNode();
@@ -812,6 +838,16 @@ namespace Divide
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 6u, ShaderStageVisibility::ALL );
                 Set( binding._data, _grassData.get(), { 0u, _grassData->getPrimitiveCount() } );
             }
+            if ( _treeDrawData )
+            {
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 14u, ShaderStageVisibility::COMPUTE );
+                Set( binding._data, _treeDrawData.get(), { 0u, _treeDrawData->getPrimitiveCount() } );
+            }
+            if ( _treeVisibleCounts )
+            {
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 15u, ShaderStageVisibility::COMPUTE );
+                Set( binding._data, _treeVisibleCounts.get(), { 0u, _treeVisibleCounts->getPrimitiveCount() } );
+            }
         };
 
         if ( _grassData || _treeData )
@@ -838,6 +874,14 @@ namespace Divide
                 uniforms->set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, sgn->dataFlag() );
                 uniforms->set( _ID( "dvd_grassInstanceCount" ), PushConstantType::UINT, instance->_drawState._grassInstanceCount );
                 uniforms->set( _ID( "dvd_treeInstanceCount" ), PushConstantType::UINT, instance->_drawState._treeInstanceCount );
+                {
+                    static_assert(MAX_VEGETATION_TREE_MESHES == 4u, "Tree range uniforms are packed in a uvec4");
+                    const auto& ranges = instance->_treeRanges;
+                    const uint4 treeRangeOffsets{ ranges[0]._offset, ranges[1]._offset, ranges[2]._offset, ranges[3]._offset };
+                    const uint4 treeRangeCounts{ ranges[0]._count, ranges[1]._count, ranges[2]._count, ranges[3]._count };
+                    uniforms->set( _ID( "dvd_treeRangeOffsets" ), PushConstantType::UVEC4, treeRangeOffsets );
+                    uniforms->set( _ID( "dvd_treeRangeCounts" ), PushConstantType::UVEC4, treeRangeCounts );
+                }
                 uniforms->set( _ID( "dvd_occlusionViewProjection" ), PushConstantType::MAT4,
                                cameraSnapshot._projectionMatrix * cameraSnapshot._viewMatrix );
 
@@ -864,6 +908,19 @@ namespace Divide
                             ._type = usage,
                             ._buffer = _treeData->getBufferImpl()
                         } );
+                        DIVIDE_ASSERT( _treeDrawData != nullptr && _treeVisibleCounts != nullptr );
+                        command._bufferLocks.emplace_back( BufferLock
+                        {
+                            ._range = VegetationBufferRange( sgn->dataFlag(), _maxTreeInstances, instance->_drawState._treeInstanceCount ),
+                            ._type = usage,
+                            ._buffer = _treeDrawData->getBufferImpl()
+                        } );
+                        command._bufferLocks.emplace_back( BufferLock
+                        {
+                            ._range = { to_size( sgn->dataFlag() ) * MAX_VEGETATION_TREE_MESHES * sizeof( U32 ), MAX_VEGETATION_TREE_MESHES * sizeof( U32 ) },
+                            ._type = usage,
+                            ._buffer = _treeVisibleCounts->getBufferImpl()
+                        } );
                     }
                 };
 
@@ -884,7 +941,8 @@ namespace Divide
                     }
                     if ( instance->_drawState._treeInstanceCount > 0u )
                     {
-                        computeCmd._workGroupSize.set( (instance->_drawState._treeInstanceCount + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
+                        // One workgroup per species: each compacts its own range into the draw buffer.
+                        computeCmd._workGroupSize.set( to_U32( MAX_VEGETATION_TREE_MESHES ), 1, 1 );
                         GFX::EnqueueCommand<GFX::BindPipelineCommand>( commands )->_pipeline = occlusion ? _occlusionPipelineTrees : _cullPipelineTrees;
                         GFX::EnqueueCommand( commands, cullConstantsCmd );
                         GFX::EnqueueCommand( commands, computeCmd );

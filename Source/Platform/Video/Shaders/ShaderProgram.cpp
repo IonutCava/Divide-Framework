@@ -78,6 +78,7 @@ namespace Divide
     std::atomic_int ShaderProgram::s_shaderCount;
 
     ShaderProgram::BindingSetData ShaderProgram::s_bindingsPerSet;
+    ShaderProgram::BindingSlotCounters ShaderProgram::s_bindingSlots;
 
     NO_DESTROY static UpdateListener g_sFileWatcherListener(
         []( const std::string_view dir, const std::string_view atomName, const FileUpdateEvent evt )
@@ -278,22 +279,9 @@ namespace Divide
         RenderAPI s_renderAPI = RenderAPI::COUNT;
         std::atomic<U64> s_generatedHeaderHash{ 0u }; ///< Fingerprint of InitGLSW's generated header; keys the shader cache
 
-        U8 s_textureSlot = 0u;
-        U8 s_imageSlot   = 0u;
-        U8 s_bufferSlot =  0u;
-        U8 s_computeBufferSlot =  0u;
-
         constexpr U8 s_uniformsStartOffset = 14u;
         constexpr std::string_view s_shaderPreprocessCacheVersion = "preprocess-v3";
         constexpr std::string_view s_compiledShaderCacheVersion = "target-env-v2";
-
-        void RefreshBindingSlots()
-        {
-            s_textureSlot = 0u;
-            s_imageSlot   = 0u;
-            s_bufferSlot  = 0u;
-            s_computeBufferSlot  = 0u;
-        }
 
         [[nodiscard]] ResourcePath ShaderAPILocation()
         {
@@ -1113,7 +1101,7 @@ namespace Divide
 
     ErrorCode ShaderProgram::OnStartup( PlatformContext& context )
     {
-        RefreshBindingSlots();
+        s_bindingSlots = {};
 
         if constexpr ( !Config::Build::IS_SHIPPING_BUILD )
         {
@@ -1287,17 +1275,22 @@ namespace Divide
         switch ( type )
         {
             case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
-                bindingData._glBinding = s_textureSlot++;
+                bindingData._glBinding = s_bindingSlots._texture++;
                 break;
             case DescriptorSetBindingType::IMAGE:
-                bindingData._glBinding = s_imageSlot++;
+                bindingData._glBinding = s_bindingSlots._image++;
                 break;
             case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC:
             case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC:
+                // Storage bindings are shared by all shader stages, but have a separate namespace from uniform buffers.
+                bindingData._glBinding = s_bindingSlots._storageBuffer++;
+                DIVIDE_GPU_ASSERT( IsStorageBindingWithinLimit( s_renderAPI, bindingData._glBinding,
+                                                               GFXDevice::GetDeviceInformation()._maxSSBOBufferBindings ),
+                                   "Exceeded maximum number of OpenGL storage-buffer bindings!" );
+                break;
             case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC:
             case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC:
-                bindingData._glBinding = visibility == ShaderStageVisibility::COMPUTE ? s_computeBufferSlot++ : s_bufferSlot++;
-                DIVIDE_GPU_ASSERT(bindingData._glBinding < GFXDevice::GetDeviceInformation()._maxSSBOBufferBindings, "Exceeded maximum number of buffer bindings available in the min spec!" );
+                bindingData._glBinding = s_bindingSlots._uniformBuffer++;
                 break;
             case DescriptorSetBindingType::INDIRECT_BUFFER:
                 // Not a shader resource: bound to the API's indirect argument binding point instead

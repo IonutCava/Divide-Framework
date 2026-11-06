@@ -7,6 +7,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/TaskPool.h"
 #include "Core/Headers/ThreadPoolSizing.h"
+#include "Managers/Headers/RenderStageSchedule.h"
 #include "Platform/Headers/ConditionalWait.h"
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Utility/Headers/XMLParser.h"
@@ -233,6 +234,261 @@ namespace Divide
         CHECK_FALSE( workerTimedOut.load() );
         CHECK( callbackExecuted.load() );
         CHECK( callbackOnMain.load() );
+    }
+
+    TEST_CASE( "Render stages enqueue only after all distinct dependencies finish", "[threading][render_stage]" )
+    {
+        constexpr U8 shadow = to_base( RenderStage::SHADOW );
+        constexpr U8 reflection = to_base( RenderStage::REFLECTION );
+        constexpr U8 refraction = to_base( RenderStage::REFRACTION );
+        constexpr U8 display = to_base( RenderStage::DISPLAY );
+        constexpr U8 preview = to_base( RenderStage::NODE_PREVIEW );
+        RenderStageSchedule schedule{};
+
+        REQUIRE( schedule.addDependency( reflection, shadow ) );
+        REQUIRE( schedule.addDependency( reflection, shadow ) );
+        REQUIRE( schedule.addDependency( refraction, shadow ) );
+        REQUIRE( schedule.addDependency( display, reflection ) );
+        REQUIRE( schedule.addDependency( display, refraction ) );
+        REQUIRE( schedule.addDependency( preview, reflection ) );
+        REQUIRE( schedule.addDependency( preview, refraction ) );
+        REQUIRE( schedule.isAcyclic() );
+        schedule.prepare();
+
+        std::array<U32, RenderStageSchedule::STAGE_COUNT> enqueued{};
+        const auto enqueue = [&]( const U8 stage )
+        {
+            ++enqueued[stage];
+        };
+        schedule.enqueueRoots( enqueue );
+        CHECK( enqueued[shadow] == 1u );
+        CHECK( enqueued[reflection] == 0u );
+        CHECK( enqueued[refraction] == 0u );
+        CHECK( enqueued[display] == 0u );
+        CHECK( enqueued[preview] == 0u );
+
+        schedule.complete( shadow, enqueue );
+        CHECK( enqueued[reflection] == 1u );
+        CHECK( enqueued[refraction] == 1u );
+        CHECK( enqueued[display] == 0u );
+        CHECK( enqueued[preview] == 0u );
+        schedule.complete( reflection, enqueue );
+        CHECK( enqueued[display] == 0u );
+        CHECK( enqueued[preview] == 0u );
+        schedule.complete( refraction, enqueue );
+        CHECK( enqueued[display] == 1u );
+        CHECK( enqueued[preview] == 1u );
+    }
+
+    TEST_CASE( "Render-stage roots do not enqueue stages released concurrently", "[threading][render_stage]" )
+    {
+        RenderStageSchedule schedule{};
+        REQUIRE( schedule.addDependency( 1u, 0u ) );
+        REQUIRE( schedule.isAcyclic() );
+        schedule.prepare();
+
+        std::array<U32, RenderStageSchedule::STAGE_COUNT> enqueued{};
+        schedule.enqueueRoots( [&]( const U8 stage )
+        {
+            ++enqueued[stage];
+            if ( stage == 0u )
+            {
+                schedule.complete( stage, [&]( const U8 ready )
+                {
+                    ++enqueued[ready];
+                } );
+            }
+        } );
+        for ( const U32 count : enqueued )
+        {
+            CHECK( count == 1u );
+        }
+    }
+
+    TEST_CASE( "Render-stage submission order respects dependencies regardless of stage index", "[threading][render_stage]" )
+    {
+        constexpr U8 shadow = to_base( RenderStage::SHADOW );
+        constexpr U8 reflection = to_base( RenderStage::REFLECTION );
+        constexpr U8 refraction = to_base( RenderStage::REFRACTION );
+        constexpr U8 display = to_base( RenderStage::DISPLAY );
+        constexpr U8 preview = to_base( RenderStage::NODE_PREVIEW );
+
+        RenderStageSchedule schedule{};
+        // Invert the natural index order so the result cannot simply be 0..N-1.
+        REQUIRE( schedule.addDependency( shadow, display ) );
+        REQUIRE( schedule.addDependency( display, reflection ) );
+        REQUIRE( schedule.addDependency( display, refraction ) );
+        REQUIRE( schedule.addDependency( reflection, preview ) );
+
+        std::array<U8, RenderStageSchedule::STAGE_COUNT> order{};
+        REQUIRE( schedule.topologicalOrder( order ) );
+
+        std::array<size_t, RenderStageSchedule::STAGE_COUNT> position{};
+        std::array<bool, RenderStageSchedule::STAGE_COUNT> seen{};
+        for ( size_t i = 0u; i < order.size(); ++i )
+        {
+            REQUIRE( order[i] < RenderStageSchedule::STAGE_COUNT );
+            CHECK_FALSE( seen[order[i]] );
+            seen[order[i]] = true;
+            position[order[i]] = i;
+        }
+
+        CHECK( position[preview] < position[reflection] );
+        CHECK( position[reflection] < position[display] );
+        CHECK( position[refraction] < position[display] );
+        CHECK( position[display] < position[shadow] );
+
+        schedule.reset();
+        REQUIRE( schedule.addDependency( 0u, 1u ) );
+        REQUIRE( schedule.addDependency( 1u, 0u ) );
+        CHECK_FALSE( schedule.topologicalOrder( order ) );
+    }
+
+    TEST_CASE( "Render-stage dependencies reject invalid indices and cycles", "[threading][render_stage]" )
+    {
+        RenderStageSchedule schedule{};
+        constexpr U8 invalid = to_base( RenderStage::COUNT );
+        CHECK_FALSE( schedule.addDependency( invalid, 0u ) );
+        CHECK_FALSE( schedule.addDependency( 0u, invalid ) );
+        REQUIRE( schedule.addDependency( 0u, 1u ) );
+        REQUIRE( schedule.addDependency( 1u, 0u ) );
+        CHECK_FALSE( schedule.isAcyclic() );
+        schedule.reset();
+        REQUIRE( schedule.addDependency( 0u, 0u ) );
+        CHECK_FALSE( schedule.isAcyclic() );
+        schedule.reset();
+        CHECK( schedule.isAcyclic() );
+    }
+
+    TEST_CASE( "Render-stage dependency completions publish and enqueue exactly once", "[threading][render_stage]" )
+    {
+        constexpr U8 shadow = to_base( RenderStage::SHADOW );
+        constexpr U8 reflection = to_base( RenderStage::REFLECTION );
+        constexpr U8 refraction = to_base( RenderStage::REFRACTION );
+        constexpr U8 display = to_base( RenderStage::DISPLAY );
+        constexpr U8 preview = to_base( RenderStage::NODE_PREVIEW );
+
+        for ( U32 iteration = 0u; iteration < 64u; ++iteration )
+        {
+            RenderStageSchedule schedule{};
+            REQUIRE( schedule.addDependency( reflection, shadow ) );
+            REQUIRE( schedule.addDependency( refraction, shadow ) );
+            REQUIRE( schedule.addDependency( display, reflection ) );
+            REQUIRE( schedule.addDependency( display, refraction ) );
+            REQUIRE( schedule.addDependency( preview, reflection ) );
+            REQUIRE( schedule.addDependency( preview, refraction ) );
+            schedule.prepare();
+
+            std::array<std::atomic_uint, RenderStageSchedule::STAGE_COUNT> enqueued{};
+            const auto enqueue = [&]( const U8 stage )
+            {
+                enqueued[stage].fetch_add( 1u );
+            };
+            schedule.enqueueRoots( enqueue );
+            schedule.complete( shadow, enqueue );
+
+            std::thread first( [&] { schedule.complete( reflection, enqueue ); } );
+            std::thread second( [&] { schedule.complete( refraction, enqueue ); } );
+            first.join();
+            second.join();
+            for ( const auto& count : enqueued )
+            {
+                CHECK( count.load() == 1u );
+            }
+        }
+    }
+
+    TEST_CASE( "Ready render-stage tasks retain worker and main-thread callback progress", "[threading][render_stage][render_smoke]" )
+    {
+        platformInitRunListener::PlatformInit();
+        Application app;
+        PlatformContext context{ app };
+        TaskPool& pool = context.taskPool( TaskPoolType::RENDERER );
+        REQUIRE( pool.init( 4u ) );
+        InitConditionalWait( context );
+
+        constexpr U8 shadow = to_base( RenderStage::SHADOW );
+        constexpr U8 reflection = to_base( RenderStage::REFLECTION );
+        constexpr U8 refraction = to_base( RenderStage::REFRACTION );
+        constexpr U8 display = to_base( RenderStage::DISPLAY );
+        constexpr U8 preview = to_base( RenderStage::NODE_PREVIEW );
+        RenderStageSchedule schedule{};
+        const bool valid = schedule.addDependency( reflection, shadow ) &&
+                           schedule.addDependency( refraction, shadow ) &&
+                           schedule.addDependency( display, reflection ) &&
+                           schedule.addDependency( display, refraction ) &&
+                           schedule.addDependency( preview, reflection ) &&
+                           schedule.addDependency( preview, refraction ) &&
+                           schedule.isAcyclic();
+
+        std::array<Task*, RenderStageSchedule::STAGE_COUNT> tasks{};
+        std::array<std::atomic_uint, RenderStageSchedule::STAGE_COUNT> visits{};
+        std::atomic_uint completedMask{ 0u };
+        std::atomic_uint completedCount{ 0u };
+        std::atomic_uint violations{ 0u };
+        std::atomic_bool callbackExecuted{ false };
+        std::atomic_bool callbackOnMain{ false };
+        std::atomic_bool callbackTimedOut{ false };
+        const auto enqueue = [&]( const U8 stage )
+        {
+            pool.enqueue( *tasks[stage], TaskPriority::DONT_CARE_NO_IDLE );
+        };
+
+        if ( valid )
+        {
+            schedule.prepare();
+            for ( U8 stage = 0u; stage < to_base( RenderStage::COUNT ); ++stage )
+            {
+                tasks[stage] = CreateTask( [&, stage]( const Task& )
+                {
+                    const U32 required = stage == shadow ? 0u :
+                                         (stage == reflection || stage == refraction) ? 1u << shadow :
+                                         (1u << reflection) | (1u << refraction);
+                    if ( Runtime::isMainThread() || (completedMask.load() & required) != required )
+                    {
+                        violations.fetch_add( 1u );
+                    }
+                    if ( stage == shadow )
+                    {
+                        pool.enqueue( *CreateTask( []( const Task& ) {} ), TaskPriority::HIGH, [&]
+                        {
+                            callbackOnMain = Runtime::isMainThread();
+                            callbackExecuted = true;
+                        } );
+                        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds( 2 );
+                        while ( !callbackExecuted.load() && std::chrono::steady_clock::now() < deadline )
+                        {
+                            std::this_thread::yield();
+                        }
+                        callbackTimedOut = !callbackExecuted.load();
+                    }
+                    visits[stage].fetch_add( 1u );
+                    completedMask.fetch_or( 1u << stage );
+                    schedule.complete( stage, enqueue );
+                    completedCount.fetch_add( 1u );
+                } );
+            }
+            schedule.enqueueRoots( enqueue );
+        }
+
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds( 5 );
+        while ( completedCount.load() < RenderStageSchedule::STAGE_COUNT && std::chrono::steady_clock::now() < deadline )
+        {
+            context.idle();
+            std::this_thread::yield();
+        }
+        pool.shutdown();
+
+        REQUIRE( valid );
+        CHECK( completedCount.load() == RenderStageSchedule::STAGE_COUNT );
+        CHECK( violations.load() == 0u );
+        CHECK( callbackExecuted.load() );
+        CHECK( callbackOnMain.load() );
+        CHECK_FALSE( callbackTimedOut.load() );
+        for ( const auto& count : visits )
+        {
+            CHECK( count.load() == 1u );
+        }
     }
 
     TEST_CASE( "Parallel terrain chunk jobs visit every distinct chunk once", "[threading][terrain][render_smoke]" )

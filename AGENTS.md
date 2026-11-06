@@ -216,6 +216,8 @@ override is the exception to strict rejection of unsupported x86 requests.
 | Task | Read |
 |---|---|
 | Command submission, render stages, lighting, PostFX, feature integration | [Rendering](docs/architecture/rendering.md) |
+| Instrumented renderer profiling and frame-time investigations | [Performance diagnosis](docs/architecture/rendering.md#performance-diagnosis) |
+| Supervised GL/Vulkan smoke tests, validation, captures, GPU recovery | [Rendering](docs/architecture/rendering.md#framework-smoke-diagnosis), [GPU resources](docs/architecture/gpu-resources.md#vulkan-smoke-readback-and-recovery) |
 | GLSL/SPIR-V, reflection, shader caches, descriptor bindings | [Shaders and descriptors](docs/architecture/shader-descriptors.md) |
 | GL/Vulkan allocation, uploads, device capabilities, presentation conventions | [GPU resources](docs/architecture/gpu-resources.md) |
 | Mesh import, LoD, vertex layout, texture decode/cache | [Asset pipeline](docs/architecture/asset-pipeline.md) |

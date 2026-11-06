@@ -97,6 +97,8 @@ private:
     [[nodiscard]] bool waitForGPUIdle() noexcept override;
 
     void endPerformanceQueries();
+    /// GPU_TIME is last in GlobalQueryTypes, so the cheap timer-only path starts the query loops there.
+    [[nodiscard]] U8 firstPerformanceQuery() const noexcept;
 
     void idle(bool fast) override;
     [[nodiscard]] bool queueBufferReadback( BufferReadbackRequest&& request ) override;
@@ -106,6 +108,9 @@ private:
     void flushCommand( GFX::CommandBase* cmd ) override;
 
     void postFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer ) override;
+
+    void writePassTimestamp( U32 index ) override;
+    [[nodiscard]] U32 readPassTimestamps( std::span<F32> outMS, U64& frameNumberOut ) override;
 
     void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) override;
 
@@ -236,6 +241,13 @@ private:
     // OpenGL rendering is not thread-safe anyway, so this works
     eastl::stack<HardwareQueryContext> _queryContext;
     bool _runQueries{false};
+    bool _runPipelineStatQueries{false};
+    /// Per-command-buffer GL_TIMESTAMP queries, ring-buffered over frames so results are read several frames after issue.
+    static constexpr U8 GL_PASS_TIMESTAMP_FRAMES = 6u;
+    std::array<std::array<gl46core::GLuint, GPU_PASS_TIMESTAMP_CAPACITY>, GL_PASS_TIMESTAMP_FRAMES> _passTimestampQueries{};
+    std::array<U32, GL_PASS_TIMESTAMP_FRAMES> _passTimestampCounts{};
+    std::array<U64, GL_PASS_TIMESTAMP_FRAMES> _passTimestampFrames{};
+    bool _passTimestampQueriesCreated{false};
     bool _screenPassRecorded{false};
     bool _deviceInitialized{false};
     bool _uniformContextFenceFailed{false};

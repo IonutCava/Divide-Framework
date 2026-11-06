@@ -339,6 +339,26 @@ namespace Divide::RenderSmokeTest
                 }
                 options._pausedEditor = true;
             }
+            else if ( argument == "--smokePerfMode" )
+            {
+                sawOption = true;
+                if ( options._perfMode )
+                {
+                    errorOut = "Duplicate --smokePerfMode option";
+                    return ParseResult::ERROR;
+                }
+                options._perfMode = true;
+            }
+            else if ( argument == "--smokeGpuScopeTimings" )
+            {
+                sawOption = true;
+                if ( options._gpuScopeTimings )
+                {
+                    errorOut = "Duplicate --smokeGpuScopeTimings option";
+                    return ParseResult::ERROR;
+                }
+                options._gpuScopeTimings = true;
+            }
             else if ( argument == "--disableRenderAPIDebugging" || argument == "--disableEditor" )
             {
                 incompatible = true;
@@ -370,6 +390,18 @@ namespace Divide::RenderSmokeTest
         if ( options._pipelineTrace && options._backend != Backend::VULKAN )
         {
             errorOut = "--smokePipelineTrace requires Vulkan";
+            return ParseResult::ERROR;
+        }
+
+        if ( options._perfMode && ( options._pipelineTrace || options._renderDocCapture || options._debugger ) )
+        {
+            errorOut = "--smokePerfMode cannot be combined with pipeline tracing, RenderDoc capture or the debugger";
+            return ParseResult::ERROR;
+        }
+
+        if ( options._gpuScopeTimings && !options._perfMode )
+        {
+            errorOut = "--smokeGpuScopeTimings requires --smokePerfMode";
             return ParseResult::ERROR;
         }
 
@@ -640,6 +672,16 @@ namespace Divide::RenderSmokeTest
     bool PipelineTraceRequested() noexcept
     {
         return Enabled() && State()._options._pipelineTrace;
+    }
+
+    bool PerfModeRequested() noexcept
+    {
+        return Enabled() && State()._options._perfMode;
+    }
+
+    bool GPUScopeTimingsRequested() noexcept
+    {
+        return PerfModeRequested() && State()._options._gpuScopeTimings;
     }
 
     const std::string& OutputDirectory() noexcept

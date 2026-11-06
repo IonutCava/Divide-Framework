@@ -395,7 +395,8 @@ namespace Divide {
         }
         ImGui::PopItemWidth();
 
-        static bool performanceStatsWereEnabled = false;
+        // True only while this panel is the one that turned GPU stats on, so collapsing it never disables stats requested elsewhere.
+        static bool s_panelEnabledPerformanceStats = false;
         static U32 s_maxLocksInFlight = 0u;
         if (ImGui::CollapsingHeader(ICON_FK_TACHOMETER" Performance Stats"))
         {
@@ -420,8 +421,11 @@ namespace Divide {
                 ImGui::EndDisabled();
             }
             PROFILE_SCOPE("Get/Print Performance Stats", Profiler::Category::GUI);
-            performanceStatsWereEnabled = context().gfx().queryPerformanceStats();
-            context().gfx().queryPerformanceStats(true);
+            if (!context().gfx().queryPerformanceStats())
+            {
+                s_panelEnabledPerformanceStats = true;
+                context().gfx().queryPerformanceStats(true);
+            }
             const auto& rpm = _context.kernel().renderPassManager();
 
             static std::array<I32, to_base(RenderStage::COUNT)> maxDrawCallCount{};
@@ -543,6 +547,15 @@ namespace Divide {
             ImGui::NewLine();
             ImGui::Text("GPU Frame Time: %.2f ms", perfMetrics._gpuTimeInMS);
             ImGui::NewLine();
+            bool pipelineStats = context().gfx().queryPipelineStatistics();
+            if (ImGui::Checkbox("Pipeline Statistics", &pipelineStats))
+            {
+                context().gfx().queryPipelineStatistics(pipelineStats);
+            }
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::SetTooltip("Query vertex/primitive/tessellation counts (OpenGL only). Very expensive: can multiply GPU frame time.");
+            }
             ImGui::Text("Submitted Vertices: %s", Util::commaprint(perfMetrics._verticesSubmitted));
             ImGui::NewLine();
             ImGui::Text("Primitves Generated: %s", Util::commaprint(perfMetrics._primitivesGenerated));
@@ -580,8 +593,9 @@ namespace Divide {
         }
         else
         {
-            if (!performanceStatsWereEnabled && context().gfx().queryPerformanceStats())
+            if (s_panelEnabledPerformanceStats)
             {
+                s_panelEnabledPerformanceStats = false;
                 context().gfx().queryPerformanceStats(false);
             }
             s_maxLocksInFlight = 0u;

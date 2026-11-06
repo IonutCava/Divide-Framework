@@ -43,6 +43,10 @@ namespace Divide {
                 }
                 vkDestroySemaphore(device, frameData._presentSemaphore, nullptr);
                 vkDestroyFence(device, frameData._renderFence._handle, nullptr);
+                if ( frameData._timestampPool != VK_NULL_HANDLE )
+                {
+                    vkDestroyQueryPool( device, frameData._timestampPool, nullptr );
+                }
             }
             _frames.clear();
             vkb::destroy_swapchain(_swapChain);
@@ -144,6 +148,20 @@ namespace Divide {
         const VkCommandBufferAllocateInfo cmdAllocInfo = vk::commandBufferAllocateInfo( _device.getQueue( QueueType::GRAPHICS)._pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1u );
 
         const VkDevice device = _device.getVKDevice();
+        {
+            const U32 graphicsFamily = _device.getQueue( QueueType::GRAPHICS )._index;
+            U32 familyCount = 0u;
+            vkGetPhysicalDeviceQueueFamilyProperties( _device.getVKPhysicalDevice(), &familyCount, nullptr );
+            vector<VkQueueFamilyProperties> families( familyCount );
+            vkGetPhysicalDeviceQueueFamilyProperties( _device.getVKPhysicalDevice(), &familyCount, families.data() );
+            _timestampValidBits = graphicsFamily < familyCount ? families[graphicsFamily].timestampValidBits : 0u;
+            _timestampPeriodNS = _device.getPhysicalDevice().properties.limits.timestampPeriod;
+            if ( _timestampPeriodNS <= 0.f )
+            {
+                _timestampValidBits = 0u;
+            }
+        }
+        lastGPUTimeMS( 0.f );
         const auto creationFailed = [this]( FrameData& frame, const VkResult result, const char* operation )
         {
             frame._frameError = result;
@@ -183,6 +201,19 @@ namespace Divide {
             }
             frame._commandBuffer = commandBuffer;
             frame._renderFence._tag = to_U8( i );
+
+            if ( _timestampValidBits > 0u )
+            {
+                VkQueryPoolCreateInfo queryInfo{};
+                queryInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+                queryInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+                queryInfo.queryCount = 2u + GPU_PASS_TIMESTAMP_CAPACITY;
+                VkQueryPool timestampPool = VK_NULL_HANDLE;
+                if ( vkCreateQueryPool( device, &queryInfo, nullptr, &timestampPool ) == VK_SUCCESS )
+                {
+                    frame._timestampPool = timestampPool;
+                }
+            }
         }
 
         for (VkSemaphore& semaphore : _renderSemaphores)
@@ -313,6 +344,9 @@ namespace Divide {
             return frame._frameError;
         }
 
+        // The slot's fence has signaled, so the previous submission's timestamps are available.
+        readFrameTimestamps( frame );
+
         _activeFrame = &frame;
         // Request an image from the swapchain, waiting until one is available.
         VkResult ret = VK_ERROR_UNKNOWN;
@@ -347,6 +381,14 @@ namespace Divide {
                 _activeFrame = nullptr;
                 return beginResult;
             }
+
+            if ( frame._timestampPool != VK_NULL_HANDLE )
+            {
+                vkCmdResetQueryPool( frame._commandBuffer, frame._timestampPool, 0u, 2u + GPU_PASS_TIMESTAMP_CAPACITY );
+                vkCmdWriteTimestamp2( frame._commandBuffer, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, frame._timestampPool, 0u );
+            }
+            frame._passTimestampCount = 0u;
+            frame._passTimestampFrame = frameNumber;
         }
         else
         {
@@ -382,6 +424,11 @@ namespace Divide {
         {
             waitSemaphores.push_back(s);
             waitStages.push_back(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+        }
+
+        if ( _activeFrame->_timestampPool != VK_NULL_HANDLE )
+        {
+            vkCmdWriteTimestamp2( _activeFrame->_commandBuffer, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, _activeFrame->_timestampPool, 1u );
         }
 
         const VkResult endResult = vkEndCommandBuffer( _activeFrame->_commandBuffer );
@@ -422,6 +469,7 @@ namespace Divide {
             return submitResult;
         }
         _activeFrame->_submissionPending = true;
+        _activeFrame->_timestampsPending = _activeFrame->_timestampPool != VK_NULL_HANDLE;
 
         PROFILE_VK_PRESENT( &_swapChain.swapchain );
 
@@ -446,6 +494,53 @@ namespace Divide {
         }
 
         return presentResult;
+    }
+
+    void VKSwapChain::readFrameTimestamps( FrameData& frame ) noexcept
+    {
+        _lastPassTimestampCount = 0u;
+        if ( !frame._timestampsPending )
+        {
+            return;
+        }
+        frame._timestampsPending = false;
+
+        std::array<U64, 2u + GPU_PASS_TIMESTAMP_CAPACITY> timestamps{};
+        const U32 passCount = std::min( frame._passTimestampCount, GPU_PASS_TIMESTAMP_CAPACITY );
+        const VkResult result = vkGetQueryPoolResults( _device.getVKDevice(), frame._timestampPool, 0u, 2u + passCount,
+                                                       sizeof( U64 ) * ( 2u + passCount ), timestamps.data(), sizeof( U64 ),
+                                                       VK_QUERY_RESULT_64_BIT );
+        if ( result == VK_SUCCESS )
+        {
+            lastGPUTimeMS( TimestampDeltaMS( timestamps[0], timestamps[1], _timestampValidBits, _timestampPeriodNS ) );
+            for ( U32 i = 0u; i < passCount; ++i )
+            {
+                _lastPassTimestampsMS[i] = TimestampDeltaMS( timestamps[2], timestamps[2u + i], _timestampValidBits, _timestampPeriodNS );
+            }
+            _lastPassTimestampCount = passCount;
+            _lastPassTimestampFrame = frame._passTimestampFrame;
+        }
+    }
+
+    void VKSwapChain::writePassTimestamp( const U32 index ) noexcept
+    {
+        if ( _activeFrame == nullptr || _activeFrame->_timestampPool == VK_NULL_HANDLE || index >= GPU_PASS_TIMESTAMP_CAPACITY ) [[unlikely]]
+        {
+            return;
+        }
+
+        // Unwritten queries in the range would make the non-waiting readback return VK_NOT_READY, so indices must be dense.
+        DIVIDE_ASSERT( index == _activeFrame->_passTimestampCount );
+        vkCmdWriteTimestamp2( _activeFrame->_commandBuffer, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, _activeFrame->_timestampPool, 2u + index );
+        _activeFrame->_passTimestampCount = index + 1u;
+    }
+
+    U32 VKSwapChain::readPassTimestamps( const std::span<F32> outMS, U64& frameNumberOut ) const noexcept
+    {
+        const U32 count = std::min( _lastPassTimestampCount, to_U32( outMS.size() ) );
+        std::copy_n( _lastPassTimestampsMS.begin(), count, outMS.begin() );
+        frameNumberOut = _lastPassTimestampFrame;
+        return count;
     }
 
     vkb::Swapchain& VKSwapChain::getSwapChain() noexcept
