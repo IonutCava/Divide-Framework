@@ -8,18 +8,39 @@ const workflows = [
 module.exports = async function schedule({ github, context, core }) {
     const repo = context.repo;
     const { data: repository } = await github.rest.repos.get(repo);
-    const { data: master } = await github.rest.repos.getBranch({ ...repo, branch: 'master' });
-    const pulls = await github.paginate(github.rest.pulls.list, {
-        ...repo, state: 'open', per_page: 100
+    const manual = context.eventName === 'workflow_dispatch';
+    const pullTarget = pull => ({
+        name: `pr-${pull.number}`, sha: pull.head.sha,
+        trusted: pull.head.repo?.full_name === `${repo.owner}/${repo.repo}`
     });
-    const targets = [
-        { name: 'master', sha: master.commit.sha },
-        ...pulls.map(pull => ({
-            name: `pr-${pull.number}`, sha: pull.head.sha,
-            trusted: pull.head.repo?.full_name === `${repo.owner}/${repo.repo}`
-        }))
-    ];
+    let targets;
+    if (manual) {
+        const input = (context.payload.inputs?.pull_request ?? '').trim();
+        const match = input.match(/^#?([1-9]\d*)$/);
+        const pullNumber = match ? Number(match[1]) : NaN;
+        if (!Number.isSafeInteger(pullNumber)) {
+            throw new Error('Enter a valid pull request number.');
+        }
+        const { data: pull } = await github.rest.pulls.get({ ...repo, pull_number: pullNumber });
+        if (pull.state !== 'open') {
+            throw new Error(`Pull request #${pullNumber} is not open.`);
+        }
+        targets = [pullTarget(pull)];
+    } else {
+        const { data: master } = await github.rest.repos.getBranch({ ...repo, branch: 'master' });
+        const pulls = await github.paginate(github.rest.pulls.list, {
+            ...repo, state: 'open', per_page: 100
+        });
+        targets = [
+            { name: 'master', sha: master.commit.sha },
+            ...pulls.map(pullTarget)
+        ];
+    }
     let dispatchFailed = false;
+    if (manual && !targets[0].trusted) {
+        core.error(`Cannot run CI for ${targets[0].name}: the head repository is a fork or unavailable.`);
+        dispatchFailed = true;
+    }
 
     for (const target of targets) {
         const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, {
@@ -41,8 +62,9 @@ module.exports = async function schedule({ github, context, core }) {
             }
             // The API returns newest statuses first. Failed dispatches may be retried.
             const previous = statuses.find(status => status.context === statusContext);
-            if (previous && previous.description !== 'Daily CI dispatch failed') {
-                core.info(`Skipping ${statusContext}: ${target.sha} was already queued.`);
+            const retryFailed = manual && (previous?.state === 'failure' || previous?.state === 'error');
+            if (previous && previous.description !== 'Daily CI dispatch failed' && !retryFailed) {
+                core.info(`Skipping ${statusContext}: ${target.sha} is already ${previous.state}.`);
                 continue;
             }
 
