@@ -126,6 +126,12 @@ checkout cleanup. It shares matching Linux CI caches, not Windows binaries. Cold
 setup can exceed the 59-minute limit; prime caches in regular CI if needed. Setup
 must reach the default branch to affect future sessions.
 
+Copilot code review uses the separate `copilot-code-review.yml` setup workflow
+to avoid falling back to the cloud agent's full dependency provisioning.
+Keep it lightweight and manual-only (`workflow_dispatch`). It must still be a
+valid Actions workflow with a trigger and job steps; otherwise GitHub reports
+workflow-validation failures on pushes even without a push trigger.
+
 On configured Ubuntu agents, supplementary checks are:
 
 ```shell
