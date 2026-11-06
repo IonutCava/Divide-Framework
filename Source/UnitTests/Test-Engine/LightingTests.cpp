@@ -491,7 +491,7 @@ namespace Divide
     TEST_CASE("Shadow slots cover the budget and repack cached lights safely", "[lighting][shadows]")
     {
         ShadowPassSlots<3> full(12u);
-        constexpr std::array<std::uint32_t, 3> limits{ 2u, 4u, 6u };
+        constexpr std::array<std::uint32_t, 3> limits{{ 2u, 4u, 6u }};
         for (std::size_t type = 0u; type < 3u; ++type)
         {
             for (std::int32_t index = 0; index < to_I32(limits[type]); ++index)
@@ -539,7 +539,7 @@ namespace Divide
             return properties;
         };
 
-        const auto first = runPass({ 2u, 3u, 0u, 1u });
+        const auto first = runPass({{ 2u, 3u, 0u, 1u }});
         CHECK(lights[0]._slot == 0);
         CHECK(lights[1]._slot == 1);
         CHECK(lights[2]._slot == -1);
@@ -548,7 +548,7 @@ namespace Divide
         CHECK(first[1] == 202);
 
         lights[1]._cached = true;
-        const auto reordered = runPass({ 1u, 0u, 2u, 3u });
+        const auto reordered = runPass({{ 1u, 0u, 2u, 3u }});
         CHECK(lights[1]._slot == 0);
         CHECK(lights[0]._slot == 1);
         CHECK(reordered[0] == 202);

@@ -445,8 +445,8 @@ namespace Divide
     TEST_CASE( "OpenGL smoke selection verifies the Vulkan device UUID", "[render_smoke][gpu_identity]" )
     {
         using namespace RenderSmokeTest;
-        constexpr std::array<U8, 16> uuid{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-                                           0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
+        constexpr std::array<U8, 16> uuid{{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                                            0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f }};
         CHECK( IsValidGPUUUID( "000102030405060708090a0b0c0d0e0f" ) );
         CHECK( MatchesGPUUUID( uuid, "000102030405060708090A0B0C0D0E0F" ) );
         CHECK_FALSE( MatchesGPUUUID( uuid, "000102030405060708090a0b0c0d0e00" ) );
