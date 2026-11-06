@@ -60,7 +60,11 @@ namespace detail
         }
         catch ( const boost::property_tree::xml_parser_error& error )
         {
-            Console::errorfn( error.what() );
+            Console::errorfn( "{}", error.what() );
+        }
+        catch ( const std::ios_base::failure& error )
+        {
+            Console::errorfn( "Failed to read XML file '{}': {}", loadPath, error.what() );
         }
         catch(...)
         {
@@ -102,7 +106,11 @@ namespace detail
         }
         catch(const boost::property_tree::xml_parser_error& error)
         {
-            Console::errorfn(error.what());
+            Console::errorfn("{}", error.what());
+        }
+        catch(const std::ios_base::failure& error)
+        {
+            Console::errorfn("Failed to write XML file '{}': {}", savePath, error.what());
         }
         catch(...)
         {
@@ -264,6 +272,10 @@ void readXML(const ResourcePath& path, ptree& tree)
         read_xml(path.string().c_str(), tree);
     }
     catch (const boost::property_tree::xml_parser_error& e)
+    {
+        Console::errorfn(LOCALE_STR("ERROR_XML_INVALID_FILE"), path, e.what());
+    }
+    catch (const std::ios_base::failure& e)
     {
         Console::errorfn(LOCALE_STR("ERROR_XML_INVALID_FILE"), path, e.what());
     }
