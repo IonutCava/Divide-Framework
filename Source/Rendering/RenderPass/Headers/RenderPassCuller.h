@@ -87,6 +87,7 @@ struct VisibleNode {
     SceneGraphNode* _node = nullptr;
     F32 _distanceToCameraSq = 0.f;
     bool _materialReady = true;
+    bool _drawPrepared = false;
 
     template<typename ReadinessCheck>
     [[nodiscard]] bool checkMaterialReadiness( ReadinessCheck&& check )
@@ -94,6 +95,13 @@ struct VisibleNode {
         const bool passReady = check();
         _materialReady &= passReady;
         return passReady;
+    }
+
+    template<typename PrepareDraw>
+    [[nodiscard]] bool prepareDraw( PrepareDraw&& prepare )
+    {
+        _drawPrepared = prepare();
+        return _drawPrepared;
     }
 };
 
@@ -121,6 +129,18 @@ struct VisibleNodeList
         assert(idx <= lastPos);
         _nodes[idx] = _nodes[lastPos - 1];
         _nodes[lastPos - 1] = {};
+    }
+
+    template<typename Predicate>
+    void removeIf( Predicate&& predicate )
+    {
+        for ( size_t i = size(); i > 0u; --i )
+        {
+            if ( predicate( _nodes[i - 1u] ) )
+            {
+                remove( i - 1u );
+            }
+        }
     }
 
                   void      reset()       noexcept { _index.store(0); }

@@ -34,6 +34,7 @@
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GPUCompletionGuard.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
+#include "Platform/Video/Headers/OcclusionCullDispatch.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
@@ -100,7 +101,7 @@ namespace Divide
         /// How many writes we can basically issue per frame to our scratch buffers before we have to sync
         constexpr size_t TargetBufferSizeCam = 1024u;
 
-        constexpr U32 GROUP_SIZE_AABB = 64u;
+        constexpr U32 GROUP_SIZE_AABB = OCCLUSION_CULL_GROUP_SIZE;
         constexpr U32 MAX_INVOCATIONS_BLUR_SHADER_LAYERED = 4u;
         // HiZ reduction has no shared memory, so 16x16 (256 invocations) keeps occupancy good without needing 1024-invocation groups.
         constexpr U32 DEPTH_REDUCE_LOCAL_SIZE = 16u;
@@ -2651,11 +2652,19 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const U32 cmdCount = *passData._lastCommandCount;
-        const U32 threadCount = getGroupCount( cmdCount, GROUP_SIZE_AABB );
-
-        if ( threadCount == 0u || !enableOcclusionCulling() )
+        if ( cmdCount == 0u || !enableOcclusionCulling() )
         {
             GFX::EnqueueCommand<GFX::AddDebugMessageCommand>( bufferInOut )->_msg = "Occlusion Culling Skipped";
+            return;
+        }
+
+        OcclusionCullDispatch dispatch{};
+        const DeviceInformation& deviceInfo = GetDeviceInformation();
+        if ( !TryPlanOcclusionCullDispatch( cmdCount, deviceInfo._maxWorkgroupCount[0], deviceInfo._maxWorkgroupCount[1], dispatch ) )
+        {
+            Console::warnfn( "Hi-Z occlusion skipped: {} commands exceed compute dispatch limits ({} x {})",
+                             cmdCount, deviceInfo._maxWorkgroupCount[0], deviceInfo._maxWorkgroupCount[1] );
+            GFX::EnqueueCommand<GFX::AddDebugMessageCommand>( bufferInOut )->_msg = "Occlusion Culling Skipped: Dispatch Limit";
             return;
         }
 
@@ -2720,7 +2729,7 @@ namespace Divide
         mat4<F32>::Multiply( cameraSnapshot._projectionMatrix, cameraSnapshot._viewMatrix, fastConstants.data[0] );
         fastConstants.data[1] = cameraSnapshot._viewMatrix;
 
-        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( bufferInOut )->_workGroupSize = { threadCount, 1, 1 };
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( bufferInOut )->_workGroupSize = { dispatch._groupsX, dispatch._groupsY, 1u };
 
         if ( collectStats )
         {

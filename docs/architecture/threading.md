@@ -88,6 +88,8 @@ topology edits safe.
 Bounds changes use per-component captured revisions, and transform dirtiness
 is consumed before recomputation. Changes published during a bounds update
 therefore remain pending for the next update.
+World-transform interpolation history is initialized on first resolution and
+settled on the next fixed update after movement; render frames do not advance it.
 OBB queries return independently calculated values rather than mutating a
 shared lazy cache or the sphere used for shadow invalidation. Bounds and
 transform updates still precede the concurrent read phase.
@@ -112,6 +114,9 @@ The rendering component's package lock also protects reflection/refraction
 texture selections and descriptor-update flags. Callbacks publish selections
 after recording their views; dependent stages wait for those producers before
 building packages. Scene-system material updates run outside render-stage work.
+The draw-command lock serializes instancing discovery with material shader
+readiness and pending checks; shader invalidation remains in the next scene
+update, outside render-stage workers.
 Vulkan shader-loading workers queue reload notifications under a mutex; the
 render thread drains a reusable GUID batch at frame end without holding that
 mutex while invalidating pipelines.
@@ -149,6 +154,13 @@ If completion fails, teardown reports the failure and terminates rather than
 destroying resources that could still be in use.
 Frame-slot completion is established for every submitting window before
 retirement processing, not inferred from elapsed frame numbers alone.
+Indirect command pages likewise retain per-player frame slots until the bounded
+in-flight frame interval has elapsed. Stage-pass preparation uses disjoint
+ranges or separate pages, including separate high-water pages for command lists
+larger than a regular range, and snapshots the slot in both draw and compute
+bindings before later players or frames are recorded. Duplicate-pass pages can
+be created on concurrent renderer workers; buffer-count and buffer-VRAM
+performance counters use atomic updates and snapshots for those allocations.
 Arena writes retain the underlying buffer's range-wait checks, but the
 `LockManager` pool and a write-time fence do not replace that all-window
 completion proof. Unchanged uniform consumers neither write nor register

@@ -79,6 +79,15 @@ namespace Divide
         bool _useLocalRotations;
     };
 
+    inline void AdvanceWorldTransformHistory(TransformComponent::Values& world) noexcept
+    {
+        if (world._historyNeedsAdvance)
+        {
+            world._previousValues = world._values;
+            world._historyNeedsAdvance = false;
+        }
+    }
+
     template<typename Node, typename GetParent, typename GetEntry>
     void ResolveWorldTransform(Node& node, const U64 epoch, const GetParent& getParent, const GetEntry& getEntry)
     {
@@ -112,6 +121,15 @@ namespace Divide
         entry._world._values = ComposeWorldTransform(entry._local._values,
                                                      parentWorld != nullptr ? &parentWorld->_values : nullptr,
                                                      entry._useLocalRotations);
+        if (entry._world._historyInitialized)
+        {
+            entry._world._historyNeedsAdvance = true;
+        }
+        else
+        {
+            entry._world._previousValues = entry._world._values;
+            entry._world._historyInitialized = true;
+        }
 
         entry._world._matrix = mat4<F32>
         {

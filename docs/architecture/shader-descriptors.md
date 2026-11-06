@@ -90,6 +90,9 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
 - `hizConservative.cmn` shares near-plane, depth-tolerance, mip-selection and
   texel-footprint predicates with CPU regressions. Hi-Z queries use exact
   `texelFetch` taps and retain partially clipped bounds.
+- `hizDispatchIndex.cmn` shares indirect-command cull grid indexing with CPU
+  boundary regressions. Padded workgroups must be rejected before computing a
+  command index, including when the command count approaches `U32_MAX`.
 - `treeWind.cmn` shares tree sway amplitude, height/LoD eligibility and maximum
   displacement with CPU regressions and vegetation culling. Wind uses the same
   `PER_FRAME` scene data in compute and draw variants.
@@ -125,7 +128,7 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
   [rendering](rendering.md#command-flow) for the adjacent-draw restrictions.
 - Prefer GLSL expression defines over helper functions so preprocessed shaders stay as inline as practical. Parenthesize macro arguments, keep bodies expression-only, and do not pass side-effecting or expensive expressions to macros that evaluate an argument more than once.
 - `GLSLToSPIRV` targets Vulkan 1.4 / SPIR-V 1.6 for Vulkan and the OpenGL 4.5 environment / SPIR-V 1.0 for OpenGL (`debug.renderer.useSPIRVForOpenGL` ingests the latter directly). Compiled-binary and reflection cache paths include `s_compiledShaderCacheVersion`; bump it whenever compiler targets change.
-- `Source/UnitTests/Test-Engine/ShaderCompilerTests.cpp` exercises engine include expansion across the shader sources, loose-uniform cache restoration, OIT composition output and sampler variants, and representative terrain, water, vegetation, alpha-discard and shadow variants for both APIs. It links terrain display/prepass stages and grass OIT/prepass/shadow stages with and without overridden node indices. Shadow variants check that moment calculation precedes discard; alpha-discard variants check that surface and gradient preparation happens first. Terrain variants verify that their existing `NO_REFLECTIONS` configuration does not generate an IBL lookup. These CPU checks do not replace GPU execution or image-based rendering checks.
+- `Source/UnitTests/Test-Engine/ShaderCompilerTests.cpp` exercises engine include expansion across the shader sources, loose-uniform cache restoration, OIT composition output and sampler variants, and Hi-Z culling plus representative terrain, water, vegetation, alpha-discard and shadow variants for both APIs. It links terrain display/prepass stages and grass OIT/prepass/shadow stages with and without overridden node indices. Shadow variants check that moment calculation precedes discard; alpha-discard variants check that surface and gradient preparation happens first. Terrain variants verify that their existing `NO_REFLECTIONS` configuration does not generate an IBL lookup. These CPU checks do not replace GPU execution or image-based rendering checks.
 
 ## Descriptor ownership and invariants
 
@@ -218,6 +221,8 @@ These sampler notes were added by commit `7b09ed5`.
 
 `DescriptorSetBindingType::INDIRECT_BUFFER` is not a shader resource. `SetIndirectBuffer` at `PER_BATCH` slot 0 selects the indirect draw buffer (`GL_DRAW_INDIRECT_BUFFER` / `vkCmdDraw*Indirect`) and is skipped in GL binding tables and Vulkan layouts.
 The same command buffer is separately a writable SSBO at `PER_BATCH` slot 2 (`dvd_GPUCmds`) for compute Hi-Z culling. Synchronization follows `BufferUsageType::COMMAND_BUFFER` storage/indirect usage, not the descriptor binding type.
+Both bindings snapshot the command page's selected player/frame slot, and Hi-Z
+barriers target that same page.
 
 ## Changing bindings safely
 

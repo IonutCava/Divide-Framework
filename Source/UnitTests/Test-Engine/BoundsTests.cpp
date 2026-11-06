@@ -288,6 +288,104 @@ namespace Divide
         CHECK_FALSE(dirty.dirty());
     }
 
+    TEST_CASE( "New hierarchy transforms interpolate from their initial world pose", "[transform][scene_graph][render_smoke]" )
+    {
+        struct TestTransform
+        {
+            TransformComponent::Values _local{};
+            TransformComponent::Values _world{};
+            TestTransform* _parent = nullptr;
+            U32 _broadcastMask = 0u;
+            U64 _resolvedEpoch = 0u;
+        };
+        const auto parentOf = []( TestTransform& transform ) { return transform._parent; };
+        const auto entryOf = []( TestTransform& transform ) -> TransformHierarchyEntry
+        {
+            return { transform._local, transform._world, transform._broadcastMask, transform._resolvedEpoch, false };
+        };
+
+        TestTransform parent;
+        parent._local._values._translation = { 785.f, 15.f, 80.f };
+        parent._local._values._scale = { 0.03f, 0.03f, 0.03f };
+        parent._local._values._orientation = quatf( WORLD_Y_AXIS, Angle::to_RADIANS( Angle::DEGREES_F{ 35.f } ) );
+        parent._broadcastMask = to_base( TransformType::ALL );
+        TestTransform child;
+        child._parent = &parent;
+        child._local._values._translation = { -63.f, -2.5f, -35.f };
+        child._broadcastMask = to_base( TransformType::ALL );
+
+        ResolveWorldTransform( child, 1u, parentOf, entryOf );
+        for ( const F32 alpha : { 0.f, 0.5f, 1.f } )
+        {
+            CAPTURE( alpha );
+            const TransformValues interpolated = Lerp( child._world._previousValues, child._world._values, alpha );
+            CHECK( interpolated._translation.x == Catch::Approx( child._world._values._translation.x ) );
+            CHECK( interpolated._translation.y == Catch::Approx( child._world._values._translation.y ) );
+            CHECK( interpolated._translation.z == Catch::Approx( child._world._values._translation.z ) );
+            CHECK( interpolated._scale.x == Catch::Approx( 0.03f ) );
+            CHECK( interpolated._scale.y == Catch::Approx( 0.03f ) );
+            CHECK( interpolated._scale.z == Catch::Approx( 0.03f ) );
+            CHECK( interpolated._orientation.X() == Catch::Approx( child._world._values._orientation.X() ).margin( 0.0001f ) );
+            CHECK( interpolated._orientation.Y() == Catch::Approx( child._world._values._orientation.Y() ).margin( 0.0001f ) );
+            CHECK( interpolated._orientation.Z() == Catch::Approx( child._world._values._orientation.Z() ).margin( 0.0001f ) );
+            CHECK( interpolated._orientation.W() == Catch::Approx( child._world._values._orientation.W() ).margin( 0.0001f ) );
+        }
+    }
+
+    TEST_CASE( "World interpolation settles after motion stops", "[transform][scene_graph][render_smoke]" )
+    {
+        struct TestTransform
+        {
+            TransformComponent::Values _local{};
+            TransformComponent::Values _world{};
+            TestTransform* _parent = nullptr;
+            U32 _broadcastMask = 0u;
+            U64 _resolvedEpoch = 0u;
+        };
+        const auto parentOf = []( TestTransform& transform ) { return transform._parent; };
+        const auto entryOf = []( TestTransform& transform ) -> TransformHierarchyEntry
+        {
+            return { transform._local, transform._world, transform._broadcastMask, transform._resolvedEpoch, false };
+        };
+
+        TestTransform parent;
+        parent._local._values._translation = { 10.f, 0.f, 0.f };
+        parent._broadcastMask = to_base( TransformType::ALL );
+        TestTransform child;
+        child._parent = &parent;
+        child._local._values._translation = { 2.f, 0.f, 0.f };
+        child._broadcastMask = to_base( TransformType::ALL );
+        ResolveWorldTransform( child, 1u, parentOf, entryOf );
+
+        AdvanceWorldTransformHistory( parent._world );
+        AdvanceWorldTransformHistory( child._world );
+        parent._local._values._translation.x = 20.f;
+        parent._world._computed = false;
+        parent._broadcastMask = to_base( TransformType::TRANSLATION );
+        child._broadcastMask = 0u;
+        ResolveWorldTransform( child, 2u, parentOf, entryOf );
+        CHECK( child._world._previousValues._translation.x == Catch::Approx( 12.f ) );
+        CHECK( child._world._values._translation.x == Catch::Approx( 22.f ) );
+        CHECK( Lerp( child._world._previousValues, child._world._values, 0.25f )._translation.x == Catch::Approx( 14.5f ) );
+        CHECK( Lerp( child._world._previousValues, child._world._values, 0.75f )._translation.x == Catch::Approx( 19.5f ) );
+
+        AdvanceWorldTransformHistory( parent._world );
+        AdvanceWorldTransformHistory( child._world );
+        parent._broadcastMask = child._broadcastMask = 0u;
+        ResolveWorldTransform( child, 3u, parentOf, entryOf );
+        for ( const F32 alpha : { 0.f, 0.5f, 1.f } )
+        {
+            CAPTURE( alpha );
+            CHECK( Lerp( child._world._previousValues, child._world._values, alpha )._translation.x == Catch::Approx( 22.f ) );
+        }
+        CHECK_FALSE( child._world._historyNeedsAdvance );
+
+        child._world = {};
+        ResolveWorldTransform( child, 4u, parentOf, entryOf );
+        CHECK( child._world._previousValues._translation.x == Catch::Approx( 22.f ) );
+        CHECK( child._world._values._translation.x == Catch::Approx( 22.f ) );
+    }
+
     TEST_CASE( "Parent transform changes reach descendant bounds in the same update", "[bounds][scene_graph][render_smoke]" )
     {
         struct TestTransform

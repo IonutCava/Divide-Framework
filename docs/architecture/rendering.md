@@ -70,6 +70,12 @@ vertex/index buffer handles before the distance tie-breaker. This keeps repeated
 meshes adjacent where their other sort keys match, without changing explicit
 depth or back-to-front ordering.
 
+Hi-Z indirect-command culling uses a bounded two-dimensional compute grid when
+one workgroup row is insufficient. Its padded groups return before forming a
+32-bit command index. A list exceeding the device's two-dimensional dispatch
+capacity is reported and drawn without this optional occlusion cull rather than
+issuing an invalid dispatch.
+
 For bugs before submission, inspect shared command generation and ordering first. Window/frame boundaries matter for missing output or stale state.
 Loose-uniform CPU updates are committed at draw/dispatch boundaries, including
 consumers without a new uniform command. Their immutable cross-frame lifetime
@@ -149,6 +155,10 @@ filters except the user-approved `BestPractices-specialuse-extension` warning
 specifically for `VK_EXT_custom_border_color`, which is recorded without
 terminating. Errors are never exempt. Unrelated TODO/STUBBED messages are not
 failure triggers.
+Vulkan diagnostic runs can opt into `-TracePipelines` to flush each pipeline
+creation's program, stage names, generations, and module handles to `events.log`
+before the driver call. The trace distinguishes normal and wireframe pipelines
+and is disabled for ordinary acceptance and profiling runs.
 `Kernel` marks scene readiness after warmup and
 marks a frame only when scene render commands were recorded. Both backends
 count only successful main-window presents of those frames; Vulkan excludes
@@ -302,6 +312,19 @@ surface.
 
 `RenderPassExecutor` compacts scene data into buffers for transforms, materials, indirection, and indirect draw commands. Relevant data structures include `NodeTransformData`, `NodeMaterialData`, and `NodeIndirectionData`.
 
+Instanced nodes use the `INDIRECT_DATA_IDX` push constant; ordinary draws use
+`baseInstance - 1` for the indirection index. `RenderingComponent` considers the
+scene-node instance count before material readiness and also detects instancing
+when commands are built. Command collection and subsequent pass-package
+initialization both retain the component's actual indirection index; a new
+prepass, transparency, or OIT package must not replace it with a placeholder.
+Shader-defining changes defer drawing until the scene
+update invalidates the old shader and the replacement is ready. A shader
+discovered to be pending during preparation also keeps shadow casters dirty,
+so a partial shadow map is not cached. Main-pass preparation removes nodes
+whose draw packages could not be prepared before building indirect records;
+later passes must not submit those nodes using stale package offsets.
+
 Reflection cube pass indices reserve the environment-probe and skylight cubes
 before custom cube reflectors. Planar reflection and refraction indices are
 local to their respective budgets; `IndexForStage` applies the face and target
@@ -320,6 +343,16 @@ after preparation finishes. Each ring slot accumulates all changes since its
 previous use. New or resized buffers mark every slot for a full upload, including
 on OpenGL, and initial-data sizes are bytes. The ring grows with the local player
 count so queued player passes and in-flight frames do not reuse the same slot.
+
+Indirect command buffers use a separate frame ring per player and render stage.
+Every pass for that player records its buffer slot before submission; distinct
+stage-pass indices use separate ranges, and repeated indices use reusable
+additional pages. Command lists larger than a regular range use separate
+high-water overflow pages, because multiple pass records can be generated per
+visible node. An overflow list must still fit the device's maximum storage-buffer
+range. The slot advances once per player frame, not once per pass, so a run of
+shadow or reflection passes cannot wrap onto in-flight commands. The indirect
+binding and the Hi-Z compute binding capture the same page and slot.
 
 The camera block's previous view-projection is the selected player's previous
 projection multiplied by its previous view. It is refreshed when switching

@@ -78,6 +78,8 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
             TransformValues _previousValues;
             TransformValues _values;
             bool _computed = false;
+            bool _historyInitialized = false;
+            bool _historyNeedsAdvance = false;
         };
 
     public:

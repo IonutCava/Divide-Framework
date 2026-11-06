@@ -243,6 +243,13 @@ void RenderPassManager::render(const RenderParams& params)
     PlatformContext& context = parent().platformContext();
     ProjectManager* projectManager = parent().projectManager().get();
     RenderPassExecutor::PrepareGPUBuffers( gfx, projectManager->activePlayerCount() );
+    for ( const auto& executor : _executors )
+    {
+        if ( executor != nullptr )
+        {
+            executor->prepareCommandBuffers( params._playerPass );
+        }
+    }
 
     const Camera* cam = Attorney::ProjectManagerRenderPass::playerCamera(projectManager);
     const I64 cameraGUID = cam->getGUID();

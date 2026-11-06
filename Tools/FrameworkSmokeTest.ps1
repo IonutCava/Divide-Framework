@@ -30,6 +30,7 @@ param(
     [ValidatePattern('^$|^[A-Z_]{1,32}$')]
     [string] $MaterialDebugView = '',
     [switch] $EditorPaused,
+    [switch] $TracePipelines,
     [ValidateRange(0, 2147483647)]
     [int] $MaxAttempts = 25
 )
@@ -58,6 +59,10 @@ if ($MaterialDebugView -and $DiagnosticPresents -eq 0)
 if ($EditorPaused -and $DiagnosticPresents -eq 0)
 {
     throw '-EditorPaused is restricted to diagnostic runs; full acceptance requires Play mode.'
+}
+if ($TracePipelines -and ($Backend -ne 'Vulkan' -or $DiagnosticPresents -eq 0))
+{
+    throw '-TracePipelines requires a Vulkan diagnostic run.'
 }
 if ($DiagnosticPresents -gt 0 -and $PSBoundParameters.ContainsKey('MinimumPresents'))
 {
@@ -2060,6 +2065,7 @@ int main(int argc, char** argv)
     if ($Scene) { $arguments += "--smokeScene=$Scene" }
     if ($MaterialDebugView) { $arguments += "--smokeMaterialView=$MaterialDebugView" }
     if ($EditorPaused) { $arguments += '--smokeEditorPaused' }
+    if ($TracePipelines) { $arguments += '--smokePipelineTrace' }
     $program = $engine.Executable
     if ($debugger)
     {

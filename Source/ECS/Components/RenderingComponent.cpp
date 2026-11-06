@@ -45,6 +45,19 @@ namespace Divide
         constexpr I16 g_renderRangeLimit = I16_MAX;
     }
 
+    void SetNodeIndirectionIndex( RenderPackage& package, const bool instanced, const U32 indirectionIndex ) noexcept
+    {
+        if ( instanced )
+        {
+            if ( !DIVIDE_ASSERT( indirectionIndex != NodeIndirectionData::INVALID_IDX,
+                                 "Instanced draw has no node indirection index" ) )
+            {
+                std::terminate();
+            }
+            package.pushConstantsCmd()._uniformData->set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, indirectionIndex );
+        }
+    }
+
     RenderingComponent::RenderingComponent( SceneGraphNode* parentSGN, PlatformContext& context )
         : BaseComponentType<RenderingComponent, ComponentType::RENDERING>( parentSGN, context ),
         _gfxContext( context.gfx() ),
@@ -191,7 +204,7 @@ namespace Divide
             _editorComponent.registerField( MOV( renderLodField ) );
 
             mat->properties().isStatic( _parentSGN->usageContext() == NodeUsageContext::NODE_STATIC );
-            isInstanced( RequiresInstancedIndirection( isInstanced(), mat->properties().isInstanced(), 0u ) );
+            isInstanced( RequiresInstancedIndirection( isInstanced(), mat->properties().isInstanced(), _parentSGN->instanceCount() ) );
             mat->properties().isInstanced( isInstanced() );
         }
     }
@@ -256,9 +269,15 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
         PROFILE_TAG( "Node", (_parentSGN->name().c_str()) );
 
-        // Can we render without a material? Maybe. IDK.
         bool shaderJustFinishedLoading = false;
-        if ( _materialInstance == INVALID_HANDLE<Material> || Get(_materialInstance)->canDraw( renderStagePass, shaderJustFinishedLoading ) )
+        bool materialReady = true;
+        if ( _materialInstance != INVALID_HANDLE<Material> )
+        {
+            LockGuard<SharedMutex> w_lock( _drawCommands._dataLock );
+            materialReady = Get(_materialInstance)->canDraw( renderStagePass, shaderJustFinishedLoading );
+        }
+
+        if ( materialReady )
         {
             if ( shaderJustFinishedLoading )
             {
@@ -273,6 +292,12 @@ namespace Divide
         }
 
         return false;
+    }
+
+    bool RenderingComponent::shaderPending( const RenderStagePass& renderStagePass ) const
+    {
+        SharedLock<SharedMutex> r_lock( _drawCommands._dataLock );
+        return _materialInstance != INVALID_HANDLE<Material> && Get(_materialInstance)->shaderPending( renderStagePass );
     }
 
     void RenderingComponent::onParentUsageChanged( const NodeUsageContext context ) const
@@ -417,43 +442,60 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        bool hasCommands = hasDrawCommands();
+        bool hasCommands = false;
+        bool needsNewShader = false;
 
         if ( refreshData )
         {
-            if ( !hasCommands )
+            const bool drawGeometry = renderOptionEnabled( RenderOptions::RENDER_GEOMETRY ) &&
+                                      sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_GEOMETRY );
+            const bool drawWireframe = renderOptionEnabled( RenderOptions::RENDER_WIREFRAME ) &&
+                                       sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_WIREFRAME );
             {
-                U8 drawCmdOptions = 0u;
-                if (renderOptionEnabled(RenderOptions::RENDER_GEOMETRY) && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY))
-                {
-                    drawCmdOptions |= to_base(CmdRenderOptions::RENDER_GEOMETRY);
-                }
-
-                if (renderOptionEnabled(RenderOptions::RENDER_WIREFRAME) && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME))
-                {
-                    drawCmdOptions |= to_base(CmdRenderOptions::RENDER_WIREFRAME);
-                }
-
                 LockGuard<SharedMutex> w_lock( _drawCommands._dataLock );
                 if ( _drawCommands._data.empty() )
                 {
+                    U8 drawCmdOptions = 0u;
+                    if ( drawGeometry )
+                    {
+                        drawCmdOptions |= to_base( CmdRenderOptions::RENDER_GEOMETRY );
+                    }
+                    if ( drawWireframe )
+                    {
+                        drawCmdOptions |= to_base( CmdRenderOptions::RENDER_WIREFRAME );
+                    }
+
                     _parentSGN->getNode().buildDrawCommands( _parentSGN, _drawCommands._data );
                     for ( GenericDrawCommand& cmd : _drawCommands._data )
                     {
-                        enableOptions(cmd, drawCmdOptions);
+                        enableOptions( cmd, drawCmdOptions );
                         isInstanced( RequiresInstancedIndirection( isInstanced(), false, cmd._cmd.instanceCount ) );
                     }
                 }
-                hasCommands = !_drawCommands._data.empty();
-            }
-            else
-            {
-                LockGuard<SharedMutex> w_lock( _drawCommands._dataLock );
-                for ( GenericDrawCommand& cmd : _drawCommands._data )
+                else
                 {
-                    setOption(cmd, CmdRenderOptions::RENDER_GEOMETRY,  renderOptionEnabled(RenderOptions::RENDER_GEOMETRY)  && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY ));
-                    setOption(cmd, CmdRenderOptions::RENDER_WIREFRAME, renderOptionEnabled(RenderOptions::RENDER_WIREFRAME) && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME));
+                    for ( GenericDrawCommand& cmd : _drawCommands._data )
+                    {
+                        setOption( cmd, CmdRenderOptions::RENDER_GEOMETRY, drawGeometry );
+                        setOption( cmd, CmdRenderOptions::RENDER_WIREFRAME, drawWireframe );
+                    }
                 }
+                hasCommands = !_drawCommands._data.empty();
+
+                if ( hasCommands && _materialInstance != INVALID_HANDLE<Material> )
+                {
+                    ResourcePtr<Material> mat = Get(_materialInstance);
+                    if ( isInstanced() )
+                    {
+                        mat->properties().isInstanced( true );
+                    }
+                    needsNewShader = mat->properties().needsNewShader();
+                }
+            }
+
+            if ( needsNewShader )
+            {
+                return false;
             }
 
             if ( hasCommands )
@@ -476,8 +518,15 @@ namespace Divide
                 }
             }
         }
+        else
+        {
+            SharedLock<SharedMutex> r_lock( _drawCommands._dataLock );
+            hasCommands = !_drawCommands._data.empty();
+            needsNewShader = hasCommands && _materialInstance != INVALID_HANDLE<Material> &&
+                             Get(_materialInstance)->properties().needsNewShader();
+        }
 
-        if ( hasCommands )
+        if ( hasCommands && !needsNewShader )
         {
             RenderPackage& pkg = getDrawPackage( renderStagePass );
 
@@ -489,14 +538,7 @@ namespace Divide
                     _updateReflection = _updateRefraction = true;
                 }
 
-                if ( isInstanced() )
-                {
-                    pkg.pushConstantsCmd()._uniformData->set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, 0u );
-                    if ( _materialInstance != INVALID_HANDLE<Material> )
-                    {
-                        Get(_materialInstance)->properties().isInstanced( true );
-                    }
-                }
+                SetNodeIndirectionIndex( pkg, isInstanced(), _indirectionBufferEntry );
                 PipelineDescriptor pipelineDescriptor = {};
 
                 if ( _materialInstance != INVALID_HANDLE<Material> )
@@ -655,7 +697,7 @@ namespace Divide
             }
         }
 
-        return hasCommands;
+        return hasCommands && !needsNewShader;
     }
 
     RenderPackage& RenderingComponent::prepareDependency( const CameraSnapshot& cameraSnapshot,
@@ -678,10 +720,7 @@ namespace Divide
             preparedPass._passType = RenderPassType::MAIN_PASS;
             pkg.drawCommandsOverride(getDrawPackage(preparedPass).drawCommandsOverride());
         }
-        if ( isInstanced() )
-        {
-            pkg.pushConstantsCmd()._uniformData->set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, _indirectionBufferEntry);
-        }
+        SetNodeIndirectionIndex( pkg, isInstanced(), _indirectionBufferEntry );
         pkg.stagePassBaseIndex( BaseIndex( stagePass ) );
 
         pkg.drawCmdOffset( cmdOffset + to_U32( cmdsInOut.size() ) );

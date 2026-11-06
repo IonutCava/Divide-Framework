@@ -707,6 +707,12 @@ namespace Divide
 
     bool Material::canDraw( const RenderStagePass renderStagePass, bool& shaderJustFinishedLoading )
     {
+        shaderJustFinishedLoading = false;
+        if ( properties().needsNewShader() )
+        {
+            return false;
+        }
+
         return prepareShader( renderStagePass, shaderJustFinishedLoading, true );
     }
 
@@ -772,7 +778,7 @@ namespace Divide
     bool Material::shaderPending( const RenderStagePass renderStagePass ) const
     {
         const ShaderBuildStage stage = shaderInfo( renderStagePass )._shaderCompStage;
-        return stage != ShaderBuildStage::READY && stage != ShaderBuildStage::FAILED;
+        return properties().needsNewShader() || (stage != ShaderBuildStage::READY && stage != ShaderBuildStage::FAILED);
     }
 
     void Material::addShaderDefineInternal(const ShaderType type, const string& define, const bool addPrefix)

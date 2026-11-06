@@ -12,6 +12,7 @@
 #include "Core/Headers/Console.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/OcclusionCullDispatch.h"
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Platform/Video/Shaders/Headers/GLSLToSPIRV.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
@@ -1226,6 +1227,113 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 REQUIRE( compiled );
                 CHECK_FALSE( spirv.empty() );
             }
+        }
+    }
+
+    TEST_CASE( "Hi-Z indirect culling shader compiles for both rendering backends", "[shader][occlusion][render_smoke]" )
+    {
+        const NonInteractiveAssertions nonInteractive{};
+        REQUIRE( nonInteractive._ready );
+        platformInitRunListener::PlatformInit();
+        const platformInitRunListener::LocalizationScope localization{};
+        const ShaderCompilerLifetime compilerLifetime{};
+        const ConsoleScope console{};
+        REQUIRE( glswGetCurrentContext() == nullptr );
+
+        string diagnostics;
+        size_t callbackID = Console::BindConsoleOutput( [&]( const Console::OutputEntry& entry )
+        {
+            if ( entry._type == Console::EntryType::ERR )
+            {
+                diagnostics.append( entry._text );
+            }
+        } );
+        SCOPE_EXIT
+        {
+            [[maybe_unused]] const bool unbound = Console::UnbindConsoleOutput( callbackID );
+            assert( unbound );
+        };
+
+        const auto oldBindings = ShaderProgramTestAccess::Bindings();
+        SCOPE_EXIT
+        {
+            if ( glswGetCurrentContext() != nullptr )
+            {
+                glswShutdown();
+            }
+            ShaderProgramTestAccess::ClearAtoms();
+            ShaderProgramTestAccess::Bindings() = oldBindings;
+        };
+
+        ShaderProgramTestAccess::InitAtomLocations();
+        for ( U8 set = 0u; set < to_base( DescriptorSetUsage::COUNT ); ++set )
+        {
+            for ( U8 slot = 0u; slot < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slot )
+            {
+                auto& binding = ShaderProgramTestAccess::Bindings()[set][slot];
+                binding._glBinding = to_U8( set * MAX_BINDINGS_PER_DESCRIPTOR_SET + slot );
+                binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
+                if ( set == to_base( DescriptorSetUsage::PER_BATCH ) )
+                {
+                    binding._type = slot == 0u ? DescriptorSetBindingType::INDIRECT_BUFFER :
+                                    slot == 1u ? DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC :
+                                                 DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC;
+                }
+                else if ( set == to_base( DescriptorSetUsage::PER_PASS ) && slot >= 5u )
+                {
+                    binding._type = slot == 8u ? DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC :
+                                                 DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC;
+                }
+                else if ( set == to_base( DescriptorSetUsage::PER_FRAME ) && slot >= 7u )
+                {
+                    binding._type = slot < 9u ? DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC :
+                                                DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC;
+                }
+            }
+        }
+
+        Configuration config{};
+        bool firstAPI = true;
+        for ( const RenderAPI api : { RenderAPI::Vulkan, RenderAPI::OpenGL } )
+        {
+            CAPTURE( api );
+            if ( firstAPI )
+            {
+                REQUIRE( ShaderProgramTestAccess::InitThread( api, config ) );
+                firstAPI = false;
+            }
+            else
+            {
+                REQUIRE( glswShutdown() == 1 );
+                REQUIRE( ShaderProgramTestAccess::InitGLSW( api, config ) );
+            }
+            const string shaderPath = Paths::Shaders::GLSL::g_GLSLShaderLoc.string() + Paths::g_pathSeparator;
+            REQUIRE( glswSetPath( shaderPath.c_str(), ".glsl" ) == 1 );
+
+            ModuleDefines defines;
+            defines.emplace_back( Util::StringFormat( "WORK_GROUP_SIZE {}", OCCLUSION_CULL_GROUP_SIZE ) );
+            ShaderProgram::LoadData data{};
+            data._type = ShaderType::COMPUTE;
+            data._sourceFile = "HiZOcclusionCull.glsl";
+            data._sourceName = "HiZOcclusionCull.Compute";
+            data._shaderName = data._sourceName;
+            eastl::set<U64> atoms{};
+            diagnostics.clear();
+            ShaderProgramTestAccess::Parse( api, defines, data, atoms );
+            INFO( diagnostics.c_str() );
+            REQUIRE_FALSE( data._sourceCodeGLSL.empty() );
+            CHECK( atoms.contains( _ID( "hizDispatchIndex.cmn" ) ) );
+            const size_t guard = data._sourceCodeGLSL.find( "if (groupIndex >=" );
+            const size_t index = data._sourceCodeGLSL.find( "const uint ident", guard );
+            REQUIRE( guard != string::npos );
+            CHECK( index != string::npos );
+
+            std::vector<unsigned int> spirv;
+            diagnostics.clear();
+            const bool compiled = SpirvHelper::GLSLtoSPV( ShaderType::COMPUTE, data._sourceCodeGLSL.c_str(), spirv, api );
+            INFO( diagnostics.c_str() );
+            REQUIRE( compiled );
+            CHECK_FALSE( spirv.empty() );
         }
     }
 

@@ -7,6 +7,7 @@
 #include "Geometry/Material/Headers/Material.h"
 
 #include <cstdarg>
+#include <cinttypes>
 #include <mutex>
 
 #if defined(IS_WINDOWS_BUILD)
@@ -22,6 +23,38 @@ namespace Divide::RenderSmokeTest
 #else
         return std::fopen( path.c_str(), "wb" );
 #endif
+    }
+
+    bool WritePipelineTrace( std::FILE* output, const char* program, const I64 guid, const bool graphics, const bool wireframe,
+                             const std::span<const PipelineTraceStage> stages ) noexcept
+    {
+        if ( output == nullptr || program == nullptr || *program == '\0' || stages.empty() || ( wireframe && !graphics ) )
+        {
+            return false;
+        }
+        for ( const PipelineTraceStage& stage : stages )
+        {
+            if ( stage._name == nullptr || *stage._name == '\0' )
+            {
+                return false;
+            }
+        }
+
+        const char* kind = wireframe ? "wireframe" : ( graphics ? "graphics" : "compute" );
+        if ( std::fprintf( output, "PIPELINE_CREATE kind=%s program=%s guid=%" PRId64 " stages=%zu\n",
+                           kind, program, guid, stages.size() ) < 0 )
+        {
+            return false;
+        }
+        for ( const PipelineTraceStage& stage : stages )
+        {
+            if ( std::fprintf( output, "PIPELINE_STAGE mask=0x%x generation=%u module=0x%" PRIx64 " name=%s\n",
+                               stage._stage, stage._generation, stage._module, stage._name ) < 0 )
+            {
+                return false;
+            }
+        }
+        return std::fflush( output ) == 0;
     }
 
     namespace
@@ -286,6 +319,16 @@ namespace Divide::RenderSmokeTest
                 }
                 options._renderDocCapture = true;
             }
+            else if ( argument == "--smokePipelineTrace" )
+            {
+                sawOption = true;
+                if ( options._pipelineTrace )
+                {
+                    errorOut = "Duplicate --smokePipelineTrace option";
+                    return ParseResult::ERROR;
+                }
+                options._pipelineTrace = true;
+            }
             else if ( argument == "--smokeEditorPaused" )
             {
                 sawOption = true;
@@ -321,6 +364,12 @@ namespace Divide::RenderSmokeTest
         if ( options._renderDocCapture && ( options._backend != Backend::VULKAN || !options._supervisorGate ) )
         {
             errorOut = "--smokeRenderDocCapture requires Vulkan and the supervisor gate";
+            return ParseResult::ERROR;
+        }
+
+        if ( options._pipelineTrace && options._backend != Backend::VULKAN )
+        {
+            errorOut = "--smokePipelineTrace requires Vulkan";
             return ParseResult::ERROR;
         }
 
@@ -588,6 +637,11 @@ namespace Divide::RenderSmokeTest
         return Enabled() && State()._options._renderDocCapture;
     }
 
+    bool PipelineTraceRequested() noexcept
+    {
+        return Enabled() && State()._options._pipelineTrace;
+    }
+
     const std::string& OutputDirectory() noexcept
     {
         return State()._options._outputDirectory;
@@ -647,6 +701,20 @@ namespace Divide::RenderSmokeTest
         if ( RenderDocCaptureRequested() )
         {
             Emit( "VULKAN_TOOL_ENUMERATION status=skipped reason=renderdoc_capture" );
+        }
+    }
+
+    void ReportPipelineTrace( const char* program, const I64 guid, const bool graphics, const bool wireframe,
+                              const std::span<const PipelineTraceStage> stages ) noexcept
+    {
+        if ( PipelineTraceRequested() )
+        {
+            Runtime& state = State();
+            std::lock_guard lock( state._eventMutex );
+            if ( !WritePipelineTrace( state._events, program, guid, graphics, wireframe, stages ) )
+            {
+                FailOutput();
+            }
         }
     }
 

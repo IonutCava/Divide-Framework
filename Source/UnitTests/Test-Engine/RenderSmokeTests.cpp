@@ -86,6 +86,102 @@ namespace Divide
         CHECK( std::string_view{ line.data() } == "GPU uuid=example\n" );
     }
 
+    TEST_CASE( "Pipeline traces preserve program and shader inputs before creation", "[render_smoke][pipeline_trace]" )
+    {
+        using namespace RenderSmokeTest;
+
+        const auto suffix = std::chrono::steady_clock::now().time_since_epoch().count();
+        const std::filesystem::path path = std::filesystem::temp_directory_path() /
+                                           ( "divide-pipeline-trace-" + std::to_string( suffix ) + ".log" );
+        std::FILE* writer = OpenSharedOutput( path );
+        REQUIRE( writer != nullptr );
+        SCOPE_EXIT
+        {
+            std::fclose( writer );
+            std::error_code error;
+            std::filesystem::remove( path, error );
+        };
+
+        const std::array stages{
+            PipelineTraceStage{ ._name = "terrain.vert", ._module = 0x1520000000152u, ._stage = 1u, ._generation = 2u },
+            PipelineTraceStage{ ._name = "terrain.frag", ._module = 0x3ed00000003edu, ._stage = 16u, ._generation = 3u }
+        };
+        CHECK_FALSE( WritePipelineTrace( nullptr, "terrain", 42, true, false, stages ) );
+        CHECK_FALSE( WritePipelineTrace( writer, nullptr, 42, true, false, stages ) );
+        CHECK_FALSE( WritePipelineTrace( writer, "", 42, true, false, stages ) );
+        CHECK_FALSE( WritePipelineTrace( writer, "terrain", 42, true, false, {} ) );
+        CHECK_FALSE( WritePipelineTrace( writer, "terrain", 42, false, true, stages ) );
+        const std::array invalidStages{ PipelineTraceStage{} };
+        CHECK_FALSE( WritePipelineTrace( writer, "terrain", 42, true, false, invalidStages ) );
+        CHECK( std::ftell( writer ) == 0L );
+
+        REQUIRE( WritePipelineTrace( writer, "terrain", 42, true, false, stages ) );
+        REQUIRE( WritePipelineTrace( writer, "terrain", 42, true, true, stages ) );
+        REQUIRE( WritePipelineTrace( writer, "compute", -1, false, false, std::span{ stages }.first<1>() ) );
+
+#if defined(IS_WINDOWS_BUILD)
+        std::FILE* reader = _wfsopen( path.c_str(), L"rb", _SH_DENYNO );
+#else
+        std::FILE* reader = std::fopen( path.c_str(), "rb" );
+#endif
+        REQUIRE( reader != nullptr );
+        SCOPE_EXIT
+        {
+            std::fclose( reader );
+        };
+
+        const std::array expected{
+            std::string_view{ "PIPELINE_CREATE kind=graphics program=terrain guid=42 stages=2\n" },
+            std::string_view{ "PIPELINE_STAGE mask=0x1 generation=2 module=0x1520000000152 name=terrain.vert\n" },
+            std::string_view{ "PIPELINE_STAGE mask=0x10 generation=3 module=0x3ed00000003ed name=terrain.frag\n" },
+            std::string_view{ "PIPELINE_CREATE kind=wireframe program=terrain guid=42 stages=2\n" },
+            std::string_view{ "PIPELINE_STAGE mask=0x1 generation=2 module=0x1520000000152 name=terrain.vert\n" },
+            std::string_view{ "PIPELINE_STAGE mask=0x10 generation=3 module=0x3ed00000003ed name=terrain.frag\n" },
+            std::string_view{ "PIPELINE_CREATE kind=compute program=compute guid=-1 stages=1\n" },
+            std::string_view{ "PIPELINE_STAGE mask=0x1 generation=2 module=0x1520000000152 name=terrain.vert\n" }
+        };
+        std::array<char, 256> line{};
+        for ( const std::string_view expectedLine : expected )
+        {
+            REQUIRE( std::fgets( line.data(), to_I32( line.size() ), reader ) != nullptr );
+            CHECK( std::string_view{ line.data() } == expectedLine );
+        }
+        CHECK( std::fgets( line.data(), to_I32( line.size() ), reader ) == nullptr );
+    }
+
+    TEST_CASE( "Pipeline tracing is opt-in and Vulkan-only", "[render_smoke][pipeline_trace]" )
+    {
+        using namespace RenderSmokeTest;
+
+        Options options;
+        std::string error;
+        const std::array valid{ std::string_view{ "--vulkanSmokeTest" },
+                                std::string_view{ "--smokeOutput=C:\\smoke" },
+                                std::string_view{ "--smokeRun=attempt" },
+                                std::string_view{ "--smokePipelineTrace" } };
+        REQUIRE( ParseOptions( valid, options, error ) == ParseResult::ENABLED );
+        CHECK( options._pipelineTrace );
+
+        const std::array normal{ std::string_view{ "--vulkanSmokeTest" },
+                                 std::string_view{ "--smokeOutput=C:\\smoke" },
+                                 std::string_view{ "--smokeRun=attempt" } };
+        REQUIRE( ParseOptions( normal, options, error ) == ParseResult::ENABLED );
+        CHECK_FALSE( options._pipelineTrace );
+
+        const std::array noMode{ std::string_view{ "--smokePipelineTrace" } };
+        CHECK( ParseOptions( noMode, options, error ) == ParseResult::ERROR );
+        const std::array duplicate{ std::string_view{ "--vulkanSmokeTest" },
+                                    std::string_view{ "--smokePipelineTrace" },
+                                    std::string_view{ "--smokePipelineTrace" } };
+        CHECK( ParseOptions( duplicate, options, error ) == ParseResult::ERROR );
+        const std::array openGL{ std::string_view{ "--openGLSmokeTest" },
+                                 std::string_view{ "--smokeOutput=C:\\smoke" },
+                                 std::string_view{ "--smokeRun=attempt" },
+                                 std::string_view{ "--smokeExpectedGPU=00000000030000000000000000000000" },
+                                 std::string_view{ "--smokePipelineTrace" } };
+        CHECK( ParseOptions( openGL, options, error ) == ParseResult::ERROR );
+    }
+
     TEST_CASE( "Render smoke options select a named project and scene", "[render_smoke][options]" )
     {
         using namespace RenderSmokeTest;

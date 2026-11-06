@@ -41,6 +41,19 @@
 
 namespace
 {
+    template <typename Handle>
+    [[nodiscard]] Divide::U64 ShaderModuleHandleBits( const Handle handle ) noexcept
+    {
+        if constexpr ( std::is_pointer_v<Handle> )
+        {
+            return Divide::to_U64( reinterpret_cast<std::uintptr_t>( handle ) );
+        }
+        else
+        {
+            return Divide::to_U64( handle );
+        }
+    }
+
     inline VKAPI_ATTR VkBool32 VKAPI_CALL divide_debug_callback( VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                                                                  VkDebugUtilsMessageTypeFlagsEXT messageType,
                                                                  const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
@@ -2860,12 +2873,25 @@ namespace Divide
             bool isGraphicsPipeline = false;
             bool hasVertexStage = false;
             bool multiDrawCompatible = true;
+            const bool tracePipeline = RenderSmokeTest::PipelineTraceRequested();
+            std::array<RenderSmokeTest::PipelineTraceStage, to_base( ShaderType::COUNT )> traceStages{};
+            size_t traceStageCount = 0u;
             for ( const auto& stage : shaderStages )
             {
                 pipelineBuilder._shaderStages.push_back( vk::pipelineShaderStageCreateInfo( stage._shader->stageMask(), stage._shader->handle() ) );
                 isGraphicsPipeline = isGraphicsPipeline || stage._shader->stageMask() != VK_SHADER_STAGE_COMPUTE_BIT;
                 hasVertexStage = hasVertexStage || stage._shader->stageMask() == VK_SHADER_STAGE_VERTEX_BIT;
                 multiDrawCompatible = multiDrawCompatible && stage._shader->multiDrawCompatible();
+                if ( tracePipeline )
+                {
+                    traceStages[traceStageCount++] =
+                    {
+                        ._name = stage._shader->name().c_str(),
+                        ._module = ShaderModuleHandleBits( stage._shader->handle() ),
+                        ._stage = to_U32( stage._shader->stageMask() ),
+                        ._generation = stage._shader->generation()
+                    };
+                }
             }
             compiledPipeline._bindPoint = isGraphicsPipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
             compiledPipeline._multiDrawCompatible = isGraphicsPipeline && hasVertexStage && multiDrawCompatible;
@@ -2960,11 +2986,21 @@ namespace Divide
             pipelineBuilder._pipelineLayout = compiledPipeline._vkPipelineLayout;
             pipelineBuilder._tessellation = vk::pipelineTessellationStateCreateInfo( currentState._tessControlPoints );
 
+            const std::span<const RenderSmokeTest::PipelineTraceStage> pipelineTrace{ traceStages.data(), traceStageCount };
+            if ( tracePipeline )
+            {
+                RenderSmokeTest::ReportPipelineTrace( program->resourceName().c_str(), program->getGUID(), isGraphicsPipeline, false,
+                                                     pipelineTrace );
+            }
             compiledPipeline._vkPipeline = pipelineBuilder.build_pipeline( _device->getVKDevice(), _pipelineCache, isGraphicsPipeline );
 
             if ( isGraphicsPipeline && IsTriangles( pipelineDescriptor._primitiveTopology ) )
             {
                 pipelineBuilder._rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+                if ( tracePipeline )
+                {
+                    RenderSmokeTest::ReportPipelineTrace( program->resourceName().c_str(), program->getGUID(), true, true, pipelineTrace );
+                }
                 compiledPipeline._vkPipelineWireframe = pipelineBuilder.build_pipeline( _device->getVKDevice(), _pipelineCache, true );
 
                 Debug::SetObjectName( _device->getVKDevice(), (uint64_t)compiledPipeline._vkPipelineWireframe, VK_OBJECT_TYPE_PIPELINE, Util::StringFormat("{}_wireframe", program->resourceName().c_str()).c_str());

@@ -127,6 +127,9 @@ world-space, matching the vegetation shaders' instance positions. Grass wind and
 camera displacement are lateral and are not included in that padding.
 `TransformSystem` resolves parent transforms before descendants and propagates
 change masks through the hierarchy regardless of component iteration order.
+The first resolved world pose initializes both interpolation endpoints. Each
+fixed update advances a changed pose's history even if it stops moving, while
+frames without a fixed update retain the previous endpoint for interpolation.
 It marks affected bounds and their ancestors dirty before `BoundsSystem`
 recomputes them. Local-space bounds use the current world matrix at
 recomputation, rather than a matrix captured when they first became dirty;
