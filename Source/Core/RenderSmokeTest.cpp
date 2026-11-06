@@ -88,7 +88,7 @@ namespace Divide::RenderSmokeTest
         void Emit( const char* format, ... ) noexcept
         {
             Runtime& state = State();
-            std::lock_guard lock( state._eventMutex );
+            std::lock_guard<std::mutex> lock( state._eventMutex );
             if ( state._events == nullptr )
             {
                 FailOutput();
@@ -752,7 +752,7 @@ namespace Divide::RenderSmokeTest
         if ( PipelineTraceRequested() )
         {
             Runtime& state = State();
-            std::lock_guard lock( state._eventMutex );
+            std::lock_guard<std::mutex> lock( state._eventMutex );
             if ( !WritePipelineTrace( state._events, program, guid, graphics, wireframe, stages ) )
             {
                 FailOutput();

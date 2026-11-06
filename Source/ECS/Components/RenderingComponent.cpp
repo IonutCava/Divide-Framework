@@ -40,6 +40,8 @@
 namespace Divide
 {
 
+    DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(RenderingComponent);
+
     namespace
     {
         constexpr I16 g_renderRangeLimit = I16_MAX;

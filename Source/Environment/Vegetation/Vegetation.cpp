@@ -685,7 +685,7 @@ namespace Divide
         const U32 updateResult = material->update( 0u );
         DIVIDE_UNUSED( updateResult );
         _treeMaterials.emplace_back( source, variant );
-        return variant;
+        return MOV(variant);
     }
 
     void Vegetation::prepareDraw( SceneGraphNode* sgn, VegetationInstance& instance )

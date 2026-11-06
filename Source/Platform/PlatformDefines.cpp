@@ -54,7 +54,7 @@ namespace Divide
             return expression;
         }
 
-        void UnexpectedCall( const std::string_view file, const int line, const std::string_view failMessage ) noexcept
+        [[noreturn]] void UnexpectedCall( const std::string_view file, const int line, const std::string_view failMessage ) noexcept
         {
             std::fputs( "UNEXPECTED CALL [", stderr );
             std::fwrite( file.data(), 1u, file.size(), stderr );

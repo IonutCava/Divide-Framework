@@ -896,7 +896,7 @@ namespace Divide
                 case GFXImageFormat::BC6u: break;
 
                 case GFXImageFormat::COUNT:
-                default: DIVIDE_UNEXPECTED_CALL(); break;
+                default: DIVIDE_UNEXPECTED_CALL();
             }
 
             DIVIDE_GPU_ASSERT(valid, "SRGB textures are only supported for RGB/BGR(A) normalized formats!" );

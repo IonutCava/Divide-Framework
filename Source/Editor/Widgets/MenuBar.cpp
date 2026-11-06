@@ -414,7 +414,6 @@ namespace Divide
 
                     default:
                         DIVIDE_UNEXPECTED_CALL();
-                        break;
                 }
 
                 ResourcePtr<Material> mat = Get( materialHandle );

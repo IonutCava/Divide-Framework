@@ -25,7 +25,7 @@ namespace
 {
     volatile std::sig_atomic_t g_messageEvaluations = 0;
 
-    void ExitOnAbort( int ) noexcept
+    [[noreturn]] void ExitOnAbort( int ) noexcept
     {
         std::_Exit( g_messageEvaluations == 1 ? 73 : 74 );
     }
@@ -60,7 +60,6 @@ namespace
         if ( mode == "native" )
         {
             DIVIDE_UNEXPECTED_CALL_MSG( "native unexpected call" );
-            return 0;
         }
 
         if ( std::signal( SIGABRT, ExitOnAbort ) == SIG_ERR )
@@ -71,12 +70,10 @@ namespace
         {
             g_messageEvaluations = 1;
             DIVIDE_UNEXPECTED_CALL();
-            return 0;
         }
         if ( mode == "message" )
         {
             DIVIDE_UNEXPECTED_CALL_MSG( CountedMessage() );
-            return 0;
         }
         if ( mode == "expected" )
         {

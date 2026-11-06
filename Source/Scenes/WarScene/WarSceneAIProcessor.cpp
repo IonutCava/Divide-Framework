@@ -310,7 +310,7 @@ void WarSceneAIProcessor::requestOrders() {
             } break;
             case WarSceneOrder::WarOrder::COUNT: break;
 
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
         priority[order->getID()] = to_U8(priorityLevel);
     }
@@ -413,7 +413,7 @@ bool WarSceneAIProcessor::preAction(const ActionType type, const WarSceneAction*
         default: 
         case ActionType::COUNT: {
             DIVIDE_UNEXPECTED_CALL();
-        } break;
+        }
     }
 
     return true;
@@ -508,7 +508,7 @@ bool WarSceneAIProcessor::postAction(ActionType type,
         default: 
         case ActionType::COUNT: {
             DIVIDE_UNEXPECTED_CALL();
-        } break;
+        }
     }
 
     GOAPAction::operationsIterator o;
@@ -593,7 +593,7 @@ bool WarSceneAIProcessor::checkCurrentActionComplete(const GOAPAction& planStep)
         default:
         case ActionType::COUNT: {
             DIVIDE_UNEXPECTED_CALL();
-        } break;
+        }
     }
 
     if (state) {

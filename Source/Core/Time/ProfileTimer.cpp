@@ -170,7 +170,6 @@ ProfileTimer& ProfileTimer::getNewTimer(const char* timerName)
     }
 
     DIVIDE_UNEXPECTED_CALL_MSG("Reached max profile timer count!");
-    return g_profileTimers[0];
 }
 
 void ProfileTimer::removeTimer(ProfileTimer& timer)

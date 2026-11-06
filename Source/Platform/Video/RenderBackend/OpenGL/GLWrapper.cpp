@@ -1344,7 +1344,6 @@ namespace Divide
             else
             {
                 DIVIDE_UNEXPECTED_CALL_MSG("GL_API::Draw - Unsupported buffer usage type for drawing!");
-                ret = false;
             }
         }
 
@@ -1869,7 +1868,6 @@ namespace Divide
                         } break;
                         default:
                             DIVIDE_UNEXPECTED_CALL();
-                            break;
                     };
                 }
             }break;
@@ -1941,7 +1939,7 @@ namespace Divide
                                 {
                                     mask |= gl46core::GL_BUFFER_UPDATE_BARRIER_BIT | gl46core::GL_SHADER_STORAGE_BARRIER_BIT;
                                 } break;
-                                default: DIVIDE_UNEXPECTED_CALL(); break;
+                                default: DIVIDE_UNEXPECTED_CALL();
                             }
                         } break;
                         case BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE:
@@ -1953,7 +1951,7 @@ namespace Divide
                         {
                             NOP();
                         }break;
-                        default: DIVIDE_UNEXPECTED_CALL(); break;
+                        default: DIVIDE_UNEXPECTED_CALL();
                     }
                 }
 
@@ -1995,7 +1993,7 @@ namespace Divide
                             mask |= gl46core::GL_FRAMEBUFFER_BARRIER_BIT;
                         } break;
 
-                        default: DIVIDE_UNEXPECTED_CALL(); break;
+                        default: DIVIDE_UNEXPECTED_CALL();
                     }
                 }
 
@@ -2023,7 +2021,7 @@ namespace Divide
             case GFX::CommandType::CLEAR_BUFFER_DATA: break;
 
             case GFX::CommandType::COUNT:
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
     }
 
@@ -2289,7 +2287,7 @@ namespace Divide
                             case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
 
                             default:
-                            case ImageUsage::COUNT: DIVIDE_UNEXPECTED_CALL();  break;
+                            case ImageUsage::COUNT: DIVIDE_UNEXPECTED_CALL();
                         }
 
                         DIVIDE_GPU_ASSERT( imageView._image._subRange._mipLevels._count == 1u );
@@ -2315,7 +2313,7 @@ namespace Divide
                     case DescriptorSetBindingType::COUNT:
                     {
                         DIVIDE_UNEXPECTED_CALL();
-                    } break;
+                    }
                 };
             }
         }

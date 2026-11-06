@@ -164,9 +164,8 @@ namespace
             case Input::KeyCode::KC_TWOSUPERIOR  : //Grave?
             case Input::KeyCode::KC_UNASSIGNED   : return Key::Unknown;
 
-            default: DIVIDE_UNEXPECTED_CALL();   break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
-        return Key::Unknown;
     }
 };
 

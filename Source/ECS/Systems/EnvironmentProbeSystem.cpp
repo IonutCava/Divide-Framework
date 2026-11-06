@@ -56,7 +56,6 @@ namespace Divide {
                 default:
                 case EnvironmentProbeComponent::UpdateType::COUNT:
                     DIVIDE_UNEXPECTED_CALL();
-                    break;
             }
         }
     }

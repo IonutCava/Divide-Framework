@@ -148,9 +148,7 @@ void DVDTexture::setTextureSize_impl(const Sizef& sz, PixelFormat format)
         default:
         case PF_PVRTC2:
         case PF_PVRTC4:
-        {
             DIVIDE_UNEXPECTED_CALL_MSG( "DVDTexture::setTextureSize_impl: PVRTC textures not supported!" );
-        } break;
     }
 
     static float maxSize = -1;
@@ -281,9 +279,7 @@ void DVDTexture::generateDVDTexture()
         default:
         case Texture::PixelFormat::PF_PVRTC2:
         case Texture::PixelFormat::PF_PVRTC4:
-        {
             DIVIDE_UNEXPECTED_CALL_MSG("DVDTexture::generateDVDTexture: PVRTC textures not supported!");
-        } break;
     }
 
     ResourceDescriptor<Divide::Texture> resDescriptor( Util::StringFormat("CEGUI_texture_{}", TEXTURE_IDX++).c_str() );

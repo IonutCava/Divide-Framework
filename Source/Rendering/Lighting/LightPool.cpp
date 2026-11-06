@@ -374,7 +374,6 @@ namespace Divide
                 default:
                 case LightType::COUNT:
                     DIVIDE_UNEXPECTED_CALL();
-                    break;
             }
 
             if ( !reuseCached )

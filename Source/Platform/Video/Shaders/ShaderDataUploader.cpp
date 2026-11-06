@@ -52,10 +52,8 @@ namespace Divide
                     case _ID( "uint" ):               //  4 bytes
                     case _ID( "float" )  : return 10; //  4 bytes
                     case _ID( "bool" )   : return 11; //  4 bytes (converted to uint)
-                    default: DIVIDE_UNEXPECTED_CALL(); break;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 }
-
-                return 999;
             };
 
             const I32 lhsPriority = g_TypePriority( lhs._typeHash );
@@ -536,7 +534,6 @@ namespace Divide
             };
 
             DIVIDE_UNEXPECTED_CALL_MSG( "Unexpected push constant type" );
-            return 0u;
         };
 
         if ( uniformBlock._memberCount == 0u )

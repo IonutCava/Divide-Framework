@@ -1236,7 +1236,7 @@ namespace Divide
                     return typeB == DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC ||
                            typeB == DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC;
 
-                case DescriptorSetBindingType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                case DescriptorSetBindingType::COUNT: DIVIDE_UNEXPECTED_CALL();
                 default: break;
             };
 
@@ -1301,7 +1301,6 @@ namespace Divide
             default:
             case DescriptorSetBindingType::COUNT:
                 DIVIDE_UNEXPECTED_CALL();
-                break;
         }
     }
     

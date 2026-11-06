@@ -101,13 +101,13 @@ namespace Divide
 
         if ( !_attachmentsUsed[slotIndex] )
         {
-            return range;
+            return MOV(range);
         }
 
         const auto& att = _attachments[slotIndex];
         if ( att == nullptr )
         {
-            return range;
+            return MOV(range);
         }
 
         vkTexture* vkTex = static_cast<vkTexture*>(Get(resolve ? att->resolvedTexture() : att->renderTexture()));

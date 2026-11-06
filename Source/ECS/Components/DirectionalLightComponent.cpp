@@ -12,6 +12,8 @@
 
 namespace Divide {
 
+DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(DirectionalLightComponent);
+
 namespace {
     constexpr F32 g_defaultLightDistance = 500.0f;
 }

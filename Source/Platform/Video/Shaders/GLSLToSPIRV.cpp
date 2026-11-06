@@ -26,10 +26,9 @@ namespace
             case Divide::ShaderType::COMPUTE:           return EShLangCompute;
             case Divide::ShaderType::MESH:              return EShLangMesh;
             case Divide::ShaderType::TASK:              return EShLangTask;
-            default: DIVIDE_UNEXPECTED_CALL();          break;
+            default:
+                DIVIDE_UNEXPECTED_CALL();
         }
-
-        return EShLangVertex;
     }
 };
 
@@ -343,10 +342,9 @@ namespace
             case ShaderType::TASK:              return ShaderStageVisibility::TASK;
 
             default:
-            case ShaderType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+            case ShaderType::COUNT:
+                DIVIDE_UNEXPECTED_CALL();
         };
-
-        return ShaderStageVisibility::NONE;
     }
 
     [[nodiscard]] bool CollectVertexInputs( const SpvReflectShaderModule& module, AttributeFlags& inputs )
@@ -507,7 +505,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
             case SpvDim2D: target._textureType = target._isArray ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D; break;
             case SpvDim3D: target._textureType = TextureType::TEXTURE_3D; break;
             case SpvDimCube: target._textureType = target._isArray ? TextureType::TEXTURE_CUBE_ARRAY : TextureType::TEXTURE_CUBE_MAP; break;
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
         if ( binding.name != nullptr && strlen( binding.name ) > 0 )
         {

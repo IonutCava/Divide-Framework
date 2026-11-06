@@ -863,6 +863,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                     case DDSCache::WriteStatus::CONVERSION_ERROR:
                         Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DDS_CONVERSION_ERROR" ), fullPath, cacheFilePath );
                         break;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 }
             });
 
@@ -995,7 +996,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         dataLDR = stbi__hdr_to_ldr( dataHDR, width, height, comp );
                         dataHDR = nullptr;
                     } break;
-                    default: DIVIDE_UNEXPECTED_CALL(); break;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 };
                 _sourceDataType = SourceDataType::BYTE;
             } break;
@@ -1014,7 +1015,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         data16Bit = stbi__hdr_to_16( dataHDR, width, height, comp );
                         dataHDR = nullptr;
                     } break;
-                    default: DIVIDE_UNEXPECTED_CALL(); break;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 };
                 _sourceDataType = SourceDataType::SHORT;
             } break;
@@ -1039,7 +1040,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         dataUINT = stbi_convert<U32, stbi__uint16>( data16Bit, width, height, comp );
                         data16Bit = nullptr;
                     } break;
-                    default: DIVIDE_UNEXPECTED_CALL(); break;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 };
                 _sourceDataType = SourceDataType::UINT;
             } break;
@@ -1048,7 +1049,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
             case GFXDataFormat::SIGNED_INT:
             {
                 DIVIDE_UNEXPECTED_CALL_MSG("Signed data types not supported when loading from file!");
-            } break;
+            }
             case GFXDataFormat::FLOAT_16:
             {
                 switch ( _sourceDataType )
@@ -1068,7 +1069,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         dataHalf = stbi__hdr_to_half( dataHDR, width, height, comp );
                         dataHDR = nullptr;
                     }break;
-                    default: DIVIDE_UNEXPECTED_CALL(); break;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 };
                 _sourceDataType = SourceDataType::HALF;
             } break;
@@ -1087,11 +1088,11 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         data16Bit = nullptr;
                     }break;
                     case SourceDataType::FLOAT: break;
-                    default: DIVIDE_UNEXPECTED_CALL(); break;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 }
                 _sourceDataType = SourceDataType::FLOAT;
             } break;
-            default: DIVIDE_UNEXPECTED_CALL_MSG("Invalid requested texture format!"); break;
+            default: DIVIDE_UNEXPECTED_CALL_MSG("Invalid requested texture format!");
         }
 
         _dataType = _requestedDataFormat;
@@ -1106,7 +1107,6 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         case 4 : _format = GFXImageFormat::RGBA; break;
         default:
             DIVIDE_UNEXPECTED_CALL();
-            break;
     }
 
     if (refWidth != 0 && refHeight != 0 && (refWidth != width || refHeight != height))
@@ -1587,7 +1587,7 @@ void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& 
             {
                 c = U32ToU8Colour( ReadImageComponent<U32>( *mip, idx ) );
             } break;
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
     }
 }

@@ -12,6 +12,8 @@
 namespace Divide
 {
 
+DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(AnimationComponent);
+
 bool AnimationComponent::s_globalAnimationState = true;
 
 AnimationComponent::AnimationComponent(SceneGraphNode* parentSGN, PlatformContext& context)

@@ -18,6 +18,8 @@
 
 namespace Divide {
 
+DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(EnvironmentProbeComponent);
+
 namespace TypeUtil {
     const char* EnvProveUpdateTypeToString(const EnvironmentProbeComponent::UpdateType type) noexcept {
         return EnvironmentProbeComponent::Names::updateType[to_base(type)];

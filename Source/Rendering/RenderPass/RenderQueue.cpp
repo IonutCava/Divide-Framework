@@ -95,7 +95,7 @@ namespace Divide
                     return RenderBinType::OPAQUE;
                 }
             } break;
-            case SceneNodeType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+            case SceneNodeType::COUNT: DIVIDE_UNEXPECTED_CALL();
         }
 
         return RenderBinType::COUNT;
