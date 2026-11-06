@@ -1,6 +1,13 @@
+# Copyright (c) 2026 DIVIDE-Studio
 name: Daily CI Scheduler
 
 on:
+  workflow_dispatch:
+    inputs:
+      pull_request:
+        description: 'Open pull request number to validate'
+        required: true
+        type: string
   schedule:
     - cron: "0 0 * * *"
 
@@ -18,10 +25,15 @@ jobs:
   dispatch:
     runs-on: ubuntu-24.04
     steps:
+      - name: Require the default branch for manual runs
+        if: ${{ github.event_name == 'workflow_dispatch' && github.ref_name != github.event.repository.default_branch }}
+        run: |
+          echo "::error::Run the daily CI scheduler from the default branch."
+          exit 1
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - name: Check master and open PRs for unbuilt commits
+      - name: Queue required platform builds
         uses: actions/github-script@v7
         with:
           script: |
