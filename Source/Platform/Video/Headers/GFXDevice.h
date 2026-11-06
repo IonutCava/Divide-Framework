@@ -251,6 +251,36 @@ struct RenderTargetNames
     };
 };
 
+/// Per-command-buffer GPU times, summed by command buffer name over a number of frames.
+struct GPUPassTimingTable
+{
+    using Name = Str<64>;
+
+    struct Entry
+    {
+        Name _name;
+        D64 _totalMS{ 0.0 };
+    };
+
+    std::array<Entry, GPU_PASS_TIMESTAMP_CAPACITY> _entries{};
+    size_t _entryCount{ 0u };
+    U32 _frameCount{ 0u };
+
+    void reset() noexcept
+    {
+        _entryCount = 0u;
+        _frameCount = 0u;
+    }
+};
+
+/// Adds one frame of pass timings: timestampsMS[i] is written before passNames[i] and timestampsMS[passNames.size()] after the last pass.
+/// Ignores the frame if fewer than passNames.size() + 1 timestamps are supplied.
+void AccumulateGPUPassTimings( std::span<const F32> timestampsMS, std::span<const GPUPassTimingTable::Name> passNames, GPUPassTimingTable& table ) noexcept;
+
+/// Strips per-instance decorations from a debug scope name so timings of e.g. every "Custom pass ( SHADOW - x )" merge into one entry:
+/// leading " - " markers and everything from the first " (" or " [" are removed.
+[[nodiscard]] std::string_view NormalizeGPUScopeName( std::string_view scopeName ) noexcept;
+
 /// Rough around the edges Adapter pattern abstracting the actual rendering API and access to the GPU
 class GFXDevice final : public PlatformContextComponent, public FrameListener
 {
@@ -375,6 +405,8 @@ public:  // Accessors and Mutators
 
     [[nodiscard]] PerformanceMetrics& getPerformanceMetrics() noexcept;
     [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept;
+    /// GPU time per command buffer name, accumulated while queryPerformanceStats() is enabled. Callers reset it after consuming.
+    [[nodiscard]] GPUPassTimingTable& gpuPassTimings() noexcept { return _gpuPassTimings; }
 
     void onThreadCreated(const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread) const;
 
@@ -436,6 +468,10 @@ public:
     PROPERTY_RW(MaterialDebugFlag, materialDebugFlag, MaterialDebugFlag::COUNT);
     PROPERTY_RW(RenderAPI, renderAPI, RenderAPI::COUNT);
     PROPERTY_RW(bool, queryPerformanceStats, false);
+    /// Opt-in vertex/primitive/tessellation counters. Much more expensive than the GPU timer (~10x frame time on GL/AMD).
+    PROPERTY_RW(bool, queryPipelineStatistics, false);
+    /// When set together with queryPerformanceStats, pass timings are split into exclusive time per (normalised) debug scope.
+    PROPERTY_RW(bool, queryGPUScopeTimings, false);
     PROPERTY_RW(bool, enableOcclusionCulling, true);
     PROPERTY_R_IW(U32, frameDrawCalls, 0u);
     PROPERTY_R_IW(U32, frameDrawCallsPrev, 0u);
@@ -499,6 +535,9 @@ protected:
                        bool countCulledNodes,
                        GFX::CommandBuffer& bufferInOut);
 
+    /// Clamps indirect draw instance counts to GPU-written counts. The PER_BATCH command buffer must be bound. Records follow the commands in the same buffer: {commandIndex, countElement, 0, 0, 0}.
+    void patchInstanceCounts(ShaderBuffer* countBuffer, U32 recordOffset, U32 recordCount, GFX::CommandBuffer& bufferInOut);
+
     // Returns the HiZ texture that can be sent directly to occlusionCull
     std::pair<Handle<Texture>, SamplerDescriptor> constructHIZ(RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut, bool dilateBaseLevel = true);
 
@@ -557,6 +596,7 @@ private:
     Handle<ShaderProgram> _renderTargetDraw = INVALID_HANDLE<ShaderProgram>;
     Handle<ShaderProgram> _hIZConstructProgram = INVALID_HANDLE<ShaderProgram>;
     Handle<ShaderProgram> _hIZCullProgram = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _instanceCountPatchProgram = INVALID_HANDLE<ShaderProgram>;
     Handle<ShaderProgram> _displayShader = INVALID_HANDLE<ShaderProgram>;
     Handle<ShaderProgram> _depthShader = INVALID_HANDLE<ShaderProgram>;
     Handle<ShaderProgram> _blurBoxShaderSingle = INVALID_HANDLE<ShaderProgram>;
@@ -567,6 +607,7 @@ private:
 
     Pipeline* _hIZPipeline = nullptr;
     Pipeline* _hIZCullPipeline = nullptr;
+    Pipeline* _instanceCountPatchPipeline = nullptr;
     PipelineDescriptor _debugGizmoPipeline;
     PipelineDescriptor _debugGizmoPipelineNoDepth;
     PipelineDescriptor _debugGizmoPipelineNoCull;
@@ -591,6 +632,32 @@ private:
 
     Mutex _queuedCommandbufferLock;
     Mutex _cullCounterLock;
+
+    /// Command buffer names submitted per frame, kept long enough to match backend timestamps resolved several frames later.
+    static constexpr U8 GPU_PASS_NAME_HISTORY = 8u;
+    struct GPUPassNameFrame
+    {
+        std::array<GPUPassTimingTable::Name, GPU_PASS_TIMESTAMP_CAPACITY> _names{};
+        U64 _frameNumber{ U64_MAX };
+        U32 _count{ 0u };
+    };
+    std::array<GPUPassNameFrame, GPU_PASS_NAME_HISTORY> _gpuPassNames{};
+    std::array<F32, GPU_PASS_TIMESTAMP_CAPACITY> _gpuPassTimestampScratch{};
+    GPUPassTimingTable _gpuPassTimings{};
+
+    /// Debug scope timing state, only valid while flushWindow() translates main-window command buffers with scope timing enabled.
+    static constexpr U8 GPU_SCOPE_MAX_DEPTH = 16u;
+    void writeGPUPassTimestamp( const GPUPassTimingTable::Name& name );
+    void writeGPUScopeTimestamp( const GPUPassTimingTable::Name& name );
+    void flushPendingGPUScopeTimestamp();
+    void pushGPUScopeTimestamp( std::string_view scopeName );
+    void popGPUScopeTimestamp();
+    GPUPassNameFrame* _gpuScopeNames{ nullptr };
+    bool _gpuScopeTimingActive{ false };
+    bool _gpuScopePendingPop{ false };
+    std::array<GPUPassTimingTable::Name, GPU_SCOPE_MAX_DEPTH + 1u> _gpuScopeStack{};
+    U8 _gpuScopeDepth{ 0u };
+    U32 _gpuScopeSlotLimit{ 0u };
 
     struct GFXBuffers
     {

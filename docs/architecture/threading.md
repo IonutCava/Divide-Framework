@@ -36,11 +36,27 @@ shutdown waits service pending callbacks as well. The render-pass manager waits
 for its parent task through `TaskPool::wait`, which services callbacks and
 eligible tasks while using a bounded condition-variable wait between checks;
 render-stage tasks marked `DONT_CARE_NO_IDLE` remain on pool workers.
+
+Render stages use ready-only scheduling (`RenderStageSchedule` and
+`RenderPassManager`). Stage tasks are precreated and the root stages are
+enqueued. Each completed stage decrements atomic predecessor counters, which
+release its dependents only after their *recording* dependencies have finished.
+Stage tasks never block waiting on other stages. They only record. The main
+thread submits the recorded buffers afterwards, in GPU submission order. Catch2
+tests cover the schedule and the topological order; the WarScene measurements
+are recorded in `docs/plans/renderer-performance-plan.md`.
+Preserve the producer/consumer stage ordering described in
+[Rendering](rendering.md#stage-dependencies) regardless of scheduler design.
+
 Idle task checks poll both priority queues without blocking. A task wait
 continues helping immediately after executing eligible work and only waits
 when no work was executed. Parent and `Parallel_For` waits use bounded
 completion notifications when no eligible task is available, so they continue
-servicing main-thread callbacks without busy-polling. Workers may still wait
+servicing main-thread callbacks without busy-polling. Every task completion
+wakes all waiters (`notify_all`): many unrelated waiters (main thread, stage
+tasks, nested `Parallel_For`) share one condition variable, and waking only one
+left the right waiter sleeping for its full timeout (a 2x frame-time regression
+in WarScene). Workers may still wait
 briefly on the normal queue between priority checks.
 Resource creation without an external task counter does not retain a pointer
 to a temporary counter; supplied counters must outlive their asynchronous work.

@@ -31,6 +31,10 @@ param(
     [string] $MaterialDebugView = '',
     [switch] $EditorPaused,
     [switch] $TracePipelines,
+    [switch] $PerfMode,
+    [switch] $GpuScopeTimings,
+    [ValidateSet('Debug', 'Release')]
+    [string] $Configuration = 'Debug',
     [ValidateRange(0, 2147483647)]
     [int] $MaxAttempts = 25
 )
@@ -64,6 +68,18 @@ if ($TracePipelines -and ($Backend -ne 'Vulkan' -or $DiagnosticPresents -eq 0))
 {
     throw '-TracePipelines requires a Vulkan diagnostic run.'
 }
+if ($PerfMode -and ($DiagnosticPresents -eq 0 -or $TracePipelines -or $RenderDocInjectExe -or $AmdCaptureExe))
+{
+    throw '-PerfMode requires a diagnostic run without pipeline tracing, RenderDoc or Radeon capture; it disables API validation.'
+}
+if ($GpuScopeTimings -and -not $PerfMode)
+{
+    throw '-GpuScopeTimings requires -PerfMode.'
+}
+if ($Configuration -ne 'Debug' -and -not $PerfMode)
+{
+    throw '-Configuration Release is restricted to -PerfMode runs; acceptance uses the Debug instrumented build.'
+}
 if ($DiagnosticPresents -gt 0 -and $PSBoundParameters.ContainsKey('MinimumPresents'))
 {
     throw '-MinimumPresents cannot be combined with -DiagnosticPresents.'
@@ -83,7 +99,7 @@ if ($script:Root.Contains('"') -or $script:Root.Contains('%') -or $script:Repo.C
 $script:StatePath = Join-Path $script:Root 'state.json'
 $script:Timeline = Join-Path $script:Root 'timeline.log'
 $script:ConfigurePreset = 'windows-msvc-editor-instrumentation'
-$script:BuildPreset = 'windows-msvc-debug-editor-instrumentation'
+$script:BuildPreset = if ($Configuration -eq 'Release') { 'windows-msvc-release-editor-instrumentation' } else { 'windows-msvc-debug-editor-instrumentation' }
 $script:TargetPresents = if ($DiagnosticPresents -gt 0) { $DiagnosticPresents } else { $MinimumPresents }
 
 $lock = [IO.File]::Open((Join-Path $script:Root 'supervisor.lock'), [IO.FileMode]::OpenOrCreate,
@@ -283,7 +299,8 @@ while (-not [IO.File]::Exists($Gate))
 $launch = Get-Content -LiteralPath $Configuration -Raw | ConvertFrom-Json
 Set-Location -LiteralPath $launch.workingDirectory
 $arguments = @($launch.arguments)
-& $launch.executable @arguments
+# Piping forces PowerShell to wait for GUI-subsystem executables (the renderer without a debugger).
+& $launch.executable @arguments | ForEach-Object { [Console]::Out.WriteLine($_) }
 if ($null -eq $LASTEXITCODE) { exit 126 }
 exit $LASTEXITCODE
 '@
@@ -608,8 +625,8 @@ exit $LASTEXITCODE
         $codemodel = @($indexData.objects | Where-Object { $_.kind -eq 'codemodel' } | Select-Object -First 1)
         if ($codemodel.Count -ne 1) { throw 'CMake codemodel is missing.' }
         $model = Get-Content -LiteralPath (Join-Path $reply $codemodel[0].jsonFile) -Raw | ConvertFrom-Json
-        $config = @($model.configurations | Where-Object { $_.name -eq 'Debug' })
-        if ($config.Count -ne 1) { throw 'CMake Debug configuration is missing or ambiguous.' }
+        $config = @($model.configurations | Where-Object { $_.name -eq $Configuration })
+        if ($config.Count -ne 1) { throw "CMake $Configuration configuration is missing or ambiguous." }
         $target = @($config[0].targets | Where-Object { $_.name -eq $Name })
         if ($target.Count -ne 1) { throw "CMake target is missing or ambiguous: $Name" }
         $data = Get-Content -LiteralPath (Join-Path $reply $target[0].jsonFile) -Raw | ConvertFrom-Json
@@ -1626,7 +1643,8 @@ exit $LASTEXITCODE
     {
         throw 'A Vulkan SDK with headers and the loader import library is required.'
     }
-    $debuggerSource = Get-Debugger
+    # Perf mode runs without a debugger: an attached debugger enables the Windows debug heap and skews timings.
+    $debuggerSource = if ($PerfMode) { $null } else { Get-Debugger }
     $buildDirectory = Get-BinaryDirectory
     if ($AmdCaptureExe)
     {
@@ -2066,6 +2084,8 @@ int main(int argc, char** argv)
     if ($MaterialDebugView) { $arguments += "--smokeMaterialView=$MaterialDebugView" }
     if ($EditorPaused) { $arguments += '--smokeEditorPaused' }
     if ($TracePipelines) { $arguments += '--smokePipelineTrace' }
+    if ($PerfMode) { $arguments += '--smokePerfMode' }
+    if ($GpuScopeTimings) { $arguments += '--smokeGpuScopeTimings' }
     $program = $engine.Executable
     if ($debugger)
     {

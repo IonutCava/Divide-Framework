@@ -113,7 +113,6 @@ namespace Divide
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
             LockGuard<Mutex> w_lock( executorBuffer._nodeProcessedLock );
-            // Returns true if and only if the insertion took place! Since this is a set, we can only have unique instances of the ID
             return executorBuffer._nodeProcessedThisFrame.insert(indirectionIDX).second;
         }
 
@@ -753,12 +752,20 @@ namespace Divide
                       } );
         }
 
-        bool updateTaskDirty = false;
 
         const D64 interpFactor = GFXDevice::FrameInterpolationFactor();
 
         TaskPool& pool = _context.context().taskPool( TaskPoolType::RENDERER );
-        Task* updateTask = CreateTask( TASK_NOP );
+        // Lazily allocated: a pooled task that is never enqueued keeps its slot forever.
+        Task* updateTask = nullptr;
+        const auto getUpdateTask = [&updateTask]() -> Task*
+        {
+            if ( updateTask == nullptr )
+            {
+                updateTask = CreateTask( TASK_NOP );
+            }
+            return updateTask;
+        };
         {
             PROFILE_SCOPE( "buildDrawCommands - process nodes: Transforms", Profiler::Category::Scene );
 
@@ -770,15 +777,14 @@ namespace Divide
                 if ( queueSize > g_nodesPerPrepareDrawPartition )
                 {
                     const U32 midPoint = queueSize / 2;
-                    pool.enqueue( *CreateTask( updateTask, [this, index, interpFactor, &queue, midPoint]( const Task& )
+                    pool.enqueue( *CreateTask( getUpdateTask(), [this, index, interpFactor, &queue, midPoint]( const Task& )
                                         {
                                             parseTransformRange( queue, 0u, midPoint, index, interpFactor );
                                         } ) );
-                    pool.enqueue( *CreateTask( updateTask, [this, index, interpFactor, &queue, midPoint, queueSize]( const Task& )
+                    pool.enqueue( *CreateTask( getUpdateTask(), [this, index, interpFactor, &queue, midPoint, queueSize]( const Task& )
                                         {
                                             parseTransformRange(queue, midPoint, queueSize, index, interpFactor );
                                         } ) );
-                    updateTaskDirty = true;
                 }
                 else
                 {
@@ -796,15 +802,14 @@ namespace Divide
                 if ( queueSize > g_nodesPerPrepareDrawPartition )
                 {
                     const U32 midPoint = queueSize / 2;
-                    pool.enqueue( *CreateTask( updateTask, [this, &queue, midPoint]( const Task& )
+                    pool.enqueue( *CreateTask( getUpdateTask(), [this, &queue, midPoint]( const Task& )
                                         {
                                             parseMaterialRange( queue, 0u, midPoint );
                                         } ) );
-                    pool.enqueue( *CreateTask( updateTask, [this, &queue, midPoint, queueSize]( const Task& )
+                    pool.enqueue( *CreateTask( getUpdateTask(), [this, &queue, midPoint, queueSize]( const Task& )
                                         {
                                             parseMaterialRange( queue, midPoint, queueSize );
                                         } ) );
-                    updateTaskDirty = true;
                 }
                 else
                 {
@@ -812,7 +817,7 @@ namespace Divide
                 }
             }
         }
-        if (updateTaskDirty) 
+        if ( updateTask != nullptr )
         {
             PROFILE_SCOPE( "buildDrawCommands - process nodes: Waiting for tasks to finish", Profiler::Category::Scene );
             pool.enqueue( *updateTask );
@@ -831,7 +836,16 @@ namespace Divide
             {
                 for ( RenderingComponent* rComp : queue )
                 {
+                    const size_t firstCommand = _drawCommands.size();
                     Attorney::RenderingCompRenderPass::retrieveDrawCommands( *rComp, stagePass, startOffset, _drawCommands );
+                    const auto [countSource, countElement] = Attorney::RenderingCompRenderPass::instanceCountSource( *rComp );
+                    if ( countSource != nullptr )
+                    {
+                        for ( size_t i = firstCommand; i < _drawCommands.size(); ++i )
+                        {
+                            _instanceCountPatches.push_back( { countSource, to_U32( i ), countElement } );
+                        }
+                    }
                 }
             }
         };
@@ -839,6 +853,7 @@ namespace Divide
         const auto retrieveAllCommands = [&]( const U32 startOffset )
         {
             const RenderPassType prevType = stagePass._passType;
+            _instanceCountPatches.clear();
             if ( doPrePass )
             {
                 PROFILE_SCOPE( "buildDrawCommands - retrieve draw commands: PRE_PASS", Profiler::Category::Scene );
@@ -869,15 +884,16 @@ namespace Divide
 
         const U32 cmdCount = to_U32( _drawCommands.size() );
         *passData._lastCommandCount = cmdCount;
+        const U32 totalCount = appendInstanceCountRecords( cmdCount );
 
         PlayerCommandBuffers& commandBuffers = _commandBuffers[index];
-        const IndirectCommandBufferTracker::Allocation allocation = commandBuffers._tracker.acquire( stageIndex, cmdCount );
+        const IndirectCommandBufferTracker::Allocation allocation = commandBuffers._tracker.acquire( stageIndex, totalCount );
         vector<ShaderBuffer_uptr>& pages = allocation._overflow ? commandBuffers._overflowPages : commandBuffers._pages;
         U32 overflowCapacity = 0u;
         if ( allocation._overflow )
         {
             const auto& deviceInfo = GFXDevice::GetDeviceInformation();
-            if ( !IndirectCommandBufferTracker::TryOverflowCapacity( cmdCount,
+            if ( !IndirectCommandBufferTracker::TryOverflowCapacity( totalCount,
                                                                      deviceInfo._offsetAlignmentBytesSSBO,
                                                                      deviceInfo._maxSizeBytesSSBO,
                                                                      overflowCapacity ) )
@@ -894,14 +910,14 @@ namespace Divide
             pages[allocation._pageIndex] = createCommandBuffer( index, allocation._pageIndex, overflowCapacity );
         }
         ShaderBuffer* const cmdBuffer = pages[allocation._pageIndex].get();
-        const U32 bindingCount = allocation._overflow ? cmdCount : Config::MAX_VISIBLE_NODES;
+        const U32 bindingCount = allocation._overflow ? totalCount : Config::MAX_VISIBLE_NODES;
 
         if ( cmdCount > 0u )
         {
             PROFILE_SCOPE( "buildDrawCommands - update command buffer", Profiler::Category::Graphics );
             memCmdInOut._bufferLocks.push_back( cmdBuffer->writeBytes(
                 { to_size( startOffset ) * sizeof( IndirectIndexedDrawCommand ),
-                  to_size( cmdCount ) * sizeof( IndirectIndexedDrawCommand ) },
+                  to_size( totalCount ) * sizeof( IndirectIndexedDrawCommand ) },
                 _drawCommands.data(), allocation._queueIndex ) );
         }
 
@@ -933,6 +949,87 @@ namespace Divide
         return { queueTotalSize, cmdBuffer };
     }
 
+    U32 RenderPassExecutor::appendInstanceCountRecords( const U32 cmdCount )
+    {
+        _instanceCountPatchRanges.clear();
+        if ( _instanceCountPatches.empty() )
+        {
+            return cmdCount;
+        }
+
+        const size_t totalCount = to_size( cmdCount ) + _instanceCountPatches.size();
+        // Regular pages have a fixed size; overflow pages are sized for the commands and their patch records.
+        if ( cmdCount <= Config::MAX_VISIBLE_NODES && totalCount > Config::MAX_VISIBLE_NODES )
+        {
+            if ( !_instanceCountPatchOverflowLogged )
+            {
+                _instanceCountPatchOverflowLogged = true;
+                Console::warnfn( "RenderPassExecutor: Skipping GPU instance count patching because the indirect command page is full. Culled instances will still be drawn as degenerate geometry." );
+            }
+            _instanceCountPatches.clear();
+            return cmdCount;
+        }
+
+        std::sort( _instanceCountPatches.begin(), _instanceCountPatches.end(), []( const InstanceCountPatch& lhs, const InstanceCountPatch& rhs )
+        {
+            return std::less<ShaderBuffer*>{}( lhs._source, rhs._source );
+        } );
+
+        for ( const InstanceCountPatch& patch : _instanceCountPatches )
+        {
+            if ( _instanceCountPatchRanges.empty() || _instanceCountPatchRanges.back()._source != patch._source )
+            {
+                _instanceCountPatchRanges.push_back( { patch._source, to_U32( _drawCommands.size() ), 0u } );
+            }
+            ++_instanceCountPatchRanges.back()._recordCount;
+
+            IndirectIndexedDrawCommand& record = _drawCommands.emplace_back();
+            record.indexCount = patch._commandIndex;
+            record.instanceCount = patch._element;
+            record.firstIndex = 0u;
+            record.baseVertex = 0u;
+            record.baseInstance = 0u;
+        }
+        _instanceCountPatches.clear();
+
+        return to_U32( _drawCommands.size() );
+    }
+
+    void RenderPassExecutor::patchInstanceCounts( ShaderBuffer& commandBuffer, GFX::CommandBuffer& bufferInOut )
+    {
+        if ( _instanceCountPatchRanges.empty() )
+        {
+            return;
+        }
+
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        auto beforePatch = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut );
+        beforePatch->_bufferLocks.emplace_back( BufferLock
+        {
+            ._range = { 0u, U32_MAX },
+            ._type = BufferSyncUsage::GPU_READ_TO_GPU_WRITE,
+            ._buffer = commandBuffer.getBufferImpl()
+        } );
+        beforePatch->_bufferLocks.emplace_back( BufferLock
+        {
+            ._range = { 0u, U32_MAX },
+            ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE,
+            ._buffer = commandBuffer.getBufferImpl()
+        } );
+
+        for ( const InstanceCountPatchRange& range : _instanceCountPatchRanges )
+        {
+            _context.patchInstanceCounts( range._source, range._recordOffset, range._recordCount, bufferInOut );
+        }
+
+        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
+        {
+            ._range = { 0u, U32_MAX },
+            ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+            ._buffer = commandBuffer.getBufferImpl()
+        } );
+    }
     RenderPassExecutor::PreparedNodeData RenderPassExecutor::prepareNodeData( const PlayerIndex index,
                                                                               const RenderPassParams& params,
                                                                               const CameraSnapshot& cameraSnapshot,
@@ -1041,6 +1138,7 @@ namespace Divide
             _preparedPackages.push_back( prepared );
         } );
         AppendPreparationCommands( { _preparedPackages.data(), _preparedPackages.size() }, bufferInOut, _computeBatchRanges );
+        patchInstanceCounts( *prepared._commandBuffer, bufferInOut );
 
         return prepared;
     }
@@ -1186,6 +1284,8 @@ namespace Divide
                                 cameraSnapshot,
                                 _stage == RenderStage::DISPLAY,
                                 bufferInOut );
+        // Occlusion recompaction of GPU-driven instance lists happened in AppendOcclusionCommands.
+        patchInstanceCounts( commandBuffer, bufferInOut );
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
         {

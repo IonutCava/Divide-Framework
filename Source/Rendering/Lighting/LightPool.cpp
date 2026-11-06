@@ -506,12 +506,14 @@ namespace Divide
                 }
 
                 LightProperties& temp = crtData[ret - 1];
+                _uploadedLights[stageIndex][ret - 1] = light;
                 light->getDiffuseColour( tempColour );
                 temp._diffuse.set( tempColour * light->intensity(), isSpot ? std::cos( Angle::to_RADIANS( spot->outerConeCutoffAngle() ) ) : 0.f );
                 // Omni and spot lights have a position. Directional lights have this set to (0,0,0)
                 temp._position.set( isDir ? VECTOR3_ZERO : (viewMatrix * float4( light->positionCache(), 1.0f )).xyz, light->range() );
                 temp._direction.set( isOmni ? VECTOR3_ZERO : (viewMatrix * float4( light->directionCache(), 0.0f )).xyz, isSpot ? std::cos( Angle::to_RADIANS( spot->coneCutoffAngle() ) ) : 0.f );
-                temp._options.xyz = { typeIndex, light->castsShadows() ? light->shadowPropertyIndex() : -1,
+                // The shadow slot (y) is assigned by the shadow pass, which may still be recording: see patchShadowIndices.
+                temp._options.xyz = { typeIndex, -1,
                                       isSpot ? std::bit_cast<I32>( spot->coneSlantHeight() ) : 0 };
 
                 ++lightCount[typeIndex];
@@ -573,6 +575,7 @@ namespace Divide
 
         U32& totalLightCount = _sortedLightPropertiesCount[stageIndex];
         totalLightCount = uploadLightList( stage, sortedLights, cameraSnapshot._viewMatrix );
+        _lightDataUploaded[stageIndex] = true;
 
         SceneData& crtData = _sortedSceneProperties[stageIndex];
         crtData._globalData.set(
@@ -601,6 +604,42 @@ namespace Divide
         {
             PROFILE_SCOPE( "LightPool::UploadSceneDataToGPU", Profiler::Category::Graphics );
             memCmdInOut._bufferLocks.push_back(s_sceneBuffer->writeData( { stageIndex, 1 }, &crtData ) );
+        }
+    }
+
+    void LightPool::patchShadowIndices( GFX::MemoryBarrierCommand& memCmdInOut )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        for ( size_t stageIndex = 0u; stageIndex < to_size( RenderStage::COUNT ); ++stageIndex )
+        {
+            if ( !_lightDataUploaded[stageIndex] )
+            {
+                continue;
+            }
+            _lightDataUploaded[stageIndex] = false;
+
+            const U32 lightCount = _sortedLightPropertiesCount[stageIndex];
+            if ( !ShouldUploadLightData( lightCount ) )
+            {
+                continue;
+            }
+
+            LightData& crtData = _sortedLightProperties[stageIndex];
+            const UploadedLights& lights = _uploadedLights[stageIndex];
+            bool anyShadowCaster = false;
+            for ( U32 i = 0u; i < lightCount; ++i )
+            {
+                const Light* light = lights[i];
+                const I32 shadowIndex = light->castsShadows() ? light->shadowPropertyIndex() : -1;
+                crtData[i]._options.y = shadowIndex;
+                anyShadowCaster = anyShadowCaster || shadowIndex != -1;
+            }
+
+            if ( anyShadowCaster )
+            {
+                memCmdInOut._bufferLocks.push_back( s_lightBuffer->writeData( { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount }, &crtData ) );
+            }
         }
     }
 

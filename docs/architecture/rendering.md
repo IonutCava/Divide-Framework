@@ -86,22 +86,68 @@ changes to the rendered frame, not the evaluator's neighbouring frame index.
 Component or global pause/resume transitions also report a change when they
 switch the rendered frame between the current animation frame and frame zero.
 
-## Performance investigations (planned)
+## Performance diagnosis
 
-- Startup is reported to be unacceptably slow. Measure cold and warm time to
-  scene readiness, separating asset loading, shader compilation, pipeline
-  creation, synchronization and frame warmup before optimizing the dominant
-  costs. Preserve correct shader-cache invalidation when investigating caching.
-  `ResourceCache::Build` times the complete resource `load` call, including
-  synchronous waits; it is not GPU frame time. Its `ProfileTimer` uses a steady
-  clock independent of application timer resets.
-- Vulkan is reported to render at roughly one third of OpenGL's performance
-  on an AMD Radeon RX 9070 XT. The developer expects that GPU to handle the
-  current geometry and shaders comfortably; the ratio is an observation, not a
-  controlled benchmark. Once rendering is correct, compare CPU and GPU frame
-  times on the same scene, GPU, resolution and settings, with both instrumented
-  and representative non-instrumented builds. Investigate backend-specific
-  costs without assuming exact parity.
+Instrumented Debug performance is an intentional target. Compare backends with
+the same scene, camera, GPU, resolution, settings and cache warmth, and measure
+other build configurations separately. CPU profiling scopes report elapsed wall
+time, including waits, validation and driver calls; overlapping stage scopes
+must not be added, and `TaskPool::wait` can execute work and callbacks. Measure
+GPU execution separately before attributing a CPU scope to GPU cost.
+`VKDevice::submitToQueue` separates queue-lock acquisition from `vkQueueSubmit`;
+shader loading also exposes worker-side scopes, as described in
+[Shaders and descriptors](shader-descriptors.md#shared-shader-flow).
+Each render-stage task opens a `Record stage: <STAGE>` scope and
+`GFXDevice::flushWindow` opens a `Submit: <command buffer name>` scope per
+queued buffer (`PROFILE_SCOPE_DYNAMIC`, compiled out without Optick).
+`Tools/Profiling/optick_capture.py` requests a CPU capture from a running smoke
+attempt (`--attempt <dir> --output <file.opt> --start-after <present> --frames N`);
+`Tools/Profiling/optick_summary.py <file.opt> [--json out.json]` prints frame
+statistics, per-thread-group self/inclusive tables (pool idle scopes hidden
+unless `--include-idle`) and the per-stage record/submit tables. Pair them with
+the harness `-PerfMode` switch for validation-free timings. Repeat
+`--callers <substring>` to report immediate parent scopes and per-frame call
+counts for matching events.
+
+Perf mode enables `GFXDevice::queryPerformanceStats()` every frame, and
+`RenderPassManager::logPerfMetrics` logs two `[PerfMetrics]` lines every 64
+frames. The first gives the frame GPU time, backend draws, HiZ counters
+(`lastCullCount`: culled, overflow, skipped) and per-stage draws/bin items.
+The second (`gpuPasses`) gives the average GPU time per queued main-window
+command buffer, summed by name. GPU frame time comes from a per-frame-slot
+timestamp pool on Vulkan and from `GPU_TIME` queries on OpenGL. Per-pass
+times come from `RenderAPIWrapper::writePassTimestamp`, which `flushWindow`
+calls before each queued buffer and after the last one (up to
+`GPU_PASS_TIMESTAMP_CAPACITY`). `readPassTimestamps` returns results several
+frames later: Vulkan after the frame-slot fence, OpenGL from a six-frame query
+ring. `GFXDevice` keeps the buffer names per frame and accumulates results
+only when the frame numbers and counts match. Immediate and transfer submits
+are not covered. Pipeline-statistics queries are opt-in
+(`queryPipelineStatistics`): on AMD OpenGL they cost about 10x the frame time.
+
+`-GpuScopeTimings` (requires `-PerfMode`; engine flag `--smokeGpuScopeTimings`,
+`GFXDevice::queryGPUScopeTimings`) also writes timestamps at debug-scope
+boundaries inside each buffer. `gpuPasses` then reports exclusive time per
+`buffer/innermost scope` label, with names normalized by
+`NormalizeGPUScopeName` so per-instance suffixes merge. Each buffer gets an
+even share of the free slots (capacity 512), and the next buffer's boundary
+slot is always reserved. A closed scope's parent timestamp is deferred until
+the next non-barrier command, so repeated sibling scopes (per-chunk vegetation
+culling, for example) merge. Past its budget, a buffer's remaining time goes to
+its last timed label. On WarScene the overhead was within noise.
+
+For startup, measure cold and warm scene readiness separately from frame time.
+`ResourceCache::Build` includes the resource `load` call and synchronous waits,
+not task-queue delay or GPU frame execution. Preserve shader-cache invalidation
+while investigating loading.
+
+With the Optick revision pinned in `Source/ThirdParty/CMakeHelpers/ImportPackages.cmake`,
+a Vulkan GPU capture has triggered timestamp-query validation
+`VUID-vkCmdWriteTimestamp-None-00830`. Its full query-reset, reuse and
+synchronization behavior remains unverified. CPU-only captures are a
+diagnostic workaround, not a GPU-profiler fix; do not suppress validation to
+make a capture succeed. Recheck this limitation when the dependency or its
+integration changes.
 
 ## Framework smoke diagnosis
 
@@ -159,6 +205,12 @@ Vulkan diagnostic runs can opt into `-TracePipelines` to flush each pipeline
 creation's program, stage names, generations, and module handles to `events.log`
 before the driver call. The trace distinguishes normal and wireframe pipelines
 and is disabled for ordinary acceptance and profiling runs.
+`-PerfMode` (engine `--smokePerfMode`) is an opt-in profiling run: it requires
+`-DiagnosticPresents`, launches the renderer without a debugger, and disables
+render API debugging and Vulkan validation/BestPractices so timings reflect the
+engine rather than the debug heap or layers. It cannot be combined with
+pipeline tracing, RenderDoc or AMD captures, and never counts as acceptance;
+validated runs remain the correctness gate.
 `Kernel` marks scene readiness after warmup and
 marks a frame only when scene render commands were recorded. Both backends
 count only successful main-window presents of those frames; Vulkan excludes
@@ -182,8 +234,9 @@ readback and device-loss handling.
 The runner selects its backend with `--frameworkSmokeTest=Vulkan` or
 `--frameworkSmokeTest=OpenGL`; the older backend-specific switches remain valid.
 The editor image contains the main framebuffer, not OS window decorations or
-detached editor windows. OpenGL mode requires `XML/config.xml` to select
-OpenGL and `-ExpectedGPU` to match a device UUID exposed by the active GL
+detached editor windows. The backend switch overrides the configured rendering
+API in memory only; `XML/config.xml` is not modified. OpenGL mode requires
+`-ExpectedGPU` to match a device UUID exposed by the active GL
 context; unsupported or mismatched identities fail explicitly. Use a separate
 `-OutputRoot` for `-Backend OpenGL`, and retain the UUID reported by the Vulkan
 run. OpenGL reads the scene texture and default back buffer before swapping,
@@ -252,13 +305,48 @@ repair budget without overwriting the successful evidence.
 
 `Kernel.cpp` registers the coarse render graph:
 
-- `SHADOW` precedes `REFLECTION` and `REFRACTION`.
-- `DISPLAY` and `NODE_PREVIEW` depend on both `REFLECTION` and `REFRACTION`.
+- `SHADOW` precedes `REFLECTION` and `REFRACTION` in GPU submission order only.
+- `DISPLAY` and `NODE_PREVIEW` depend on both `REFLECTION` and `REFRACTION`,
+  for both submission and recording.
 
-Before changing ordering, audit render-target producers/consumers, depth and clustered-light availability, and PostFX assumptions. `RenderPassManager` owns passes; `RenderPassExecutor` performs per-stage preparation and draw execution.
-Pass tasks are queued in dependency order and wait before recording dependent
-commands, not just before submission. Waiting workers help execute ordinary
-renderer-pool tasks so a dependent stage does not starve a producer's partitions.
+`RenderManager::setRenderPass(stage, dependencies, recordingDependencies)` takes
+two lists:
+
+- `dependencies` sets the GPU submission order.
+- `recordingDependencies` lists the CPU data dependencies. It must be a subset of
+  `dependencies`, and this is asserted.
+
+Each stage task is precreated and queued as soon as its recording dependencies
+finish (`RenderStageSchedule`). It only records into its own command buffer
+(`RenderPassData::_cmdBuffer`).
+
+After `TaskPool::wait`, `RenderPassManager::render` runs on the main thread:
+
+1. It flushes the stage buffers in `_submissionOrder`, which is a topological
+   order of `dependencies` (`RenderStageSchedule::topologicalOrder`).
+2. It calls `LightPool::patchShadowIndices`.
+3. It calls `RenderPassExecutor::FlushBuffersToGPU`.
+
+Host writes after the wait are safe on both backends, because
+`flushCommandBuffer` only queues the buffer; translation happens later, in
+`GFXDevice::flushWindow`.
+
+`uploadLightList` writes `options.y = -1` and records the light behind each
+slot. `patchShadowIndices` fills in the shadow-map index after SHADOW has
+recorded. This removes the audited shadow-index read from concurrent stage
+recording; it does not establish that every other shared-state access is safe.
+
+Before changing ordering, audit render-target producers/consumers, depth and
+clustered-light availability, and PostFX assumptions. Promote an edge to
+`recordingDependencies` only when a stage reads CPU state written by another
+stage while recording. `RenderPassManager` owns passes; `RenderPassExecutor`
+performs per-stage preparation and draw execution. Waiting workers help execute
+eligible ordinary renderer-pool tasks; see
+[Threading](threading.md#entry-points-and-task-pools).
+
+Known limitation: when one stage contains several passes, each pass calls
+`uploadLightData` into the same stage range of the light buffer, and the last
+upload wins.
 Parallel reflection and refraction stages publish their texture selections under
 the rendering component's package lock; display preparation snapshots those
 selections after both producer stages complete.
@@ -532,6 +620,11 @@ strips loose-uniform initializers.
 
 Materials that require instanced indirection must mark their rendering component instanced even for a single instance. Instanced draws upload `INDIRECT_DATA_IDX` and use base instance zero; ordinary draws encode the node indirection index plus one in the base instance. Grass and tree shaders use a draw-local instance index: OpenGL's `gl_InstanceID` is already local, while Vulkan's `gl_InstanceIndex` includes the base instance. Vegetation buffers accept CPU writes, and empty chunks do not issue zero-length uploads. A terrain can omit tree meshes when it only needs grass.
 
+Tree culling compacts visible instances. One workgroup per species writes visible entries into the species' range of `_treeDrawData` (`PER_PASS` 14, `COMPACTED_INSTANCE_DATA`) and the visible count to `_treeVisibleCounts` (`PER_PASS` 15, `VISIBLE_INSTANCE_COUNTS`, element `chunkID * MAX_VEGETATION_TREE_MESHES + speciesID`). Ranges come from the `dvd_treeRangeOffsets`/`dvd_treeRangeCounts` uniforms. Each tree `RenderingComponent` reads instances from the compacted buffer (`setInstanceShaderBuffer`) and names its count element with `setInstanceCountSource`. Grass still uses the `data.z` sentinel path.
+
+### GPU instance-count patch
+
+The CPU `instanceCount` in indirect commands stays at the full instance count: both backends reject zero-instance draws on the CPU. `RenderPassExecutor` appends `InstanceCountPatch` records (command index, count element) after the pass's draw commands in the indirect buffer. After command preparation and the occlusion cull, `GFXDevice::patchInstanceCounts` dispatches `instanceCountPatch.glsl`. It sets `instanceCount = min(instanceCount, counts[element])` using the count buffer bound at `PER_DRAW` 13. Records are grouped by count buffer. If a regular page fits its draw commands but not its patch records, the patches are dropped with a one-time warning and the draw falls back to the full count, which is still correct.
 Hi-Z culling queries select a mip level and use nearest texel and nearest-mip sampling with a minimum LOD of zero. This preserves the max-reduced depths used for conservative visibility; the reduction itself reads single-mip views with `texelFetch`. Vegetation culling records a buffer dependency for each written buffer after the compute dispatches and before the subsequent draw commands.
 Independent vegetation packages can combine their boundary barriers within one
 view when their written buffer ranges do not overlap. Their dispatch order is

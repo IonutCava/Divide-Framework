@@ -32,6 +32,21 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 5, std430) coherent COMP_ONLY_RW buffer
     VegetationData treeData[];
 };
 
+#if defined(CULL_TREES)
+// Must match MAX_VEGETATION_TREE_MESHES (VegetationDescriptor.h).
+#define VEGETATION_TREE_SPECIES_COUNT 4u
+
+// Per chunk and species, visible instances compacted by the cull shader. Tree draws read this buffer.
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 14, std430) coherent buffer dvd_treeDrawBlock {
+    VegetationData treeDrawData[];
+};
+
+// One visible instance count per chunk and species. Patched into the indirect draw commands.
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 15, std430) coherent buffer dvd_treeVisibleCountBlock {
+    uint treeVisibleCounts[];
+};
+#endif //CULL_TREES
+
 #endif //MAX_TREE_INSTANCES
 
 #if defined(MAX_GRASS_INSTANCES)

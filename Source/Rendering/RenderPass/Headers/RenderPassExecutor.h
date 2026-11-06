@@ -356,6 +356,10 @@ private:
     void parseTransformRange(RenderBin::SortedQueue& queue, U32 start, U32 end, const PlayerIndex index, D64 interpolationFactor);
     void parseMaterialRange(RenderBin::SortedQueue& queue, U32 start, U32 end);
     [[nodiscard]] ShaderBuffer_uptr createCommandBuffer(PlayerIndex index, size_t pageIndex, U32 overflowCapacity = 0u) const;
+    /// Appends instance-count patch records after the draw commands. Returns the total number of entries to upload.
+    [[nodiscard]] U32 appendInstanceCountRecords(U32 cmdCount);
+    /// Clamps the current pass's draw instance counts to the GPU-written counts of their sources.
+    void patchInstanceCounts(ShaderBuffer& commandBuffer, GFX::CommandBuffer& bufferInOut);
 
 private:
     friend class RenderingComponent;
@@ -376,6 +380,22 @@ private:
     vector<std::pair<RenderingComponent*, RenderPackage*>> _preparationOwners{};
     vector<RenderPackage*> _preparedPackages{};
     BufferLocks _computeBatchRanges{};
+
+    struct InstanceCountPatch
+    {
+        ShaderBuffer* _source{ nullptr };
+        U32 _commandIndex{ 0u };
+        U32 _element{ 0u };
+    };
+    struct InstanceCountPatchRange
+    {
+        ShaderBuffer* _source{ nullptr };
+        U32 _recordOffset{ 0u };
+        U32 _recordCount{ 0u };
+    };
+    vector<InstanceCountPatch> _instanceCountPatches{};
+    vector<InstanceCountPatchRange> _instanceCountPatchRanges{};
+    bool _instanceCountPatchOverflowLogged{ false };
 
     struct PlayerCommandBuffers
     {

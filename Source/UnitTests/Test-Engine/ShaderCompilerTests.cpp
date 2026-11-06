@@ -36,6 +36,11 @@ struct ShaderProgramTestAccess
     static bool InitThread( const RenderAPI api, const Configuration& config ) { return ShaderProgram::InitShaderThread( api, config ); }
     static bool InitGLSW( const RenderAPI api, const Configuration& config ) { return ShaderProgram::InitGLSW( api, config ); }
     static ShaderProgram::BindingSetData& Bindings() { return ShaderProgram::s_bindingsPerSet; }
+    static auto& BindingSlots() { return ShaderProgram::s_bindingSlots; }
+    static bool IsStorageBindingWithinLimit( const RenderAPI api, const U8 binding, const U32 limit )
+    {
+        return ShaderProgram::IsStorageBindingWithinLimit( api, binding, limit );
+    }
     static ResourcePath& CommonAtomLocation() { return ShaderProgram::shaderAtomLocationPrefix[to_base( ShaderType::COUNT )]; }
 
     static void ExpandIncludes( string& source, eastl::set<U64>& atoms )
@@ -320,6 +325,52 @@ TEST_CASE( "SSAO attenuates indirect lighting without dimming direct light, emis
         dvd_fogDetails._colourSunScatter.a = 0.8f;
         const F32 fogAmount = 0.8f * ( 1.f - std::exp( -1.f ) ) / ( 1.f + M_EPSILON );
         checkPixel( pixel(), mix( direct + material._emissive, dvd_fogDetails._colourAndDensity.rgb, fogAmount ) );
+    }
+}
+
+TEST_CASE( "OpenGL buffer bindings are unique per namespace across shader stages", "[shader][descriptor][render_smoke]" )
+{
+    CHECK( ShaderProgramTestAccess::IsStorageBindingWithinLimit( RenderAPI::OpenGL, 15u, 16u ) );
+    CHECK_FALSE( ShaderProgramTestAccess::IsStorageBindingWithinLimit( RenderAPI::OpenGL, 16u, 16u ) );
+    CHECK( ShaderProgramTestAccess::IsStorageBindingWithinLimit( RenderAPI::Vulkan, 15u, 4u ) );
+
+    const auto oldBindings = ShaderProgramTestAccess::Bindings();
+    const auto oldSlots = ShaderProgramTestAccess::BindingSlots();
+    SCOPE_EXIT
+    {
+        ShaderProgramTestAccess::Bindings() = oldBindings;
+        ShaderProgramTestAccess::BindingSlots() = oldSlots;
+    };
+
+    ShaderProgramTestAccess::Bindings() = {};
+    ShaderProgramTestAccess::BindingSlots() = {};
+    for ( U8 slot = 0u; slot < 16u; ++slot )
+    {
+        if ( slot < 6u )
+        {
+            ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, slot,
+                                                     DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,
+                                                     ShaderStageVisibility::ALL );
+            CHECK( ShaderProgram::GetGLBindingForDescriptorSlot( DescriptorSetUsage::PER_DRAW, slot ) == slot );
+        }
+
+        const auto visibility = slot % 2u == 0u ? ShaderStageVisibility::COMPUTE : ShaderStageVisibility::FRAGMENT;
+        const auto type = slot % 2u == 0u ? DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC :
+                                          DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, slot, type, visibility );
+        CHECK( ShaderProgram::GetGLBindingForDescriptorSlot( DescriptorSetUsage::PER_BATCH, slot ) == slot );
+
+        const auto [storageUsage, storageSlot] = ShaderProgram::GetDescriptorSlotForGLBinding(
+            slot, DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC );
+        CHECK( storageUsage == DescriptorSetUsage::PER_BATCH );
+        CHECK( storageSlot == slot );
+        if ( slot < 6u )
+        {
+            const auto [uniformUsage, uniformSlot] = ShaderProgram::GetDescriptorSlotForGLBinding(
+                slot, DescriptorSetBindingType::UNIFORM_BUFFER_STATIC );
+            CHECK( uniformUsage == DescriptorSetUsage::PER_DRAW );
+            CHECK( uniformSlot == slot );
+        }
     }
 }
 
@@ -1652,6 +1703,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             bool _sortedTransparency = false;
         };
         constexpr std::array variants{
+            Variant{ ShaderType::COMPUTE, "instanceCountPatch.glsl", "instanceCountPatch.Compute", false, false, false, DescriptorSetUsage::PER_DRAW, 13u },
             Variant{ ShaderType::COMPUTE, "instanceCullVegetation.glsl", "instanceCullVegetation.Compute", false, false, false, DescriptorSetUsage::PER_PASS, 6u },
             Variant{ ShaderType::COMPUTE, "instanceCullVegetation.glsl", "instanceCullVegetation.Compute", true, false, false, DescriptorSetUsage::PER_PASS, 5u },
             Variant{ ._stage = ShaderType::COMPUTE, ._file = "instanceCullVegetation.glsl", ._source = "instanceCullVegetation.Compute",
@@ -1749,13 +1801,20 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 eastl::set<U64> atoms;
                 ShaderProgramTestAccess::Parse( api, defines, data, atoms );
                 REQUIRE_FALSE( data._sourceCodeGLSL.empty() );
-                if ( variant._stage == ShaderType::COMPUTE )
+                const bool countPatch = std::string_view{ variant._file } == "instanceCountPatch.glsl";
+                if ( variant._stage == ShaderType::COMPUTE && !countPatch )
                 {
                     CHECK( atoms.contains( _ID( "frustumCulling.cmn" ) ) );
                     CHECK( data._sourceCodeGLSL.find( "IsUnderWater" ) == string::npos );
                 }
+                if ( countPatch )
+                {
+                    CHECK( data._sourceCodeGLSL.find( "min(dvd_drawCommands[record.count].instanceCount" ) != string::npos );
+                }
                 if ( variant._tree && variant._stage == ShaderType::VERTEX )
                 {
+                    CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.INDIRECT_DATA_IDX" ) != string::npos );
+                    CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.dvd_instanceDataIndex" ) != string::npos );
                     CHECK( atoms.contains( _ID("treeWind.cmn") ) );
                     CHECK( data._sourceCodeGLSL.find("const float amplitude") != string::npos );
                     CHECK( data._sourceCodeGLSL.find("dvd_Vertex.y * scale") == string::npos );
@@ -1763,6 +1822,11 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                     {
                         CHECK(data._sourceCodeGLSL.find("dvd_enableDeformation") != string::npos);
                     }
+                }
+                if ( std::string_view{ variant._file } == "grass.glsl" && variant._stage == ShaderType::VERTEX )
+                {
+                    CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.INDIRECT_DATA_IDX" ) != string::npos );
+                    CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.dvd_terrainChunkOffset" ) != string::npos );
                 }
                 if ( variant._stage == ShaderType::FRAGMENT && variant._prePass )
                 {
@@ -1878,7 +1942,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                     }
                 }
 
-                if ( api == RenderAPI::Vulkan && variant._bufferSet != DescriptorSetUsage::COUNT )
+                if ( variant._bufferSet != DescriptorSetUsage::COUNT && ( api == RenderAPI::Vulkan || countPatch ) )
                 {
                     Reflection::Data reflection{};
                     REQUIRE( SpirvHelper::BuildReflectionData( variant._stage, spirv, api, reflection ) );
@@ -1886,6 +1950,13 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                     {
                         return entry._bindingSet == to_base( variant._bufferSet ) && entry._bindingSlot == variant._bufferSlot;
                     } ) );
+                    if ( countPatch )
+                    {
+                        CHECK( std::ranges::any_of( reflection._buffers, []( const Reflection::BufferEntry& entry )
+                        {
+                            return entry._bindingSet == to_base( DescriptorSetUsage::PER_BATCH ) && entry._bindingSlot == 2u;
+                        } ) );
+                    }
                     if ( variant._occlusion )
                     {
                         CHECK( std::ranges::any_of( reflection._images, []( const Reflection::ImageEntry& image )

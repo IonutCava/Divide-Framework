@@ -165,6 +165,9 @@ class LightPool final : public FrameListener,
 
     void sortLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot);
     void uploadLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut);
+    /// Main thread, after every stage finished recording: writes this frame's shadow slot indices into the
+    /// light lists uploaded by uploadLightData (stages record in parallel with the shadow pass that assigns them).
+    void patchShadowIndices(GFX::MemoryBarrierCommand& memCmdInOut);
 
     void drawLightImpostors(GFX::CommandBuffer& bufferInOut) const;
 
@@ -236,13 +239,16 @@ class LightPool final : public FrameListener,
      };
 
     using LightData = std::array<LightProperties, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME>;
+    using UploadedLights = std::array<Light*, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME>;
 
     using LightCountPerType = std::array<U32, to_base(LightType::COUNT)>;
 
     std::array<LightCountPerType, to_base(RenderStage::COUNT)> _activeLightCount{};
     std::array<LightList,         to_base(RenderStage::COUNT)> _sortedLights{};
     std::array<LightData,         to_base(RenderStage::COUNT)> _sortedLightProperties{};
+    std::array<UploadedLights,    to_base(RenderStage::COUNT)> _uploadedLights{};
     std::array<U32,               to_base(RenderStage::COUNT)> _sortedLightPropertiesCount{};
+    std::array<bool,              to_base(RenderStage::COUNT)> _lightDataUploaded{};
     std::array<SceneData,         to_base(RenderStage::COUNT)> _sortedSceneProperties{};
 
     std::array<LightList,         to_base(LightType::COUNT)>   _lights{};

@@ -58,7 +58,13 @@ The local machine reports Windows 11 and an AMD Radeon RX 9070 XT. Vulkan SDK 1.
 
 Add a small, explicit runtime smoke-test mode rather than changing normal editor behavior. Proposed inputs are backend, project, run identifier/output directory, target frame count, and failure policy. Validate inputs and reject incompatible settings.
 
-Force the requested backend for the run without persisting edits to XML or silently falling back to OpenGL. Require the validation layer and synchronization validation to be active for Vulkan; missing validation is a preflight failure, never a successful run. Keep validation active throughout profiling state changes. Start with existing core/synchronization checks; GPU-assisted validation is a separate, optional diagnostic escalation.
+Smoke mode selects the requested Vulkan or OpenGL backend in memory without
+persisting XML changes. OpenGL validates the expected GPU UUID. Require the
+validation layer and synchronization validation to be active for Vulkan
+acceptance; missing validation is a preflight failure, never a successful run.
+Performance mode is a separate diagnostic that disables validation and cannot
+count as acceptance. GPU-assisted validation is a separate, optional diagnostic
+escalation.
 
 Capture all Vulkan warning/error messages in this mode before existing best-practice suppression filters can hide them. Keep ordinary interactive behavior and its filters unchanged outside this mode. Record informational messages without making them fatal. The approved custom-border advisory remains a warning in the evidence; every other warning and every error remains fatal.
 
@@ -186,8 +192,8 @@ Update the relevant rendering/GPU-resource guides and AGENTS.md routing/validati
 ## OpenGL follow-up
 
 The runner supports `-Backend OpenGL` with a separate output root and an
-`-ExpectedGPU` UUID from the Vulkan run. OpenGL must be selected in the XML
-configuration; the context must expose a matching device UUID. Attempt 1
+`-ExpectedGPU` UUID from the Vulkan run. The backend is selected in memory
+without changing XML; the context must expose a matching device UUID. Attempt 1
 completed 301 eligible presents, captured the scene and main editor framebuffer,
 and exited cleanly on the same GPU. Its images have the same dimensions as
 Vulkan attempt 15, with the same project and editor layout.

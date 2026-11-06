@@ -1005,6 +1005,10 @@ namespace Divide
         windowState._bufferBindings.reset();
         windowState._frameInProgress = true;
         windowState._recreateAfterPresent = result == VK_SUBOPTIMAL_KHR;
+        if ( window.getGUID() == _context.context().mainWindow().getGUID() )
+        {
+            _context.getPerformanceMetrics()._gpuTimeInMS = windowState._swapChain->lastGPUTimeMS();
+        }
         pollBufferReadbacks( windowState._swapChain->activeFrameFence(), window.getGUID() );
         return true;
     }
@@ -1475,7 +1479,7 @@ namespace Divide
 
         vkb::SystemInfo& systemInfo = systemInfoRet.value();
 
-        if ( RenderSmokeTest::Enabled() &&
+        if ( RenderSmokeTest::Enabled() && !RenderSmokeTest::PerfModeRequested() &&
              ( !Config::ENABLE_GPU_VALIDATION || !config.debug.renderer.enableRenderAPIDebugging ||
                !systemInfo.validation_layers_available || !systemInfo.is_extension_available( VK_EXT_DEBUG_UTILS_EXTENSION_NAME ) ) )
         {
@@ -2921,13 +2925,9 @@ namespace Divide
                 assert( isPowerOfTwo( msaaSamples ) );
                 msaaSampleFlags = static_cast<VkSampleCountFlagBits>(msaaSamples);
             }
+            // The initializer disables forced per-sample shading, matching OpenGL. Sample-qualified shaders still run per sample.
             pipelineBuilder._multisampling = vk::pipelineMultisampleStateCreateInfo( msaaSampleFlags );
-            pipelineBuilder._multisampling.minSampleShading = 1.f;
             pipelineBuilder._multisampling.alphaToCoverageEnable = pipelineDescriptor._alphaToCoverage ? VK_TRUE : VK_FALSE;
-            if ( msaaSamples > 0u )
-            {
-                pipelineBuilder._multisampling.sampleShadingEnable = VK_TRUE;
-            }
             VkStencilOpState stencilOpState{};
             stencilOpState.failOp = vkStencilOpTable[to_base( defaultState._stencilFailOp )];
             stencilOpState.passOp = vkStencilOpTable[to_base( defaultState._stencilPassOp )];
@@ -3880,6 +3880,25 @@ namespace Divide
         GetStateTracker()._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
         GetStateTracker()._activeRenderTargetColourAttachmentCount = 1u;
         GetStateTracker()._activeRenderTargetDimensions = s_stateTracker._activeWindow->_window->getDrawableSize();
+    }
+
+    void VK_API::writePassTimestamp( const U32 index )
+    {
+        VKPerWindowState* activeWindow = GetStateTracker()._activeWindow;
+        if ( activeWindow != nullptr && activeWindow->_swapChain != nullptr )
+        {
+            activeWindow->_swapChain->writePassTimestamp( index );
+        }
+    }
+
+    U32 VK_API::readPassTimestamps( const std::span<F32> outMS, U64& frameNumberOut )
+    {
+        VKPerWindowState* activeWindow = GetStateTracker()._activeWindow;
+        if ( activeWindow != nullptr && activeWindow->_swapChain != nullptr )
+        {
+            return activeWindow->_swapChain->readPassTimestamps( outMS, frameNumberOut );
+        }
+        return 0u;
     }
 
     bool VK_API::setViewportInternal( const Rect<I32>& newViewport ) noexcept

@@ -52,9 +52,14 @@ namespace Divide {
         VkSemaphore _presentSemaphore{VK_NULL_HANDLE};
         VkCommandBuffer _commandBuffer{VK_NULL_HANDLE};
         Fence _renderFence;
+        // Two timestamps (begin/end) bracketing this slot's frame command buffer, followed by GPU_PASS_TIMESTAMP_CAPACITY pass timestamps.
+        VkQueryPool _timestampPool{ VK_NULL_HANDLE };
+        U32 _passTimestampCount{ 0u };
+        U64 _passTimestampFrame{ 0u };
         // A failed reset or submission can leave the fence unsignaled indefinitely.
         VkResult _frameError{ VK_SUCCESS };
         bool _submissionPending{ false };
+        bool _timestampsPending{ false };
     };
 
     class VKSwapChain final : NonCopyable, NonMovable {
@@ -159,8 +164,29 @@ namespace Divide {
         void                          markCurrentImageRenderedThisFrame() noexcept;
         [[nodiscard]] bool            getFrameData(FrameData*& dataOut) const noexcept;
 
+        /// Writes pass timestamp `index` into the active frame's command buffer (no-op if timestamps are unsupported).
+        void writePassTimestamp( U32 index ) noexcept;
+        /// Pass timestamps resolved when the current slot was last waited on (ms relative to the first pass timestamp).
+        [[nodiscard]] U32 readPassTimestamps( std::span<F32> outMS, U64& frameNumberOut ) const noexcept;
+
+        [[nodiscard]] static constexpr F32 TimestampDeltaMS( const U64 begin, const U64 end, const U32 validBits, const F32 periodNS ) noexcept
+        {
+            if ( validBits == 0u )
+            {
+                return 0.f;
+            }
+            const U64 mask = validBits >= 64u ? U64_MAX : ( 1ull << validBits ) - 1ull;
+            const U64 delta = ( end - begin ) & mask;
+            return to_F32( to_D64( delta ) * to_D64( periodNS ) * 1e-6 );
+        }
+
         PROPERTY_R_IW(VkExtent2D, surfaceExtent);
+        /// GPU execution time of the most recently completed frame command buffer (0 if timestamps are unsupported)
+        PROPERTY_R_IW(F32, lastGPUTimeMS, 0.f);
         
+    private:
+        void readFrameTimestamps( FrameData& frame ) noexcept;
+
     private:
         VK_API& _context;
         const VKDevice& _device;
@@ -178,6 +204,11 @@ namespace Divide {
         bool _currentImageRenderedThisFrame{ false };
         vector<VkSemaphore> _renderSemaphores;
         U32 _swapchainImageIndex{ 0u };
+        U32 _timestampValidBits{ 0u };
+        F32 _timestampPeriodNS{ 0.f };
+        U32 _lastPassTimestampCount{ 0u };
+        U64 _lastPassTimestampFrame{ 0u };
+        std::array<F32, GPU_PASS_TIMESTAMP_CAPACITY> _lastPassTimestampsMS{};
     };
 
     FWD_DECLARE_MANAGED_CLASS(VKSwapChain);
