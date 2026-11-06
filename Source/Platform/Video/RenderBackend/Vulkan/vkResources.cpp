@@ -78,7 +78,6 @@ namespace Divide
             {
                 // We dispatch mesh shading calls sthe same as we do compute dispatches, so we should NEVER end up here.
                 DIVIDE_UNEXPECTED_CALL();
-                return;
             }
 
             const bool useIndirectBuffer = isEnabledOption(drawCommand, CmdRenderOptions::RENDER_INDIRECT);
@@ -288,8 +287,8 @@ namespace Divide
                             case GFXDataFormat::UNSIGNED_SHORT:  return VK_FORMAT_D16_UNORM;
                             case GFXDataFormat::SIGNED_INT:
                             case GFXDataFormat::UNSIGNED_INT:    return VK_API::s_depthFormatInformation._d24x8Supported ? VK_FORMAT_X8_D24_UNORM_PACK32 : VK_FORMAT_D32_SFLOAT;
-                            case GFXDataFormat::FLOAT_16:        DIVIDE_UNEXPECTED_CALL_MSG( "VKUtil::InternalFormat: Vulkan does not support half-float depth buffers!" ); break;
                             case GFXDataFormat::FLOAT_32:        return VK_API::s_depthFormatInformation._d32FSupported ? VK_FORMAT_D32_SFLOAT : VK_FORMAT_X8_D24_UNORM_PACK32;
+                            case GFXDataFormat::FLOAT_16:        DIVIDE_UNEXPECTED_CALL_MSG( "VKUtil::InternalFormat: Vulkan does not support half-float depth buffers!" );
                             default: break;
                         };
                     }
@@ -303,8 +302,8 @@ namespace Divide
                             case GFXDataFormat::UNSIGNED_SHORT:
                             case GFXDataFormat::SIGNED_INT:
                             case GFXDataFormat::UNSIGNED_INT:     return VK_API::s_depthFormatInformation._d24s8Supported ? VK_FORMAT_D24_UNORM_S8_UINT : VK_FORMAT_D32_SFLOAT_S8_UINT;
-                            case GFXDataFormat::FLOAT_16:         DIVIDE_UNEXPECTED_CALL_MSG("VKUtil::InternalFormat: Vulkan does not support half-float depth buffers!"); break;
                             case GFXDataFormat::FLOAT_32:         return  VK_API::s_depthFormatInformation._d32s8Supported ? VK_FORMAT_D32_SFLOAT_S8_UINT : VK_FORMAT_D24_UNORM_S8_UINT;
+                            case GFXDataFormat::FLOAT_16:         DIVIDE_UNEXPECTED_CALL_MSG("VKUtil::InternalFormat: Vulkan does not support half-float depth buffers!");
                             default: break;
                         };
                     }
@@ -432,7 +431,6 @@ namespace Divide
             }
 
             DIVIDE_UNEXPECTED_CALL();
-            return VK_FORMAT_MAX_ENUM;
         }
 
         VkFormat InternalFormat( const GFXDataFormat format, const U8 componentCount, const bool normalized ) noexcept
@@ -532,7 +530,6 @@ namespace Divide
             }
 
             DIVIDE_UNEXPECTED_CALL();
-            return VK_FORMAT_MAX_ENUM;
         }
 
         VkDescriptorType vkDescriptorType( const DescriptorSetBindingType type ) noexcept
@@ -552,10 +549,7 @@ namespace Divide
                 case DescriptorSetBindingType::COUNT:
                 default:
                     DIVIDE_UNEXPECTED_CALL();
-                    break;
             }
-
-            return VK_DESCRIPTOR_TYPE_MAX_ENUM;
         }
     }; //namespace VKUtil
 

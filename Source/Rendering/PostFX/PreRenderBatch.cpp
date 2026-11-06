@@ -233,7 +233,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
 
             default:
                 DIVIDE_UNEXPECTED_CALL();
-                break;
         }
     }
 

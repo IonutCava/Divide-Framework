@@ -129,7 +129,7 @@ void glTexture::reserveStorage( const bool makeImmutable )
                                                          gl46core::GL_TRUE );
             }
         } break;
-        default: DIVIDE_UNEXPECTED_CALL(); break;
+        default: DIVIDE_UNEXPECTED_CALL();
     }
 
     _hasStorage = true;
@@ -345,12 +345,8 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, con
 
                 default:
                 case GFXDataFormat::COUNT:
-                {
                     DIVIDE_UNEXPECTED_CALL();
-                } break;
             }
-
-            return (bufferPtr)nullptr;
         };
 
         const GLUtil::FormatAndDataType formatAndType = GLUtil::InternalFormatAndDataType( _descriptor._baseFormat, _descriptor._dataType, _descriptor._packing );

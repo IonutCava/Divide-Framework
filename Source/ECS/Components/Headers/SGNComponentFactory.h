@@ -55,6 +55,10 @@ void AddComponentToNode(SceneGraphNode* node, Args... args);
 template<typename T>
 void RemoveComponentFromNode(SceneGraphNode* node);
 
+#define DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(Type) \
+    template void AddComponentToNode<Type>(SceneGraphNode* node); \
+    template void RemoveComponentFromNode<Type>(SceneGraphNode* node)
+
 //ref: http://www.nirfriedman.com/2018/04/29/unforgettable-factory/
 template <typename Base, typename... Args>
 struct Factory

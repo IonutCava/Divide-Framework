@@ -26,7 +26,7 @@ namespace Divide
 
         struct ThrowingFactoryObject
         {
-            ThrowingFactoryObject()
+            [[noreturn]] ThrowingFactoryObject()
             {
                 throw std::runtime_error("constructor failed");
             }

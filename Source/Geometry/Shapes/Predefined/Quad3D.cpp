@@ -113,7 +113,6 @@ namespace Divide
         }
 
         DIVIDE_UNEXPECTED_CALL();
-        return geometryBuffer()->getPosition( 0 );
     }
 
     void Quad3D::setNormal( const CornerLocation corner, const float3& normal )
@@ -140,7 +139,7 @@ namespace Divide
                 geometryBuffer()->modifyNormalValue( 3, normal );
             } break;
 
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
     }
 

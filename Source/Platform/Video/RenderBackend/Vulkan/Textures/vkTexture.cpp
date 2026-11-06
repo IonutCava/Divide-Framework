@@ -56,7 +56,7 @@ namespace Divide
                 case ImageUsage::CPU_READ:  break;
 
                 default:
-                case ImageUsage::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                case ImageUsage::COUNT: DIVIDE_UNEXPECTED_CALL();
             }
 
             if ( descriptor._allowRegionUpdates )
@@ -282,7 +282,7 @@ namespace Divide
             {
                 FlushPipelineBarrier(cmdBuffer, TransitionType::SHADER_READ_WRITE_TO_COPY_READ, fullRange, namedImage );
             } break;
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
 
         VkImageSubresourceRange subResourceRange = {
@@ -359,7 +359,7 @@ namespace Divide
             {
                 FlushPipelineBarrier(cmdBuffer, TransitionType::COPY_READ_TO_SHADER_READ_WRITE, fullRange, namedImage );
             } break;
-            default: DIVIDE_UNEXPECTED_CALL_MSG( "To compute mipmaps image must be in either LAYOUT_GENERAL or LAYOUT_READ_ONLY_OPTIMAL!" ); break;
+            default: DIVIDE_UNEXPECTED_CALL_MSG( "To compute mipmaps image must be in either LAYOUT_GENERAL or LAYOUT_READ_ONLY_OPTIMAL!" );
         }
         VK_API::PopDebugMessage( config, cmdBuffer );
     }
@@ -1045,7 +1045,6 @@ namespace Divide
         if ( targetUsage == ImageUsage::COUNT )
         {
             DIVIDE_UNEXPECTED_CALL_MSG( "vkTexture::submitTextureData: unsupported initial image usage." );
-            return;
         }
 
         const VkImageSubresourceRange fullRange
@@ -1071,7 +1070,6 @@ namespace Divide
             if ( crtUsageInOut != ImageUsage::UNDEFINED && crtUsageInOut != ImageUsage::SHADER_READ )
             {
                 DIVIDE_UNEXPECTED_CALL_MSG( "vkTexture::submitTextureData: unsupported previous image usage." );
-                return;
             }
 
             if ( crtUsageInOut == ImageUsage::UNDEFINED && targetUsage == ImageUsage::SHADER_READ )
@@ -1079,7 +1077,6 @@ namespace Divide
                 if ( !IsRenderTargetAttachment( descriptor() ) || IsCompressed( descriptor()._baseFormat ) )
                 {
                     DIVIDE_UNEXPECTED_CALL_MSG( "vkTexture::submitTextureData: unsupported uninitialized sampled image." );
-                    return;
                 }
 
                 const InitialClearPlan clear = MakeInitialClearPlan( descriptor() );
@@ -2058,7 +2055,7 @@ namespace Divide
             default:
             {
                 DIVIDE_UNEXPECTED_CALL();
-            } break;
+            }
         }
 
     }

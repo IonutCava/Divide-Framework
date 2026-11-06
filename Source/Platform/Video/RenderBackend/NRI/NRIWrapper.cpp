@@ -33,7 +33,7 @@ namespace Divide
 #           endif
             case RenderAPI::NRI_Vulkan: _nriAPI = nri::GraphicsAPI::VK; break;
             case RenderAPI::NRI_None:   _nriAPI = nri::GraphicsAPI::NONE;   break;
-            default:                    DIVIDE_UNEXPECTED_CALL();           break;
+            default:                    DIVIDE_UNEXPECTED_CALL();
         }
     }
 

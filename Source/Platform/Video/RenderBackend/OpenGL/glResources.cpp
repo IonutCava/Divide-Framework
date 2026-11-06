@@ -457,7 +457,6 @@ namespace Divide
                     default:
                     case TextureType::COUNT: 
                         DIVIDE_UNEXPECTED_CALL();
-                        break;
                 }
             }
 
@@ -763,7 +762,6 @@ namespace Divide
             }
 
             DIVIDE_UNEXPECTED_CALL();
-            return std::make_pair( 0u, false );
         }
 
         void glTextureViewCache::deallocate( const gl46core::GLuint handle, const U32 frameDelay )

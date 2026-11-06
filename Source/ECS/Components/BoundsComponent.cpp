@@ -10,6 +10,8 @@
 
 namespace Divide {
 
+DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(BoundsComponent);
+
 BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
     : BaseComponentType<BoundsComponent, ComponentType::BOUNDS>(sgn, context)
 {

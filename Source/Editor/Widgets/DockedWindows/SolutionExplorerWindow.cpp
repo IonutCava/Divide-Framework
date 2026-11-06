@@ -1059,7 +1059,7 @@ namespace Divide {
             case SceneNodeType::TYPE_VEGETATION: break;
 
             default:
-            case SceneNodeType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+            case SceneNodeType::COUNT: DIVIDE_UNEXPECTED_CALL();
         }
 
         return;

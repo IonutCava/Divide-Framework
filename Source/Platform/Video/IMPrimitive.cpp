@@ -40,7 +40,6 @@ namespace
         }
 
         DIVIDE_UNEXPECTED_CALL();
-        return 0u;
     }
 
     inline PrimitiveTopology GetTopology(const NS_GLIM::GLIM_BUFFER_TYPE type)
@@ -303,7 +302,7 @@ void IMPrimitive::endBatch() noexcept
             case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: updateRange(batchData.m_IndexBuffer_Triangles, range); break;
             case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: updateRange(batchData.m_IndexBuffer_Wireframe, range); break;
             default:
-            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:     DIVIDE_UNEXPECTED_CALL();                              break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:     DIVIDE_UNEXPECTED_CALL();
         }
     }
 
@@ -330,7 +329,7 @@ void IMPrimitive::endBatch() noexcept
             case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: insert(_indices, batchData.m_IndexBuffer_Triangles); break;
             case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: insert(_indices, batchData.m_IndexBuffer_Wireframe); break;
             default:
-            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:     DIVIDE_UNEXPECTED_CALL();                            break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:     DIVIDE_UNEXPECTED_CALL();
         }
     }
 

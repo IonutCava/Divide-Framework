@@ -12,6 +12,8 @@
 
 namespace Divide {
 
+DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(SpotLightComponent);
+
 SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& context)
      : BaseComponentType<SpotLightComponent, ComponentType::SPOT_LIGHT>(sgn, context)
      , Light(sgn, 30.0f, LightType::SPOT, *sgn->sceneGraph()->parentScene().lightPool())

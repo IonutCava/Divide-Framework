@@ -55,7 +55,7 @@ namespace Divide
                     reset = syncObject._ptr->_frameNumber < frameNumber;
                 } break;
 
-                default : DIVIDE_UNEXPECTED_CALL(); break;
+                default : DIVIDE_UNEXPECTED_CALL();
             }
 
             if (reset)
@@ -104,10 +104,7 @@ namespace Divide
             default:
             case RenderAPI::COUNT:
                 DIVIDE_UNEXPECTED_CALL();
-                break;
         }
-
-        return true;
     }
 
     bool LockManager::waitForLockedRange( const size_t lockBeginBytes, const size_t lockLength )

@@ -2369,10 +2369,8 @@ namespace Divide
                 case DescriptorSetBindingType::COUNT:
                 {
                     DIVIDE_UNEXPECTED_CALL();
-                } break;
+                }
             };
-
-            return false;
         };
 
         thread_local fixed_vector<VkWriteDescriptorSet, MAX_BINDINGS_PER_DESCRIPTOR_SET> descriptorWrites;
@@ -3516,7 +3514,6 @@ namespace Divide
                         } break;
                         default:
                             DIVIDE_UNEXPECTED_CALL();
-                            break;
                     }
                 }
             } break;
@@ -3631,7 +3628,7 @@ namespace Divide
                             memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
                             memoryBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
                         }break;
-                        default : DIVIDE_UNEXPECTED_CALL(); break;
+                        default : DIVIDE_UNEXPECTED_CALL();
                     }
 
                     if ( bufferBarrierCount == MAX_BUFFER_BARRIERS_PER_CMD )
@@ -3663,7 +3660,7 @@ namespace Divide
                         case ImageUsage::UNDEFINED:
                         {
                             DIVIDE_UNEXPECTED_CALL();
-                        } break;
+                        }
                         case ImageUsage::SHADER_READ:
                         {
                             switch ( it._sourceLayout )
@@ -3675,7 +3672,7 @@ namespace Divide
                                 case ImageUsage::SHADER_READ:
                                 {
                                     DIVIDE_UNEXPECTED_CALL();
-                                } break;
+                                }
                                 case ImageUsage::SHADER_WRITE:
                                 {
                                     transitionType = vkTexture::TransitionType::SHADER_WRITE_TO_SHADER_READ;
@@ -3696,7 +3693,7 @@ namespace Divide
                                 default:
                                 {
                                     DIVIDE_UNEXPECTED_CALL();
-                                } break;
+                                }
                             }
                         } break;
                         case ImageUsage::SHADER_WRITE:
@@ -3714,7 +3711,7 @@ namespace Divide
                                 case ImageUsage::SHADER_WRITE:
                                 {
                                     DIVIDE_UNEXPECTED_CALL();
-                                }break;
+                                }
                                 case ImageUsage::SHADER_READ_WRITE:
                                 {
                                     NOP(); // Both in general layout
@@ -3731,7 +3728,7 @@ namespace Divide
                                 default:
                                 {
                                     DIVIDE_UNEXPECTED_CALL();
-                                } break;
+                                }
                             }
                         } break;
                         case ImageUsage::SHADER_READ_WRITE:
@@ -3753,7 +3750,7 @@ namespace Divide
                                 case ImageUsage::SHADER_READ_WRITE:
                                 {
                                     DIVIDE_UNEXPECTED_CALL();
-                                } break;
+                                }
                                 case ImageUsage::RT_COLOUR_ATTACHMENT:
                                 {
                                     transitionType = vkTexture::TransitionType::COLOUR_ATTACHMENT_TO_SHADER_READ_WRITE;
@@ -3766,7 +3763,7 @@ namespace Divide
                                 default:
                                 {
                                     DIVIDE_UNEXPECTED_CALL();
-                                } break;
+                                }
                             }
                         } break;
                         case ImageUsage::RT_COLOUR_ATTACHMENT:
@@ -3777,7 +3774,7 @@ namespace Divide
                                 {
                                     transitionType = vkTexture::TransitionType::SHADER_READ_TO_COLOUR_ATTACHMENT;
                                 } break;
-                                default: DIVIDE_UNEXPECTED_CALL(); break;
+                                default: DIVIDE_UNEXPECTED_CALL();
                             }
                         } break;
                         case ImageUsage::RT_DEPTH_ATTACHMENT:
@@ -3789,7 +3786,7 @@ namespace Divide
                                 {
                                     transitionType = vkTexture::TransitionType::SHADER_READ_TO_DEPTH_ATTACHMENT;
                                 } break;
-                                default: DIVIDE_UNEXPECTED_CALL(); break;
+                                default: DIVIDE_UNEXPECTED_CALL();
                             }
                         } break;
                         default: DIVIDE_UNEXPECTED_CALL();
@@ -3837,7 +3834,7 @@ namespace Divide
             case GFX::CommandType::CLEAR_BUFFER_DATA: break;
 
             case GFX::CommandType::COUNT:
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
     }
 

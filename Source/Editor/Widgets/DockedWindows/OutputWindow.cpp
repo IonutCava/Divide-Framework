@@ -186,7 +186,6 @@ namespace Divide
                     default:
                     case Console::EntryType::COUNT: 
                         DIVIDE_UNEXPECTED_CALL();
-                        continue;
 
                     case Console::EntryType::INFO:
                     case Console::EntryType::COMMAND:

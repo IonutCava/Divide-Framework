@@ -52,7 +52,6 @@ namespace
         if (!Validate(result))
         {
             DIVIDE_UNEXPECTED_CALL();
-            return false;
         }
 
         return true;
@@ -739,7 +738,7 @@ void WindowManager::toggleFullScreen() const
             mainWindow()->changeType( WindowType::WINDOW );
             break;
         case WindowType::COUNT:
-        default: DIVIDE_UNEXPECTED_CALL(); break;
+        default: DIVIDE_UNEXPECTED_CALL();
     }
 }
 

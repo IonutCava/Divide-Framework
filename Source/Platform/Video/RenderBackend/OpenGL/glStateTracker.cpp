@@ -39,7 +39,6 @@ namespace Divide
             };
 
             DIVIDE_UNEXPECTED_CALL();
-            return -1;
         }
 
     }; //namespace 
@@ -569,7 +568,7 @@ namespace Divide
             {
                 gl46core::glBindFramebuffer( gl46core::GL_DRAW_FRAMEBUFFER, ID );
             } break;
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         };
 
         // Remember the new binding state for future reference

@@ -221,7 +221,7 @@ void Console::FlushOutputStreams()
             {
                 case StreamType::STD_FILE:  s_logStream.flush();    break;
                 case StreamType::ERR_FILE:  s_errorStream.flush();  break;
-                default:                   DIVIDE_UNEXPECTED_CALL(); break;
+                default:                    DIVIDE_UNEXPECTED_CALL();
             }
         }
     }

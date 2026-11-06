@@ -8,6 +8,8 @@
 
 namespace Divide
 {
+    DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(TransformComponent);
+
     TransformComponent::TransformComponent(SceneGraphNode* parentSGN, PlatformContext& context)
       : BaseComponentType<TransformComponent, ComponentType::TRANSFORM>(parentSGN, context)
       , _parentUsageContext(parentSGN->usageContext())
@@ -500,7 +502,7 @@ namespace Divide
             const TransformValues parentWorld = parentTransform->pendingWorldValues();
             return ComposeWorldTransform(local, &parentWorld, rotationMode() == RotationMode::LOCAL);
         }
-        return local;
+        return MOV(local);
     }
 
     bool TransformComponent::prepareParentChange(const SceneGraphNode* oldParent, const SceneGraphNode* newParent,

@@ -35,10 +35,8 @@ namespace Divide {
             case 5: return _position + _halfExtents.x * _axis[0] - _halfExtents.y * _axis[1] + _halfExtents.z * _axis[2];
             case 6: return _position + _halfExtents.x * _axis[0] + _halfExtents.y * _axis[1] - _halfExtents.z * _axis[2];
             case 7: return _position + _halfExtents.x * _axis[0] + _halfExtents.y * _axis[1] + _halfExtents.z * _axis[2];
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
-
-        return VECTOR3_ZERO;
     }
 
     void OBB::fromBoundingBox(const BoundingBox& aabb) noexcept
@@ -157,7 +155,7 @@ namespace Divide {
     {
         switch (edgeIndex)
         {
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
 
             case 0:  return {cornerPoint(0), cornerPoint(1) };
             case 1:  return {cornerPoint(0), cornerPoint(2) };
@@ -172,8 +170,6 @@ namespace Divide {
             case 10: return {cornerPoint(5), cornerPoint(7) };
             case 11: return {cornerPoint(6), cornerPoint(7) };
         }
-
-        return {};
     }
 
     OBB::OOBBEdgeList OBB::edgeList() const noexcept

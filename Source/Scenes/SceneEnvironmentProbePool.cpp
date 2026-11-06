@@ -499,9 +499,8 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(const U16 layerID,
             s_queuedLayer = 0u;
         } break;
         default:
-        case ComputationStages::COUNT: 
+        case ComputationStages::COUNT:
             DIVIDE_UNEXPECTED_CALL();
-            break;
 
     }
 }

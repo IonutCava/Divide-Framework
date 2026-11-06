@@ -140,7 +140,7 @@ namespace Divide
                 case 1u: settings.currentGizmoOperation = ImGuizmo::TRANSLATE_X; break;
                 case 2u: settings.currentGizmoOperation = ImGuizmo::TRANSLATE_Y; break;
                 case 3u: settings.currentGizmoOperation = ImGuizmo::TRANSLATE_Z; break;
-                default: DIVIDE_UNEXPECTED_CALL(); break;
+                default: DIVIDE_UNEXPECTED_CALL();
             }
             settings.currentAxisSelected = settings.previousAxisSelected[0];
             Attorney::EditorSceneViewWindow::editorEnableGizmo(_parent, true);
@@ -430,7 +430,7 @@ namespace Divide
                                 Util::Colours[2],
                                 flags);
                             break;
-                        default: DIVIDE_UNEXPECTED_CALL(); break;
+                        default: DIVIDE_UNEXPECTED_CALL();
                     }
                 }
                 else if (IsRotationOperation(settings))
@@ -498,7 +498,7 @@ namespace Divide
                                 Util::Colours[2],
                                 flags);
                             break;
-                        default: DIVIDE_UNEXPECTED_CALL(); break;
+                        default: DIVIDE_UNEXPECTED_CALL();
                     }
                 }
                 else if (IsScaleOperation(settings))
@@ -569,7 +569,7 @@ namespace Divide
                                 Util::Colours[2],
                                 flags);
                             break;
-                        default: DIVIDE_UNEXPECTED_CALL(); break;
+                        default: DIVIDE_UNEXPECTED_CALL();
                     }
                 }
             }

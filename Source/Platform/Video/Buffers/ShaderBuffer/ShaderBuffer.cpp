@@ -8,7 +8,7 @@ namespace Divide {
 size_t ShaderBuffer::AlignmentRequirement(const BufferUsageType usage) noexcept {
     switch ( usage )
     {
-        case BufferUsageType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+        case BufferUsageType::COUNT: DIVIDE_UNEXPECTED_CALL();
 
         case BufferUsageType::UNBOUND_BUFFER :
         case BufferUsageType::COMMAND_BUFFER : return GFXDevice::GetDeviceInformation()._offsetAlignmentBytesSSBO;

@@ -121,7 +121,7 @@ namespace Divide
             static_assert( alignof( RenderPassExecutor::MaterialLookupInfo ) >= std::atomic_ref<size_t>::required_alignment );
             static_assert( offsetof( RenderPassExecutor::MaterialLookupInfo, _framesSinceLastUsed ) %
                            std::atomic_ref<size_t>::required_alignment == 0u );
-            std::atomic_ref{ material._framesSinceLastUsed }.store( 0u, std::memory_order_relaxed );
+            std::atomic_ref<size_t>{ material._framesSinceLastUsed }.store( 0u, std::memory_order_relaxed );
         }
 
         template<typename DataContainer>

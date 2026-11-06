@@ -902,7 +902,7 @@ namespace Assert
     /// It is safe to call evaluate expressions and call functions inside the assert check as it will compile for every build type
     bool Callback(bool expression, std::string_view expressionStr, std::string_view file, int line, std::string_view failMessage) noexcept;
     /// Reports an unexpected call and aborts even when assertions can continue.
-    void UnexpectedCall(std::string_view file, int line, std::string_view failMessage) noexcept;
+    [[noreturn]] void UnexpectedCall(std::string_view file, int line, std::string_view failMessage) noexcept;
 }
 
 #define DIVIDE_ASSERT_2_ARGS(expression, msg) Divide::Assert::Callback(expression, #expression, __FILE__, __LINE__, msg)

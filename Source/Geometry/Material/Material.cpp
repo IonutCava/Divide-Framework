@@ -871,7 +871,7 @@ namespace Divide
             case ShadingMode::BLINN_PHONG: shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_BLINN_PHONG", true ); break;
             case ShadingMode::PBR_MR:      shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_PBR_MR", true );      break;
             case ShadingMode::PBR_SG:      shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_PBR_SG", true );      break;
-            default:                       DIVIDE_UNEXPECTED_CALL();                                                         break;
+            default:                       DIVIDE_UNEXPECTED_CALL();
         }
         // Display pre-pass caches normal maps in a GBuffer, so it's the only exception
         if ( (!isDepthPass || renderStagePass._stage == RenderStage::DISPLAY) &&
