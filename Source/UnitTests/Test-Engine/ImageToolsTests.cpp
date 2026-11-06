@@ -622,7 +622,7 @@ namespace Divide
     {
         SECTION( "16-bit pixels with an explicit element count" )
         {
-            constexpr std::array<U16, 4> pixels{ 0x1234u, 0x2345u, 0x3456u, 0x4567u };
+            constexpr std::array<U16, 4> pixels{{ 0x1234u, 0x2345u, 0x3456u, 0x4567u }};
             ImageTools::ImageLayer layer;
             const U16* const data = layer.allocateMip( pixels.data(), pixels.size(), 2u, 2u, 1u, 1u );
             REQUIRE( data != nullptr );
@@ -632,7 +632,7 @@ namespace Divide
 
         SECTION( "An implicit element count copies the entire image" )
         {
-            constexpr std::array<U16, 4> pixels{ 0x1234u, 0x2345u, 0x3456u, 0x4567u };
+            constexpr std::array<U16, 4> pixels{{ 0x1234u, 0x2345u, 0x3456u, 0x4567u }};
             ImageTools::ImageLayer layer;
             const U16* const data = layer.allocateMip( pixels.data(), 0u, 2u, 2u, 1u, 1u );
             REQUIRE( data != nullptr );
@@ -642,7 +642,7 @@ namespace Divide
 
         SECTION( "32-bit data retains zero-initialized padding" )
         {
-            constexpr std::array<F32, 2> pixels{ 1.0f, 2.0f };
+            constexpr std::array<F32, 2> pixels{{ 1.0f, 2.0f }};
             ImageTools::ImageLayer layer;
             const F32* const data = layer.allocateMip( pixels.data(), pixels.size(), 2u, 2u, 1u, 1u );
             REQUIRE( data != nullptr );
@@ -655,8 +655,8 @@ namespace Divide
 
         SECTION( "Compressed byte payloads keep their exact size" )
         {
-            constexpr std::array<Byte, 8> bytes{ Byte{ 1 }, Byte{ 2 }, Byte{ 3 }, Byte{ 4 },
-                                                 Byte{ 5 }, Byte{ 6 }, Byte{ 7 }, Byte{ 8 } };
+            constexpr std::array<Byte, 8> bytes{{ Byte{ 1 }, Byte{ 2 }, Byte{ 3 }, Byte{ 4 },
+                                                  Byte{ 5 }, Byte{ 6 }, Byte{ 7 }, Byte{ 8 } }};
             ImageTools::ImageLayer layer;
             const Byte* const data = layer.allocateMip( bytes.data(), bytes.size(), 8u, 8u, 1u, 0u );
             REQUIRE( data != nullptr );
