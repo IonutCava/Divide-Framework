@@ -891,6 +891,7 @@ set( TEST_ENGINE_SOURCE UnitTests/unitTestCommon.h
                         UnitTests/Test-Engine/UniformUploadPageCursorTests.cpp
                         UnitTests/Test-Engine/SunTests.cpp
                         UnitTests/Test-Engine/WaterTests.cpp
+                        UnitTests/Test-Engine/XMLParserTests.cpp
 )
 
 set( TEST_PLATFORM_SOURCE UnitTests/unitTestCommon.h

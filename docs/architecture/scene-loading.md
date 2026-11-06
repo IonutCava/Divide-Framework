@@ -93,6 +93,9 @@ missing parent directories. `createFile()` preserves existing contents unless
 overwrite is requested. A file-creation failure is logged and returned as a
 failed XML save rather than treated as a fatal unexpected call. Backup and
 restore failures are logged; the original read or write is still attempted.
+`LoadSave` logs Boost XML errors and stream I/O failures and returns failure,
+including when an XML path names a directory. The standalone `XML::readXML()`
+also logs these errors, but returns no status and leaves its tree unchanged.
 
 Water registers its resource editor fields during resource loading, before
 `Scene::addWater()` reads their XML. Its graph-node `postLoad()` installs
