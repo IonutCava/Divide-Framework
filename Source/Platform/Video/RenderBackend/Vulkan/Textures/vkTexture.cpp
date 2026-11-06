@@ -655,11 +655,11 @@ namespace Divide
         {
             if ( size < totalSizeTarget )
             {
-                DIVIDE_UNEXPECTED_CALL_MSG(Util::StringFormat("vkTexture::loadDataInternal: provided data size (%zu) is smaller than expected totalSizeTarget (%zu) for '%s' - treating as partial data", size, totalSizeTarget, resourceName().c_str()));
+                DIVIDE_ASSERT(false, Util::StringFormat("vkTexture::loadDataInternal: provided data size (%zu) is smaller than expected totalSizeTarget (%zu) for '%s' - treating as partial data", size, totalSizeTarget, resourceName().c_str()));
             }
             else if ( size > totalSizeTarget )
             {
-                DIVIDE_UNEXPECTED_CALL_MSG(Util::StringFormat("vkTexture::loadDataInternal: provided data size (%zu) is larger than expected totalSizeTarget (%zu) for '%s' - extra bytes will be ignored", size, totalSizeTarget, resourceName().c_str()));
+                DIVIDE_ASSERT(false, Util::StringFormat("vkTexture::loadDataInternal: provided data size (%zu) is larger than expected totalSizeTarget (%zu) for '%s' - extra bytes will be ignored", size, totalSizeTarget, resourceName().c_str()));
             }
         }
 

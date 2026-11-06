@@ -82,6 +82,12 @@ TODO for scene-graph version mismatches rather than rejecting or migrating
 them. Keep loading and `Scene::saveXML()` / `SceneGraph::saveToXML()` in sync
 when changing serialized data.
 
+`XML::detail::LoadSave::write()` uses `createFile()` for new files, including
+missing parent directories. `createFile()` preserves existing contents unless
+overwrite is requested. A file-creation failure is logged and returned as a
+failed XML save rather than treated as a fatal unexpected call. Backup and
+restore failures are logged; the original read or write is still attempted.
+
 Water registers its resource editor fields during resource loading, before
 `Scene::addWater()` reads their XML. Its graph-node `postLoad()` installs
 per-node callbacks without replacing those fields. `EditorComponent` checks

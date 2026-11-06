@@ -66,6 +66,10 @@ namespace Divide
             std::error_code error;
             std::filesystem::remove( directory / "missing.xml", error );
             std::filesystem::remove( directory / "saved.xml", error );
+            std::filesystem::remove( directory / "saved.xml.bak", error );
+            std::filesystem::remove( directory / "restore.xml", error );
+            std::filesystem::remove( directory / "restore.xml.bak", error );
+            std::filesystem::remove( directory / "blocker", error );
             std::filesystem::remove( directory, error );
         };
         const ResourcePath path{ directory.string() };
@@ -84,6 +88,27 @@ namespace Divide
         Configuration restored{};
         REQUIRE( XML::loadFromXML( restored, path, "saved.xml" ) );
         CHECK( restored.runtime.assetLoaderThreads == 4 );
+
+        const std::filesystem::path blocker = directory / "blocker";
+        {
+            std::ofstream output{ blocker };
+            REQUIRE( output.good() );
+        }
+        CHECK_FALSE( XML::saveToXML( config, ResourcePath{ blocker.string() }, "saved.xml" ) );
+
+        REQUIRE( std::filesystem::create_directory( directory / "saved.xml.bak" ) );
+        config.runtime.assetLoaderThreads = 5;
+        REQUIRE( XML::saveToXML( config, path, "saved.xml" ) );
+        REQUIRE( XML::loadFromXML( restored, path, "saved.xml" ) );
+        CHECK( restored.runtime.assetLoaderThreads == 5 );
+
+        REQUIRE( std::filesystem::create_directory( directory / "restore.xml" ) );
+        {
+            std::ofstream backup{ directory / "restore.xml.bak" };
+            backup << "<config><runtime/></config>";
+            REQUIRE( backup.good() );
+        }
+        CHECK_FALSE( XML::loadFromXML( restored, path, "restore.xml" ) );
     }
 
     TEST_CASE( "Parallel loading waits process main-thread completion callbacks", "[threading][render_smoke]" )

@@ -1372,7 +1372,7 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
             } break;
             default:
             {
-                DIVIDE_UNEXPECTED_CALL();
+                DIVIDE_ASSERT(false);
                 return false;
             }
         }
@@ -1383,7 +1383,7 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
         {
             default:
             case IL_COLOUR_INDEX: 
-                DIVIDE_UNEXPECTED_CALL();
+                DIVIDE_ASSERT(false);
                 return false;
             case IL_ALPHA:
             case IL_LUMINANCE:
@@ -1653,7 +1653,7 @@ bool SaveImage(const ResourcePath& filename, const U16 width, const U16 height, 
         case 2: sourceIsBGR ? flipAndConvertToRGB8<2, true>( imageData, dest, width, height, bytesPerPixel ) : flipAndConvertToRGB8<2, false>( imageData, dest, width, height, bytesPerPixel ); break;
         case 3: sourceIsBGR ? flipAndConvertToRGB8<3, true>( imageData, dest, width, height, bytesPerPixel ) : flipAndConvertToRGB8<3, false>( imageData, dest, width, height, bytesPerPixel ); break;
         case 4: sourceIsBGR ? flipAndConvertToRGB8<4, true>( imageData, dest, width, height, bytesPerPixel ) : flipAndConvertToRGB8<4, false>( imageData, dest, width, height, bytesPerPixel ); break;
-        default: DIVIDE_UNEXPECTED_CALL(); return false;
+        default: DIVIDE_ASSERT(false); return false;
     }
 
     switch (format)
@@ -1662,7 +1662,7 @@ bool SaveImage(const ResourcePath& filename, const U16 width, const U16 height, 
         case SaveImageFormat::BMP: return stbi_write_bmp(filename.string().c_str(), width, height, 3, pix.data())                           == 1;
         case SaveImageFormat::TGA: return stbi_write_tga(filename.string().c_str(), width, height, 3, pix.data())                           == 1;
         case SaveImageFormat::JPG: return stbi_write_jpg(filename.string().c_str(), width, height, 3, pix.data(), 85)                       == 1;
-        default: DIVIDE_UNEXPECTED_CALL(); break;
+        default: DIVIDE_ASSERT(false); break;
     }
 
     return false;

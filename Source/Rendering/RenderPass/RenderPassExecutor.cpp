@@ -238,18 +238,18 @@ namespace Divide
                                   TypeUtil::RenderStageToString( _stage ), index, pageIndex );
         }
         ShaderBuffer_uptr buffer = _context.newShaderBuffer( bufferDescriptor );
-        if ( !DIVIDE_ASSERT( buffer != nullptr, "Failed to create indirect command buffer" ) )
+        if ( buffer == nullptr )
         {
-            std::terminate();
+            DIVIDE_UNEXPECTED_CALL_MSG( "Failed to create indirect command buffer" );
         }
         return buffer;
     }
 
     void RenderPassExecutor::prepareCommandBuffers( const PlayerIndex index )
     {
-        if ( !DIVIDE_ASSERT( index < _commandBuffers.size(), "Invalid indirect command buffer player" ) )
+        if ( index >= _commandBuffers.size() )
         {
-            std::terminate();
+            DIVIDE_UNEXPECTED_CALL_MSG( "Invalid indirect command buffer player" );
         }
         PlayerCommandBuffers& buffers = _commandBuffers[index];
         if ( buffers._pages.empty() )
@@ -821,10 +821,9 @@ namespace Divide
 
         RenderStagePass stagePass = params._stagePass;
         const U16 stageIndex = IndexForStage( stagePass );
-        if ( !DIVIDE_ASSERT( stageIndex < TotalPassCountForStage( _stage ),
-                             "Indirect command pass index exceeds its stage buffer" ) )
+        if ( stageIndex >= TotalPassCountForStage( _stage ) )
         {
-            std::terminate();
+            DIVIDE_UNEXPECTED_CALL_MSG( "Indirect command pass index exceeds its stage buffer" );
         }
         const auto retrieveCommands = [&]( const U32 startOffset )
         {
@@ -878,13 +877,12 @@ namespace Divide
         if ( allocation._overflow )
         {
             const auto& deviceInfo = GFXDevice::GetDeviceInformation();
-            if ( !DIVIDE_ASSERT( IndirectCommandBufferTracker::TryOverflowCapacity( cmdCount,
-                                                                                    deviceInfo._offsetAlignmentBytesSSBO,
-                                                                                    deviceInfo._maxSizeBytesSSBO,
-                                                                                    overflowCapacity ),
-                                 "Indirect command list cannot fit an aligned storage buffer on this device" ) )
+            if ( !IndirectCommandBufferTracker::TryOverflowCapacity( cmdCount,
+                                                                     deviceInfo._offsetAlignmentBytesSSBO,
+                                                                     deviceInfo._maxSizeBytesSSBO,
+                                                                     overflowCapacity ) )
             {
-                std::terminate();
+                DIVIDE_UNEXPECTED_CALL_MSG( "Indirect command list cannot fit an aligned storage buffer on this device" );
             }
         }
         if ( allocation._pageIndex == pages.size() )
