@@ -9,6 +9,10 @@ with [readback and recovery](../architecture/gpu-resources.md#vulkan-smoke-readb
 and [scene selection](../architecture/scene-loading.md) documented separately.
 Both backends support supervised capture and start in Play mode. Rendering fixes
 and the smoke harness are committed separately; attempt evidence remains local.
+The requirements and design below are historical where superseded by later user
+decisions or implementation. Use the maintained guides, current user approvals
+and persisted supervisor state rather than treating historical budgets or
+deferred-test instructions as current authorization.
 
 ## Agreed requirements
 
@@ -17,7 +21,7 @@ and the smoke harness are committed separately; attempt evidence remains local.
 - Ignore diagnostic TODO/STUBBED messages as failure triggers. Do not ignore a Vulkan warning/error merely because its text contains "TODO".
 - Use the Default project, editor enabled, existing rendering settings, and a 300-frame smoke test after scene loading. Capture the scene and the final main editor framebuffer for review.
 - A device loss does not by itself stop the loop: wait for verified recovery, then continue diagnosing and fixing. Pause for user approval if the same device loss recurs after three attempted repairs without progress.
-- Default to at most 25 repair iterations, with earlier stops for other repeated no-progress failures. The user approved a 200-attempt limit for the existing Games/WarScene loop; pass `-MaxAttempts 200` when continuing it. Failed or interrupted builds do not consume an iteration.
+- Default to at most 25 repair iterations, with earlier stops for other repeated no-progress failures. The initial Games/WarScene approval allowed 200 attempts; later changes to a budget require user approval and must retain the existing supervisor state. Failed or interrupted builds do not consume an iteration.
 - Existing uncommitted Vulkan changes may be revised as necessary. Preserve their original diff and leave unrelated user changes alone.
 - Preserve compatible evidence for a later equivalent OpenGL run and rendering-difference investigation. OpenGL parity fixes are not part of this initial loop.
 
@@ -93,7 +97,7 @@ platform/GPU initialization until its PID, debugger parent and job membership
 are verified. Track verified process identities for bounded cleanup if job
 inheritance fails.
 
-Limits are 180 seconds for startup, 30 seconds without an eligible present after readiness, 120 seconds by default for the rendering phase, 10 seconds for debugger capture, and 15 seconds for normal shutdown. Each eligible present is recorded for the no-progress watchdog. The overall render deadline is adjustable with `-RenderTimeoutSeconds` from 120 to 7200 seconds for slower instrumented scenes; the no-progress limit remains unchanged. Log each timeout distinctly. Compilation has a separate bounded timeout, initially 45 minutes.
+Limits are 180 seconds for startup, 30 seconds without an eligible present after readiness, 120 seconds by default for the rendering phase, 10 seconds for debugger capture, and 60 seconds for normal shutdown. Each eligible present is recorded for the no-progress watchdog. The overall render deadline is adjustable with `-RenderTimeoutSeconds` from 120 to 7200 seconds for slower instrumented scenes; the no-progress limit remains unchanged. Log each timeout distinctly. Compilation has a separate bounded timeout, initially 45 minutes.
 
 Fail closed on missing/corrupt results, unexpected exit, crash, timeout, or contradictory evidence. Distinguish validation failure, build/test failure, startup failure, device loss, suspected GPU hang, and normal completion.
 
@@ -114,7 +118,7 @@ Record successful present results and meaningful completion/progress evidence; p
 Capture a completed scene render image near the end using the existing screenshot/readback path where appropriate. Ensure its asynchronous work completes and the output exists before shutdown. Prefer a scene image rather than a desktop screenshot that could capture unrelated windows.
 
 For faster diagnosis of startup or shutdown repairs, `-DiagnosticPresents` may
-request 1–299 presentations with the same supervision and capture checks.
+request a positive presentation count with the same supervision and capture checks.
 Such a run consumes an attempt but cannot complete the 300-present success
 contract; the full run remains required afterward. Successful diagnostics
 record their progress and break the repeated-failure sequence. After a
@@ -126,8 +130,8 @@ Also capture the final main framebuffer after editor ImGui rendering. In the
 Vulkan smoke run, copy the acquired swapchain image before presentation, wait
 for the frame fence, and save it without including unrelated desktop windows.
 The image excludes OS decorations and detached windows. Promote the pending
-image only after a clean exit. An equivalent OpenGL framebuffer capture remains
-follow-up work for a later comparison.
+image only after a clean exit. OpenGL also captures its main framebuffer before
+swap, with its own successful-swap and shutdown checks.
 
 Request normal shutdown after the success target. Continue observing validation through teardown. Publish success only after no Vulkan warnings except the explicitly logged custom-border advisory, no Vulkan errors, the required scene presentations, both images, clean shutdown and a matching successful exit/result record. If visual output is blank or incorrect, keep it marked for review rather than claiming rendering correctness.
 
@@ -145,7 +149,15 @@ cmake --build --preset windows-msvc-debug-editor-instrumentation --parallel 2
 ctest --preset test-windows-msvc-debug-editor-instrumentation
 ```
 
-During iteration, build the smallest affected targets. The user requested deferring new unit tests until both Vulkan and OpenGL render correctly; use the runner's `-SkipUnitTests` option during repairs if appropriate. After both backends work, add the relevant Catch2 coverage and run focused tests plus the full internal CTest preset. Configure `RUN_TESTING_INTERNAL=OFF` while building so tests do not run implicitly. Unit tests do not replace the real GPU smoke test. Never run a stale executable after a failed build; record executable identity and build outcome.
+During iteration, build the smallest affected targets. The original plan
+deferred new tests while repairing rendering; current user and repository
+instructions require Catch2 coverage for new engine functionality. The runner
+executes focused tests by default; `-SkipUnitTests` only defers them and is not
+evidence of a pass. Run the focused tests and full internal CTest preset for
+final validation. Configure `RUN_TESTING_INTERNAL=OFF` while building so tests
+do not run implicitly. Unit tests do not replace the real GPU smoke test. Never
+run a stale executable after a failed build; record executable identity and build
+outcome.
 
 Reuse Ninja's incremental build and the project's precompiled headers. Benchmark higher local build parallelism against the `--parallel 2` baseline while monitoring memory; do not assume it will improve every incremental build. MSVC precompiled-header flags can prevent sccache hits, so do not install a compiler cache or disable precompiled headers without a measured benefit.
 
@@ -158,7 +170,7 @@ Snapshot logs before a new launch and after each exit. Use run IDs and file boun
 ### Additional tools and skills
 
 - **Vulkan SDK:** `vulkaninfo` reports device, extension and layer availability; `vkconfig` helps inspect layer configuration. Both are discoverable locally. `vkconfig` can modify per-user Vulkan settings, so do not change them unattended; prefer process-scoped or explicit engine configuration. See the [Vulkan Configurator documentation](https://vulkan.lunarg.com/doc/view/1.4.363.0/windows/vkconfig.html).
-- **WinDbg/CDB:** the installed WinDbg package includes an x64 CDB suitable for scripted exception handling and stack capture. Resolve the package location at runtime; debugger and minidump integration with the harness still needs implementation and verification.
+- **WinDbg/CDB:** the installed WinDbg package includes an x64 CDB suitable for scripted exception handling and stack capture. The runner resolves and copies the runtime into the attempt, verifies process ownership, and captures debugger evidence when available.
 - **AMD Radeon GPU Detective and Developer Panel:** installed RGD 1.6.3.7 can analyze GPU-crash dumps with execution markers and resource information. Pass `-AmdCaptureExe` to the runner to own capture per attempt and wait for late reports before classification. The installed Adrenalin 26.10.1 meets its reported driver requirement. Its [quickstart](https://github.com/GPUOpen-Tools/radeon_gpu_detective/blob/master/documentation/source/index.rst) requires Crash Analysis mode and a TDR; a normal validation abort or device loss without a TDR may not produce a dump. Do not deliberately induce a TDR.
 - **AMD RGD MCP server:** installed locally and verified with MCP 1.30.0; its current package is incompatible with MCP 2.x. Point `RGD_EXE_PATH` to the installed `rgd.exe` and `RGD_DOCS_PATH` to `H:\Tools\rgd_mcp_server-1.0.0.2\docs` when registering it. Review its configuration and data handling before enabling it; never automatically upload dumps or source.
 - **RenderDoc:** version 1.47 is installed and its Vulkan layer is registered. Inspect captured Vulkan frames, resources and image contents after the application reaches a capturable frame. Capture can change timing and cannot replace validation or guarantee a capture before an immediate failure.
@@ -171,9 +183,9 @@ Do not install, configure, or enable optional tools without user approval. Crash
 
 1. Establish the initial source/configuration baseline and preflight, without launching an unprotected renderer.
 2. Implement and verify fail-fast diagnostics and process supervision first.
-3. Build the renderer and execute one protected smoke attempt; defer unit tests until the smoke test passes.
+3. Build the renderer, run the focused engine tests, and execute one protected smoke attempt.
 4. Diagnose the first causal warning/error from its VUID, stack and resource history; prioritize it over downstream cascades.
-5. Apply one coherent root-cause repair, then rebuild and retest. Add focused Catch2 coverage after both backends render correctly.
+5. Apply one coherent root-cause repair, add focused Catch2 coverage for new engine behavior, then rebuild and retest.
 6. Preserve every attempt and compare its failure signature and achieved rendering progress.
 7. After device loss or an observed reset, wait for the recovery probe before the next renderer attempt. Pause for approval after three repeated no-progress device-loss repairs. Stop on success, the approved iteration cap, an unrecoverable safety event, missing prerequisites, conflicting user edits, or other repeated no progress. Report unresolved evidence rather than relaxing validation.
 

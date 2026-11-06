@@ -11,6 +11,11 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 - `Source/Editor/Widgets/DockedWindow.cpp` opens each window before invoking
   its content; `NodePreviewWindow` and `SceneViewWindow` provide the preview
   and scene tabs.
+- `Source/Editor/Widgets/DockedWindows/PropertyWindow.cpp`,
+  `Source/Editor/Headers/Utils.inl`, and `Source/Editor/UndoManager.cpp`
+  handle property editing and undo/redo.
+- `Source/Editor/Widgets/DockedWindows/OutputWindow.cpp` receives console
+  entries through `OutputLogQueue`.
 - ImGui persists window positions and docking in `imgui.ini`. The smoke runner
   reads this layout but disables saving it so diagnostics do not rewrite it.
 
@@ -33,3 +38,33 @@ for the render target and sampling contract.
 The scene and node-preview cameras are separate; see
 [Scene loading](scene-loading.md) for the distinction between paused editor
 and Play-mode camera selection.
+
+## Property edits and undo
+
+`EditorComponent` fields carry their owner GUID and an undo/redo notification.
+For fields using that notification, `PropertyEditState` retains the value at
+each ImGui item's activation and records a changed edit when that item
+deactivates. A reset is a separate action, including when it follows an active
+edit. Scalar, compound, matrix and colour field paths must preserve the whole
+original value and the field's setter and notification; unchanged edits do not
+enter the history.
+
+`UndoManager` bounds its history, clears redo when a new edit is registered,
+and invokes the field notification after applying an undo or redo.
+`Editor::onRemoveComponent` removes that component's entries from both stacks,
+so their callbacks do not outlive the component. Spotlight field notifications
+also restore the inner/outer angle invariant and invalidate shadow state.
+Other editor widgets use their existing undo paths; do not assume every widget
+uses `PropertyEditState`.
+
+## Gizmo and console updates
+
+Spatial-change notifications may originate from scene workers.
+`GizmoSelectionRefresh` coalesces them, and `Editor::update` refreshes the
+selection on the main thread once the gizmo is no longer being manipulated.
+The pending refresh is retained during manipulation.
+
+The output window's console callback queues complete entries in a bounded
+`OutputLogQueue`; the UI thread drains them into its display ring. Overflow
+retains the newest entries. Console callback locking and lifetime constraints
+are described in [Threading](threading.md#entry-points-and-task-pools).

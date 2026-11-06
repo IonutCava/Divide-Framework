@@ -13,6 +13,12 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 - `Source/Scenes/Scene.cpp`: scene settings and asset construction.
 - `Source/Graphs/SceneGraph.cpp` and `Source/Graphs/SceneGraphNode.cpp`: graph
   outline and per-node serialized components.
+- `Source/ECS/Systems/TransformSystem.cpp` and
+  `Source/ECS/Systems/BoundsSystem.cpp`: world-transform history and
+  synchronized bounds updates.
+- `Source/Graphs/Headers/SceneNodeEventQueue.h` and
+  `Source/Graphs/Headers/SceneNodeRemovalQueue.h`: deferred event and removal
+  batches.
 - `Source/Scenes/WarScene/WarScene.cpp`: an example of a specialized scene
   adding content in code.
 
