@@ -58,6 +58,10 @@ FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 class LightPool final : public FrameListener, 
                         public SceneComponent,
                         public PlatformContextComponent {
+#if defined(ENABLE_UNIT_TESTING)
+    friend struct LightPoolTestAccess;
+#endif
+
   protected:
       struct LightProperties {
           /// rgb = diffuse
@@ -76,7 +80,6 @@ class LightPool final : public FrameListener,
           int4 _options = { 3, -1, 0, 0 };
       };
 
-#pragma pack(push, 1)
       struct PointShadowProperties
       {
           float4 _details;
@@ -103,19 +106,6 @@ class LightPool final : public FrameListener,
 
           [[nodiscard]] bufferPtr data() const noexcept { return (bufferPtr)_pointLights.data(); }
       };
-#pragma pack(pop)
-
-    static_assert(sizeof(float4) == 16u && sizeof(mat4<F32>) == 64u);
-    static_assert(sizeof(PointShadowProperties) == 2u * sizeof(float4));
-    static_assert(sizeof(SpotShadowProperties) == 2u * sizeof(float4) + sizeof(mat4<F32>));
-    static_assert(sizeof(CSMShadowProperties) == (1u + Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT) * sizeof(float4) +
-                                                Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT * sizeof(mat4<F32>));
-    static_assert(offsetof(ShadowProperties, _cameraViewDepthRow) ==
-                  Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS * sizeof(PointShadowProperties) +
-                  Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS * sizeof(SpotShadowProperties) +
-                  Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * sizeof(CSMShadowProperties));
-    static_assert(offsetof(ShadowProperties, _worldAOVPMatrix) == offsetof(ShadowProperties, _cameraViewDepthRow) + sizeof(float4));
-    static_assert(sizeof(ShadowProperties) == offsetof(ShadowProperties, _worldAOVPMatrix) + sizeof(mat4<F32>));
 
   public:
     struct ShadowLightList

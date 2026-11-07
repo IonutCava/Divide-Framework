@@ -1,7 +1,16 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "UnitTests/unitTestCommon.h"
 
 namespace Divide
 {
+
+TEST_CASE( "Fundamental types and resource handles have expected sizes", "[data_type_tests]" )
+{
+    STATIC_CHECK( sizeof(F32) == 4u );
+    STATIC_CHECK( sizeof(D64) == 8u );
+    STATIC_CHECK( sizeof(Handle<void>) == sizeof(U32) );
+}
 
 TEST_CASE( "Fits In Registers", "[data_type_tests]" )
 {

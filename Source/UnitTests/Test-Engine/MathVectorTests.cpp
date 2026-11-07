@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "UnitTests/unitTestCommon.h"
 
 namespace Divide
@@ -87,6 +89,8 @@ TEST_CASE( "SIMD-backed vectors keep SIMD alignment inside packed declarations",
     STATIC_CHECK( alignof(quatf) >= alignof(SimdVector<F32>) );
     STATIC_CHECK( alignof(mat4<F32>) >= alignof(SimdVector<F32>) );
     STATIC_CHECK( sizeof(float4) == sizeof(F32) * 4 );
+    STATIC_CHECK( sizeof(float4) == sizeof(SimdVector<F32>) );
+    STATIC_CHECK( sizeof(quatf) == sizeof(float4) );
     STATIC_CHECK( alignof(vec4<U8>) == 1u );
     STATIC_CHECK( sizeof(vec4<U8>) == sizeof(U8) * 4 );
     STATIC_CHECK( sizeof(vec4<D64>) == sizeof(D64) * 4 );

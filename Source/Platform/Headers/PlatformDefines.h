@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2018-2026 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -382,8 +382,6 @@ struct Handle
 
     bool operator==(const Handle<T>& other) const noexcept = default;
 };
-
-static_assert(sizeof(Handle<void>) == sizeof(U32), "Handle size is incorrect");
 
 template<typename T> inline constexpr Handle<T> INVALID_HANDLE
 {

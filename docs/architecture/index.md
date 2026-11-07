@@ -32,13 +32,13 @@ affects all its callers.
 ## Math SIMD alignment
 
 `Source/Core/Math/Headers/MathVectors.h` declares `vec4` inside `#pragma pack(1)`.
-GCC/Clang cap member alignment under packing, which would drop `SimdVector<F32>`'s
-`alignas(16)`; Clang then emits aligned SSE moves through misaligned temporaries
-(for example quaternion products) and segfaults on x86. `vec4` therefore carries a
-class-level `alignas(Vec4Alignment<T>)`: 16 for SIMD-backed types, 1 otherwise, so
-non-SIMD vectors keep their packed layout. MSVC, clang-cl and ARM did not expose the
-fault. Keep the `static_assert`s and `MathVectorTests.cpp` alignment test when
-changing these types or their packing.
+GCC/Clang cap member alignment under packing, so `vec4` carries a class-level
+`alignas(Vec4Alignment<T>)` to preserve SIMD alignment without changing packed
+non-SIMD vector layouts. Packing an enclosing type can still suppress the alignment
+of its `float4` or matrix members and make SIMD accesses fault. GPU records use
+natural alignment and test their shader-visible offsets and sizes; see
+[Rendering](rendering.md). Keep the layout and alignment tests when
+changing these types.
 
 ## Debugging routes
 

@@ -39,7 +39,6 @@ enum class RenderStage : U8;
 
 struct GFXShaderData
 {
-#pragma pack(push, 1)
       struct CamData
       {
           mat4<F32> dvd_ProjectionMatrix = MAT4_IDENTITY;
@@ -58,9 +57,6 @@ struct GFXShaderData
           float4    dvd_clipPlanes[Config::MAX_CLIP_DISTANCES];
           float4    _padding_;
       } _camData;
-#pragma pack(pop)
-
-    static_assert(sizeof(CamData) == sizeof(mat4<F32>) * 8, "Wrong GPU data struct size!");
 
     struct PrevFrameData
     {
