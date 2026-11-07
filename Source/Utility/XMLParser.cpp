@@ -50,6 +50,13 @@ namespace detail
             }
         }
 
+        // Some C++ runtimes (e.g. libc++) open directories as empty streams, which Boost parses as an empty document.
+        if (!fileExists(loadPath))
+        {
+            Console::errorfn("Failed to read XML file '{}': not a regular file", loadPath);
+            return false;
+        }
+
         try
         {
             read_xml(loadPath.string().c_str(),
@@ -267,6 +274,12 @@ void writeXML(const ResourcePath& path, const ptree& tree)
 
 void readXML(const ResourcePath& path, ptree& tree)
 {
+    if (!fileExists(path))
+    {
+        Console::errorfn(LOCALE_STR("ERROR_XML_INVALID_FILE"), path, "not a regular file");
+        return;
+    }
+
     try
     {
         read_xml(path.string().c_str(), tree);

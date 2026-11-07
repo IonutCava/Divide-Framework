@@ -81,6 +81,26 @@ TEST_CASE( "Vec Size Tests", "[math_vectors_test]" )
     CHECK_EQUAL(sizeof(c10), sizeof(c9)  * 2);
 }
 
+TEST_CASE( "SIMD-backed vectors keep SIMD alignment inside packed declarations", "[math_vectors_test]" )
+{
+    STATIC_CHECK( alignof(float4) == alignof(SimdVector<F32>) );
+    STATIC_CHECK( alignof(quatf) >= alignof(SimdVector<F32>) );
+    STATIC_CHECK( alignof(mat4<F32>) >= alignof(SimdVector<F32>) );
+    STATIC_CHECK( sizeof(float4) == sizeof(F32) * 4 );
+    STATIC_CHECK( alignof(vec4<U8>) == 1u );
+    STATIC_CHECK( sizeof(vec4<U8>) == sizeof(U8) * 4 );
+    STATIC_CHECK( sizeof(vec4<D64>) == sizeof(D64) * 4 );
+
+    // Quaternion products return through SIMD temporaries; misaligned storage faulted on Clang x86.
+    const quatf rotation(WORLD_Y_AXIS, Angle::to_RADIANS(Angle::DEGREES_F{ 90.f }));
+    const quatf composed = rotation * rotation;
+    const float4 product = float4(1.f, 2.f, 3.f, 4.f) * float4(2.f);
+
+    CHECK( reinterpret_cast<uintptr_t>(&composed) % alignof(SimdVector<F32>) == 0u );
+    CHECK( reinterpret_cast<uintptr_t>(&product) % alignof(SimdVector<F32>) == 0u );
+    CHECK( product == float4(2.f, 4.f, 6.f, 8.f) );
+}
+
 TEST_CASE( "Vec Constructor Conversions", "[math_vectors_test]" )
 {
     const float2 input1(1.0f, 2.0f);

@@ -185,6 +185,8 @@ NVTT remains available for DDS cache compression until a replacement
 covers that functionality as well.
 The NVTT overlay removes upstream `-march=native`: cached dependency archives
 must use the target toolchain's baseline, not the cache producer's CPU ISA.
+It also accepts 48-bit user addresses in NVTT's debug pointer checks (see
+[Asset pipeline](docs/architecture/asset-pipeline.md)).
 
 Boost.Asio uses monotonic `steady_timer` deadlines, without its optional
 deadline-timer and coroutine/spawn features. Scene registration uses a local

@@ -82,6 +82,9 @@ not a comma-separated list of directories.
   BMPs with extended headers or padding must remain convertible without changing channel
   order, alpha, or orientation; offsets before the header or beyond the memory input
   are rejected.
+- The NVTT overlay widens NVTT's debug `isValidPtr` bound from the legacy 8 TB Windows
+  user space to 48-bit addresses. Debug and ASan heaps can allocate above 8 TB; the old
+  bound hit `int 3` during mip generation (a hidden-dialog hang under Windows ASan CI).
 - NVTT DDS cache creation is compiled out on macOS, although shared DDS loading still exists.
 - `ImageMip<T>` stores typed elements but reports `LayerData::_size` in bytes;
   Vulkan staging and OpenGL upload spans both consume that byte count.
