@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2026 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -90,20 +90,27 @@ private:
     [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
                   void onRenderThreadLoopStart( ) override;
                   void onRenderThreadLoopEnd() override;
-                  void prepareFlushWindow( DisplayWindow& window ) override;
+    [[nodiscard]] bool prepareFlushWindow( DisplayWindow& window ) override;
                   void flushWindow( DisplayWindow& window) override;
     [[nodiscard]] bool frameStarted() override;
     [[nodiscard]] bool frameEnded() override;
+    [[nodiscard]] bool waitForGPUIdle() noexcept override;
 
     void endPerformanceQueries();
+    /// GPU_TIME is last in GlobalQueryTypes, so the cheap timer-only path starts the query loops there.
+    [[nodiscard]] U8 firstPerformanceQuery() const noexcept;
 
     void idle(bool fast) override;
+    [[nodiscard]] bool queueBufferReadback( BufferReadbackRequest&& request ) override;
 
     void preFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) override;
 
     void flushCommand( GFX::CommandBase* cmd ) override;
 
     void postFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer ) override;
+
+    void writePassTimestamp( U32 index ) override;
+    [[nodiscard]] U32 readPassTimestamps( std::span<F32> outMS, U64& frameNumberOut ) override;
 
     void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) override;
 
@@ -123,8 +130,6 @@ private:
     [[nodiscard]] gl46core::GLuint getGLTextureView(ImageView srcView, size_t srcViewHash, U8 lifetimeInFrames) const;
 
     void initDescriptorSets() override;
-
-    void flushPushConstantsLocks();
 
     [[nodiscard]] RenderTarget_uptr  newRenderTarget( const RenderTargetDescriptor& descriptor ) const override;
     [[nodiscard]] GPUBuffer_uptr     newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const override;
@@ -198,6 +203,15 @@ private:
         gl46core::GLubyte _slot{ INVALID_TEXTURE_BINDING };
     };
 
+    struct PendingBufferReadback
+    {
+        gl46core::GLsync _sync{ nullptr };
+        BufferReadbackRequest _request;
+    };
+
+    void pollBufferReadbacks( I64 windowGUID );
+    void discardBufferReadbacks();
+
     static fixed_vector<TexBindEntry, 32> s_TexBindQueue;
 
     using HardwareQueryContext = std::array<glHardwareQueryEntry, to_base(QueryType::COUNT)>;
@@ -227,13 +241,23 @@ private:
     // OpenGL rendering is not thread-safe anyway, so this works
     eastl::stack<HardwareQueryContext> _queryContext;
     bool _runQueries{false};
+    bool _runPipelineStatQueries{false};
+    /// Per-command-buffer GL_TIMESTAMP queries, ring-buffered over frames so results are read several frames after issue.
+    static constexpr U8 GL_PASS_TIMESTAMP_FRAMES = 6u;
+    std::array<std::array<gl46core::GLuint, GPU_PASS_TIMESTAMP_CAPACITY>, GL_PASS_TIMESTAMP_FRAMES> _passTimestampQueries{};
+    std::array<U32, GL_PASS_TIMESTAMP_FRAMES> _passTimestampCounts{};
+    std::array<U64, GL_PASS_TIMESTAMP_FRAMES> _passTimestampFrames{};
+    bool _passTimestampQueriesCreated{false};
+    bool _screenPassRecorded{false};
+    bool _deviceInitialized{false};
+    bool _uniformContextFenceFailed{false};
+    std::array<vector<gl46core::GLsync>, Config::MAX_FRAMES_IN_FLIGHT> _uniformContextFences;
 
-    bool _uniformsNeedLock{false};
     bool _supportsParallelShaderCompilation{false};
     bool _meshShadersSupported{false};
-    GFX::MemoryBarrierCommand _uniformsMemCommand{};
     PushConstantsStruct _lastPushConstants{};
     gl46core::GLuint _dummyVAO{ GL_NULL_HANDLE };
+    vector<PendingBufferReadback> _pendingBufferReadbacks;
 
 private:
 
@@ -250,7 +274,7 @@ private:
 
     static std::unique_ptr<glHardwareQueryPool> s_hardwareQueryPool;
 
-    static U32 s_fenceSyncCounter[s_LockFrameLifetime];
+    static std::atomic_uint s_fenceSyncCounter[s_LockFrameLifetime];
 };
 
 };  // namespace Divide

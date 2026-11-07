@@ -1,15 +1,19 @@
 // Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/VKWrapper.h"
+#include "Headers/vkDescriptorState.h"
+#include "Headers/vkToolProperties.h"
 
 #include "Core/Headers/Application.h"
 #include "Core/Headers/DisplayManager.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/Kernel.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Utility/Headers/Localization.h"
+#include "Utility/Headers/ImageToolsFwd.h"
 
 #include "Platform/Headers/SDLEventManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -17,6 +21,7 @@
 #include "Platform/Video/Headers/LockManager.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
+#include "Platform/Video/Shaders/Headers/SampledImageResolver.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
 #include "Buffers/Headers/vkRenderTarget.h"
@@ -36,18 +41,95 @@
 
 namespace
 {
+    template <typename Handle>
+    [[nodiscard]] Divide::U64 ShaderModuleHandleBits( const Handle handle ) noexcept
+    {
+        if constexpr ( std::is_pointer_v<Handle> )
+        {
+            return Divide::to_U64( reinterpret_cast<std::uintptr_t>( handle ) );
+        }
+        else
+        {
+            return Divide::to_U64( handle );
+        }
+    }
+
     inline VKAPI_ATTR VkBool32 VKAPI_CALL divide_debug_callback( VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                                                                  VkDebugUtilsMessageTypeFlagsEXT messageType,
                                                                  const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
                                                                  void* )
     {
+        using namespace Divide;
 
-        if ( Divide::VK_API::GetStateTracker()._enabledAPIDebugging && !(*Divide::VK_API::GetStateTracker()._enabledAPIDebugging) )
+        const bool warning = ( messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ) != 0u;
+        const bool error = ( messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ) != 0u;
+        const char* messageID = pCallbackData != nullptr && pCallbackData->pMessageIdName != nullptr ? pCallbackData->pMessageIdName : "UNKNOWN";
+        const char* message = pCallbackData != nullptr && pCallbackData->pMessage != nullptr ? pCallbackData->pMessage : "<no message>";
+        if ( RenderSmokeTest::Enabled() && ( warning || error ) )
+        {
+            if ( std::FILE* pendingFailure = VKDevice::PendingSmokeDeviceLossFailure(); pendingFailure != nullptr )
+            {
+                if ( std::fprintf( pendingFailure, "subsequent_validation_id=%s\nsubsequent_validation_message=%s\n", messageID, message ) < 0 ||
+                     std::fflush( pendingFailure ) != 0 )
+                {
+                    RenderSmokeTest::EndFailure( pendingFailure, RenderSmokeTest::IO_FAILURE_EXIT );
+                }
+                return VK_FALSE;
+            }
+        }
+        if ( RenderSmokeTest::Enabled() && RenderSmokeTest::IsAllowedValidationAdvisory( warning, error, messageID, message ) )
+        {
+            RenderSmokeTest::ReportValidationAdvisory( messageID, message );
+        }
+        if ( RenderSmokeTest::Enabled() && RenderSmokeTest::IsFatalValidationSeverity( warning, error, messageID, message ) )
+        {
+            const bool deferQueueDeviceLoss = RenderSmokeTest::IsQueueSubmitDeviceLossResult( VKDevice::SmokeQueueSubmitActive(),
+                                                                                             messageID,
+                                                                                             message );
+            std::FILE* output = RenderSmokeTest::BeginFailure( deferQueueDeviceLoss ? "device_lost" : "validation" );
+            std::fprintf( output, "severity=%s\ntype=%u\nthread=%zu\nmessage_id=%s\n",
+                          error ? "error" : "warning",
+                          to_U32( messageType ),
+                          std::hash<std::thread::id>{}( std::this_thread::get_id() ),
+                          messageID );
+            if ( pCallbackData != nullptr )
+            {
+                for ( U32 i = 0u; i < pCallbackData->objectCount && pCallbackData->pObjects != nullptr; ++i )
+                {
+                    const VkDebugUtilsObjectNameInfoEXT& object = pCallbackData->pObjects[i];
+                    std::fprintf( output, "object type=%d handle=%s name=%s\n",
+                                  to_I32( object.objectType ),
+                                  std::to_string( object.objectHandle ).c_str(),
+                                  object.pObjectName != nullptr ? object.pObjectName : "" );
+                }
+                for ( U32 i = 0u; i < pCallbackData->queueLabelCount && pCallbackData->pQueueLabels != nullptr; ++i )
+                {
+                    const char* name = pCallbackData->pQueueLabels[i].pLabelName;
+                    std::fprintf( output, "queue_label=%s\n", name != nullptr ? name : "" );
+                }
+                for ( U32 i = 0u; i < pCallbackData->cmdBufLabelCount && pCallbackData->pCmdBufLabels != nullptr; ++i )
+                {
+                    const char* name = pCallbackData->pCmdBufLabels[i].pLabelName;
+                    std::fprintf( output, "command_label=%s\n", name != nullptr ? name : "" );
+                }
+            }
+            std::fprintf( output, "message:\n%s\n", message );
+            if ( deferQueueDeviceLoss )
+            {
+                if ( std::ferror( output ) != 0 || std::fflush( output ) != 0 )
+                {
+                    RenderSmokeTest::EndFailure( output, RenderSmokeTest::IO_FAILURE_EXIT );
+                }
+                VKDevice::SetPendingSmokeDeviceLossFailure( output );
+                return VK_FALSE;
+            }
+            RenderSmokeTest::EndFailure( output, RenderSmokeTest::VALIDATION_FAILURE_EXIT );
+        }
+
+        if ( VK_API::GetStateTracker()._enabledAPIDebugging && !(*VK_API::GetStateTracker()._enabledAPIDebugging) )
         {
             return VK_FALSE;
         }
-
-        using namespace Divide;
 
         const auto to_string_message_severity = []( VkDebugUtilsMessageSeverityFlagBitsEXT s ) -> const char*
         {
@@ -126,11 +208,10 @@ namespace
                                                       to_string_message_type( messageType ).c_str(),
                                                       pCallbackData->pMessage );
 
-        const bool isConsoleImmediate = Console::IsFlagSet( Console::Flags::PRINT_IMMEDIATE );
-        const bool severityDecoration = Console::IsFlagSet( Console::Flags::DECORATE_SEVERITY );
-
-        Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, true );
-        Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, false );
+        const Console::ScopedFlags consoleFlags{
+            to_U32(to_base(Console::Flags::PRINT_IMMEDIATE)),
+            to_U32(to_base(Console::Flags::DECORATE_SEVERITY))
+        };
 
         if ( messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT ||
              messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT )
@@ -144,11 +225,17 @@ namespace
         else
         {
             Console::errorfn( "{}", outputError.c_str() );
+
+            const bool isValidationError = ( messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT ) != 0u;
+            if ( isValidationError )
+            {
+                const char* messageId = pCallbackData->pMessageIdName != nullptr ? pCallbackData->pMessageIdName : "UNKNOWN_VALIDATION_MESSAGE";
+                Console::errorfn( "[ VK_VALIDATION_BREAKPOINT ] {}", messageId );
+                DebugBreak(true);
+            }
+
             DIVIDE_GPU_ASSERT( VK_API::GetStateTracker()._assertOnAPIError && !(*VK_API::GetStateTracker()._assertOnAPIError), outputError.c_str() );
         }
-
-        Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, severityDecoration );
-        Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, isConsoleImmediate );
 
         return VK_FALSE; // Applications must return false here
     }
@@ -156,6 +243,8 @@ namespace
 
 namespace Divide
 {
+    std::atomic_bool g_enableVMADebugLogging{ false };
+
     static PFN_vkCmdSetColorBlendEnableEXT   vkCmdSetColorBlendEnableEXT   = VK_NULL_HANDLE;
     static PFN_vkCmdSetColorBlendEquationEXT vkCmdSetColorBlendEquationEXT = VK_NULL_HANDLE;
     static PFN_vkCmdSetColorWriteMaskEXT     vkCmdSetColorWriteMaskEXT     = VK_NULL_HANDLE;
@@ -244,49 +333,11 @@ namespace Divide
             return ret;
         }
 
-        // Resolved contents of a single descriptor slot. Used to detect if a shared (non PER_DRAW) set actually changed
-        // so that we only allocate + write a new VkDescriptorSet when the bound resources differ.
-        struct DescriptorSlotState
-        {
-            VkDescriptorBufferInfo _bufferInfo{};
-            VkDescriptorImageInfo _imageInfo{};
-            VkDescriptorType _type{ VK_DESCRIPTOR_TYPE_MAX_ENUM };
-
-            [[nodiscard]] bool isImage() const noexcept
-            {
-                return _type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER || _type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            }
-
-            [[nodiscard]] bool operator==( const DescriptorSlotState& other ) const noexcept
-            {
-                if ( _type != other._type )
-                {
-                    return false;
-                }
-                if ( _type == VK_DESCRIPTOR_TYPE_MAX_ENUM )
-                {
-                    return true;
-                }
-                if ( isImage() )
-                {
-                    return _imageInfo.sampler == other._imageInfo.sampler &&
-                           _imageInfo.imageView == other._imageInfo.imageView &&
-                           _imageInfo.imageLayout == other._imageInfo.imageLayout;
-                }
-
-                return _bufferInfo.buffer == other._bufferInfo.buffer &&
-                       _bufferInfo.offset == other._bufferInfo.offset &&
-                       _bufferInfo.range == other._bufferInfo.range;
-            }
-        };
-
-        using DescriptorSlotStates = std::array<DescriptorSlotState, MAX_BINDINGS_PER_DESCRIPTOR_SET>;
-
         // One entry per shared DescriptorSetUsage (PER_FRAME/PER_PASS/PER_BATCH). PER_DRAW uses push descriptors instead.
         // Sets are allocated from per-frame pools, so the cache is invalidated every frame (see VK_API::frameStarted).
         struct SharedDescriptorSetCache
         {
-            DescriptorSlotStates _slots{};
+            VKDescriptorSlotStates _slots{};
             VkDescriptorSet _set{ VK_NULL_HANDLE };
             bool _pendingUpdate{ true };
         };
@@ -294,18 +345,14 @@ namespace Divide
         // What is currently bound on the active command buffer for a given bind point (graphics/compute).
         // Indexed by DescriptorSetUsage (which is also the Vulkan set index).
         //
-        // Both this and SharedDescriptorSetCache compare raw Vulkan handles (image views, samplers, buffers, pipeline layouts).
-        // That is safe because every such object is destroyed via VK_API::RegisterCustomAPIDelete(..., true) which defers the
-        // actual vkDestroy* call by MAX_FRAMES_IN_FLIGHT + 1 frames (s_transientDeleteQueue), while these caches are reset at least
-        // once per frame (InvalidateSharedDescriptorSets() in frameStarted, ResetBoundDescriptorState() on command buffer change and in
-        // setDefaultState). A handle can therefore never be recycled by the driver while a cache entry still references it.
-        // Destroying any of these objects immediately (mid-frame) would break this invariant.
+        // These caches compare raw handles. Runtime resource and shader-reload pipeline destruction is deferred,
+        // and the caches reset at frame start or on a command-buffer change. Teardown invalidates them before
+        // destroying the pipeline cache immediately. Reusing handles during a recording would break this invariant.
         struct BoundDescriptorState
         {
             std::array<VkDescriptorSet, to_base( DescriptorSetUsage::COUNT )> _sets{};
             std::array<std::array<U32, MAX_BINDINGS_PER_DESCRIPTOR_SET>, to_base( DescriptorSetUsage::COUNT )> _dynamicOffsets{};
-            VkPipelineLayout _perDrawLayout{ VK_NULL_HANDLE };
-            U64 _perDrawVersion{ U64_MAX };
+            VKPushDescriptorState _perDraw{};
         };
 
         std::array<SharedDescriptorSetCache, to_base( DescriptorSetUsage::COUNT )> s_sharedDescriptorSets{};
@@ -348,7 +395,8 @@ namespace Divide
     VKSubmitSempahore VK_API::s_submitSemaphores;
 
     VKStateTracker VK_API::s_stateTracker;
-    eastl::stack<vkShaderProgram*> VK_API::s_reloadedShaders;
+    Mutex VK_API::s_reloadedShadersLock;
+    vector<I64> VK_API::s_reloadedShaders;
     SharedMutex VK_API::s_samplerMapLock;
     VK_API::SamplerObjectMap VK_API::s_samplerMap{};
     VK_API::DepthFormatInformation VK_API::s_depthFormatInformation;
@@ -427,6 +475,13 @@ namespace Divide
         constexpr U32 stateCount = to_U32( std::size( dynamicStates ) );
 
         const VkPipelineDynamicStateCreateInfo dynamicState = vk::pipelineDynamicStateCreateInfo( dynamicStates, stateCount - (VK_API::s_hasDynamicBlendStateSupport ? 0u : 3u) );
+        const VkPipelineTessellationDomainOriginStateCreateInfo tessellationOrigin
+        {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO,
+            .domainOrigin = VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT
+        };
+        VkPipelineTessellationStateCreateInfo tessellationState = _tessellation;
+        tessellationState.pNext = &tessellationOrigin;
 
         //build the actual pipeline
         //we now use all of the info structs we have been writing into into this one to create the pipeline
@@ -441,7 +496,7 @@ namespace Divide
         pipelineInfo.pMultisampleState = &_multisampling;
         pipelineInfo.pColorBlendState = &colorBlending;
         pipelineInfo.pDepthStencilState = &_depthStencil;
-        pipelineInfo.pTessellationState = &_tessellation;
+        pipelineInfo.pTessellationState = &tessellationState;
         pipelineInfo.subpass = 0;
         pipelineInfo.pNext = &VK_API::GetStateTracker()._pipelineRenderInfo;
 
@@ -542,6 +597,12 @@ namespace Divide
     {
         LockGuard<Mutex> w_lock( _submitLock );
 
+        auto& submitStatus = VK_API::GetStateTracker()._immediateSubmitStatus;
+        if ( submitStatus.failed() )
+        {
+            return;
+        }
+
         const VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo( VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT );
 
         VkFence fence = _bufferFences[_bufferIndex];
@@ -573,7 +634,7 @@ namespace Divide
 
         {
             LockGuard<Mutex> submitLock(VK_API::s_submitSemaphores._lock);
-            // copy current pending semaphores (do not remove; frame will still consume them later)
+            // Transfer the pending waits to this submission.
             waitSems = VK_API::s_submitSemaphores._pendingSubmitSemaphores;
             VK_API::s_submitSemaphores._pendingSubmitSemaphores.reset_lose_memory();
         }
@@ -604,7 +665,19 @@ namespace Divide
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = &submitSemaphore;
 
-        _context.submitToQueue( _type, submitInfo, fence );
+        const VkResult submitResult = _context.submitToQueue( _type, submitInfo, fence );
+        if ( !submitStatus.record( submitResult ) )
+        {
+            VK_API::RegisterCustomAPIDelete( [submitSemaphore]( VkDevice device )
+            {
+                vkDestroySemaphore( device, submitSemaphore, nullptr );
+            }, true );
+            if ( RenderSmokeTest::Enabled() )
+            {
+                RenderSmokeTest::Fail( "queue_submit", VKErrorString( submitResult ).c_str(), RenderSmokeTest::VALIDATION_FAILURE_EXIT );
+            }
+            return;
+        }
 
         VK_API::PushPendingSubmitSemaphore(submitSemaphore);
 
@@ -622,9 +695,51 @@ namespace Divide
         }
     }
 
+    VKRenderingSignature VKRenderingSignature::From( const VkPipelineRenderingCreateInfo& info, const U8 sampleCount ) noexcept
+    {
+        DIVIDE_ASSERT( info.colorAttachmentCount <= to_base( RTColourAttachmentSlot::COUNT ) );
+        DIVIDE_ASSERT( info.colorAttachmentCount == 0u || info.pColorAttachmentFormats != nullptr );
+        VKRenderingSignature result{};
+        result._colourAttachmentCount = info.colorAttachmentCount;
+        result._viewMask = info.viewMask;
+        result._depthFormat = info.depthAttachmentFormat;
+        result._stencilFormat = info.stencilAttachmentFormat;
+        result._sampleCount = sampleCount;
+        for ( U32 i = 0u; i < info.colorAttachmentCount; ++i )
+        {
+            result._colourFormats[i] = info.pColorAttachmentFormats[i];
+        }
+        return result;
+    }
+
+    VKPipelineCacheKey VKPipelineCacheKey::From( const Pipeline& pipeline, const VKRenderingSignature& rendering, const bool dynamicBlendState ) noexcept
+    {
+        return
+        {
+            ._pipelineStateHash = pipeline.compiledPipelineHash(),
+            ._blendStateHash = dynamicBlendState ? 0u : pipeline.blendStateHash(),
+            ._colourWrite = dynamicBlendState ? 0u : pipeline.descriptor()._stateBlock._colourWrite.i,
+            ._rendering = rendering
+        };
+    }
+
+    size_t VKPipelineCacheKeyHash::operator()( const VKPipelineCacheKey& key ) const noexcept
+    {
+        size_t hash = key._pipelineStateHash;
+        Util::Hash_combine( hash, key._blendStateHash, key._colourWrite, key._rendering._colourAttachmentCount,
+                            key._rendering._viewMask, key._rendering._depthFormat,
+                            key._rendering._stencilFormat, key._rendering._sampleCount );
+        for ( U32 i = 0u; i < key._rendering._colourAttachmentCount; ++i )
+        {
+            Util::Hash_combine( hash, key._rendering._colourFormats[i] );
+        }
+        return hash;
+    }
+
     void VKStateTracker::init( const Configuration& config, VKDevice* device, VKPerWindowState* mainWindow )
     {
         DIVIDE_GPU_ASSERT(device != nullptr && mainWindow != nullptr);
+        _immediateSubmitStatus.reset();
         setDefaultState();
 
         _activeWindow = mainWindow;
@@ -644,6 +759,9 @@ namespace Divide
     void VKStateTracker::setDefaultState()
     {
         _pipeline = {};
+        _logicalPipeline = nullptr;
+        _renderingSignature = {};
+        _boundRenderingSignature = {};
         _activeWindow = nullptr;
         _activeMSAASamples = 0u;
         _activeRenderTargetID = INVALID_RENDER_TARGET_ID;
@@ -737,9 +855,94 @@ namespace Divide
         NOP();
     }
 
+    bool VK_API::waitForGPUIdle() noexcept
+    {
+        if ( _device == nullptr || _device->getVKDevice() == VK_NULL_HANDLE )
+        {
+            return true;
+        }
+
+        const VkResult result = _device->waitIdle();
+        if ( result != VK_SUCCESS )
+        {
+            Console::errorfn( "Vulkan device idle wait failed: {} ({})", VKErrorString( result ).c_str(), to_I32( result ) );
+            return false;
+        }
+
+        return true;
+    }
+
+    bool VK_API::queueBufferReadback( BufferReadbackRequest&& request ) noexcept
+    {
+        VKPerWindowState* activeWindow = GetStateTracker()._activeWindow;
+        if ( activeWindow == nullptr ||
+             !activeWindow->_frameInProgress ||
+             activeWindow->_swapChain == nullptr ||
+             request._buffer == nullptr ||
+             request._target.first == nullptr )
+        {
+            return false;
+        }
+
+        const VkFence fence = activeWindow->_swapChain->activeFrameFence();
+        if ( fence == VK_NULL_HANDLE )
+        {
+            return false;
+        }
+
+        _pendingBufferReadbacks.push_back( { fence, MOV( request ) } );
+        return true;
+    }
+
+    void VK_API::pollBufferReadbacks( const VkFence fence, const I64 windowGUID )
+    {
+        for ( auto it = _pendingBufferReadbacks.begin(); it != _pendingBufferReadbacks.end(); )
+        {
+            if ( ( fence != VK_NULL_HANDLE && it->_fence != fence ) ||
+                 ( windowGUID != I64_LOWEST && it->_request._windowGUID != windowGUID ) )
+            {
+                ++it;
+                continue;
+            }
+
+            it->_request._buffer->readData(
+                { it->_request._offsetElementCount, it->_request._elementCount },
+                it->_request._target,
+                it->_request._queueIndex );
+            if ( it->_request._completion )
+            {
+                it->_request._completion( true );
+            }
+            it = _pendingBufferReadbacks.erase( it );
+        }
+    }
+
+    void VK_API::discardBufferReadbacks( const I64 windowGUID )
+    {
+        for ( auto it = _pendingBufferReadbacks.begin(); it != _pendingBufferReadbacks.end(); )
+        {
+            if ( windowGUID != I64_LOWEST && it->_request._windowGUID != windowGUID )
+            {
+                ++it;
+                continue;
+            }
+
+            if ( it->_request._completion )
+            {
+                it->_request._completion( false );
+            }
+            it = _pendingBufferReadbacks.erase( it );
+        }
+    }
+
     bool VK_API::drawToWindow( DisplayWindow& window )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        if ( s_stateTracker._immediateSubmitStatus.failed() )
+        {
+            return false;
+        }
 
         VKPerWindowState& windowState = _perWindowState[window.getGUID()];
         if ( windowState._window == nullptr )
@@ -750,29 +953,63 @@ namespace Divide
 
         GetStateTracker()._activeWindow = &windowState;
 
+        if ( windowState._frameInProgress )
+        {
+            return true;
+        }
+        if ( windowState._skipEndFrame )
+        {
+            return false;
+        }
+
         const vec2<U16> windowDimensions = window.getDrawableSize();
         VkExtent2D surfaceExtent = windowState._swapChain->surfaceExtent();
 
-        if ( windowDimensions.width != surfaceExtent.width || windowDimensions.height != surfaceExtent.height )
+        if ( windowState._needsRecreate ||
+             windowDimensions.width != surfaceExtent.width || windowDimensions.height != surfaceExtent.height )
         {
-            recreateSwapChain( windowState );
+            if ( !recreateSwapChain( windowState ) )
+            {
+                windowState._needsRecreate = true;
+                windowState._skipEndFrame = true;
+                return false;
+            }
+            windowState._needsRecreate = false;
             surfaceExtent = windowState._swapChain->surfaceExtent();
         }
 
         const VkResult result = windowState._swapChain->beginFrame();
-        if ( result != VK_SUCCESS )
+        if ( result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR )
         {
-            if ( result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR )
+            if ( result == VK_ERROR_DEVICE_LOST && RenderSmokeTest::Enabled() )
+            {
+                ReportVulkanDeviceLost( "Vulkan frame startup", _device.get() );
+            }
+            if ( result == VK_ERROR_OUT_OF_DATE_KHR )
+            {
+                windowState._needsRecreate = !recreateSwapChain( windowState );
+            }
+            else
             {
                 Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( result ).c_str() );
-                DIVIDE_UNEXPECTED_CALL();
+                if ( result != VK_ERROR_DEVICE_LOST )
+                {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
             }
 
-            recreateSwapChain( windowState );
             windowState._skipEndFrame = true;
             return false;
         }
 
+        windowState._bufferBindings.reset();
+        windowState._frameInProgress = true;
+        windowState._recreateAfterPresent = result == VK_SUBOPTIMAL_KHR;
+        if ( window.getGUID() == _context.context().mainWindow().getGUID() )
+        {
+            _context.getPerformanceMetrics()._gpuTimeInMS = windowState._swapChain->lastGPUTimeMS();
+        }
+        pollBufferReadbacks( windowState._swapChain->activeFrameFence(), window.getGUID() );
         return true;
     }
 
@@ -784,8 +1021,10 @@ namespace Divide
     {
     }
 
-    void VK_API::prepareFlushWindow( [[maybe_unused]] DisplayWindow& window )
+    bool VK_API::prepareFlushWindow( DisplayWindow& window )
     {
+        const VKPerWindowState& windowState = _perWindowState[window.getGUID()];
+        return !s_stateTracker._immediateSubmitStatus.failed() && windowState._frameInProgress && !windowState._skipEndFrame;
     }
 
     void VK_API::flushWindow( DisplayWindow& window )
@@ -799,9 +1038,20 @@ namespace Divide
             GetStateTracker()._activeWindow = nullptr;
         };
 
+        if ( s_stateTracker._immediateSubmitStatus.failed() )
+        {
+            windowState._frameInProgress = false;
+            return;
+        }
+
         if ( windowState._skipEndFrame )
         {
             windowState._skipEndFrame = false;
+            return;
+        }
+
+        if ( !DIVIDE_ASSERT( windowState._frameInProgress, "VK_API::flushWindow: no acquired frame" ) )
+        {
             return;
         }
 
@@ -816,7 +1066,177 @@ namespace Divide
             s_submitSemaphores._pendingSubmitSemaphores.reset_lose_memory();
         }
 
-        const VkResult result = windowState._swapChain->endFrame( s_submitSemaphores._pendingSubmitSemaphores );
+        const bool mainWindow = window.getGUID() == _context.context().mainWindow().getGUID();
+        const U32 presentsBeforeCapture = RenderSmokeTest::PresentCount();
+        const bool capture = mainWindow && !windowState._recreateAfterPresent &&
+                             windowState._swapChain->currentImageWasRenderedThisFrame() &&
+                             RenderSmokeTest::TryBeginCapture();
+        VMABuffer_uptr editorReadback{};
+        VkExtent2D editorExtent{};
+        VkFormat editorFormat = VK_FORMAT_UNDEFINED;
+        size_t editorByteCount = 0u;
+        if ( capture && RenderSmokeTest::WindowCaptureRequested() )
+        {
+            const vkb::Swapchain& swapchain = windowState._swapChain->getSwapChain();
+            editorExtent = swapchain.extent;
+            editorFormat = swapchain.image_format;
+            if ( !windowState._swapChain->deferPresentTransition() ||
+                 ( swapchain.image_usage_flags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT ) == 0u ||
+                 !VKSwapChain::SupportsSmokeReadback( editorFormat ) ||
+                 editorExtent.width == 0u || editorExtent.height == 0u ||
+                 editorExtent.width > U16_MAX || editorExtent.height > U16_MAX )
+            {
+                RenderSmokeTest::Fail( "window_capture", "Unsupported swapchain image for editor readback",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+
+            editorByteCount = to_size( editorExtent.width ) * to_size( editorExtent.height ) * 4u;
+            editorReadback = VKUtil::createStagingBuffer( editorByteCount, "SMOKE_EDITOR_READBACK", true );
+            if ( editorReadback == nullptr || editorReadback->_buffer == VK_NULL_HANDLE ||
+                 editorReadback->_allocation == VK_NULL_HANDLE || editorReadback->_allocInfo.pMappedData == nullptr )
+            {
+                RenderSmokeTest::Fail( "window_capture", "Unable to allocate editor readback buffer",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+
+            const VkCommandBuffer commandBuffer = GetCurrentCommandBuffer();
+            VkImageMemoryBarrier2 imageBarrier = VKSwapChain::SmokePresentBarrier( windowState._swapChain->getCurrentImage(), true );
+
+            VkDependencyInfo dependency = vk::dependencyInfo();
+            dependency.imageMemoryBarrierCount = 1u;
+            dependency.pImageMemoryBarriers = &imageBarrier;
+            VK_PROFILE( vkCmdPipelineBarrier2, commandBuffer, &dependency );
+
+            VkBufferImageCopy copy{};
+            copy.imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0u, 0u, 1u };
+            copy.imageExtent = { editorExtent.width, editorExtent.height, 1u };
+            VK_PROFILE( vkCmdCopyImageToBuffer, commandBuffer, imageBarrier.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        editorReadback->_buffer, 1u, &copy );
+
+            imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+            imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+            imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+            imageBarrier.dstAccessMask = VK_ACCESS_2_NONE;
+            imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            imageBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+            VkBufferMemoryBarrier2 bufferBarrier = vk::bufferMemoryBarrier2();
+            bufferBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+            bufferBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            bufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT;
+            bufferBarrier.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT;
+            bufferBarrier.buffer = editorReadback->_buffer;
+            bufferBarrier.offset = 0u;
+            bufferBarrier.size = editorByteCount;
+            dependency.bufferMemoryBarrierCount = 1u;
+            dependency.pBufferMemoryBarriers = &bufferBarrier;
+            VK_PROFILE( vkCmdPipelineBarrier2, commandBuffer, &dependency );
+        }
+        else if ( windowState._swapChain->deferPresentTransition() &&
+                  windowState._swapChain->currentImageWasRenderedThisFrame() )
+        {
+            const VkImageMemoryBarrier2 imageBarrier = VKSwapChain::SmokePresentBarrier( windowState._swapChain->getCurrentImage(), false );
+            VkDependencyInfo dependency = vk::dependencyInfo();
+            dependency.imageMemoryBarrierCount = 1u;
+            dependency.pImageMemoryBarriers = &imageBarrier;
+            VK_PROFILE( vkCmdPipelineBarrier2, GetCurrentCommandBuffer(), &dependency );
+        }
+
+        const VkResult result = windowState._swapChain->endFrame( s_localPendingSems );
+        windowState._frameInProgress = false;
+        const bool recreateAfterPresent = windowState._recreateAfterPresent;
+        windowState._recreateAfterPresent = false;
+
+        RenderSmokeTest::RecordPresent( mainWindow, result == VK_SUCCESS, recreateAfterPresent );
+
+        if ( capture )
+        {
+            if ( result == VK_ERROR_DEVICE_LOST )
+            {
+                ReportVulkanDeviceLost( "frame finalization, submission, or presentation during capture", _device.get() );
+            }
+            if ( result != VK_SUCCESS || recreateAfterPresent || RenderSmokeTest::PresentCount() <= presentsBeforeCapture )
+            {
+                RenderSmokeTest::Fail( "capture", "The captured scene frame was not presented successfully",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            if ( editorReadback != nullptr )
+            {
+                const VkFence fence = windowState._swapChain->activeFrameFence();
+                const VkResult waitResult = vkWaitForFences( _device->getVKDevice(), 1u, &fence, VK_TRUE, 10'000'000'000ull );
+                if ( waitResult == VK_ERROR_DEVICE_LOST )
+                {
+                    ReportVulkanDeviceLost( "vkWaitForFences during editor capture" );
+                }
+                if ( waitResult == VK_TIMEOUT )
+                {
+                    RenderSmokeTest::Fail( "gpu_hang", "Timed out waiting for editor readback",
+                                           RenderSmokeTest::DEVICE_LOST_EXIT );
+                }
+                if ( waitResult != VK_SUCCESS )
+                {
+                    char detail[128]{};
+                    std::snprintf( detail, sizeof( detail ), "Editor readback fence failed: %d", to_I32( waitResult ) );
+                    RenderSmokeTest::Fail( "window_capture", detail, RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+                }
+
+                vector<Byte> pixels( editorByteCount );
+                {
+                    LockGuard<Mutex> lock( s_stateTracker._allocatorInstance._allocatorLock );
+                    const VkResult invalidateResult = vmaInvalidateAllocation( *s_stateTracker._allocatorInstance._allocator,
+                                                                               editorReadback->_allocation, 0u, editorByteCount );
+                    if ( invalidateResult == VK_ERROR_DEVICE_LOST )
+                    {
+                        ReportVulkanDeviceLost( "vmaInvalidateAllocation during editor capture" );
+                    }
+                    if ( invalidateResult != VK_SUCCESS )
+                    {
+                        char detail[128]{};
+                        std::snprintf( detail, sizeof( detail ), "Editor readback invalidation failed: %d", to_I32( invalidateResult ) );
+                        RenderSmokeTest::Fail( "window_capture", detail, RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+                    }
+                    const std::span<const Byte> mapped{ static_cast<const Byte*>( editorReadback->_allocInfo.pMappedData ),
+                                                        editorByteCount };
+                    const std::span<Byte> destination{ pixels.data(), pixels.size() };
+                    if ( !VKSwapChain::ConvertSmokeReadback( editorFormat, editorExtent.width, editorExtent.height, mapped, destination ) )
+                    {
+                        RenderSmokeTest::Fail( "window_capture", "Could not convert editor readback pixels",
+                                               RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+                    }
+                }
+                const ResourcePath editorPath = ResourcePath{ RenderSmokeTest::OutputDirectory() } / "editor.pending.png";
+                if ( !ImageTools::SaveImage( editorPath, to_U16( editorExtent.width ), to_U16( editorExtent.height ),
+                                             4u, 4u, false, pixels.data(), ImageTools::SaveImageFormat::PNG ) )
+                {
+                    RenderSmokeTest::Fail( "window_capture", "Unable to save editor image",
+                                           RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+                }
+            }
+            const RenderTarget* target = _context.renderTargetPool().getRenderTarget( RenderTargetNames::BACK_BUFFER );
+            const RTAttachment* attachment = target != nullptr
+                                           ? target->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO )
+                                           : nullptr;
+            const Texture* texture = attachment != nullptr ? Get( attachment->texture() ) : nullptr;
+            if ( texture == nullptr )
+            {
+                RenderSmokeTest::Fail( "capture", "Scene colour attachment unavailable", RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+
+            const ImageReadbackData data = static_cast<const vkTexture*>( texture )->readDataForSmoke();
+            const ResourcePath path = ResourcePath{ RenderSmokeTest::OutputDirectory() } / "scene.png";
+            if ( data._data.empty() ||
+                 !ImageTools::SaveImage( path, data._width, data._height, data._numComponents, data._bpp,
+                                         data._sourceIsBGR, data._data.data(), ImageTools::SaveImageFormat::PNG ) )
+            {
+                RenderSmokeTest::FinishCapture( false );
+                RenderSmokeTest::Fail( "capture", "Unable to save scene image", RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            RenderSmokeTest::FinishCapture( true );
+            if ( editorReadback != nullptr )
+            {
+                RenderSmokeTest::FinishWindowCapture( true );
+            }
+        }
 
         for (VkSemaphore semaphore : s_localPendingSems)
         {
@@ -828,15 +1248,20 @@ namespace Divide
 
         s_localPendingSems.reset_lose_memory();
 
-        if ( result != VK_SUCCESS )
+        if ( result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR ||
+             (result == VK_SUCCESS && recreateAfterPresent) )
         {
-            if ( result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR )
+            windowState._needsRecreate = !recreateSwapChain( windowState );
+        }
+        else if ( result != VK_SUCCESS )
+        {
+            if ( result == VK_ERROR_DEVICE_LOST && RenderSmokeTest::Enabled() )
             {
-                recreateSwapChain( windowState );
+                ReportVulkanDeviceLost( "frame finalization, submission, or presentation", _device.get() );
             }
-            else
+            Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( result ).c_str() );
+            if ( result != VK_ERROR_DEVICE_LOST )
             {
-                Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( result ).c_str() );
                 DIVIDE_UNEXPECTED_CALL();
             }
         }
@@ -845,6 +1270,34 @@ namespace Divide
     bool VK_API::frameStarted()
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        if ( s_stateTracker._immediateSubmitStatus.failed() )
+        {
+            Console::errorfn( "Vulkan immediate submission failed; stopping the renderer." );
+            return false;
+        }
+
+        const U64 frameNumber = GFXDevice::FrameCount();
+        for ( const auto& [windowGUID, windowState] : _perWindowState )
+        {
+            if ( windowState._swapChain == nullptr )
+            {
+                continue;
+            }
+
+            const VkResult result = windowState._swapChain->waitForFrameSlot( frameNumber );
+            if ( result != VK_SUCCESS )
+            {
+                if ( result == VK_ERROR_DEVICE_LOST && RenderSmokeTest::Enabled() )
+                {
+                    ReportVulkanDeviceLost( "Vulkan frame-slot reuse", _device.get() );
+                }
+                Console::errorfn( "Vulkan frame-slot reuse failed [window={}, requestedSlot={}]: {} ({})",
+                                  windowGUID, VKSwapChain::FrameSlotIndex( frameNumber ),
+                                  VKErrorString( result ).c_str(), to_I32( result ) );
+                return false;
+            }
+        }
 
         for ( U8 i = 0u; i < to_base(DescriptorSetUsage::COUNT); ++i )
         {
@@ -858,7 +1311,7 @@ namespace Divide
         }
         // Pools were flipped (and potentially reset), so any cached shared set from a previous frame may be recycled
         InvalidateSharedDescriptorSets();
-        LockManager::CleanExpiredSyncObjects( RenderAPI::Vulkan, GFXDevice::FrameCount() );
+        LockManager::CleanExpiredSyncObjects( RenderAPI::Vulkan, frameNumber );
 
         return true;
     }
@@ -870,21 +1323,23 @@ namespace Divide
         s_transientDeleteQueue.onFrameEnd();
         s_deviceDeleteQueue.onFrameEnd();
 
-        while ( !s_reloadedShaders.empty() )
         {
-            vkShaderProgram* program = s_reloadedShaders.top();
+            LockGuard<Mutex> lock( s_reloadedShadersLock );
+            s_reloadedShaders.swap( _shaderReloadsToProcess );
+        }
+
+        if ( !_shaderReloadsToProcess.empty() )
+        {
+            std::sort( _shaderReloadsToProcess.begin(), _shaderReloadsToProcess.end() );
             for ( auto& it : _compiledPipelines )
             {
-                if ( !it.second._isValid )
-                {
-                    continue;
-                }
-                if ( it.second._program->getGUID() == program->getGUID() )
+                if ( it.second._isValid &&
+                     std::binary_search( _shaderReloadsToProcess.begin(), _shaderReloadsToProcess.end(), it.second._programGUID ) )
                 {
                     destroyPipeline( it.second, true );
                 }
             }
-            s_reloadedShaders.pop();
+            _shaderReloadsToProcess.clear();
         }
 
         //vkResetCommandPool(_device->getVKDevice(), _device->graphicsCommandPool(), VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
@@ -893,7 +1348,7 @@ namespace Divide
         return true;
     }
 
-    void VK_API::recreateSwapChain( VKPerWindowState& windowState )
+    bool VK_API::recreateSwapChain( VKPerWindowState& windowState )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -904,15 +1359,19 @@ namespace Divide
         }
         if ( windowState._window->minimized() )
         {
-            return;
+            return false;
         }
 
-        if (windowState._window->getGUID() == _context.context().mainWindow().getGUID() )
+        PROFILE_SCOPE( "Wait for idle", Profiler::Category::Graphics);
+        const VkResult idleResult = _device->waitIdle();
+        if ( idleResult != VK_SUCCESS )
         {
-            PROFILE_SCOPE( "Wait for idle", Profiler::Category::Graphics);
-            s_deviceDeleteQueue.flush( _device->getVKDevice(), true );
-            vkDeviceWaitIdle( _device->getVKDevice() );
+            Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( idleResult ).c_str() );
+            return false;
         }
+
+        pollBufferReadbacks( VK_NULL_HANDLE, windowState._window->getGUID() );
+
         const ErrorCode err = windowState._swapChain->create( windowState._window->flags() & to_base(WindowFlags::VSYNC),
                                                               _context.context().config().runtime.adaptiveSync,
                                                               windowState._surface );
@@ -935,8 +1394,7 @@ namespace Divide
             }
         }
 
-        // Clear ALL sync objects as they are all invalid after recreating the swapchain. vkDeviceWaitIdle should resolve potential sync issues.
-        LockManager::CleanExpiredSyncObjects( RenderAPI::Vulkan, U64_MAX);
+        return err == ErrorCode::NO_ERR;
     }
 
     void VK_API::initStatePerWindow( VKPerWindowState& windowState)
@@ -948,12 +1406,41 @@ namespace Divide
             DIVIDE_GPU_ASSERT(windowState._surface != nullptr);
         }
 
-        windowState._swapChain = std::make_unique<VKSwapChain>( *this, *_device, *windowState._window );
-        recreateSwapChain( windowState );
+        const bool smokeReadback = RenderSmokeTest::WindowCaptureRequested() &&
+                                   windowState._window->getGUID() == _context.context().mainWindow().getGUID();
+        windowState._swapChain = std::make_unique<VKSwapChain>( *this, *_device, *windowState._window, smokeReadback );
+        windowState._needsRecreate = !recreateSwapChain( windowState );
     }
 
     void VK_API::destroyStatePerWindow( VKPerWindowState& windowState )
     {
+        bool hasPendingReadbacks = false;
+        const I64 windowGUID = windowState._window != nullptr ? windowState._window->getGUID() : I64_LOWEST;
+        for ( const PendingBufferReadback& pending : _pendingBufferReadbacks )
+        {
+            hasPendingReadbacks |= pending._request._windowGUID == windowGUID;
+        }
+        if ( hasPendingReadbacks && _device != nullptr )
+        {
+            if ( windowState._frameInProgress )
+            {
+                discardBufferReadbacks( windowGUID );
+            }
+            else
+            {
+                const VkResult idleResult = _device->waitIdle();
+                if ( idleResult == VK_SUCCESS )
+                {
+                    pollBufferReadbacks( VK_NULL_HANDLE, windowGUID );
+                }
+                else
+                {
+                    Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), VKErrorString( idleResult ).c_str() );
+                    discardBufferReadbacks( windowGUID );
+                }
+            }
+        }
+
         windowState._swapChain.reset();
 
         if ( _vkbInstance.instance != nullptr )
@@ -966,6 +1453,7 @@ namespace Divide
 
     ErrorCode VK_API::initRenderingAPI( [[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, Configuration& config ) noexcept
     {
+        g_enableVMADebugLogging.store( config.debug.renderer.enableVMADebugLogging, std::memory_order_relaxed );
         InvalidateSharedDescriptorSets();
 
         s_transientDeleteQueue.flags( s_transientDeleteQueue.flags() | to_base( VKDeletionQueue::Flags::TREAT_AS_TRANSIENT ) );
@@ -990,6 +1478,14 @@ namespace Divide
             .set_debug_callback_user_data_pointer( this );
 
         vkb::SystemInfo& systemInfo = systemInfoRet.value();
+
+        if ( RenderSmokeTest::Enabled() && !RenderSmokeTest::PerfModeRequested() &&
+             ( !Config::ENABLE_GPU_VALIDATION || !config.debug.renderer.enableRenderAPIDebugging ||
+               !systemInfo.validation_layers_available || !systemInfo.is_extension_available( VK_EXT_DEBUG_UTILS_EXTENSION_NAME ) ) )
+        {
+            Console::errorfn( "The Vulkan smoke test requires the Khronos validation layer and VK_EXT_debug_utils." );
+            return ErrorCode::RENDER_SMOKE_TEST_FAILED;
+        }
 
         s_hasDebugMarkerSupport = false;
         if ( Config::ENABLE_GPU_VALIDATION && (config.debug.renderer.enableRenderAPIDebugging || config.debug.renderer.enableRenderAPIBestPractices) )
@@ -1203,19 +1699,30 @@ namespace Divide
                           deviceProperties.driverVersion,
                           deviceProperties.apiVersion );
 
+        if ( RenderSmokeTest::RenderDocCaptureRequested() )
         {
-            U32 toolCount = 0u;
-            VK_CHECK( vkGetPhysicalDeviceToolProperties( physicalDevice, &toolCount, NULL ) );
-
-            if ( toolCount > 0u )
+            RenderSmokeTest::ReportVulkanToolEnumerationSkipped();
+            Console::warnfn( "Skipping Vulkan tool listing for the supervised RenderDoc capture; validation remains enabled." );
+        }
+        else
+        {
+            std::vector<VkPhysicalDeviceToolProperties> tools;
+            const VkResult toolResult = EnumeratePhysicalDeviceTools(
+                [physicalDevice]( U32* count, VkPhysicalDeviceToolProperties* properties )
+                {
+                    return vkGetPhysicalDeviceToolProperties( physicalDevice, count, properties );
+                },
+                tools );
+            if ( toolResult != VK_SUCCESS )
             {
-                std::vector<VkPhysicalDeviceToolPropertiesEXT> tools;
-                tools.resize( toolCount );
-                VK_CHECK( vkGetPhysicalDeviceToolProperties( physicalDevice, &toolCount, tools.data() ) );
+                Console::errorfn( "Vulkan tool enumeration failed: {} ({}).", VKErrorString( toolResult ), to_I32( toolResult ) );
+                return ErrorCode::PLATFORM_INIT_ERROR;
+            }
 
-                Console::printfn( LOCALE_STR( "VK_TOOL_INFO" ), toolCount );
-    
-                for ( VkPhysicalDeviceToolPropertiesEXT& tool : tools )
+            if ( !tools.empty() )
+            {
+                Console::printfn( LOCALE_STR( "VK_TOOL_INFO" ), to_U32( tools.size() ) );
+                for ( const VkPhysicalDeviceToolProperties& tool : tools )
                 {
                     Console::printfn( "\t{} {}\n", tool.name, tool.version );
                 }
@@ -1329,6 +1836,7 @@ namespace Divide
         }
 
         deviceInformation._offsetAlignmentBytesUBO = deviceProperties.limits.minUniformBufferOffsetAlignment;
+        deviceInformation._nonCoherentAtomSize = to_size( deviceProperties.limits.nonCoherentAtomSize );
         deviceInformation._maxSizeBytesUBO = deviceProperties.limits.maxUniformBufferRange;
         deviceInformation._offsetAlignmentBytesSSBO = deviceProperties.limits.minStorageBufferOffsetAlignment;
         deviceInformation._maxSizeBytesSSBO = deviceProperties.limits.maxStorageBufferRange;
@@ -1448,6 +1956,8 @@ namespace Divide
         pipeline._vkPipelineLayout = VK_NULL_HANDLE;
         pipeline._vkPipeline = VK_NULL_HANDLE;
         pipeline._vkPipelineWireframe = VK_NULL_HANDLE;
+        pipeline._program = nullptr;
+        pipeline._programGUID = I64_LOWEST;
         pipeline._isValid = false;
     }
 
@@ -1464,6 +1974,11 @@ namespace Divide
     void VK_API::closeRenderingAPI()
     {
         vkShaderProgram::DestroyStaticData();
+        {
+            LockGuard<Mutex> lock( s_reloadedShadersLock );
+            s_reloadedShaders.clear();
+        }
+        _shaderReloadsToProcess.clear();
 
         // Destroy sampler objects
         {
@@ -1479,7 +1994,20 @@ namespace Divide
         {
             if ( _device->getVKDevice() != VK_NULL_HANDLE )
             {
-                vkDeviceWaitIdle( _device->getVKDevice() );
+                const VkResult idleResult = _device->waitIdle();
+                VK_CHECK( idleResult );
+                if ( idleResult == VK_SUCCESS )
+                {
+                    discardBufferReadbacks();
+                }
+                {
+                    LockGuard<Mutex> w_lock( s_submitSemaphores._lock );
+                    for ( const VkSemaphore semaphore : s_submitSemaphores._pendingSubmitSemaphores )
+                    {
+                        vkDestroySemaphore( _device->getVKDevice(), semaphore, nullptr );
+                    }
+                    s_submitSemaphores._pendingSubmitSemaphores.reset_lose_memory();
+                }
                 s_transientDeleteQueue.flush( _device->getVKDevice(), true );
                 s_deviceDeleteQueue.flush( _device->getVKDevice(), true );
                 for ( auto& pool : s_stateTracker._descriptorAllocators )
@@ -1511,6 +2039,21 @@ namespace Divide
             }
             if ( _allocator != VK_NULL_HANDLE )
             {
+                VmaTotalStatistics statistics{};
+                vmaCalculateStatistics( _allocator, &statistics );
+                if ( statistics.total.statistics.allocationCount > 0u )
+                {
+                    char* allocationDetails = nullptr;
+                    vmaBuildStatsString( _allocator, &allocationDetails, VK_TRUE );
+                    Console::errorfn( "Vulkan allocator has {} live allocations at shutdown:\n{}",
+                                      statistics.total.statistics.allocationCount,
+                                      allocationDetails != nullptr ? allocationDetails : "<allocation details unavailable>" );
+                    if ( allocationDetails != nullptr )
+                    {
+                        vmaFreeStatsString( _allocator, allocationDetails );
+                    }
+                    Console::Flush();
+                }
                 vmaDestroyAllocator( _allocator );
                 _allocator = VK_NULL_HANDLE;
             }
@@ -1528,6 +2071,34 @@ namespace Divide
         _vkbInstance = {};
     }
 
+
+    bool VK_API::supportsIndirectDrawBatching( const GenericDrawCommand& draw ) const noexcept
+    {
+        const CompiledPipeline& pipeline = GetStateTracker()._pipeline;
+        if ( !pipeline._isValid || pipeline._vkPipeline == VK_NULL_HANDLE ||
+             pipeline._bindPoint != VK_PIPELINE_BIND_POINT_GRAPHICS || !pipeline._multiDrawCompatible ||
+             draw._sourceBuffers == nullptr || draw._sourceBuffersCount != 2u )
+        {
+            return false;
+        }
+
+        std::array<BufferUsageType, 2u> usages{};
+        for ( size_t i = 0u; i < draw._sourceBuffersCount; ++i )
+        {
+            GPUBuffer* buffer = GPUBuffer::s_BufferPool.find( draw._sourceBuffers[i] );
+            if ( buffer == nullptr )
+            {
+                return false;
+            }
+            const auto* vkBuffer = static_cast<const vkGPUBuffer*>( buffer );
+            if ( vkBuffer->_internalBuffer == nullptr )
+            {
+                return false;
+            }
+            usages[i] = vkBuffer->_internalBuffer->_params._usageType;
+        }
+        return IndexedIndirectBatchBuffersCompatible( usages[0], usages[1] );
+    }
 
     bool VK_API::Draw( GenericDrawCommand cmd, VkCommandBuffer cmdBuffer )
     {
@@ -1570,39 +2141,50 @@ namespace Divide
         bool ret = true;
         bool hasIndexBuffer = false;
         U32 firstIndex = cmd._cmd.firstIndex;
+        VKBufferBindingState& bufferBindings = GetStateTracker()._activeWindow->_bufferBindings;
 
-        for (size_t i = 0u; i < cmd._sourceBuffersCount; ++i)
         {
-            GPUBuffer* buffer = GPUBuffer::s_BufferPool.find(cmd._sourceBuffers[i]);
-            
-            DIVIDE_GPU_ASSERT(buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
-            auto vkBuffer = static_cast<vkGPUBuffer*>(buffer);
-            vkBufferImpl* impl = vkBuffer->_internalBuffer.get();
-            DIVIDE_GPU_ASSERT(impl != nullptr, "GL_API::Draw - GPU buffer has no internal implementation!");
-
-            const VkDeviceSize elementSizeInBytes = impl->_params._elementSize;
-            VkDeviceSize offset = 0u;
-
-            if (vkBuffer->queueLength() > 1)
+            PROFILE_SCOPE( "Resolve Vulkan draw buffers", Profiler::Category::Graphics );
+            for (size_t i = 0u; i < cmd._sourceBuffersCount; ++i)
             {
-                offset += impl->_params._elementCount * elementSizeInBytes * vkBuffer->queueIndex();
-            }
+                GPUBuffer* buffer = GPUBuffer::s_BufferPool.find(cmd._sourceBuffers[i]);
 
-            if ( impl->_params._usageType == BufferUsageType::VERTEX_BUFFER )
-            {
-                VK_PROFILE(vkCmdBindVertexBuffers, cmdBuffer, vkBuffer->_bindConfig._bindIdx, 1, &impl->_buffer, &offset);
-            }
-            else if ( impl->_params._usageType == BufferUsageType::INDEX_BUFFER )
-            {
-                DIVIDE_GPU_ASSERT(vkBuffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
-                
-                DIVIDE_GPU_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
-                hasIndexBuffer = true;
+                DIVIDE_GPU_ASSERT(buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
+                auto vkBuffer = static_cast<vkGPUBuffer*>(buffer);
+                vkBufferImpl* impl = vkBuffer->_internalBuffer.get();
+                DIVIDE_GPU_ASSERT(impl != nullptr, "GL_API::Draw - GPU buffer has no internal implementation!");
 
-                firstIndex += vkBuffer->firstIndexOffsetCount();
+                const VkDeviceSize elementSizeInBytes = impl->_params._elementSize;
+                VkDeviceSize offset = 0u;
 
-                VK_PROFILE(vkCmdBindIndexBuffer, cmdBuffer, impl->_buffer, offset, elementSizeInBytes == sizeof(U16) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
-                cmd._cmd.firstIndex = firstIndex;
+                if (vkBuffer->queueLength() > 1)
+                {
+                    offset += impl->_params._elementCount * elementSizeInBytes * vkBuffer->queueIndex();
+                }
+
+                if ( impl->_params._usageType == BufferUsageType::VERTEX_BUFFER )
+                {
+                    if ( bufferBindings.updateVertexBinding( vkBuffer->_bindConfig._bindIdx, impl->_buffer, offset ) )
+                    {
+                        VK_PROFILE(vkCmdBindVertexBuffers, cmdBuffer, vkBuffer->_bindConfig._bindIdx, 1, &impl->_buffer, &offset);
+                    }
+                }
+                else if ( impl->_params._usageType == BufferUsageType::INDEX_BUFFER )
+                {
+                    DIVIDE_GPU_ASSERT(vkBuffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
+
+                    DIVIDE_GPU_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
+                    hasIndexBuffer = true;
+
+                    firstIndex += vkBuffer->firstIndexOffsetCount();
+
+                    const VkIndexType indexType = elementSizeInBytes == sizeof(U16) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
+                    if ( bufferBindings.updateIndexBinding( impl->_buffer, offset, indexType ) )
+                    {
+                        VK_PROFILE(vkCmdBindIndexBuffer, cmdBuffer, impl->_buffer, offset, indexType);
+                    }
+                    cmd._cmd.firstIndex = firstIndex;
+                }
             }
         }
 
@@ -1632,9 +2214,32 @@ namespace Divide
         VkCommandBuffer cmdBuffer = GetCurrentCommandBuffer();
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        const auto& pipeline = GetStateTracker()._pipeline;
+        VKStateTracker& stateTracker = GetStateTracker();
+        if ( stateTracker.needsGraphicsPipelineRebind() )
+        {
+            const Pipeline* logicalPipeline = stateTracker._logicalPipeline;
+            if ( bindPipeline( *logicalPipeline, cmdBuffer ) == ShaderResult::Failed )
+            {
+                const auto handle = logicalPipeline->descriptor()._shaderProgramHandle;
+                Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_BIND" ), handle._index, handle._generation );
+                stateTracker._pipeline = {};
+                stateTracker._logicalPipeline = nullptr;
+                return false;
+            }
+        }
+
+        const auto& pipeline = stateTracker._pipeline;
+        if ( pipeline._program == nullptr || pipeline._vkPipeline == VK_NULL_HANDLE )
+        {
+            Console::errorfn( "Vulkan submission skipped: no valid pipeline is bound." );
+            return false;
+        }
         auto& program = pipeline._program;
-        DIVIDE_GPU_ASSERT( program != nullptr );
+        const bool uniformBindingsChanged = program->commitUniformData( _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl() );
+        if ( _context.uniformUploadFailed() )
+        {
+            return false;
+        }
         auto& drawDescriptor = program->perDrawDescriptorSetLayout();
         const bool targetDescriptorEmpty = IsEmpty( drawDescriptor );
         const auto& setUsageData = program->setUsage();
@@ -1676,7 +2281,7 @@ namespace Divide
         };
 
         // Resolves a single binding into a VK descriptor. Returns false if nothing should be written for this slot.
-        const auto resolveSlot = [&]( const DescriptorSetBinding& srcBinding, const DescriptorSetBindingType layoutBindingType, DescriptorSlotState& slotOut, U32& dynamicOffsetOut ) -> bool
+        const auto resolveSlot = [&]( const DescriptorSetBinding& srcBinding, const DescriptorSetBindingType layoutBindingType, VKDescriptorSlotState& slotOut, U32& dynamicOffsetOut ) -> bool
         {
             switch ( srcBinding._data._type )
             {
@@ -1696,7 +2301,7 @@ namespace Divide
                     slotOut._bufferInfo.buffer = static_cast<vkBufferImpl*>(bufferEntry._buffer->getBufferImpl())->_buffer;
                     slotOut._bufferInfo.offset = isDynamicBuffer ? 0u : offset;
                     slotOut._bufferInfo.range = bufferEntry._range._length * bufferEntry._buffer->getPrimitiveSize();
-                    dynamicOffsetOut = to_U32( offset );
+                    dynamicOffsetOut = isDynamicBuffer ? to_U32( offset ) : 0u;
                     return true;
                 }
                 case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
@@ -1764,24 +2369,25 @@ namespace Divide
                 case DescriptorSetBindingType::COUNT:
                 {
                     DIVIDE_UNEXPECTED_CALL();
-                } break;
+                }
             };
-
-            return false;
         };
 
         thread_local fixed_vector<VkWriteDescriptorSet, MAX_BINDINGS_PER_DESCRIPTOR_SET> descriptorWrites;
-        thread_local DescriptorSlotStates perDrawSlots;
-        thread_local std::array<DescriptorSet, to_base(DescriptorSetUsage::COUNT)> resolvedSets;
+        thread_local VKDescriptorSlotStates perDrawSlots;
+        thread_local std::array<SampledImageResolutionCache, to_base(DescriptorSetUsage::COUNT)> resolvedSets;
 
         for ( DescriptorSetEntry entry : descriptorSetEntries )
         {
-            DescriptorSet resolvedSet{};
-            const bool hasFallback = program->resolveSampledImages( entry, resolvedSet );
-            DescriptorSet& previousSet = resolvedSets[to_base(entry._usage)];
-            entry._isDirty = entry._isDirty || (hasFallback && previousSet != resolvedSet);
-            previousSet = resolvedSet;
-            entry._set = &resolvedSet;
+            SampledImageResolutionCache& resolutionCache = resolvedSets[to_base(entry._usage)];
+            const bool hasFallback = program->resolveSampledImages( entry, resolutionCache._resolvedSet );
+            const bool alreadyDirty = entry._isDirty ||
+                                      (entry._usage == DescriptorSetUsage::PER_DRAW && uniformBindingsChanged);
+            entry._isDirty = resolutionCache.update( hasFallback, alreadyDirty ) || alreadyDirty;
+            if ( hasFallback )
+            {
+                entry._set = &resolutionCache._resolvedSet;
+            }
             const BaseType<DescriptorSetUsage> usageIdx = to_base( entry._usage );
 
             // Indirect command buffers are not descriptors (vkCmdDraw*Indirect source), but are specified in the same way as any other
@@ -1814,12 +2420,13 @@ namespace Divide
                     continue;
                 }
 
-                if ( boundState._perDrawLayout == pipeline._vkPipelineLayout && boundState._perDrawVersion == s_perDrawDescriptorVersion )
+                if ( !boundState._perDraw.needsUpdate( pipeline._vkPipelineLayout, s_perDrawDescriptorVersion ) )
                 {
                     continue;
                 }
 
                 PROFILE_SCOPE( "Push per draw descriptors", Profiler::Category::Graphics );
+                boundState._perDraw.beginUpdate( pipeline._vkPipelineLayout );
 
                 for ( U8 i = 0u; i < entry._set->_bindingCount; ++i )
                 {
@@ -1832,14 +2439,17 @@ namespace Divide
 
                     DIVIDE_GPU_ASSERT( areCompatibleBindingTypes( layoutBindingType, srcBinding._data._type ) );
 
-                    DescriptorSlotState& slot = perDrawSlots[srcBinding._slot];
+                    VKDescriptorSlotState& slot = perDrawSlots[srcBinding._slot];
                     U32 dynamicOffset = 0u;
                     if ( resolveSlot( srcBinding, layoutBindingType, slot, dynamicOffset ) )
                     {
                         DIVIDE_GPU_ASSERT( !IsDescriptorSetBindingTypeDynamic( layoutBindingType ) );
-                        descriptorWrites.push_back( slot.isImage()
-                                                        ? vk::writeDescriptorSet( slot._type, srcBinding._slot, &slot._imageInfo, 1u )
-                                                        : vk::writeDescriptorSet( slot._type, srcBinding._slot, &slot._bufferInfo, 1u ) );
+                        if ( boundState._perDraw.updateSlot( srcBinding._slot, slot ) )
+                        {
+                            descriptorWrites.push_back( slot.isImage()
+                                                            ? vk::writeDescriptorSet( slot._type, srcBinding._slot, &slot._imageInfo, 1u )
+                                                            : vk::writeDescriptorSet( slot._type, srcBinding._slot, &slot._bufferInfo, 1u ) );
+                        }
                     }
                 }
 
@@ -1854,8 +2464,7 @@ namespace Divide
                     descriptorWrites.reset_lose_memory();
                 }
 
-                boundState._perDrawLayout = pipeline._vkPipelineLayout;
-                boundState._perDrawVersion = s_perDrawDescriptorVersion;
+                boundState._perDraw.finishUpdate( s_perDrawDescriptorVersion );
                 continue;
             }
 
@@ -1871,7 +2480,7 @@ namespace Divide
             PROFILE_SCOPE( "Update shared descriptor set", Profiler::Category::Graphics );
             PROFILE_TAG( "Usage IDX", usageIdx );
 
-            DescriptorSlotStates desiredSlots{};
+            VKDescriptorSlotStates desiredSlots{};
             for ( U8 i = 0u; i < entry._set->_bindingCount; ++i )
             {
                 const DescriptorSetBinding& srcBinding = entry._set->_bindings[i];
@@ -1911,13 +2520,24 @@ namespace Divide
 
             PROFILE_SCOPE( "Build and update set", Profiler::Category::Graphics );
 
+            DescriptorAllocator& allocator = s_stateTracker._descriptorAllocators[usageIdx];
+            if ( allocator._handle.ownerPool == nullptr )
+            {
+                allocator._handle = allocator._allocatorPool->GetAllocator();
+            }
+            DescriptorBuilder builder = DescriptorBuilder::Begin( _descriptorLayoutCache.get(), &allocator._handle );
+            VkDescriptorSet newSet = VK_NULL_HANDLE;
+            if ( !builder.buildSetFromLayout( newSet, _descriptorSetLayouts[usageIdx], _device->getVKDevice() ) )
+            {
+                cache._pendingUpdate = true;
+                return false;
+            }
+            cache._set = newSet;
             cache._slots = desiredSlots;
-            DescriptorBuilder builder = DescriptorBuilder::Begin( _descriptorLayoutCache.get(), &s_stateTracker._descriptorAllocators[usageIdx]._handle );
-            builder.buildSetFromLayout( cache._set, _descriptorSetLayouts[usageIdx], _device->getVKDevice() );
 
             for ( U8 slotIdx = 0u; slotIdx < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slotIdx )
             {
-                const DescriptorSlotState& slot = cache._slots[slotIdx];
+                const VKDescriptorSlotState& slot = cache._slots[slotIdx];
                 if ( slot._type == VK_DESCRIPTOR_TYPE_MAX_ENUM )
                 {
                     continue;
@@ -2022,29 +2642,31 @@ namespace Divide
 
         auto& activeState = GetStateTracker()._activeWindow->_activeState;
 
+        if ( activeState.needsStencilTestUpdate( currentState._stencilEnabled ) )
+        {
+            vkCmdSetStencilTestEnable( cmdBuffer, currentState._stencilEnabled ? VK_TRUE : VK_FALSE );
+            ret = true;
+        }
+
         if ( currentState._stencilEnabled )
         {
-            if ( !activeState._isSet || !activeState._block._stencilEnabled )
-            {
-                vkCmdSetStencilTestEnable( cmdBuffer, VK_TRUE );
-                ret = true;
-            }
-            if ( !activeState._isSet || activeState._block._stencilMask != currentState._stencilMask )
+            const bool resetStencilValues = activeState.needsStencilValuesReset();
+            if ( resetStencilValues || activeState._block._stencilMask != currentState._stencilMask )
             {
                 vkCmdSetStencilCompareMask( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilMask );
                 ret = true;
             }
-            if ( !activeState._isSet || activeState._block._stencilWriteMask != currentState._stencilWriteMask )
+            if ( resetStencilValues || activeState._block._stencilWriteMask != currentState._stencilWriteMask )
             {
                 vkCmdSetStencilWriteMask( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilWriteMask );
                 ret = true;
             }
-            if ( !activeState._isSet || activeState._block._stencilRef != currentState._stencilRef )
+            if ( resetStencilValues || activeState._block._stencilRef != currentState._stencilRef )
             {
                 vkCmdSetStencilReference( cmdBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, currentState._stencilRef );
                 ret = true;
             }
-            if ( !activeState._isSet || 
+            if ( resetStencilValues ||
                   activeState._block._stencilFailOp != currentState._stencilFailOp ||
                   activeState._block._stencilPassOp != currentState._stencilPassOp ||
                   activeState._block._stencilZFailOp != currentState._stencilZFailOp ||
@@ -2058,11 +2680,6 @@ namespace Divide
                                   vkCompareFuncTable[to_base( currentState._stencilFunc )]);
                 ret = true;
             }
-        }
-        else if ( !activeState._isSet || !activeState._block._stencilEnabled )
-        {
-            vkCmdSetStencilTestEnable( cmdBuffer, VK_FALSE );
-            ret = true;
         }
 
         if ( !activeState._isSet || activeState._block._zFunc != currentState._zFunc )
@@ -2198,14 +2815,9 @@ namespace Divide
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        size_t stateHash = pipeline.stateHash();
-        Util::Hash_combine(stateHash, GetStateTracker()._renderTargetFormatHash );
-        if ( !s_hasDynamicBlendStateSupport )
-        {
-            Util::Hash_combine(stateHash, pipeline.blendStateHash());
-        }
-
-        CompiledPipeline& compiledPipeline = _compiledPipelines[stateHash];
+        VKStateTracker& stateTracker = GetStateTracker();
+        const VKPipelineCacheKey key = VKPipelineCacheKey::From( pipeline, stateTracker._renderingSignature, s_hasDynamicBlendStateSupport );
+        CompiledPipeline& compiledPipeline = _compiledPipelines[key];
         if ( !compiledPipeline._isValid )
         {
             PROFILE_SCOPE( "Compile PSO", Profiler::Category::Graphics);
@@ -2222,6 +2834,7 @@ namespace Divide
             }
 
             compiledPipeline._program = static_cast<vkShaderProgram*>(program);
+            compiledPipeline._programGUID = program->getGUID();
             compiledPipeline._topology = pipelineDescriptor._primitiveTopology;
             const RenderStateBlock& currentState = pipelineDescriptor._stateBlock;
 
@@ -2260,17 +2873,34 @@ namespace Divide
             PipelineBuilder pipelineBuilder;
 
             bool isGraphicsPipeline = false;
+            bool hasVertexStage = false;
+            bool multiDrawCompatible = true;
+            const bool tracePipeline = RenderSmokeTest::PipelineTraceRequested();
+            std::array<RenderSmokeTest::PipelineTraceStage, to_base( ShaderType::COUNT )> traceStages{};
+            size_t traceStageCount = 0u;
             for ( const auto& stage : shaderStages )
             {
                 pipelineBuilder._shaderStages.push_back( vk::pipelineShaderStageCreateInfo( stage._shader->stageMask(), stage._shader->handle() ) );
                 isGraphicsPipeline = isGraphicsPipeline || stage._shader->stageMask() != VK_SHADER_STAGE_COMPUTE_BIT;
+                hasVertexStage = hasVertexStage || stage._shader->stageMask() == VK_SHADER_STAGE_VERTEX_BIT;
+                multiDrawCompatible = multiDrawCompatible && stage._shader->multiDrawCompatible();
+                if ( tracePipeline )
+                {
+                    traceStages[traceStageCount++] =
+                    {
+                        ._name = stage._shader->name().c_str(),
+                        ._module = ShaderModuleHandleBits( stage._shader->handle() ),
+                        ._stage = to_U32( stage._shader->stageMask() ),
+                        ._generation = stage._shader->generation()
+                    };
+                }
             }
             compiledPipeline._bindPoint = isGraphicsPipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
+            compiledPipeline._multiDrawCompatible = isGraphicsPipeline && hasVertexStage && multiDrawCompatible;
 
-            //vertex input controls how to read vertices from vertex buffers. We aren't using it yet
             pipelineBuilder._vertexInputInfo = vk::pipelineVertexInputStateCreateInfo();
-            //connect the pipeline builder vertex input info to the one we get from Vertex
-            const VertexInputDescription vertexDescription = getVertexDescription( pipelineDescriptor._vertexFormat );
+            const VertexInputDescription vertexDescription = getVertexDescription( pipelineDescriptor._vertexFormat,
+                                                                                   compiledPipeline._program->vertexInputs() );
             pipelineBuilder._vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
             pipelineBuilder._vertexInputInfo.vertexAttributeDescriptionCount = to_U32( vertexDescription.attributes.size() );
             pipelineBuilder._vertexInputInfo.pVertexBindingDescriptions = vertexDescription.bindings.data();
@@ -2293,13 +2923,9 @@ namespace Divide
                 assert( isPowerOfTwo( msaaSamples ) );
                 msaaSampleFlags = static_cast<VkSampleCountFlagBits>(msaaSamples);
             }
+            // The initializer disables forced per-sample shading, matching OpenGL. Sample-qualified shaders still run per sample.
             pipelineBuilder._multisampling = vk::pipelineMultisampleStateCreateInfo( msaaSampleFlags );
-            pipelineBuilder._multisampling.minSampleShading = 1.f;
             pipelineBuilder._multisampling.alphaToCoverageEnable = pipelineDescriptor._alphaToCoverage ? VK_TRUE : VK_FALSE;
-            if ( msaaSamples > 0u )
-            {
-                pipelineBuilder._multisampling.sampleShadingEnable = VK_TRUE;
-            }
             VkStencilOpState stencilOpState{};
             stencilOpState.failOp = vkStencilOpTable[to_base( defaultState._stencilFailOp )];
             stencilOpState.passOp = vkStencilOpTable[to_base( defaultState._stencilPassOp )];
@@ -2358,11 +2984,21 @@ namespace Divide
             pipelineBuilder._pipelineLayout = compiledPipeline._vkPipelineLayout;
             pipelineBuilder._tessellation = vk::pipelineTessellationStateCreateInfo( currentState._tessControlPoints );
 
+            const std::span<const RenderSmokeTest::PipelineTraceStage> pipelineTrace{ traceStages.data(), traceStageCount };
+            if ( tracePipeline )
+            {
+                RenderSmokeTest::ReportPipelineTrace( program->resourceName().c_str(), program->getGUID(), isGraphicsPipeline, false,
+                                                     pipelineTrace );
+            }
             compiledPipeline._vkPipeline = pipelineBuilder.build_pipeline( _device->getVKDevice(), _pipelineCache, isGraphicsPipeline );
 
             if ( isGraphicsPipeline && IsTriangles( pipelineDescriptor._primitiveTopology ) )
             {
                 pipelineBuilder._rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+                if ( tracePipeline )
+                {
+                    RenderSmokeTest::ReportPipelineTrace( program->resourceName().c_str(), program->getGUID(), true, true, pipelineTrace );
+                }
                 compiledPipeline._vkPipelineWireframe = pipelineBuilder.build_pipeline( _device->getVKDevice(), _pipelineCache, true );
 
                 Debug::SetObjectName( _device->getVKDevice(), (uint64_t)compiledPipeline._vkPipelineWireframe, VK_OBJECT_TYPE_PIPELINE, Util::StringFormat("{}_wireframe", program->resourceName().c_str()).c_str());
@@ -2376,28 +3012,18 @@ namespace Divide
 
         VK_PROFILE( vkCmdBindPipeline, cmdBuffer, compiledPipeline._bindPoint, compiledPipeline._vkPipeline );
 
-        GetStateTracker()._pipeline = compiledPipeline;
-        if ( GetStateTracker()._pipelineStageMask != compiledPipeline._stageFlags )
+        stateTracker._pipeline = compiledPipeline;
+        stateTracker._logicalPipeline = &pipeline;
+        stateTracker._boundRenderingSignature = stateTracker._renderingSignature;
+        if ( stateTracker._pipelineStageMask != compiledPipeline._stageFlags )
         {
-            GetStateTracker()._pipelineStageMask = compiledPipeline._stageFlags;
-            GetStateTracker()._pushConstantsValid = false;
+            stateTracker._pipelineStageMask = compiledPipeline._stageFlags;
+            stateTracker._pushConstantsValid = false;
         }
 
         bindDynamicState( pipeline.descriptor()._stateBlock, pipeline.descriptor()._blendStates, cmdBuffer );
 
         return compiledPipeline._program->validatePreBind(_context.context().config(), false);
-    }
-
-    void VK_API::flushPushConstantsLocks()
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        if ( _uniformsNeedLock )
-        {
-            _uniformsNeedLock = false;
-            flushCommand( &_uniformsMemCommand );
-            _uniformsMemCommand._bufferLocks.clear();
-        }
     }
 
     void VK_API::SubmitTransferRequest( const VKTransferQueue::TransferRequest& request, VkCommandBuffer cmd )
@@ -2513,11 +3139,6 @@ namespace Divide
             FlushBufferTransferRequests( cmdBuffer );
         }
 
-        if ( stateTracker._activeRenderTargetID == SCREEN_TARGET_ID )
-        {
-            flushPushConstantsLocks();
-        }
-
         switch ( cmd->type() )
         {
             case GFX::CommandType::BEGIN_RENDER_PASS:
@@ -2531,7 +3152,10 @@ namespace Divide
                 // We can do this outside of a renderpass
                 FlushBufferTransferRequests( cmdBuffer );
 
+                stateTracker._pipelineRenderInfo = {};
+                stateTracker._pipelineRenderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
                 VkRenderingInfo renderingInfo{ .sType = VK_STRUCTURE_TYPE_RENDERING_INFO };
+                VkRenderingAttachmentInfo swapchainAttachment{};
                 if ( crtCmd->_target == SCREEN_TARGET_ID )
                 {
                     VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();
@@ -2542,7 +3166,7 @@ namespace Divide
                     const bool canLoadPreviousContents = !shouldClear &&
                                                          (imageWasPresented || imageWasRenderedThisFrame);
 
-                    VkRenderingAttachmentInfo attachmentInfo
+                    swapchainAttachment =
                     {
                         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                         .imageView = VK_NULL_HANDLE,
@@ -2565,7 +3189,7 @@ namespace Divide
 
                     PROFILE_SCOPE( "Draw to screen", Profiler::Category::Graphics);
 
-                    attachmentInfo.imageView = swapChain->getCurrentImageView();
+                    swapchainAttachment.imageView = swapChain->getCurrentImageView();
                     stateTracker._pipelineRenderInfo.colorAttachmentCount = 1u;
                     stateTracker._pipelineRenderInfo.pColorAttachmentFormats = &swapChain->getSwapChain().image_format;
 
@@ -2576,7 +3200,7 @@ namespace Divide
                     };
                     renderingInfo.layerCount = 1u;
                     renderingInfo.colorAttachmentCount = 1u;
-                    renderingInfo.pColorAttachments = &attachmentInfo;
+                    renderingInfo.pColorAttachments = &swapchainAttachment;
 
                     VkImageMemoryBarrier2 imageBarrier = vk::imageMemoryBarrier2();
                     imageBarrier.image = swapChain->getCurrentImage();
@@ -2597,9 +3221,9 @@ namespace Divide
                     imageBarrier.srcStageMask = imageWasRenderedThisFrame
                                               ? VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
                                               : VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-                    imageBarrier.oldLayout = (shouldClear || !canLoadPreviousContents)
-                                           ? VK_IMAGE_LAYOUT_UNDEFINED
-                                           : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                    imageBarrier.oldLayout = VKSwapChain::ScreenPassInitialLayout( swapChain->deferPresentTransition(),
+                                                                                   imageWasRenderedThisFrame,
+                                                                                   canLoadPreviousContents );
 
                     VkDependencyInfo dependencyInfo = vk::dependencyInfo();
                     dependencyInfo.imageMemoryBarrierCount = 1u;
@@ -2622,11 +3246,8 @@ namespace Divide
                 {
                     PROFILE_SCOPE( "Begin Rendering", Profiler::Category::Graphics );
 
-                    stateTracker._renderTargetFormatHash = 0u;
-                    for ( U32 i = 0u; i < stateTracker._pipelineRenderInfo.colorAttachmentCount; ++i )
-                    {
-                        Util::Hash_combine( stateTracker._renderTargetFormatHash, stateTracker._pipelineRenderInfo.pColorAttachmentFormats[i]);
-                    }
+                    stateTracker._renderingSignature = VKRenderingSignature::From( stateTracker._pipelineRenderInfo,
+                                                                                 stateTracker._activeMSAASamples );
                 
                     const Rect<I32> renderArea
                     { 
@@ -2659,7 +3280,8 @@ namespace Divide
                 PROFILE_SCOPE( "END_RENDER_PASS", Profiler::Category::Graphics );
 
                 VK_PROFILE( vkCmdEndRendering, cmdBuffer );
-                if ( stateTracker._activeRenderTargetID == SCREEN_TARGET_ID )
+                if ( stateTracker._activeRenderTargetID == SCREEN_TARGET_ID &&
+                     !stateTracker._activeWindow->_swapChain->deferPresentTransition() )
                 {
                     VkImageMemoryBarrier2 imageBarrier = vk::imageMemoryBarrier2();
                     imageBarrier.image = stateTracker._activeWindow->_swapChain->getCurrentImage();
@@ -2685,7 +3307,7 @@ namespace Divide
                     
                     VK_PROFILE( vkCmdPipelineBarrier2,cmdBuffer, &dependencyInfo );
                 }
-                else
+                else if ( stateTracker._activeRenderTargetID != SCREEN_TARGET_ID )
                 {
                     vkRenderTarget* rt = static_cast<vkRenderTarget*>(_context.renderTargetPool().getRenderTarget( stateTracker._activeRenderTargetID ));
                     const GFX::EndRenderPassCommand* crtCmd = cmd->As<GFX::EndRenderPassCommand>();
@@ -2694,7 +3316,7 @@ namespace Divide
                 }
 
                 PopDebugMessage( _context.context().config(), cmdBuffer );
-                stateTracker._renderTargetFormatHash = 0u;
+                stateTracker._renderingSignature = {};
                 stateTracker._activeMSAASamples = _context.context().config().rendering.MSAASamples;
                 stateTracker._activeRenderTargetDimensions = s_stateTracker._activeWindow->_window->getDrawableSize();
                 stateTracker._activeRenderTargetColourAttachmentCount = 1u;
@@ -2756,6 +3378,8 @@ namespace Divide
                 {
                     const auto handle = pipeline->descriptor()._shaderProgramHandle;
                     Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_BIND" ), handle._index, handle._generation );
+                    stateTracker._pipeline = {};
+                    stateTracker._logicalPipeline = nullptr;
                 }
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS:
@@ -2768,11 +3392,7 @@ namespace Divide
                     UniformData* uniforms = pushConstantsCmd->_uniformData;
                     if ( uniforms != nullptr )
                     {
-                        if ( stateTracker._pipeline._program->uploadUniformData( *uniforms, _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl(), _uniformsMemCommand ) )
-                        {
-                            _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).dirty( true );
-                            _uniformsNeedLock = _uniformsNeedLock || _uniformsMemCommand._bufferLocks.empty();
-                        }
+                        stateTracker._pipeline._program->uploadUniformData( *uniforms );
                     }
                     if ( pushConstantsCmd->_fastData.dataFlags() != PushConstantsStruct::DataFlags::NONE )
                     {
@@ -2823,7 +3443,7 @@ namespace Divide
 
                 const auto& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
 
-                if ( stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
+                if ( !_context.uniformUploadFailed() && stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
                     if ( !stateTracker._pushConstantsValid && _hasLastPushConstants )
                     {
@@ -2866,7 +3486,7 @@ namespace Divide
             case GFX::CommandType::DISPATCH_SHADER_TASK:
             {
                 PROFILE_SCOPE( "DISPATCH_SHADER_TASK", Profiler::Category::Graphics );
-                if (stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE)
+                if ( !_context.uniformUploadFailed() && stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
                     if ( !stateTracker._pushConstantsValid && _hasLastPushConstants )
                     {
@@ -2894,7 +3514,6 @@ namespace Divide
                         } break;
                         default:
                             DIVIDE_UNEXPECTED_CALL();
-                            break;
                     }
                 }
             } break;
@@ -3009,7 +3628,7 @@ namespace Divide
                             memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
                             memoryBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
                         }break;
-                        default : DIVIDE_UNEXPECTED_CALL(); break;
+                        default : DIVIDE_UNEXPECTED_CALL();
                     }
 
                     if ( bufferBarrierCount == MAX_BUFFER_BARRIERS_PER_CMD )
@@ -3034,8 +3653,6 @@ namespace Divide
 
                     const vkTexture* vkTex = static_cast<const vkTexture*>(it._targetView._srcTexture);
 
-                    const bool isCube = IsCubeTexture( vkTex->descriptor()._texType);
-
                     vkTexture::TransitionType transitionType = vkTexture::TransitionType::COUNT;
 
                     switch ( it._targetLayout )
@@ -3043,7 +3660,7 @@ namespace Divide
                         case ImageUsage::UNDEFINED:
                         {
                             DIVIDE_UNEXPECTED_CALL();
-                        } break;
+                        }
                         case ImageUsage::SHADER_READ:
                         {
                             switch ( it._sourceLayout )
@@ -3055,7 +3672,7 @@ namespace Divide
                                 case ImageUsage::SHADER_READ:
                                 {
                                     DIVIDE_UNEXPECTED_CALL();
-                                } break;
+                                }
                                 case ImageUsage::SHADER_WRITE:
                                 {
                                     transitionType = vkTexture::TransitionType::SHADER_WRITE_TO_SHADER_READ;
@@ -3076,7 +3693,7 @@ namespace Divide
                                 default:
                                 {
                                     DIVIDE_UNEXPECTED_CALL();
-                                } break;
+                                }
                             }
                         } break;
                         case ImageUsage::SHADER_WRITE:
@@ -3094,7 +3711,7 @@ namespace Divide
                                 case ImageUsage::SHADER_WRITE:
                                 {
                                     DIVIDE_UNEXPECTED_CALL();
-                                }break;
+                                }
                                 case ImageUsage::SHADER_READ_WRITE:
                                 {
                                     NOP(); // Both in general layout
@@ -3111,7 +3728,7 @@ namespace Divide
                                 default:
                                 {
                                     DIVIDE_UNEXPECTED_CALL();
-                                } break;
+                                }
                             }
                         } break;
                         case ImageUsage::SHADER_READ_WRITE:
@@ -3133,7 +3750,7 @@ namespace Divide
                                 case ImageUsage::SHADER_READ_WRITE:
                                 {
                                     DIVIDE_UNEXPECTED_CALL();
-                                } break;
+                                }
                                 case ImageUsage::RT_COLOUR_ATTACHMENT:
                                 {
                                     transitionType = vkTexture::TransitionType::COLOUR_ATTACHMENT_TO_SHADER_READ_WRITE;
@@ -3146,7 +3763,7 @@ namespace Divide
                                 default:
                                 {
                                     DIVIDE_UNEXPECTED_CALL();
-                                } break;
+                                }
                             }
                         } break;
                         case ImageUsage::RT_COLOUR_ATTACHMENT:
@@ -3157,7 +3774,7 @@ namespace Divide
                                 {
                                     transitionType = vkTexture::TransitionType::SHADER_READ_TO_COLOUR_ATTACHMENT;
                                 } break;
-                                default: DIVIDE_UNEXPECTED_CALL(); break;
+                                default: DIVIDE_UNEXPECTED_CALL();
                             }
                         } break;
                         case ImageUsage::RT_DEPTH_ATTACHMENT:
@@ -3169,7 +3786,7 @@ namespace Divide
                                 {
                                     transitionType = vkTexture::TransitionType::SHADER_READ_TO_DEPTH_ATTACHMENT;
                                 } break;
-                                default: DIVIDE_UNEXPECTED_CALL(); break;
+                                default: DIVIDE_UNEXPECTED_CALL();
                             }
                         } break;
                         default: DIVIDE_UNEXPECTED_CALL();
@@ -3177,14 +3794,8 @@ namespace Divide
 
                     if ( transitionType != vkTexture::TransitionType::COUNT )
                     {
-                        auto subRange = it._targetView._subRange;
-                        const VkImageSubresourceRange subResourceRange = {
-                            .aspectMask = vkTexture::GetAspectFlags( vkTex->descriptor() ),
-                            .baseMipLevel = subRange._mipLevels._offset,
-                            .levelCount = subRange._mipLevels._count == ALL_MIPS ? VK_REMAINING_MIP_LEVELS : subRange._mipLevels._count,
-                            .baseArrayLayer = subRange._layerRange._offset,
-                            .layerCount = subRange._layerRange._count == ALL_LAYERS ? VK_REMAINING_ARRAY_LAYERS : subRange._layerRange._count * (isCube ? 6u : 1u),
-                        };
+                        const VkImageSubresourceRange subResourceRange = vkTexture::GetViewSubresourceRange(
+                            TargetType( it._targetView ), it._targetView._subRange, vkTexture::GetAspectFlags( vkTex->descriptor() ) );
 
                         vkTexture::TransitionTexture(
                             transitionType,
@@ -3223,7 +3834,7 @@ namespace Divide
             case GFX::CommandType::CLEAR_BUFFER_DATA: break;
 
             case GFX::CommandType::COUNT:
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
     }
 
@@ -3262,11 +3873,29 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        flushPushConstantsLocks();
         s_transientDeleteQueue.flush( _device->getDevice() );
         GetStateTracker()._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
         GetStateTracker()._activeRenderTargetColourAttachmentCount = 1u;
         GetStateTracker()._activeRenderTargetDimensions = s_stateTracker._activeWindow->_window->getDrawableSize();
+    }
+
+    void VK_API::writePassTimestamp( const U32 index )
+    {
+        VKPerWindowState* activeWindow = GetStateTracker()._activeWindow;
+        if ( activeWindow != nullptr && activeWindow->_swapChain != nullptr )
+        {
+            activeWindow->_swapChain->writePassTimestamp( index );
+        }
+    }
+
+    U32 VK_API::readPassTimestamps( const std::span<F32> outMS, U64& frameNumberOut )
+    {
+        VKPerWindowState* activeWindow = GetStateTracker()._activeWindow;
+        if ( activeWindow != nullptr && activeWindow->_swapChain != nullptr )
+        {
+            return activeWindow->_swapChain->readPassTimestamps( outMS, frameNumberOut );
+        }
+        return 0u;
     }
 
     bool VK_API::setViewportInternal( const Rect<I32>& newViewport ) noexcept
@@ -3438,14 +4067,10 @@ namespace Divide
     {
     }
 
-    void VK_API::OnShaderReloaded( vkShaderProgram* program )
+    void VK_API::OnShaderReloaded( const I64 programGUID )
     {
-        if ( program == nullptr )
-        {
-            return;
-        }
-
-        s_reloadedShaders.push(program);
+        LockGuard<Mutex> lock( s_reloadedShadersLock );
+        s_reloadedShaders.push_back( programGUID );
     }
 
     VKStateTracker& VK_API::GetStateTracker() noexcept

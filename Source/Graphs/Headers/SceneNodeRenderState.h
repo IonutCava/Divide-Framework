@@ -1,4 +1,7 @@
 #pragma once
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #ifndef DVD_SCENE_NODE_RENDER_STATE_H_
 #define DVD_SCENE_NODE_RENDER_STATE_H_
 
@@ -15,7 +18,7 @@ struct SceneNodeRenderState {
                                 RenderPassType passType = RenderPassType::COUNT,
                                 RenderStagePass::VariantType variant = RenderStagePass::VariantType::COUNT,
                                 U16 index = g_AllIndicesID,
-                                RenderStagePass::PassIndex pass = RenderStagePass::PassIndex::PASS_0);
+                                RenderStagePass::PassIndex pass = RenderStagePass::PassIndex::COUNT);
 
     PROPERTY_RW(bool, drawState, true);
 

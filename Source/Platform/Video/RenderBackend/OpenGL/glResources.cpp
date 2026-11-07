@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/glResources.h"
 #include "Headers/glHardwareQuery.h"
@@ -71,6 +71,20 @@ namespace Divide
 
     namespace GLUtil
     {
+        namespace
+        {
+            gl46core::GLint s_maxLabelLength = 0;
+        }
+
+        void SetObjectLabel( const gl46core::GLenum identifier, const gl46core::GLuint handle, const std::string_view label )
+        {
+            if ( s_maxLabelLength <= 0 )
+            {
+                return;
+            }
+            const size_t length = ObjectLabelLength( label, to_size( s_maxLabelLength ) );
+            gl46core::glObjectLabel( identifier, handle, to_I32( length ), label.data() );
+        }
 
         /*-----------Object Management----*/
         gl46core::GLuint s_lastQueryResult = GL_NULL_HANDLE;
@@ -94,6 +108,15 @@ namespace Divide
 
         void OnStartup()
         {
+            if constexpr ( Config::ENABLE_GPU_VALIDATION )
+            {
+                gl46core::glGetIntegerv( gl46core::GL_MAX_LABEL_LENGTH, &s_maxLabelLength );
+                if ( s_maxLabelLength <= 0 )
+                {
+                    Console::errorfn( "OpenGL reported an invalid maximum object-label length: {}.", s_maxLabelLength );
+                }
+            }
+
             glBlendTable[to_base( BlendProperty::ZERO )] = gl46core::GL_ZERO;
             glBlendTable[to_base( BlendProperty::ONE )] = gl46core::GL_ONE;
             glBlendTable[to_base( BlendProperty::SRC_COLOR )] = gl46core::GL_SRC_COLOR;
@@ -434,7 +457,6 @@ namespace Divide
                     default:
                     case TextureType::COUNT: 
                         DIVIDE_UNEXPECTED_CALL();
-                        break;
                 }
             }
 
@@ -740,7 +762,6 @@ namespace Divide
             }
 
             DIVIDE_UNEXPECTED_CALL();
-            return std::make_pair( 0u, false );
         }
 
         void glTextureViewCache::deallocate( const gl46core::GLuint handle, const U32 frameDelay )
@@ -889,27 +910,24 @@ namespace Divide
                                                                   fullScope,
                                                                   message );
 
-            const bool isConsoleImmediate = Console::IsFlagSet( Console::Flags::PRINT_IMMEDIATE );
-            const bool severityDecoration = Console::IsFlagSet( Console::Flags::DECORATE_SEVERITY );
-            Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, true );
-            Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, false );
+            const Console::ScopedFlags consoleFlags{
+                to_U32(to_base(Console::Flags::PRINT_IMMEDIATE)),
+                to_U32(to_base(Console::Flags::DECORATE_SEVERITY))
+            };
 
             if ( severity == gl46core::GL_DEBUG_SEVERITY_NOTIFICATION )
             {
-                Console::printfn( outputError.c_str() );
+                Console::printfn( "{}", outputError.c_str() );
             }
             else if ( severity == gl46core::GL_DEBUG_SEVERITY_LOW || severity == gl46core::GL_DEBUG_SEVERITY_MEDIUM )
             {
-                Console::warnfn( outputError.c_str() );
+                Console::warnfn( "{}", outputError.c_str() );
             }
             else
             {
-                Console::errorfn( outputError.c_str() );
+                Console::errorfn( "{}", outputError.c_str() );
                 DIVIDE_GPU_ASSERT( GL_API::GetStateTracker()._assertOnAPIError && !(*GL_API::GetStateTracker()._assertOnAPIError), outputError.c_str());
             }
-            Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, severityDecoration );
-            Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, isConsoleImmediate );
-
         }
 
     }  // namespace GLUtil

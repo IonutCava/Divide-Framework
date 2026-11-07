@@ -1,4 +1,5 @@
-
+// Copyright (c) 2018-2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/ShaderDataUploader.h"
 
@@ -10,7 +11,7 @@ namespace Divide
 
     namespace Reflection
     {
-        constexpr U16 BYTE_BUFFER_VERSION = 5u; // v5: reflected sampler texture types and formats
+        constexpr U16 BYTE_BUFFER_VERSION = 7u; // v7: generated loose-uniform declarations
 
         bool UniformCompare::operator()( const UniformDeclaration& lhs, const UniformDeclaration& rhs ) const
         {
@@ -51,10 +52,8 @@ namespace Divide
                     case _ID( "uint" ):               //  4 bytes
                     case _ID( "float" )  : return 10; //  4 bytes
                     case _ID( "bool" )   : return 11; //  4 bytes (converted to uint)
-                    default: DIVIDE_UNEXPECTED_CALL(); break;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 }
-
-                return 999;
             };
 
             const I32 lhsPriority = g_TypePriority( lhs._typeHash );
@@ -67,7 +66,8 @@ namespace Divide
             return lhs._name < rhs._name;
         };
 
-        bool SaveReflectionData( const ResourcePath& path, const ResourcePath& file, const Reflection::Data& reflectionDataIn, const eastl::set<U64>& atomIDsIn )
+        bool SaveReflectionData( const ResourcePath& path, const ResourcePath& file, const Reflection::Data& reflectionDataIn,
+                                 const UniformsSet& uniformsIn, const eastl::set<U64>& atomIDsIn )
         {
             const auto saveDataEntry = []( ByteBuffer& buffer, const DataEntry& entry )
             {
@@ -129,9 +129,16 @@ namespace Divide
 
             ByteBuffer buffer;
             buffer << BYTE_BUFFER_VERSION;
+            buffer << uniformsIn.size();
+            for ( const UniformDeclaration& uniform : uniformsIn )
+            {
+                buffer << uniform._name;
+                buffer << uniform._type;
+            }
             buffer << reflectionDataIn._uniformBlockBindingIndex;
             buffer << to_base(reflectionDataIn._pushConstantsState);
             buffer << reflectionDataIn._fragmentOutputs;
+            buffer << reflectionDataIn._vertexInputs;
             buffer << reflectionDataIn._images.size();
             for ( const auto& image : reflectionDataIn._images )
             {
@@ -151,7 +158,8 @@ namespace Divide
             return buffer.dumpToFile( path, file.string() );
         }
 
-        bool LoadReflectionData( const ResourcePath& path, const ResourcePath& file, Reflection::Data& reflectionDataOut, eastl::set<U64>& atomIDsOut )
+        bool LoadReflectionData( const ResourcePath& path, const ResourcePath& file, Reflection::Data& reflectionDataOut,
+                                 UniformsSet& uniformsOut, eastl::set<U64>& atomIDsOut )
         {
             size_t sizeTemp;
 
@@ -228,9 +236,20 @@ namespace Divide
                 buffer >> tempVer;
                 if ( tempVer == BYTE_BUFFER_VERSION )
                 {
+                    buffer >> sizeTemp;
+                    uniformsOut.clear();
+                    for ( size_t i = 0u; i < sizeTemp; ++i )
+                    {
+                        UniformDeclaration uniform{};
+                        buffer >> uniform._name;
+                        buffer >> uniform._type;
+                        uniform._typeHash = _ID( uniform._type.c_str() );
+                        uniformsOut.emplace( uniform );
+                    }
                     buffer >> reflectionDataOut._uniformBlockBindingIndex;
                     buffer >> reflectionDataOut._pushConstantsState;
                     buffer >> reflectionDataOut._fragmentOutputs;
+                    buffer >> reflectionDataOut._vertexInputs;
                     buffer >> sizeTemp;
                     reflectionDataOut._images.resize( sizeTemp );
                     for ( size_t i = 0u; i < sizeTemp; ++i )
@@ -315,6 +334,188 @@ namespace Divide
 
     };
 
+    UniformUploadArena::SizeClass::SizeClass( const size_t stride ) noexcept
+        : _stride( stride )
+    {
+    }
+
+    UniformUploadArena::SizeClass::~SizeClass() = default;
+    UniformUploadArena::SizeClass::SizeClass( SizeClass&& ) noexcept = default;
+    UniformUploadArena::SizeClass& UniformUploadArena::SizeClass::operator=( SizeClass&& ) noexcept = default;
+
+    UniformUploadArena::UniformUploadArena( GFXDevice& context ) noexcept
+        : _context( context )
+        , _frameNumber( GFXDevice::FrameCount() )
+    {
+    }
+
+    UniformUploadArena::~UniformUploadArena() = default;
+
+    bool UniformUploadArena::CalculateSlotStride( const size_t byteCount, const size_t maxRange,
+                                                  const size_t offsetAlignment, const size_t nonCoherentAtomSize,
+                                                  size_t& strideOut ) noexcept
+    {
+        strideOut = 0u;
+        if ( byteCount == 0u || byteCount > maxRange || offsetAlignment == 0u || nonCoherentAtomSize == 0u )
+        {
+            return false;
+        }
+
+        size_t a = offsetAlignment;
+        size_t b = nonCoherentAtomSize;
+        while ( b != 0u )
+        {
+            const size_t remainder = a % b;
+            a = b;
+            b = remainder;
+        }
+
+        const size_t multiplier = offsetAlignment / a;
+        if ( multiplier > SIZE_MAX / nonCoherentAtomSize )
+        {
+            return false;
+        }
+        const size_t alignment = multiplier * nonCoherentAtomSize;
+        if ( byteCount > SIZE_MAX - (alignment - 1u) )
+        {
+            return false;
+        }
+
+        const size_t stride = Util::GetAlignmentCorrected( byteCount, alignment );
+        if ( stride > U32_MAX / (UniformUploadPageCursor::SlotsPerPage - 1u) ||
+             stride > SIZE_MAX / UniformUploadPageCursor::SlotsPerPage )
+        {
+            return false;
+        }
+        strideOut = stride;
+        return true;
+    }
+
+    bool UniformUploadArena::beginFrame( const U64 frameNumber )
+    {
+        LockGuard<Mutex> lock( _mutex );
+        if ( frameNumber < _frameNumber )
+        {
+            Console::errorfn( "Renderer: uniform upload arena frame number moved backwards" );
+            return false;
+        }
+
+        for ( SizeClass& sizeClass : _sizeClasses )
+        {
+            if ( !sizeClass._cursor.beginFrame( frameNumber ) )
+            {
+                Console::errorfn( "Renderer: failed to recycle uniform upload slots" );
+                return false;
+            }
+        }
+        _frameNumber = frameNumber;
+        return true;
+    }
+
+    bool UniformUploadArena::upload( Byte* data, const size_t byteCount, Allocation& allocationOut )
+    {
+        const DeviceInformation& device = GFXDevice::GetDeviceInformation();
+        size_t stride = 0u;
+        if ( data == nullptr ||
+             !CalculateSlotStride( byteCount, device._maxSizeBytesUBO, device._offsetAlignmentBytesUBO,
+                                   device._nonCoherentAtomSize, stride ) )
+        {
+            Console::errorfn( "Renderer: invalid uniform upload size or device alignment ({} bytes)", byteCount );
+            return false;
+        }
+
+        LockGuard<Mutex> lock( _mutex );
+        SizeClass* sizeClass = nullptr;
+        size_t sizeClassIndex = 0u;
+        for ( ; sizeClassIndex < _sizeClasses.size(); ++sizeClassIndex )
+        {
+            SizeClass& candidate = _sizeClasses[sizeClassIndex];
+            if ( candidate._stride == stride )
+            {
+                sizeClass = &candidate;
+                break;
+            }
+        }
+        if ( sizeClass == nullptr )
+        {
+            _sizeClasses.emplace_back( stride );
+            sizeClass = &_sizeClasses.back();
+            if ( !sizeClass->_cursor.beginFrame( _frameNumber ) )
+            {
+                Console::errorfn( "Renderer: failed to initialize uniform upload slots" );
+                return false;
+            }
+        }
+
+        const UniformUploadPageCursor::Allocation slot = sizeClass->_cursor.reserve();
+        auto& pages = sizeClass->_pages;
+        if ( slot._page == pages.size() )
+        {
+            const size_t pageSize = stride * UniformUploadPageCursor::SlotsPerPage;
+            if ( _totalBufferSize > SIZE_MAX - pageSize )
+            {
+                Console::errorfn( "Renderer: uniform upload arena size overflow" );
+                return false;
+            }
+
+            ShaderBufferDescriptor descriptor{};
+            descriptor._name = Util::StringFormat( "UniformUpload_{}_{}", stride, slot._page );
+            descriptor._ringBufferLength = UniformUploadPageCursor::SlotsPerPage;
+            descriptor._elementCount = to_U32( stride );
+            descriptor._elementSize = 1u;
+            descriptor._usageType = BufferUsageType::CONSTANT_BUFFER;
+            descriptor._updateFrequency = BufferUpdateFrequency::OFTEN;
+
+            ShaderBuffer_uptr page = _context.newShaderBuffer( descriptor );
+            if ( page == nullptr || !page->supportsPersistentWrites() || page->alignedBufferSize() != stride )
+            {
+                Console::errorfn( "Renderer: uniform upload page is not persistently mapped with the required stride" );
+                return false;
+            }
+
+            pages.push_back( MOV( page ) );
+            _totalBufferSize += pageSize;
+        }
+        else if ( slot._page > pages.size() )
+        {
+            Console::errorfn( "Renderer: uniform upload page cursor skipped a page" );
+            return false;
+        }
+
+        ShaderBuffer* page = pages[slot._page].get();
+        // Keep the buffer's range-wait checks; final-consumer lifetime is tracked by frame completion, not this write.
+        const BufferLock write = page->writeBytes( { 0u, byteCount }, data, slot._slot );
+        if ( write._buffer == nullptr || write._type != BufferSyncUsage::CPU_WRITE_TO_GPU_READ ||
+             write._range._startOffset != to_size( slot._slot ) * stride || write._range._length != byteCount )
+        {
+            Console::errorfn( "Renderer: uniform upload page write did not complete as a direct mapped write" );
+            return false;
+        }
+
+        allocationOut = { page, sizeClassIndex, slot._page, slot._slot, slot._generation };
+        return true;
+    }
+
+    bool UniformUploadArena::release( const Allocation allocation, const UniformUploadPageCursor::Usage& usage )
+    {
+        LockGuard<Mutex> lock( _mutex );
+        if ( allocation._buffer == nullptr || allocation._sizeClassIndex >= _sizeClasses.size() )
+        {
+            Console::errorfn( "Renderer: invalid uniform upload allocation release" );
+            return false;
+        }
+
+        SizeClass& sizeClass = _sizeClasses[allocation._sizeClassIndex];
+        if ( allocation._page >= sizeClass._pages.size() ||
+             sizeClass._pages[allocation._page].get() != allocation._buffer ||
+             !sizeClass._cursor.release( { allocation._page, allocation._slot, allocation._generation }, usage ) )
+        {
+            Console::errorfn( "Renderer: uniform upload allocation release failed" );
+            return false;
+        }
+        return true;
+    }
+
     UniformBlockUploader::UniformBlockUploader( GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock, const U16 shaderStageVisibilityMask )
         : _uniformBlock( uniformBlock )
         , _context( context )
@@ -333,7 +534,6 @@ namespace Divide
             };
 
             DIVIDE_UNEXPECTED_CALL_MSG( "Unexpected push constant type" );
-            return 0u;
         };
 
         if ( uniformBlock._memberCount == 0u )
@@ -342,9 +542,7 @@ namespace Divide
         }
 
         _blockMembers.resize( uniformBlock._memberCount );
-        _uniformBlockSizeAligned = Util::GetAlignmentCorrected( uniformBlock._size, ShaderBuffer::AlignmentRequirement( BufferUsageType::CONSTANT_BUFFER ) );
-        resizeBlockBuffer( false );
-        _localDataCopy.resize( _uniformBlockSizeAligned );
+        _localDataCopy.resize( std::max( uniformBlock._size, uniformBlock._paddedSize ) );
 
         size_t requiredExtraMembers = 0u;
         for ( size_t member = 0u; member < uniformBlock._memberCount; ++member )
@@ -421,26 +619,32 @@ namespace Divide
         }
     }
 
-    void UniformBlockUploader::resizeBlockBuffer( const bool increaseSize )
+    UniformBlockUploader::UniformBlockUploader( UniformBlockUploader&& other ) noexcept
+        : _uniformBlock( MOV( other._uniformBlock ) )
+        , _context( other._context )
+        , _shaderStageVisibilityMask( other._shaderStageVisibilityMask )
+        , _localDataCopy( MOV( other._localDataCopy ) )
+        , _blockMembers( MOV( other._blockMembers ) )
+        , _parentShaderName( MOV( other._parentShaderName ) )
+        , _allocation( other._allocation )
+        , _snapshot( other._snapshot )
     {
-        const U16 newSize = _buffer == nullptr ? RingBufferLength : _bufferSizeFactor;
+        other._allocation = {};
+    }
 
-        ShaderBufferDescriptor bufferDescriptor{};
-        bufferDescriptor._name = _uniformBlock._name.c_str();
-        bufferDescriptor._ringBufferLength = increaseSize ? newSize : RingBufferLength;
-        bufferDescriptor._name.append( "_" );
-        bufferDescriptor._name.append( _parentShaderName.c_str() );
-        bufferDescriptor._elementCount = 1;
-        bufferDescriptor._usageType = BufferUsageType::CONSTANT_BUFFER;
-        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
-        bufferDescriptor._elementSize = _uniformBlockSizeAligned;
-        _buffer = _context.newShaderBuffer( bufferDescriptor );
-        _uniformBlockDirty = true;
+    UniformBlockUploader::~UniformBlockUploader()
+    {
+        if ( _allocation._buffer != nullptr &&
+             !_context.uniformUploadArena().release( _allocation, _snapshot.usage() ) )
+        {
+            Console::errorfn( "Renderer: failed to retire uniform block '{}' for shader '{}'",
+                              _uniformBlock._name.c_str(), _parentShaderName.c_str() );
+        }
     }
 
     void UniformBlockUploader::uploadUniformData( const UniformData& uniforms ) noexcept
     {
-        if ( _uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr )
+        if ( _uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && !_localDataCopy.empty() )
         {
             for ( const UniformData::Entry& uniform : uniforms.entries() )
             {
@@ -458,13 +662,7 @@ namespace Divide
                         Byte* dst = &_localDataCopy.data()[member._offset];
                         const Byte* src = uniforms.data(uniform._range._startOffset);
                         const size_t numBytes = uniform._range._length;
-
-                        if ( std::memcmp( dst, src, numBytes ) != 0 )
-                        {
-                            std::memcpy( dst, src, numBytes );
-                            _uniformBlockDirty = true;
-                        }
-
+                        _snapshot.updateBytes( dst, src, numBytes );
                         continue;
                     }
                 }
@@ -472,38 +670,41 @@ namespace Divide
         }
     }
 
-    bool UniformBlockUploader::commit( DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut )
+    bool UniformBlockUploader::commit( DescriptorSet& set )
     {
-        if ( _uniformBlockDirty )
+        if ( _uniformBlock._bindingSlot == Reflection::INVALID_BINDING_INDEX || _localDataCopy.empty() ||
+             _context.uniformUploadFailed() )
         {
-            DIVIDE_GPU_ASSERT( _uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr );
-
-            if ( _needsResize )
-            {
-                resizeBlockBuffer( true );
-                _needsResize = false;
-                _needsQueueIncrement = false;
-                _bufferWritesThisFrame = 0u;
-            }
-
-            if ( _needsQueueIncrement )
-            {
-                _buffer->incQueue();
-                _needsQueueIncrement = false;
-                ++_bufferWritesThisFrame;
-            }
-
-            memCmdInOut._bufferLocks.push_back( _buffer->writeData( _localDataCopy.data() ) );
-            _needsQueueIncrement = true;
-            _uniformBlockDirty = false;
+            return false;
         }
 
+        const U64 frameNumber = GFXDevice::FrameCount();
+        if ( _snapshot.needsUpload() )
+        {
+            UniformUploadArena::Allocation nextAllocation{};
+            if ( !_context.uniformUploadArena().upload( _localDataCopy.data(), _localDataCopy.size(), nextAllocation ) )
+            {
+                _context.reportUniformUploadFailure( _parentShaderName.c_str(), _uniformBlock._name.c_str() );
+                return false;
+            }
+            if ( _allocation._buffer != nullptr &&
+                 !_context.uniformUploadArena().release( _allocation, _snapshot.usage() ) )
+            {
+                DIVIDE_UNUSED( _context.uniformUploadArena().release( nextAllocation, {} ) );
+                _context.reportUniformUploadFailure( _parentShaderName.c_str(), _uniformBlock._name.c_str() );
+                return false;
+            }
+            _allocation = nextAllocation;
+            _snapshot.markUploaded();
+        }
+
+        _snapshot.markUsed( frameNumber );
         return prepare( set );
     }
 
     bool UniformBlockUploader::prepare( DescriptorSet& set )
     {
-        if ( _uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr )
+        if ( _uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _allocation._buffer != nullptr )
         {
             const U8 targetBlock = to_U8( _uniformBlock._bindingSlot );
             for ( U8 i = 0u; i < set._bindingCount; ++i )
@@ -513,28 +714,32 @@ namespace Divide
                 {
                     DIVIDE_GPU_ASSERT(it._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC);
 
+                    if ( it._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC &&
+                         it._shaderStageVisibility == _shaderStageVisibilityMask &&
+                         it._data._buffer._buffer == _allocation._buffer &&
+                         it._data._buffer._range._startOffset == 0u &&
+                         it._data._buffer._range._length == _localDataCopy.size() &&
+                         it._data._buffer._queueReadIndex == _allocation._slot )
+                    {
+                        return false;
+                    }
+
                     it._shaderStageVisibility = _shaderStageVisibilityMask;
-                    Set( it._data, _buffer.get() );
+                    Set( it._data, _allocation._buffer );
+                    it._data._buffer._range = { 0u, _localDataCopy.size() };
+                    it._data._buffer._queueReadIndex = _allocation._slot;
                     return true;
                 }
             }
 
             DescriptorSetBinding& binding = AddBinding( set, targetBlock, _shaderStageVisibilityMask );
-            Set( binding._data, _buffer.get() );
+            Set( binding._data, _allocation._buffer );
+            binding._data._buffer._range = { 0u, _localDataCopy.size() };
+            binding._data._buffer._queueReadIndex = _allocation._slot;
             return true;
         }
 
         return false;
-    }
-
-    void UniformBlockUploader::onFrameEnd() noexcept
-    {
-        if ( _bufferWritesThisFrame >= _buffer->queueLength() )
-        {
-            _bufferSizeFactor = _bufferWritesThisFrame * 4; /*enough space for 4 frames of data*/
-            _needsResize = true;
-        }
-        _bufferWritesThisFrame = 0u;
     }
 
     void UniformBlockUploader::toggleStageVisibility( const U16 visibilityMask, bool state )
@@ -547,13 +752,4 @@ namespace Divide
         toggleStageVisibility(to_U16(visibility), state);
     }
 
-    size_t UniformBlockUploader::totalBufferSize() const noexcept
-    {
-        if ( _buffer != nullptr )
-        {
-            return _buffer->alignedBufferSize() * _buffer->queueLength();
-        }
-
-        return 0u;
-    }
 }//namespace Divide

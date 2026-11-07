@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/ApplicationTimer.h"
 
@@ -10,7 +10,7 @@ namespace Divide::Time
 namespace
 {
     // Time stamp at application initialization
-    TimeValue g_startupTicks;
+    std::atomic<TimeValue::duration::rep> g_startupTicks{};
     // Previous frame's time stamp
     TimeValue g_frameDelay;
     std::atomic<U64> g_elapsedTimeUs;
@@ -27,15 +27,17 @@ ApplicationTimer::ApplicationTimer() noexcept
 void ApplicationTimer::reset() noexcept
 {
     g_elapsedTimeUs.store(0ULL);
-    g_startupTicks = std::chrono::high_resolution_clock::now();
-    g_frameDelay = g_startupTicks;
+    const TimeValue startupTicks = std::chrono::high_resolution_clock::now();
+    g_startupTicks.store(startupTicks.time_since_epoch().count(), std::memory_order_relaxed);
+    g_frameDelay = startupTicks;
     resetFPSCounter();
 }
 
 void ApplicationTimer::update()
 {
+    const TimeValue startupTicks{TimeValue::duration{g_startupTicks.load(std::memory_order_relaxed)}};
     const TimeValue currentTicks = std::chrono::high_resolution_clock::now();
-    g_elapsedTimeUs = to_U64(std::chrono::duration_cast<USec>(currentTicks - g_startupTicks).count());
+    g_elapsedTimeUs = to_U64(std::chrono::duration_cast<USec>(currentTicks - startupTicks).count());
 
     const U64 duration = to_U64(std::chrono::duration_cast<USec>(currentTicks - g_frameDelay).count());
     g_frameDelay = currentTicks;
@@ -65,7 +67,8 @@ namespace App
 
 D64 ElapsedMicroseconds() noexcept
 {
-    return to_D64( std::chrono::duration_cast<USec>(std::chrono::high_resolution_clock::now() - g_startupTicks).count() );
+    const TimeValue startupTicks{TimeValue::duration{g_startupTicks.load(std::memory_order_relaxed)}};
+    return to_D64( std::chrono::duration_cast<USec>(std::chrono::high_resolution_clock::now() - startupTicks).count() );
 }
 
 } //namespace App

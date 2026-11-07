@@ -1,6 +1,7 @@
 // Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/GLWrapper.h"
+#include "Headers/glDescriptorUpdate.h"
 
 #include "Platform/Headers/DisplayWindow.h"
 #include "Platform/Headers/PlatformRuntime.h"
@@ -11,14 +12,17 @@
 #include "Core/Headers/Application.h"
 #include "Core/Headers/DisplayManager.h"
 #include "Core/Headers/Configuration.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Utility/Headers/Localization.h"
+#include "Utility/Headers/ImageToolsFwd.h"
 
 #include "GUI/Headers/GUI.h"
 
 #include "Platform/Video/Headers/DescriptorSets.h"
+#include "Platform/Video/Shaders/Headers/SampledImageResolver.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
 #include "Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShaderProgram.h"
@@ -30,6 +34,7 @@
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glShaderBuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glFramebuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glGenericVertexData.h"
+#include "Platform/Video/RenderBackend/OpenGL/Headers/glUniformFences.h"
 #include <glbinding/Binding.h>
 
 namespace Divide
@@ -38,7 +43,7 @@ namespace Divide
     NO_DESTROY GLStateTracker GL_API::s_stateTracker;
     std::atomic_bool GL_API::s_glFlushQueued{false};
     NO_DESTROY GLUtil::glTextureViewCache GL_API::s_textureViewCache{};
-    U32 GL_API::s_fenceSyncCounter[GL_API::s_LockFrameLifetime]{};
+    std::atomic_uint GL_API::s_fenceSyncCounter[GL_API::s_LockFrameLifetime]{};
     SharedMutex GL_API::s_samplerMapLock;
     NO_DESTROY GL_API::SamplerObjectMap GL_API::s_samplerMap{};
     std::unique_ptr<glHardwareQueryPool> GL_API::s_hardwareQueryPool = nullptr;
@@ -66,6 +71,35 @@ namespace Divide
 
     namespace
     {
+        constexpr gl46core::GLuint64 kOneSecondInNanoSeconds = 1000000000u;
+
+        [[nodiscard]] bool WaitForUniformFence( const gl46core::GLsync sync ) noexcept
+        {
+            if ( sync == nullptr )
+            {
+                Console::errorfn( "OpenGL: uniform upload completion fence is missing" );
+                return false;
+            }
+
+            for ( U8 attempt = 0u; attempt < g_MaxLockWaitRetries; ++attempt )
+            {
+                const gl46core::GLenum result = gl46core::glClientWaitSync(
+                    sync, gl46core::SyncObjectMask::GL_SYNC_FLUSH_COMMANDS_BIT, kOneSecondInNanoSeconds );
+                if ( result == gl46core::GL_ALREADY_SIGNALED || result == gl46core::GL_CONDITION_SATISFIED )
+                {
+                    return true;
+                }
+                if ( result != gl46core::GL_TIMEOUT_EXPIRED )
+                {
+                    Console::errorfn( "OpenGL: uniform upload completion fence failed (status {})", to_U32( result ) );
+                    return false;
+                }
+            }
+
+            Console::errorfn( "OpenGL: timed out waiting for uniform upload completion" );
+            return false;
+        }
+
         struct SDLContextEntry
         {
             SDL_GLContext _context = nullptr;
@@ -131,6 +165,136 @@ namespace Divide
                    _handle == rhs._handle &&
                    _offset == rhs._offset;
                    //&& _buffer == rhs._buffer; //Same handle results in same buffer
+        }
+
+        void CheckSmokeGLError( const char* operation )
+        {
+            const gl46core::GLenum error = gl46core::glGetError();
+            if ( error != gl46core::GL_NO_ERROR )
+            {
+                char detail[160]{};
+                std::snprintf( detail, sizeof( detail ), "OpenGL %s failed: 0x%x", operation, to_U32( error ) );
+                RenderSmokeTest::Fail( "capture", detail, RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+        }
+
+        void VerifySmokeGPU( const char* renderer )
+        {
+            gl46core::GLint extensionCount = 0;
+            gl46core::glGetIntegerv( gl46core::GL_NUM_EXTENSIONS, &extensionCount );
+            bool supportsUUID = false;
+            for ( gl46core::GLint i = 0; i < extensionCount; ++i )
+            {
+                const char* extension = reinterpret_cast<const char*>( gl46core::glGetStringi( gl46core::GL_EXTENSIONS, to_U32( i ) ) );
+                if ( extension != nullptr &&
+                     ( std::strcmp( extension, "GL_EXT_memory_object" ) == 0 || std::strcmp( extension, "GL_EXT_semaphore" ) == 0 ) )
+                {
+                    supportsUUID = true;
+                    break;
+                }
+            }
+            CheckSmokeGLError( "GPU extension query" );
+            if ( !supportsUUID )
+            {
+                RenderSmokeTest::Fail( "gpu_identity", "OpenGL does not expose a compatible device UUID",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+
+            gl46core::GLint deviceCount = 0;
+            gl46core::glGetIntegerv( gl46ext::GL_NUM_DEVICE_UUIDS_EXT, &deviceCount );
+            CheckSmokeGLError( "GPU UUID count query" );
+            if ( deviceCount <= 0 || deviceCount > 16 )
+            {
+                RenderSmokeTest::Fail( "gpu_identity", "OpenGL reported an invalid device UUID count",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+
+            for ( gl46core::GLint i = 0; i < deviceCount; ++i )
+            {
+                std::array<U8, 16> uuid{};
+                gl46ext::glGetUnsignedBytei_vEXT( gl46ext::GL_DEVICE_UUID_EXT, to_U32( i ), uuid.data() );
+                CheckSmokeGLError( "GPU UUID query" );
+                if ( RenderSmokeTest::MatchesGPUUUID( uuid, RenderSmokeTest::ExpectedGPU() ) )
+                {
+                    RenderSmokeTest::ReportGPU( RenderSmokeTest::ExpectedGPU().c_str(), renderer );
+                    return;
+                }
+            }
+            RenderSmokeTest::Fail( "gpu_identity", "The OpenGL context does not use the expected Vulkan GPU",
+                                   RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+        }
+
+        [[nodiscard]] ImageReadbackData CaptureSmokeScene( GFXDevice& context )
+        {
+            const RenderTarget* target = context.renderTargetPool().getRenderTarget( RenderTargetNames::BACK_BUFFER );
+            const RTAttachment* attachment = target != nullptr
+                                           ? target->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO )
+                                           : nullptr;
+            const Texture* texture = attachment != nullptr ? Get( attachment->texture() ) : nullptr;
+            if ( texture == nullptr )
+            {
+                RenderSmokeTest::Fail( "capture", "Scene colour attachment unavailable", RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+
+            CheckSmokeGLError( "before scene readback" );
+            gl46core::GLint previousPackBuffer = 0;
+            gl46core::glGetIntegerv( gl46core::GL_PIXEL_PACK_BUFFER_BINDING, &previousPackBuffer );
+            GLStateTracker& stateTracker = GL_API::GetStateTracker();
+            const PixelAlignment previousPackAlignment = stateTracker._packAlignment;
+            gl46core::glBindBuffer( gl46core::GL_PIXEL_PACK_BUFFER, 0u );
+            const ImageReadbackData data = texture->readData( 0u, {} );
+            stateTracker.setPixelPackAlignment( previousPackAlignment );
+            gl46core::glBindBuffer( gl46core::GL_PIXEL_PACK_BUFFER, to_U32( previousPackBuffer ) );
+            CheckSmokeGLError( "scene readback" );
+            return data;
+        }
+
+        [[nodiscard]] vector<Byte> CaptureSmokeEditor( const DisplayWindow& window )
+        {
+            const auto dimensions = window.getDrawableSize();
+            size_t byteCount = 0u;
+            if ( !RenderSmokeTest::RGBA8ReadbackSize( dimensions.width, dimensions.height, byteCount ) )
+            {
+                RenderSmokeTest::Fail( "window_capture", "Unsupported OpenGL framebuffer dimensions",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            vector<Byte> pixels( byteCount );
+            CheckSmokeGLError( "before editor readback" );
+
+            gl46core::GLint previousFramebuffer = 0;
+            gl46core::GLint previousPackBuffer = 0;
+            gl46core::GLint previousAlignment = 0;
+            gl46core::GLint previousRowLength = 0;
+            gl46core::GLint previousSkipRows = 0;
+            gl46core::GLint previousSkipPixels = 0;
+            gl46core::glGetIntegerv( gl46core::GL_READ_FRAMEBUFFER_BINDING, &previousFramebuffer );
+            gl46core::glGetIntegerv( gl46core::GL_PIXEL_PACK_BUFFER_BINDING, &previousPackBuffer );
+            gl46core::glGetIntegerv( gl46core::GL_PACK_ALIGNMENT, &previousAlignment );
+            gl46core::glGetIntegerv( gl46core::GL_PACK_ROW_LENGTH, &previousRowLength );
+            gl46core::glGetIntegerv( gl46core::GL_PACK_SKIP_ROWS, &previousSkipRows );
+            gl46core::glGetIntegerv( gl46core::GL_PACK_SKIP_PIXELS, &previousSkipPixels );
+
+            gl46core::glBindFramebuffer( gl46core::GL_READ_FRAMEBUFFER, 0u );
+            gl46core::GLint previousReadBuffer = 0;
+            gl46core::glGetIntegerv( gl46core::GL_READ_BUFFER, &previousReadBuffer );
+            gl46core::glReadBuffer( gl46core::GL_BACK );
+            gl46core::glBindBuffer( gl46core::GL_PIXEL_PACK_BUFFER, 0u );
+            gl46core::glPixelStorei( gl46core::GL_PACK_ALIGNMENT, 1 );
+            gl46core::glPixelStorei( gl46core::GL_PACK_ROW_LENGTH, 0 );
+            gl46core::glPixelStorei( gl46core::GL_PACK_SKIP_ROWS, 0 );
+            gl46core::glPixelStorei( gl46core::GL_PACK_SKIP_PIXELS, 0 );
+            gl46core::glReadPixels( 0, 0, to_I32( dimensions.width ), to_I32( dimensions.height ),
+                                    gl46core::GL_RGBA, gl46core::GL_UNSIGNED_BYTE, pixels.data() );
+
+            gl46core::glPixelStorei( gl46core::GL_PACK_ALIGNMENT, previousAlignment );
+            gl46core::glPixelStorei( gl46core::GL_PACK_ROW_LENGTH, previousRowLength );
+            gl46core::glPixelStorei( gl46core::GL_PACK_SKIP_ROWS, previousSkipRows );
+            gl46core::glPixelStorei( gl46core::GL_PACK_SKIP_PIXELS, previousSkipPixels );
+            gl46core::glBindBuffer( gl46core::GL_PIXEL_PACK_BUFFER, to_U32( previousPackBuffer ) );
+            gl46core::glReadBuffer( static_cast<gl46core::GLenum>( previousReadBuffer ) );
+            gl46core::glBindFramebuffer( gl46core::GL_READ_FRAMEBUFFER, to_U32( previousFramebuffer ) );
+            CheckSmokeGLError( "editor readback" );
+            return pixels;
         }
     }
 
@@ -295,6 +459,10 @@ namespace Divide
         }
         // GPU info, including vendor, gpu and driver
         Console::printfn( LOCALE_STR( "GL_VENDOR_STRING" ), gpuVendorStr, gpuRendererStr, reinterpret_cast<const char*>(gl46core::glGetString( gl46core::GL_VERSION )) );
+        if ( RenderSmokeTest::Enabled() && RenderSmokeTest::SelectedBackend() == RenderSmokeTest::Backend::OPENGL )
+        {
+            VerifySmokeGPU( gpuRendererStr );
+        }
 
         DeviceInformation deviceInformation{};
         deviceInformation._vendor = vendor;
@@ -577,10 +745,7 @@ namespace Divide
 
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
-            gl46core::glObjectLabel( gl46core::GL_VERTEX_ARRAY,
-                                     _dummyVAO,
-                                     -1,
-                                     "GENERIC_VAO");
+            GLUtil::SetObjectLabel( gl46core::GL_VERTEX_ARRAY, _dummyVAO, "GENERIC_VAO" );
         }
 
         gl46core::glBindVertexArray( _dummyVAO );
@@ -597,6 +762,7 @@ namespace Divide
         s_stateTracker._enabledAPIDebugging = &config.debug.renderer.enableRenderAPIDebugging;
         s_stateTracker._assertOnAPIError = &config.debug.renderer.assertOnRenderAPIError;
 
+        _deviceInitialized = true;
         // That's it. Everything should be ready for draw calls
         Console::printfn( LOCALE_STR( "START_OGL_API_OK" ) );
         return ErrorCode::NO_ERR;
@@ -605,6 +771,7 @@ namespace Divide
     /// Clear everything that was setup in initRenderingAPI()
     void GL_API::closeRenderingAPI()
     {
+        discardBufferReadbacks();
         glShaderProgram::DestroyStaticData();
 
         if ( _dummyVAO != GL_NULL_HANDLE )
@@ -624,6 +791,16 @@ namespace Divide
         }
 
         s_textureViewCache.destroy();
+        if ( _passTimestampQueriesCreated )
+        {
+            for ( auto& queries : _passTimestampQueries )
+            {
+                gl46core::glDeleteQueries( to_I32( queries.size() ), queries.data() );
+                queries.fill( 0u );
+            }
+            _passTimestampCounts.fill( 0u );
+            _passTimestampQueriesCreated = false;
+        }
         if ( s_hardwareQueryPool != nullptr )
         {
             s_hardwareQueryPool->destroy();
@@ -637,6 +814,7 @@ namespace Divide
 
         glLockManager::Clear();
         s_stateTracker.setDefaultState();
+        _deviceInitialized = false;
     }
 
     void GL_API::endPerformanceQueries()
@@ -646,11 +824,17 @@ namespace Divide
             PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
             // End the timing query started in beginFrame() in debug builds
-            for ( U8 i = 0; i < to_base( GlobalQueryTypes::COUNT ); ++i )
+            for ( U8 i = firstPerformanceQuery(); i < to_base( GlobalQueryTypes::COUNT ); ++i )
             {
                 _performanceQueries[i]->end();
             }
         }
+    }
+
+    U8 GL_API::firstPerformanceQuery() const noexcept
+    {
+        static_assert( to_base( GlobalQueryTypes::GPU_TIME ) + 1u == to_base( GlobalQueryTypes::COUNT ) );
+        return _runPipelineStatQueries ? 0u : to_base( GlobalQueryTypes::GPU_TIME );
     }
 
     /// Prepare the GPU for rendering a frame
@@ -658,6 +842,7 @@ namespace Divide
     {
         GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ) );
         GLUtil::s_glMainRenderWindow = &window;
+        pollBufferReadbacks( window.getGUID() );
         return true;
     }
 
@@ -670,9 +855,11 @@ namespace Divide
     {
     }
 
-    void GL_API::prepareFlushWindow( [[maybe_unused]] DisplayWindow& window )
+    bool GL_API::prepareFlushWindow( DisplayWindow& window )
     {
+        _screenPassRecorded = false;
         GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ));
+        return true;
     }
 
     void GL_API::flushWindow( DisplayWindow& window )
@@ -680,19 +867,84 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const bool mainWindow = window.getGUID() == _context.context().mainWindow().getGUID();
+        const U32 presentsBeforeCapture = RenderSmokeTest::PresentCount();
+        const bool capture = mainWindow && _screenPassRecorded && RenderSmokeTest::TryBeginCapture();
+        ImageReadbackData sceneData{};
+        vector<Byte> editorPixels{};
+        if ( capture )
+        {
+            sceneData = CaptureSmokeScene( _context );
+            if ( RenderSmokeTest::WindowCaptureRequested() )
+            {
+                editorPixels = CaptureSmokeEditor( window );
+            }
+        }
         if ( mainWindow )
         {
             endPerformanceQueries();
             _swapBufferTimer.start();
         }
+        bool swapSucceeded = false;
         {
             PROFILE_SCOPE( "GL_API: Swap Buffers", Profiler::Category::Graphics );
-            SDL_GL_SwapWindow( window.getRawWindow() );
+            swapSucceeded = SDL_GL_SwapWindow( window.getRawWindow() );
         }
-        
+
+        RenderSmokeTest::RecordPresent( mainWindow && _screenPassRecorded, swapSucceeded, false );
+        if ( RenderSmokeTest::Enabled() && !swapSucceeded )
+        {
+            RenderSmokeTest::Fail( "present", SDL_GetError(), RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+        }
+        if ( capture )
+        {
+            if ( RenderSmokeTest::PresentCount() <= presentsBeforeCapture )
+            {
+                RenderSmokeTest::Fail( "capture", "The captured scene frame was not presented successfully",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            const ResourcePath directory{ RenderSmokeTest::OutputDirectory() };
+            if ( sceneData._data.empty() ||
+                 !ImageTools::SaveImage( directory / "scene.png", sceneData._width, sceneData._height,
+                                         sceneData._numComponents, sceneData._bpp, sceneData._sourceIsBGR,
+                                         sceneData._data.data(), ImageTools::SaveImageFormat::PNG ) )
+            {
+                RenderSmokeTest::FinishCapture( false );
+                RenderSmokeTest::Fail( "capture", "Unable to save scene image", RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            if ( RenderSmokeTest::WindowCaptureRequested() )
+            {
+                const auto dimensions = window.getDrawableSize();
+                if ( editorPixels.empty() ||
+                     !ImageTools::SaveImage( directory / "editor.pending.png", to_U16( dimensions.width ), to_U16( dimensions.height ),
+                                             4u, 4u, false, editorPixels.data(), ImageTools::SaveImageFormat::PNG ) )
+                {
+                    RenderSmokeTest::Fail( "window_capture", "Unable to save editor image", RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+                }
+            }
+            RenderSmokeTest::FinishCapture( true );
+            if ( RenderSmokeTest::WindowCaptureRequested() )
+            {
+                RenderSmokeTest::FinishWindowCapture( true );
+            }
+        }
+
         if ( mainWindow ) 
         {
             _swapBufferTimer.stop();
+        }
+        else if ( window.userData()._glContext != _context.context().mainWindow().userData()._glContext )
+        {
+            gl46core::GLsync fence = CreateFenceSync();
+            if ( fence == nullptr )
+            {
+                Console::errorfn( "OpenGL: failed to create a window uniform upload completion fence" );
+                _uniformContextFenceFailed = true;
+            }
+            else
+            {
+                gl46core::glFlush();
+                _uniformContextFences[GFXDevice::FrameCount() % Config::MAX_FRAMES_IN_FLIGHT].push_back( fence );
+            }
         }
     }
 
@@ -700,10 +952,32 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+        DisplayWindow& mainWindow = _context.context().mainWindow();
+        if ( SDL_GL_GetCurrentContext() != mainWindow.userData()._glContext &&
+             !GLUtil::ValidateSDL( SDL_GL_MakeCurrent( mainWindow.getRawWindow(), mainWindow.userData()._glContext ), false ) )
+        {
+            return false;
+        }
+
+        auto& contextFences = _uniformContextFences[GFXDevice::FrameCount() % Config::MAX_FRAMES_IN_FLIGHT];
+        for ( gl46core::GLsync& fence : contextFences )
+        {
+            if ( fence == nullptr )
+            {
+                continue;
+            }
+            if ( !WaitForUniformFence( fence ) )
+            {
+                return false;
+            }
+            DestroyFenceSync( fence );
+        }
+        contextFences.clear();
+
         // Start a duration query in debug builds
         if ( _runQueries )
         {
-            for ( U8 i = 0u; i < to_base( GlobalQueryTypes::COUNT ); ++i )
+            for ( U8 i = firstPerformanceQuery(); i < to_base( GlobalQueryTypes::COUNT ); ++i )
             {
                 _performanceQueries[i]->begin();
             }
@@ -712,21 +986,29 @@ namespace Divide
         while ( !s_stateTracker._endFrameFences.empty() )
         {
             auto& sync = s_stateTracker._endFrameFences.front();
+            const U64 frameNumber = GFXDevice::FrameCount();
+            const bool mustWait = frameNumber >= Config::MAX_FRAMES_IN_FLIGHT &&
+                                  sync.second <= frameNumber - Config::MAX_FRAMES_IN_FLIGHT;
             const gl46core::GLenum waitRet = gl46core::glClientWaitSync( sync.first, gl46core::SyncObjectMask::GL_NONE_BIT, 0u );
-            DIVIDE_GPU_ASSERT( waitRet != gl46core::GL_WAIT_FAILED, "GL_API::beginFrame error: Not sure what to do here. Probably raise an exception or something." );
-            if ( waitRet == gl46core::GL_ALREADY_SIGNALED || waitRet == gl46core::GL_CONDITION_SATISFIED )
+            if ( waitRet == gl46core::GL_ALREADY_SIGNALED || waitRet == gl46core::GL_CONDITION_SATISFIED ||
+                 ( waitRet == gl46core::GL_TIMEOUT_EXPIRED && mustWait && WaitForUniformFence( sync.first ) ) )
             {
-                s_stateTracker._lastSyncedFrameNumber = sync.second;
+                s_stateTracker._lastSyncedFrameNumber.store( sync.second, std::memory_order_relaxed );
                 DestroyFenceSync( sync.first );
                 s_stateTracker._endFrameFences.pop();
             }
-            else
+            else if ( waitRet == gl46core::GL_TIMEOUT_EXPIRED && !mustWait )
             {
                 break;
             }
+            else
+            {
+                Console::errorfn( "OpenGL: frame completion fence failed (status {})", to_U32( waitRet ) );
+                return false;
+            }
         }
 
-        LockManager::CleanExpiredSyncObjects( RenderAPI::OpenGL, s_stateTracker._lastSyncedFrameNumber );
+        LockManager::CleanExpiredSyncObjects( RenderAPI::OpenGL, s_stateTracker._lastSyncedFrameNumber.load( std::memory_order_relaxed ) );
 
         return true;
     }
@@ -735,11 +1017,21 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+        if ( _uniformContextFenceFailed )
+        {
+            return false;
+        }
+        DisplayWindow& mainWindow = _context.context().mainWindow();
+        if ( !GLUtil::ValidateSDL( SDL_GL_MakeCurrent( mainWindow.getRawWindow(), mainWindow.userData()._glContext ), false ) )
+        {
+            return false;
+        }
+
         GLUtil::GLMemory::OnFrameEnd( GFXDevice::FrameCount() );
 
         for ( U32 i = 0u; i < GL_API::s_LockFrameLifetime - 1; ++i )
         {
-            s_fenceSyncCounter[i] = s_fenceSyncCounter[i + 1];
+            s_fenceSyncCounter[i].store(s_fenceSyncCounter[i + 1].load(std::memory_order_relaxed), std::memory_order_relaxed);
         }
 
         PROFILE_SCOPE( "GL_API: Post-Swap cleanup", Profiler::Category::Graphics );
@@ -751,42 +1043,194 @@ namespace Divide
         {
             PROFILE_SCOPE( "GL_API: Time Query", Profiler::Category::Graphics );
 
+            const U8 firstQuery = firstPerformanceQuery();
             thread_local std::array<I64, to_base( GlobalQueryTypes::COUNT )> results{};
-            for ( U8 i = 0u; i < to_base( GlobalQueryTypes::COUNT ); ++i )
+            for ( U8 i = firstQuery; i < to_base( GlobalQueryTypes::COUNT ); ++i )
             {
                 results[i] = _performanceQueries[i]->getResultNoWait();
                 _performanceQueries[i]->incQueue();
             }
 
             _context.getPerformanceMetrics()._gpuTimeInMS             = Time::NanosecondsToMilliseconds<F32>( results[to_base( GlobalQueryTypes::GPU_TIME )] );
-            _context.getPerformanceMetrics()._verticesSubmitted       = to_U64( results[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] );
-            _context.getPerformanceMetrics()._primitivesGenerated     = to_U64( results[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] );
-            _context.getPerformanceMetrics()._tessellationPatches     = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] );
-            _context.getPerformanceMetrics()._tessellationInvocations = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] );
+            if ( _runPipelineStatQueries )
+            {
+                _context.getPerformanceMetrics()._verticesSubmitted       = to_U64( results[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] );
+                _context.getPerformanceMetrics()._primitivesGenerated     = to_U64( results[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] );
+                _context.getPerformanceMetrics()._tessellationPatches     = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] );
+                _context.getPerformanceMetrics()._tessellationInvocations = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] );
+            }
         }
 
         const size_t fenceSize = std::size( s_fenceSyncCounter );
 
         for ( size_t i = 0u; i < std::size( _context.getPerformanceMetrics()._syncObjectsInFlight ); ++i )
         {
-            _context.getPerformanceMetrics()._syncObjectsInFlight[i] = i < fenceSize ? s_fenceSyncCounter[i] : 0u;
+            _context.getPerformanceMetrics()._syncObjectsInFlight[i] = i < fenceSize ? s_fenceSyncCounter[i].load(std::memory_order_relaxed) : 0u;
         }
 
         _context.getPerformanceMetrics()._generatedRenderTargetCount = to_U32( _context.renderTargetPool().getRenderTargets().size() );
         _runQueries = _context.queryPerformanceStats();
+        _runPipelineStatQueries = _runQueries && _context.queryPipelineStatistics();
 
-        s_stateTracker._endFrameFences.push( std::make_pair( CreateFenceSync(), GFXDevice::FrameCount() ) );
+        gl46core::GLsync frameFence = CreateFenceSync();
+        if ( frameFence == nullptr )
+        {
+            Console::errorfn( "OpenGL: failed to create a frame completion fence" );
+            return false;
+        }
+        s_stateTracker._endFrameFences.push( std::make_pair( frameFence, GFXDevice::FrameCount() ) );
         _context.getPerformanceMetrics()._queuedGPUFrames = s_stateTracker._endFrameFences.size();
 
-        DIVIDE_EXPECTED_CALL_MSG( gl46core::glGetGraphicsResetStatus() == gl46core::GL_NO_ERROR , "OpenGL Reset Status raised!" );
+        const gl46core::GLenum resetStatus = gl46core::glGetGraphicsResetStatus();
+        if ( resetStatus != gl46core::GL_NO_ERROR )
+        {
+            Console::errorfn( "OpenGL: device reset at frame end (status {})", to_U32( resetStatus ) );
+            if ( RenderSmokeTest::Enabled() )
+            {
+                RenderSmokeTest::Fail( "device_lost", "OpenGL device reset at frame end",
+                                       RenderSmokeTest::DEVICE_LOST_EXIT );
+            }
+            return false;
+        }
 
         clearStates(s_stateTracker);
         return true;
     }
 
+    bool GL_API::waitForGPUIdle() noexcept
+    {
+        if ( !_deviceInitialized )
+        {
+            return true;
+        }
+
+        DisplayWindow& mainWindow = _context.context().mainWindow();
+        if ( !GLUtil::ValidateSDL( SDL_GL_MakeCurrent( mainWindow.getRawWindow(), mainWindow.userData()._glContext ), false ) )
+        {
+            return false;
+        }
+
+        const bool fencesCompleted = !_uniformContextFenceFailed && GLUtil::FinishUniformContextFences(
+            std::span{ _uniformContextFences },
+            []( const gl46core::GLsync fence ) { return WaitForUniformFence( fence ); },
+            []
+            {
+                gl46core::GLsync fence = CreateFenceSync();
+                if ( fence == nullptr )
+                {
+                    Console::errorfn( "OpenGL: failed to create a shutdown completion fence" );
+                    return false;
+                }
+
+                gl46core::glFlush();
+                const bool completed = WaitForUniformFence( fence );
+                DestroyFenceSync( fence );
+                return completed;
+            },
+            []( gl46core::GLsync& fence ) { DestroyFenceSync( fence ); } );
+
+        bool success = fencesCompleted;
+        const gl46core::GLenum resetStatus = gl46core::glGetGraphicsResetStatus();
+        if ( resetStatus != gl46core::GL_NO_ERROR )
+        {
+            Console::errorfn( "OpenGL: device reset while waiting for GPU idle (status {})", to_U32( resetStatus ) );
+            if ( RenderSmokeTest::Enabled() )
+            {
+                RenderSmokeTest::Fail( "device_lost", "OpenGL device reset while waiting for GPU idle",
+                                       RenderSmokeTest::DEVICE_LOST_EXIT );
+            }
+            success = false;
+        }
+
+        if ( !success )
+        {
+            return false;
+        }
+
+        while ( !s_stateTracker._endFrameFences.empty() )
+        {
+            DestroyFenceSync( s_stateTracker._endFrameFences.front().first );
+            s_stateTracker._endFrameFences.pop();
+        }
+        return success;
+    }
+
     void GL_API::idle( [[maybe_unused]] const bool fast )
     {
         glShaderProgram::Idle( _context.context() );
+    }
+
+    bool GL_API::queueBufferReadback( BufferReadbackRequest&& request )
+    {
+        if ( request._buffer == nullptr || request._target.first == nullptr || request._windowGUID == I64_LOWEST )
+        {
+            return false;
+        }
+
+        PendingBufferReadback pending{};
+        pending._sync = CreateFenceSync();
+        if ( pending._sync == nullptr )
+        {
+            DIVIDE_GPU_ASSERT( false, "GL_API::queueBufferReadback: failed to create completion fence" );
+            return false;
+        }
+
+        pending._request = MOV( request );
+        _pendingBufferReadbacks.push_back( MOV( pending ) );
+        return true;
+    }
+
+    void GL_API::pollBufferReadbacks( const I64 windowGUID )
+    {
+        for ( auto it = _pendingBufferReadbacks.begin(); it != _pendingBufferReadbacks.end(); )
+        {
+            if ( it->_request._windowGUID != windowGUID )
+            {
+                ++it;
+                continue;
+            }
+
+            const gl46core::GLenum result = gl46core::glClientWaitSync( it->_sync, gl46core::SyncObjectMask::GL_NONE_BIT, 0u );
+            if ( result == gl46core::GL_TIMEOUT_EXPIRED )
+            {
+                ++it;
+                continue;
+            }
+
+            const bool signaled = result == gl46core::GL_ALREADY_SIGNALED ||
+                                  result == gl46core::GL_CONDITION_SATISFIED;
+            if ( !signaled )
+            {
+                DIVIDE_GPU_ASSERT( false, "GL_API::pollBufferReadbacks: fence wait failed" );
+            }
+            else
+            {
+                it->_request._buffer->readData(
+                    { it->_request._offsetElementCount, it->_request._elementCount },
+                    it->_request._target,
+                    it->_request._queueIndex );
+            }
+
+            if ( it->_request._completion )
+            {
+                it->_request._completion( signaled );
+            }
+            DestroyFenceSync( it->_sync );
+            it = _pendingBufferReadbacks.erase( it );
+        }
+    }
+
+    void GL_API::discardBufferReadbacks()
+    {
+        for ( PendingBufferReadback& pending : _pendingBufferReadbacks )
+        {
+            DestroyFenceSync( pending._sync );
+            if ( pending._request._completion )
+            {
+                pending._request._completion( false );
+            }
+        }
+        _pendingBufferReadbacks.clear();
     }
 
 
@@ -900,7 +1344,6 @@ namespace Divide
             else
             {
                 DIVIDE_UNEXPECTED_CALL_MSG("GL_API::Draw - Unsupported buffer usage type for drawing!");
-                ret = false;
             }
         }
 
@@ -1027,15 +1470,18 @@ namespace Divide
                                                                                          srcView._descriptor._dataType,
                                                                                          srcView._descriptor._packing )._format;
 
-            const bool isCube = IsCubeTexture(srcTexture->descriptor()._texType);
-            const U16 texLayers = isCube ? srcTexture->depth() * 6u : srcTexture->depth();
+            const bool isCube = IsCubeTexture( srcTexture->descriptor()._texType );
+            const bool isCubeView = IsCubeTexture( TargetType( srcView ) );
+            const U32 texLayers = srcTexture->descriptor()._texType == TextureType::TEXTURE_3D
+                                ? srcTexture->depth()
+                                : srcTexture->layerCount() * (isCube ? 6u : 1u);
             const U16 viewLayerCount = srcView._subRange._layerRange._count;
             const U16 viewLayerOffset = srcView._subRange._layerRange._offset;
 
-            const gl46core::GLuint glMinLayer = static_cast<gl46core::GLuint>(viewLayerOffset * (isCube ? 6u : 1u));
+            const gl46core::GLuint glMinLayer = to_U32( viewLayerOffset * (isCubeView ? 6u : 1u) );
             const gl46core::GLuint glLayerCount = (viewLayerCount == ALL_LAYERS)
-                                                          ? static_cast<gl46core::GLuint>(texLayers - glMinLayer)
-                                                          : static_cast<gl46core::GLuint>(viewLayerCount * (isCube ? 6u : 1u));
+                                                          ? to_U32( texLayers - glMinLayer )
+                                                          : to_U32( viewLayerCount * (isCubeView ? 6u : 1u) );
 
             PROFILE_SCOPE( "GL: cache miss  - Image", Profiler::Category::Graphics );
             gl46core::glTextureView( handle,
@@ -1053,16 +1499,6 @@ namespace Divide
         return handle;
     }
 
-    void GL_API::flushPushConstantsLocks()
-    {
-        if ( _uniformsNeedLock )
-        {
-            _uniformsNeedLock = false;
-            flushCommand( &_uniformsMemCommand );
-            _uniformsMemCommand._bufferLocks.clear();
-        }
-    }
-
     void GL_API::preFlushCommandBuffer( [[maybe_unused]] const Handle<GFX::CommandBuffer> commandBuffer )
     {
         GetStateTracker()._activeRenderTargetID = SCREEN_TARGET_ID;
@@ -1078,11 +1514,6 @@ namespace Divide
             flushTextureBindQueue();
         }
 
-        if ( s_stateTracker._activeRenderTargetID == INVALID_RENDER_TARGET_ID )
-        {
-            flushPushConstantsLocks();
-        }
-
         switch ( cmd->type() )
         {
             case GFX::CommandType::BEGIN_RENDER_PASS:
@@ -1096,6 +1527,7 @@ namespace Divide
                 if ( crtCmd->_target == SCREEN_TARGET_ID )
                 {
                     PROFILE_SCOPE( "Begin Screen Target", Profiler::Category::Graphics );
+                    _screenPassRecorded = true;
 
                     DIVIDE_EXPECTED_CALL( s_stateTracker.setActiveFB( RenderTarget::Usage::RT_WRITE_ONLY, 0u ) != GLStateTracker::BindResult::FAILED );
                     if ( !GFXDevice::GetDeviceInformation()._screenSRGB )
@@ -1300,11 +1732,7 @@ namespace Divide
                 UniformData* uniforms = pushConstantsCmd->_uniformData;
                 if ( uniforms != nullptr )
                 {
-                    if ( s_stateTracker._activeShaderProgram->uploadUniformData( *uniforms, _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl(), _uniformsMemCommand ) )
-                    {
-                        _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).dirty( true );
-                        _uniformsNeedLock = _uniformsNeedLock || _uniformsMemCommand._bufferLocks.empty();
-                    }
+                    s_stateTracker._activeShaderProgram->uploadUniformData( *uniforms );
                 }
                 if ( pushConstantsCmd->_fastData.dataFlags() != PushConstantsStruct::DataFlags::NONE )
                 {
@@ -1392,7 +1820,7 @@ namespace Divide
             {
                 PROFILE_SCOPE( "DRAW_COMMANDS", Profiler::Category::Graphics );
 
-                if ( s_stateTracker._activePipeline != nullptr )
+                if ( !_context.uniformUploadFailed() && s_stateTracker._activePipeline != nullptr )
                 {
                     U32 drawCount = 0u;
                     const auto& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
@@ -1422,7 +1850,7 @@ namespace Divide
             {
                 PROFILE_SCOPE( "DISPATCH_SHADER_TASK", Profiler::Category::Graphics );
 
-                if ( s_stateTracker._activePipeline != nullptr )
+                if ( !_context.uniformUploadFailed() && s_stateTracker._activePipeline != nullptr )
                 {
                     const GFX::DispatchShaderTaskCommand* crtCmd = cmd->As<GFX::DispatchShaderTaskCommand>();
 
@@ -1440,7 +1868,6 @@ namespace Divide
                         } break;
                         default:
                             DIVIDE_UNEXPECTED_CALL();
-                            break;
                     };
                 }
             }break;
@@ -1512,7 +1939,7 @@ namespace Divide
                                 {
                                     mask |= gl46core::GL_BUFFER_UPDATE_BARRIER_BIT | gl46core::GL_SHADER_STORAGE_BARRIER_BIT;
                                 } break;
-                                default: DIVIDE_UNEXPECTED_CALL(); break;
+                                default: DIVIDE_UNEXPECTED_CALL();
                             }
                         } break;
                         case BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE:
@@ -1524,7 +1951,7 @@ namespace Divide
                         {
                             NOP();
                         }break;
-                        default: DIVIDE_UNEXPECTED_CALL(); break;
+                        default: DIVIDE_UNEXPECTED_CALL();
                     }
                 }
 
@@ -1566,7 +1993,7 @@ namespace Divide
                             mask |= gl46core::GL_FRAMEBUFFER_BARRIER_BIT;
                         } break;
 
-                        default: DIVIDE_UNEXPECTED_CALL(); break;
+                        default: DIVIDE_UNEXPECTED_CALL();
                     }
                 }
 
@@ -1594,15 +2021,13 @@ namespace Divide
             case GFX::CommandType::CLEAR_BUFFER_DATA: break;
 
             case GFX::CommandType::COUNT:
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
     }
 
     void GL_API::postFlushCommandBuffer( [[maybe_unused]] const Handle<GFX::CommandBuffer> commandBuffer )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        flushPushConstantsLocks();
 
         bool expected = true;
         if ( s_glFlushQueued.compare_exchange_strong( expected, false ) )
@@ -1612,6 +2037,62 @@ namespace Divide
         }
         GetStateTracker()._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
         GetStateTracker()._activeRenderTargetDimensions = _context.context().mainWindow().getDrawableSize();
+    }
+
+    void GL_API::writePassTimestamp( const U32 index )
+    {
+        if ( index >= GPU_PASS_TIMESTAMP_CAPACITY ) [[unlikely]]
+        {
+            return;
+        }
+
+        if ( !_passTimestampQueriesCreated ) [[unlikely]]
+        {
+            for ( auto& queries : _passTimestampQueries )
+            {
+                gl46core::glGenQueries( to_I32( queries.size() ), queries.data() );
+            }
+            _passTimestampQueriesCreated = true;
+        }
+
+        const size_t slot = GFXDevice::FrameCount() % GL_PASS_TIMESTAMP_FRAMES;
+        DIVIDE_ASSERT( index == _passTimestampCounts[slot] );
+        gl46core::glQueryCounter( _passTimestampQueries[slot][index], gl46core::GL_TIMESTAMP );
+        _passTimestampCounts[slot] = index + 1u;
+    }
+
+    U32 GL_API::readPassTimestamps( const std::span<F32> outMS, U64& frameNumberOut )
+    {
+        const U64 frameNumber = GFXDevice::FrameCount();
+        const size_t slot = frameNumber % GL_PASS_TIMESTAMP_FRAMES;
+        const U32 count = std::min( _passTimestampCounts[slot], to_U32( outMS.size() ) );
+        _passTimestampCounts[slot] = 0u;
+        frameNumberOut = _passTimestampFrames[slot];
+        _passTimestampFrames[slot] = frameNumber;
+        if ( count == 0u )
+        {
+            return 0u;
+        }
+
+        const auto& queries = _passTimestampQueries[slot];
+        // Timestamps complete in submission order: if the last one is ready, all of them are.
+        gl46core::GLint available = 0;
+        gl46core::glGetQueryObjectiv( queries[count - 1u], gl46core::GL_QUERY_RESULT_AVAILABLE, &available );
+        if ( available == 0 )
+        {
+            return 0u;
+        }
+
+        gl46core::GLuint64 first = 0u;
+        gl46core::glGetQueryObjectui64v( queries[0], gl46core::GL_QUERY_RESULT, &first );
+        outMS[0] = 0.f;
+        for ( U32 i = 1u; i < count; ++i )
+        {
+            gl46core::GLuint64 value = 0u;
+            gl46core::glGetQueryObjectui64v( queries[i], gl46core::GL_QUERY_RESULT, &value );
+            outMS[i] = value >= first ? to_F32( to_D64( value - first ) * 1e-6 ) : 0.f;
+        }
+        return count;
     }
 
     void GL_API::initDescriptorSets()
@@ -1696,20 +2177,27 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics );
 
-        thread_local std::array<DescriptorSet, to_base(DescriptorSetUsage::COUNT)> resolvedSets;
+        const bool uniformBindingsChanged = s_stateTracker._activeShaderProgram != nullptr &&
+            s_stateTracker._activeShaderProgram->commitUniformData( _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl() );
+        if ( _context.uniformUploadFailed() )
+        {
+            return false;
+        }
+
+        thread_local std::array<SampledImageResolutionCache, to_base(DescriptorSetUsage::COUNT)> resolvedSets;
         for ( DescriptorSetEntry entry : descriptorSetEntries )
         {
-            DescriptorSet resolvedSet{};
+            SampledImageResolutionCache& cache = resolvedSets[to_base(entry._usage)];
             const bool hasFallback = s_stateTracker._activeShaderProgram != nullptr &&
-                                     s_stateTracker._activeShaderProgram->resolveSampledImages( entry, resolvedSet );
-            DescriptorSet& previousSet = resolvedSets[to_base(entry._usage)];
-            entry._isDirty = entry._isDirty || (hasFallback && previousSet != resolvedSet);
-            previousSet = resolvedSet;
-            if ( s_stateTracker._activeShaderProgram != nullptr )
+                                     s_stateTracker._activeShaderProgram->resolveSampledImages( entry, cache._resolvedSet );
+            const GLDescriptorUpdateScope updateScope = SelectGLDescriptorUpdateScope(
+                entry._isDirty, cache.update( hasFallback, entry._isDirty ),
+                entry._usage == DescriptorSetUsage::PER_DRAW, uniformBindingsChanged );
+            if ( hasFallback )
             {
-                entry._set = &resolvedSet;
+                entry._set = &cache._resolvedSet;
             }
-            if ( !entry._isDirty )
+            if ( updateScope == GLDescriptorUpdateScope::NONE )
             {
                 // We don't need to keep track of descriptor set to layout compatibility in OpenGL
                 continue;
@@ -1718,6 +2206,10 @@ namespace Divide
             for ( U8 i = 0u; i < entry._set->_bindingCount; ++i )
             {
                 const DescriptorSetBinding& srcBinding = entry._set->_bindings[i];
+                if ( !ShouldUpdateGLDescriptor( updateScope, srcBinding._data._type ) )
+                {
+                    continue;
+                }
                 const gl46core::GLubyte glBindingSlot = ShaderProgram::GetGLBindingForDescriptorSlot( entry._usage, srcBinding._slot );
 
                 switch ( srcBinding._data._type )
@@ -1795,7 +2287,7 @@ namespace Divide
                             case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
 
                             default:
-                            case ImageUsage::COUNT: DIVIDE_UNEXPECTED_CALL();  break;
+                            case ImageUsage::COUNT: DIVIDE_UNEXPECTED_CALL();
                         }
 
                         DIVIDE_GPU_ASSERT( imageView._image._subRange._mipLevels._count == 1u );
@@ -1821,7 +2313,7 @@ namespace Divide
                     case DescriptorSetBindingType::COUNT:
                     {
                         DIVIDE_UNEXPECTED_CALL();
-                    } break;
+                    }
                 };
             }
         }
@@ -2199,19 +2691,21 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_GPU_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] < U32_MAX );
-
-        ++s_fenceSyncCounter[s_LockFrameLifetime - 1u];
-        return gl46core::glFenceSync( gl46core::GL_SYNC_GPU_COMMANDS_COMPLETE, static_cast<gl46core::GLbitfield>(gl46core::UnusedMask::GL_UNUSED_BIT) );
+        gl46core::GLsync sync = gl46core::glFenceSync( gl46core::GL_SYNC_GPU_COMMANDS_COMPLETE, static_cast<gl46core::GLbitfield>(gl46core::UnusedMask::GL_UNUSED_BIT) );
+        if (sync != nullptr)
+        {
+            DIVIDE_GPU_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u].load(std::memory_order_relaxed) < U32_MAX );
+            s_fenceSyncCounter[s_LockFrameLifetime - 1u].fetch_add(1u, std::memory_order_relaxed);
+        }
+        return sync;
     }
 
     void GL_API::DestroyFenceSync( gl46core::GLsync& sync )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_GPU_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] > 0u );
-
-        --s_fenceSyncCounter[s_LockFrameLifetime - 1u];
+        DIVIDE_GPU_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u].load(std::memory_order_relaxed) > 0u );
+        s_fenceSyncCounter[s_LockFrameLifetime - 1u].fetch_sub(1u, std::memory_order_relaxed);
         gl46core::glDeleteSync( sync );
         sync = nullptr;
     }

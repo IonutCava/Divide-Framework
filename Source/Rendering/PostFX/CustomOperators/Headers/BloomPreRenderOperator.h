@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -72,7 +72,6 @@ class BloomPreRenderOperator final : public PreRenderOperator {
 
     PROPERTY_INTERNAL(U16, mipCount, 6u);
     vector<vec2<U16>> _mipSizes;
-    bool _filterRadiusChanged{true};
     bool _mipSizesChanged{true};
 };
 

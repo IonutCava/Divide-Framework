@@ -1,4 +1,5 @@
-
+// Copyright (c) 2018-2026 DIVIDE-Studio
+// Copyright (c) 2018-2026 Ionut Cava
 
 #include "Headers/glHardwareQuery.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
@@ -47,7 +48,8 @@ I64 glHardwareQuery::getResultNoWait() const
 }
 
 glHardwareQueryRing::glHardwareQueryRing(GFXDevice& context, const gl46core::GLenum queryType, const U16 queueLength, const U32 id)
-    : RingBufferSeparateWrite(queueLength, true),
+    // Write one slot behind the read slot so results are read queueLength - 1 frames after they were issued.
+    : RingBufferSeparateWrite(queueLength, true, false),
       _context(context),
       _id(id),
       _queryType(queryType)

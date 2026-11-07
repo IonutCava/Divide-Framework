@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -93,6 +93,7 @@ DEFINE_3D_OBJECT_TYPE(Mesh, SceneNodeType::TYPE_MESH)
     bool load( PlatformContext& context ) override;
     bool unload() override;
     void setMaterialTemplate(Handle<Material> material, const AttributeMap& geometryAttributes) override;
+    void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
     void setAnimationCount(size_t count, bool useDualQuaternions);
 

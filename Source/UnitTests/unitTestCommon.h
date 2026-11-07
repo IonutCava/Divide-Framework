@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2026 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -39,6 +39,11 @@ namespace Divide::Time
 {
     class ProfileTimer;
 };
+
+namespace Divide::UnitTests
+{
+    extern const char* g_testExecutablePath;
+}
 
 class platformInitRunListener : public Catch::EventListenerBase
 {

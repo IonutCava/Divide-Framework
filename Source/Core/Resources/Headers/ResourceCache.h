@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -59,6 +59,12 @@ namespace Divide
     };
 
     struct ResourcePoolBase;
+    struct ResourceSnapshot
+    {
+        ResourceState _state{ ResourceState::RES_UNKNOWN };
+        I64 _guid{ I64_LOWEST };
+    };
+
     class ResourceCache final : private NonMovable, private NonCopyable
     {
         public:
@@ -72,10 +78,13 @@ namespace Divide
             [[nodiscard]] static T* Get( Handle<T> handle);
 
             template <typename T> requires std::is_base_of_v<CachedResource, T>
+            [[nodiscard]] static ResourceSnapshot Inspect( Handle<T> handle );
+
+            template <typename T> requires std::is_base_of_v<CachedResource, T>
             static void Destroy( Handle<T>& handle, const bool immediate );
 
             template <typename T> requires std::is_base_of_v<CachedResource, T>
-            [[nodiscard]] static Handle<T> LoadResource( const ResourceDescriptor<T>& descriptor, bool& wasInCache, std::atomic_uint& taskCounter );
+            [[nodiscard]] static Handle<T> LoadResource( const ResourceDescriptor<T>& descriptor, bool& wasInCache, std::atomic_uint* taskCounter );
 
 
             template <typename T> requires std::is_base_of_v<CachedResource, T>
@@ -116,14 +125,13 @@ namespace Divide
     template <typename T> requires std::is_base_of_v<CachedResource, T>
     [[nodiscard]] FORCE_INLINE Handle<T> CreateResource( const ResourceDescriptor<T>& descriptor, bool& wasInCache, std::atomic_uint& taskCounter )
     {
-        return ResourceCache::LoadResource<T>( descriptor, wasInCache, taskCounter );
+        return ResourceCache::LoadResource<T>( descriptor, wasInCache, &taskCounter );
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
     [[nodiscard]] FORCE_INLINE Handle<T> CreateResource( const ResourceDescriptor<T>& descriptor, bool& wasInCache )
     {
-        std::atomic_uint taskCounter = 0u;
-        return CreateResource( descriptor, wasInCache, taskCounter );
+        return ResourceCache::LoadResource<T>( descriptor, wasInCache, nullptr );
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
@@ -137,8 +145,7 @@ namespace Divide
     [[nodiscard]] FORCE_INLINE Handle<T> CreateResource( const ResourceDescriptor<T>& descriptor )
     {
         bool wasInCache = false;
-        std::atomic_uint taskCounter = 0u;
-        return CreateResource(descriptor, wasInCache, taskCounter);
+        return ResourceCache::LoadResource<T>( descriptor, wasInCache, nullptr );
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>

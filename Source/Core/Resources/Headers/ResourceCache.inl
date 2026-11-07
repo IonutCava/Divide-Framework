@@ -1,8 +1,8 @@
 
 
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -374,7 +374,7 @@ namespace Divide
         if ( handle != INVALID_HANDLE<T>)
         {
             ResourcePool<T>& pool = GetPool<T>( s_renderAPI );
-            SharedLock<SharedMutex> r_lock( pool._lock );
+            LockGuard<SharedMutex> w_lock( pool._lock );
             if ( pool._freeList[handle._index].second == handle._generation )
             {
                 auto& entry = pool._resPool[handle._index];
@@ -390,18 +390,7 @@ namespace Divide
     Handle<T> ResourceCache::RetrieveOrAllocateHandle( const size_t descriptorHash, bool& wasInCache )
     {
         ResourcePool<T>& pool = GetPool<T>(s_renderAPI);
-        {
-            SharedLock<SharedMutex> r_lock(pool._lock);
-            const Handle<T> ret = pool.retrieveHandleLocked(descriptorHash);
-            if ( ret != INVALID_HANDLE<T> )
-            {
-                wasInCache = true;
-                return MOV(ret);
-            }
-        }
-
         LockGuard<SharedMutex> w_lock( pool._lock );
-        // Check again
         const Handle<T> ret = pool.retrieveHandleLocked( descriptorHash );
         if ( ret != INVALID_HANDLE<T> )
         {
@@ -428,6 +417,28 @@ namespace Divide
         }
 
         return nullptr;
+    }
+
+    template <typename T> requires std::is_base_of_v<CachedResource, T>
+    ResourceSnapshot ResourceCache::Inspect( const Handle<T> handle )
+    {
+        if ( handle != INVALID_HANDLE<T> ) [[likely]]
+        {
+            ResourcePool<T>& pool = GetPool<T>( s_renderAPI );
+            SharedLock<SharedMutex> r_lock( pool._lock );
+            if ( handle._index < pool._freeList.size() &&
+                 !pool._freeList[handle._index].first &&
+                 pool._freeList[handle._index].second == handle._generation )
+            {
+                const T* resource = pool._resPool[handle._index]._ptr;
+                if ( resource != nullptr )
+                {
+                    return { resource->getState(), resource->getGUID() };
+                }
+            }
+        }
+
+        return {};
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
@@ -582,11 +593,14 @@ namespace Divide
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
-    Handle<T> ResourceCache::LoadResource( const ResourceDescriptor<T>& descriptor, bool& wasInCache, std::atomic_uint& taskCounter )
+    Handle<T> ResourceCache::LoadResource( const ResourceDescriptor<T>& descriptor, bool& wasInCache, std::atomic_uint* taskCounter )
     {
         DIVIDE_ASSERT(s_enabled);
 
-        taskCounter.fetch_add( 1u );
+        if (taskCounter != nullptr)
+        {
+            taskCounter->fetch_add( 1u );
+        }
 
         // The loading process may change the resource descriptor so always use the user-specified descriptor hash for lookup!
         const size_t loadingHash = descriptor.getHash();
@@ -600,7 +614,10 @@ namespace Divide
         Handle<T> ret = RetrieveOrAllocateHandle<T>( loadingHash, wasInCache );
         if ( wasInCache )
         {
-            taskCounter.fetch_sub( 1u );
+            if (taskCounter != nullptr)
+            {
+                taskCounter->fetch_sub( 1u );
+            }
             return MOV(ret);
         }
 
@@ -616,7 +633,7 @@ namespace Divide
                                 ResourceCache::Build<T>( ptr, descriptor );
                             }),
                             descriptor.waitForReady() ? TaskPriority::REALTIME : TaskPriority::HIGH,
-                            [ptr, ret, &taskCounter, resName = descriptor.resourceName()]()
+                            [ptr, ret, taskCounter, resName = descriptor.resourceName()]()
                             {
                                 DIVIDE_ASSERT(ret != INVALID_HANDLE<T>);
 
@@ -639,9 +656,20 @@ namespace Divide
                                     GetPool<T>(s_renderAPI).deallocate( retCpy );
                                 }
 
-                                taskCounter.fetch_sub( 1u );
+                                if (taskCounter != nullptr)
+                                {
+                                    taskCounter->fetch_sub( 1u );
+                                }
                             }
                 );
+        }
+        else
+        {
+            GetPool<T>(s_renderAPI).deallocate( ret );
+            if (taskCounter != nullptr)
+            {
+                taskCounter->fetch_sub( 1u );
+            }
         }
 
         return MOV(ret);

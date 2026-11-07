@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -35,6 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "SGNComponent.h"
 
+#include "Core/Headers/PoolHandle.h"
 #include "Geometry/Material/Headers/MaterialEnums.h"
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Platform/Video/Headers/RenderStagePass.h"
@@ -121,7 +122,7 @@ struct RenderCbkParams
 
 using RenderCallback = DELEGATE<bool, RenderCbkParams&, GFX::CommandBuffer&, GFX::MemoryBarrierCommand&>;
 
-using DrawCommandContainer = fixed_vector<IndirectIndexedDrawCommand, Config::MAX_VISIBLE_NODES>;
+using DrawCommandContainer = fixed_vector<IndirectIndexedDrawCommand, Config::MAX_VISIBLE_NODES, true>;
 
 BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     friend class Attorney::RenderingCompRenderPass;
@@ -148,7 +149,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
        struct DrawCommands
        {
            GenericDrawCommandContainer _data;
-           SharedMutex _dataLock;
+           mutable SharedMutex _dataLock;
        };
 
    public:
@@ -180,6 +181,10 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
                          void             instantiateMaterial(Handle<Material> material);
     [[nodiscard]] inline Handle<Material> getMaterialInstance() const noexcept { return _materialInstance; }
+    void setInstanceShaderBuffer(ShaderBuffer* buffer, U32 dataIndex) noexcept;
+    void setPreparationOwner(RenderingComponent* owner) noexcept { _preparationOwner = owner; }
+    /// Optional GPU-written instance count (one U32 at 'element' in 'buffer'). Indirect draws clamp their instance count to it after preparation.
+    void setInstanceCountSource(ShaderBuffer* buffer, U32 element) noexcept { _instanceCountSource = buffer; _instanceCountElement = element; }
 
     [[nodiscard]] inline DrawCommands& drawCommands() noexcept { return _drawCommands; }
 
@@ -187,6 +192,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     inline void setRefractionCallback(const RenderCallback& cbk) { _refractionCallback = cbk; }
 
     [[nodiscard]] bool canDraw(const RenderStagePass& renderStagePass);
+    [[nodiscard]] bool shaderPending(const RenderStagePass& renderStagePass) const;
 
     void drawDebugAxis();
     void drawSelectionGizmo();
@@ -224,6 +230,9 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
                             const RenderStagePass& renderStagePass,
                             GFX::MemoryBarrierCommand& postDrawMemCmd,
                             bool refreshData);
+    RenderPackage& prepareDependency(const CameraSnapshot& cameraSnapshot,
+                                     const RenderStagePass& renderStagePass,
+                                     GFX::MemoryBarrierCommand& postDrawMemCmd);
 
     // This returns false if the node is not reflective, otherwise it generates a new reflection cube map
     // and saves it in the appropriate material slot
@@ -256,7 +265,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
         U16 _index{ 0u };
     };
 
-    using PackagesPerIndex = vector<PackageEntry>;
+    using PackagesPerIndex = vector<std::unique_ptr<PackageEntry>>;
     using PackagesPerPassIndex = std::array<PackagesPerIndex, to_base(RenderStagePass::PassIndex::COUNT)>;
     using PackagesPerVariant = std::array<PackagesPerPassIndex, to_base(RenderStagePass::VariantType::COUNT)>;
     using PackagesPerPassType = std::array<PackagesPerVariant, to_base(RenderPassType::COUNT)>;
@@ -264,6 +273,11 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     vector<EnvironmentProbeComponent*> _envProbes{};
 
     Handle<Material> _materialInstance{ INVALID_HANDLE<Material> };
+    ShaderBuffer* _instanceShaderBuffer{ nullptr };
+    RenderingComponent* _preparationOwner{ nullptr };
+    ShaderBuffer* _instanceCountSource{ nullptr };
+    U32 _instanceShaderDataIndex{ 0u };
+    U32 _instanceCountElement{ 0u };
     RenderCallback _reflectionCallback{};
     RenderCallback _refractionCallback{};
 
@@ -279,7 +293,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     std::pair<Handle<Texture>, SamplerDescriptor> _reflectionCube{ INVALID_HANDLE<Texture>, {} };
     std::pair<Handle<Texture>, SamplerDescriptor> _refractionCube{ INVALID_HANDLE<Texture>, {} };
 
-    size_t _indexBufferOffsetCount{0u}; ///< Number of indices to skip in the batched index buffer
+    std::atomic_size_t _indexBufferOffsetCount{0u}; ///< Number of indices to skip in the batched index buffer
     std::array<std::pair<size_t, size_t>, MAX_LOD_LEVEL> _lodIndexOffsets{};
     std::array<U8, to_base(RenderStage::COUNT)> _lodLevels{};
     std::array<std::pair<bool, U8>, to_base(RenderStage::COUNT)> _lodLockLevels{};
@@ -348,6 +362,24 @@ class RenderingCompRenderPass
         return renderable.hasDrawCommands();
     }
 
+    [[nodiscard]] static RenderingComponent* preparationOwner(const RenderingComponent& renderable) noexcept
+    {
+        return renderable._preparationOwner;
+    }
+
+    [[nodiscard]] static std::pair<ShaderBuffer*, U32> instanceCountSource(const RenderingComponent& renderable) noexcept
+    {
+        return { renderable._instanceCountSource, renderable._instanceCountElement };
+    }
+
+    [[nodiscard]] static RenderPackage& prepareDependency(RenderingComponent& owner,
+                                                          const CameraSnapshot& cameraSnapshot,
+                                                          const RenderStagePass& renderStagePass,
+                                                          GFX::MemoryBarrierCommand& postDrawMemCmd)
+    {
+        return owner.prepareDependency(cameraSnapshot, renderStagePass, postDrawMemCmd);
+    }
+
     static void retrieveDrawCommands(RenderingComponent& renderable, const RenderStagePass stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut)
     {
         renderable.retrieveDrawCommands(stagePass, cmdOffset, cmdsInOut);
@@ -377,6 +409,22 @@ class RenderingCompRenderBin
     {
         const RenderPackage& pkg = getDrawPackage( renderable, renderStagePass );
         return pkg.pipelineCmd()._pipeline->stateHash();
+    }
+
+    [[nodiscard]] static std::array<PoolHandle, 2u> getGeometrySortKey(RenderingComponent* renderable)
+    {
+        SharedLock<SharedMutex> r_lock(renderable->_drawCommands._dataLock);
+        const auto& commands = renderable->_drawCommands._data;
+        if (!commands.empty())
+        {
+            const GenericDrawCommand& command = commands.front();
+            if (command._sourceBuffers != nullptr && command._sourceBuffersCount == 2u)
+            {
+                return { command._sourceBuffers[0], command._sourceBuffers[1] };
+            }
+        }
+
+        return {};
     }
 
     friend class Divide::RenderBin;

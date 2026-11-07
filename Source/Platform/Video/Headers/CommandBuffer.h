@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -132,6 +132,7 @@ class CommandBuffer : private NonCopyable
 
 
     void add(const CommandBuffer& other);
+    void add(const CommandBuffer& other, size_t first, size_t count);
     void add(Handle<CommandBuffer> other);
 
     void batch();
@@ -145,6 +146,8 @@ class CommandBuffer : private NonCopyable
     [[nodiscard]] std::tuple<ErrorType, size_t, std::string_view> validate() const;
 
     PROPERTY_R( CommandList, commands);
+
+    [[nodiscard]] const Str<64>& name() const noexcept { return _name; }
 
   protected:
 
@@ -165,6 +168,11 @@ template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
 [[nodiscard]] bool Merge(MemoryBarrierCommand* lhs, MemoryBarrierCommand* rhs);
 [[nodiscard]] bool Merge(SendPushConstantsCommand* lhs, SendPushConstantsCommand* rhs);
 [[nodiscard]] bool BatchDrawCommands(GenericDrawCommand& previousGDC, GenericDrawCommand& currentGDC) noexcept;
+[[nodiscard]] size_t CollectIndirectDrawBatch( const CommandBuffer::CommandList& commands,
+                                               size_t drawIndex,
+                                               bool shaderCompatible,
+                                               U32 maxDrawCount,
+                                               GenericDrawCommand& batchOut ) noexcept;
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
 FORCE_INLINE T* EnqueueCommand(CommandBuffer& buffer) { return buffer.add<T>(); }

@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -64,6 +64,14 @@ struct ParallelForDescriptor
 
 using PoolTask = DELEGATE_STD<bool, bool/*threadWaitingCall*/>;
 
+namespace TaskPoolDetail
+{
+    [[nodiscard]] static constexpr bool DequeueMayBlock( const bool isIdleCall, const TaskPriority priority ) noexcept
+    {
+        return !isIdleCall && priority != TaskPriority::HIGH;
+    }
+}
+
 class TaskPool final : public GUIDWrapper {
   public:
      constexpr static bool IsBlocking = true;
@@ -82,6 +90,7 @@ class TaskPool final : public GUIDWrapper {
     /// <returns>A pointer to the newly allocated Task.</returns>
     static Task* AllocateTask(Task* parentTask, DELEGATE<void, Task&>&& func ) noexcept;
 
+    /// REALTIME tasks and their completion callbacks run on the caller; other callbacks run on the main thread.
     void enqueue(Task& task, TaskPriority priority = TaskPriority::DONT_CARE, DELEGATE<void>&& onCompletionFunction = {});
     void wait(const Task& task);
 
@@ -101,7 +110,7 @@ class TaskPool final : public GUIDWrapper {
 
     /// <summary>
     /// Called by a task that isn't doing anything (e.g. waiting on child tasks).
-    /// Use this to run another task (if any) and return to the previous execution point
+    /// Poll for another eligible task without blocking, then return to the previous execution point.
     /// </summary>
     /// <returns>Returns true if a task was executed, false otherwise.</returns>
     bool threadWaiting();
@@ -125,7 +134,8 @@ class TaskPool final : public GUIDWrapper {
   private:
     //ToDo: replace all friend class declarations with attorneys -Ionut;
     friend struct Task;
-    friend void Parallel_For(TaskPool& pool, const ParallelForDescriptor& descriptor);
+    friend void Parallel_For(TaskPool& pool, const ParallelForDescriptor& descriptor,
+                             const DELEGATE<void, const Task*, U32, U32>& cbk);
 
     void runTask(Task& task, bool hasCompletionCallback);
 

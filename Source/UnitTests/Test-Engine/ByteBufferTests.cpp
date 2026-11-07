@@ -1,6 +1,9 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "UnitTests/unitTestCommon.h"
 
 #include "Core/Headers/ByteBuffer.h"
+#include "Platform/File/Headers/FileManagement.h"
 
 namespace Divide{
 
@@ -27,6 +30,58 @@ bool compareArrays(const std::array<T, N>& a, const std::array<T, N>& b) noexcep
     }
 
     return true;
+}
+
+TEST_CASE( "ByteBuffer file loading handles empty and incomplete versioned files", "[byte_buffer][render_smoke]" )
+{
+    const auto suffix = std::chrono::steady_clock::now().time_since_epoch().count();
+    const std::filesystem::path directory = std::filesystem::temp_directory_path() /
+                                            ( "divide-byte-buffer-" + std::to_string( suffix ) );
+    REQUIRE( std::filesystem::create_directory( directory ) );
+    SCOPE_EXIT
+    {
+        std::error_code error;
+        std::filesystem::remove_all( directory, error );
+    };
+    const ResourcePath path{ directory.string() };
+    {
+        std::ofstream empty{ directory / "empty.bin", std::ios::binary };
+        REQUIRE( empty.is_open() );
+    }
+
+    ByteBuffer loaded;
+    loaded << U32{ 42u };
+    CHECK( loaded.loadFromFile( path, "empty.bin", 0u ) );
+    CHECK( loaded.storageEmpty() );
+    CHECK( loaded.bufferEmpty() );
+    CHECK_FALSE( loaded.loadFromFile( path, "empty.bin", ByteBuffer::BUFFER_FORMAT_VERSION ) );
+    CHECK( loaded.storageEmpty() );
+    CHECK( loaded.rpos() == 0u );
+    CHECK( loaded.wpos() == 0u );
+
+    {
+        std::ofstream incomplete{ directory / "incomplete.bin", std::ios::binary };
+        constexpr std::array<char, 4> payload{{ 'a', 'b', 'c', 'd' }};
+        incomplete.write( payload.data(), to_I64( payload.size() ) );
+        REQUIRE( incomplete.good() );
+    }
+    CHECK_FALSE( loaded.loadFromFile( path, "incomplete.bin", ByteBuffer::BUFFER_FORMAT_VERSION ) );
+    CHECK( loaded.loadFromFile( path, "incomplete.bin", 0u ) );
+    CHECK( loaded.storageSize() == 4u );
+
+    ByteBuffer source;
+    constexpr U32 expected = 0x12345678u;
+    source << expected;
+    REQUIRE( source.dumpToFile( path, "valid.bin", ByteBuffer::BUFFER_FORMAT_VERSION ) );
+    REQUIRE( loaded.loadFromFile( path, "valid.bin", ByteBuffer::BUFFER_FORMAT_VERSION ) );
+    U32 actual = 0u;
+    loaded >> actual;
+    CHECK( actual == expected );
+    CHECK_FALSE( loaded.loadFromFile( path, "valid.bin", to_U8( ByteBuffer::BUFFER_FORMAT_VERSION - 1u ) ) );
+    CHECK_FALSE( loaded.loadFromFile( path, "missing.bin", 0u ) );
+    CHECK( loaded.storageEmpty() );
+    CHECK( loaded.rpos() == 0u );
+    CHECK( loaded.wpos() == 0u );
 }
 
 TEST_CASE("ByteBuffer RW Bool", "[byte_buffer]")

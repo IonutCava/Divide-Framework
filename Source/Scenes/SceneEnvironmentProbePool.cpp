@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/SceneEnvironmentProbePool.h"
 
@@ -347,8 +348,10 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 12u, ShaderStageVisibility::COMPUTE );
         Set(binding._data, targetView, ImageUsage::SHADER_WRITE);
 
-        const U32 groupsX = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
-        const U32 groupsY = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
+        // Must match THREADS in irradianceCalc.glsl --Compute.LUT.
+        constexpr U32 LUT_THREADS = 16u;
+        const U32 groupsX = (to_U32( s_LUTTextureSize ) + LUT_THREADS - 1u) / LUT_THREADS;
+        const U32 groupsY = groupsX;
         GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(bufferInOut)->_workGroupSize = { groupsX, groupsY, 1 };
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
@@ -496,9 +499,8 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(const U16 layerID,
             s_queuedLayer = 0u;
         } break;
         default:
-        case ComputationStages::COUNT: 
+        case ComputationStages::COUNT:
             DIVIDE_UNEXPECTED_CALL();
-            break;
 
     }
 }
@@ -565,12 +567,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandB
         });
     }
 
-    GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-    computeMipMapsCommand._layerRange = { layerID, 1 };
-    computeMipMapsCommand._texture = destinationAtt->texture();
-    computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
-    GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
-
+    // The compute dispatch writes every destination mip explicitly; generating mipmaps would overwrite those results.
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
@@ -739,8 +736,8 @@ void SceneEnvironmentProbePool::createDebugView(const U16 layerIndex)
         }
 
         probeView->_shader = s_previewShader;
-        probeView->_shaderData.set(_ID("layer"), PushConstantType::INT, layerIndex);
-        probeView->_shaderData.set(_ID("face"), PushConstantType::INT, i % 6u);
+        probeView->_shaderData.set(_ID("layer"), PushConstantType::INT, to_I32(layerIndex));
+        probeView->_shaderData.set(_ID("face"), PushConstantType::INT, to_I32(i % 6u));
         if (i > 11)
         {
             Util::StringFormatTo( probeView->_name, "Probe_{}_Filtered_face_{}", layerIndex, i % 6u );

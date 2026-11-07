@@ -1,5 +1,8 @@
 --Geometry.GaussBlur
 
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #include "nodeDataInput.cmn"
 
 layout(points, invocations = GS_MAX_INVOCATIONS) in;
@@ -9,7 +12,7 @@ layout(location = ATTRIB_FREE_START) out flat int _blurred;
 layout(location = ATTRIB_FREE_START + 1) out vec3 _blurCoords[7];
 
 void computeCoordsH(in float texCoordX, in float texCoordY, in int layer, in vec2 blurSizes[12]){
-    vec2 blurSize = blurSizes[layer];
+    vec2 blurSize = blurSizes[gl_InvocationID];
 
     _blurCoords[0] = vec3(texCoordX, texCoordY - 3.0 * blurSize.y, layer);
     _blurCoords[1] = vec3(texCoordX, texCoordY - 2.0 * blurSize.y, layer);
@@ -23,7 +26,7 @@ void computeCoordsH(in float texCoordX, in float texCoordY, in int layer, in vec
 }
 
 void computeCoordsV(in float texCoordX, in float texCoordY, in int layer, in vec2 blurSizes[12] ){
-    vec2 blurSize = blurSizes[layer];
+    vec2 blurSize = blurSizes[gl_InvocationID];
 
     _blurCoords[0] = vec3(texCoordX - 3.0 * blurSize.x, texCoordY, layer);
     _blurCoords[1] = vec3(texCoordX - 2.0 * blurSize.x, texCoordY, layer);
@@ -34,18 +37,6 @@ void computeCoordsV(in float texCoordX, in float texCoordY, in int layer, in vec
     _blurCoords[6] = vec3(texCoordX + 3.0 * blurSize.x, texCoordY, layer);
 
     _blurred = 1;
-}
-
-void passThrough(in float texCoordX, in float texCoordY, in int layer) {
-    _blurCoords[0] = vec3(texCoordX, texCoordY, layer);
-    _blurCoords[1] = vec3(1.0, 1.0, layer);
-    _blurCoords[2] = vec3(1.0, 1.0, layer);
-    _blurCoords[3] = vec3(1.0, 1.0, layer);
-    _blurCoords[4] = vec3(1.0, 1.0, layer);
-    _blurCoords[5] = vec3(1.0, 1.0, layer);
-    _blurCoords[6] = vec3(1.0, 1.0, layer);
-
-    _blurred = 0;
 }
 
 void BlurRoutine(in float texCoordX, in float texCoordY, in int layer) {
@@ -89,28 +80,6 @@ void main() {
         gl_Layer = gl_InvocationID + layerOffsetWrite;
         gl_Position = vec4(-1.0, -1.0, 0.0, 1.0);
         BlurRoutine(0.0, 0.0, gl_InvocationID + layerOffsetRead);
-        EmitVertex();
-
-        EndPrimitive();
-    } else {
-        gl_Layer = gl_InvocationID + layerOffsetWrite;
-        gl_Position = vec4(1.0, 1.0, 0.0, 1.0);
-        passThrough(1.0, 1.0, gl_InvocationID + layerOffsetRead);
-        EmitVertex();
-
-        gl_Layer = gl_InvocationID + layerOffsetWrite;
-        gl_Position = vec4(-1.0, 1.0, 0.0, 1.0);
-        passThrough(0.0, 1.0, gl_InvocationID + layerOffsetRead);
-        EmitVertex();
-
-        gl_Layer = gl_InvocationID + layerOffsetWrite;
-        gl_Position = vec4(1.0, -1.0, 0.0, 1.0);
-        passThrough(1.0, 0.0, gl_InvocationID + layerOffsetRead);
-        EmitVertex();
-
-        gl_Layer = gl_InvocationID + layerOffsetWrite;
-        gl_Position = vec4(-1.0, -1.0, 0.0, 1.0);
-        passThrough(0.0, 0.0, gl_InvocationID + layerOffsetRead);
         EmitVertex();
 
         EndPrimitive();

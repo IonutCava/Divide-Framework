@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -34,6 +34,7 @@
 #define DVD_RENDER_PASS_CULLER_H_
 
 #include "Platform/Video/Headers/ClipPlanes.h"
+#include "Platform/Video/Headers/RenderStagePass.h"
 
 /// This class performs all the necessary visibility checks on the scene's
 /// SceneGraph to decide what get's rendered and what not
@@ -57,6 +58,9 @@ enum class CullOptions : U16
     CULL_AGAINST_CLIPPING_PLANES = toBit(3),
     CULL_AGAINST_FRUSTUM = toBit(4),
     CULL_AGAINST_LOD = toBit(5),
+    CULL_REFLECTION_GRASS = toBit(6),
+    CULL_REFLECTION_TREES = toBit(7),
+    CULL_REFLECTION_DYNAMIC_OBJECTS = toBit(8),
     DEFAULT_CULL_OPTIONS = CULL_AGAINST_CLIPPING_PLANES | CULL_AGAINST_FRUSTUM | CULL_AGAINST_LOD
 };
 
@@ -72,19 +76,34 @@ struct NodeCullParams {
     float3 _minExtents = { 0.0f };
     GUIDList _ignoredGUIDS = {};
     float3 _cameraEyePos;
+    float3 _rangeCameraEyePos;
     const Frustum* _frustum = nullptr;
     F32 _cullMaxDistance = F32_MAX;
     I32 _maxLoD = -1;
-    RenderStage _stage = RenderStage::COUNT;
+    RenderStagePass _stagePass{};
 };
 
 struct VisibleNode {
     SceneGraphNode* _node = nullptr;
     F32 _distanceToCameraSq = 0.f;
     bool _materialReady = true;
-};
+    bool _drawPrepared = false;
 
-using FeedBackContainer = vector<VisibleNode>;
+    template<typename ReadinessCheck>
+    [[nodiscard]] bool checkMaterialReadiness( ReadinessCheck&& check )
+    {
+        const bool passReady = check();
+        _materialReady &= passReady;
+        return passReady;
+    }
+
+    template<typename PrepareDraw>
+    [[nodiscard]] bool prepareDraw( PrepareDraw&& prepare )
+    {
+        _drawPrepared = prepare();
+        return _drawPrepared;
+    }
+};
 
 template<typename T = VisibleNode, size_t N = Config::MAX_VISIBLE_NODES>
 struct VisibleNodeList
@@ -110,6 +129,18 @@ struct VisibleNodeList
         assert(idx <= lastPos);
         _nodes[idx] = _nodes[lastPos - 1];
         _nodes[lastPos - 1] = {};
+    }
+
+    template<typename Predicate>
+    void removeIf( Predicate&& predicate )
+    {
+        for ( size_t i = size(); i > 0u; --i )
+        {
+            if ( predicate( _nodes[i - 1u] ) )
+            {
+                remove( i - 1u );
+            }
+        }
     }
 
                   void      reset()       noexcept { _index.store(0); }
@@ -152,6 +183,20 @@ struct RenderPassCuller {
         PARTICLES = toBit( 6 ),
         COUNT = 7
     };
+
+    [[nodiscard]] static constexpr bool CullReflectionCategory( const U16 flags, const bool grass,
+                                                                 const bool tree, const bool dynamic ) noexcept
+    {
+        if ( grass )
+        {
+            return (flags & to_base( CullOptions::CULL_REFLECTION_GRASS )) != 0u;
+        }
+        if ( tree )
+        {
+            return (flags & to_base( CullOptions::CULL_REFLECTION_TREES )) != 0u;
+        }
+        return dynamic && (flags & to_base( CullOptions::CULL_REFLECTION_DYNAMIC_OBJECTS )) != 0u;
+    }
 
     static void FrustumCull(const NodeCullParams& params, U16 cullFlags, const SceneGraph& sceneGraph, const SceneState& sceneState, PlatformContext& context, VisibleNodeList<>& nodesOut);
     static void FrustumCull(const PlatformContext& context, const NodeCullParams& params, const U16 cullFlags, const vector<SceneGraphNode*>& nodes, VisibleNodeList<>& nodesOut);

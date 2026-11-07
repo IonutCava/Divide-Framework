@@ -306,7 +306,8 @@ ReturnCode eval(struct Global *global, int *eval)
 	}
 	opp->op = op;
 	opp->prec = prec;
-	skip = (valp[-1] != 0);         /* Short-circuit tester */
+	/* Prefix operators such as '(' or '!' may be pushed before any value. */
+	skip = (valp > value) && (valp[-1] != 0); /* Short-circuit tester */
 	/*
 	 * Do the short-circuit stuff here.  Short-circuiting
 	 * stops automagically when operators are evaluated.

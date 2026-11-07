@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -39,14 +39,13 @@ enum class RenderStage : U8;
 
 struct GFXShaderData
 {
-#pragma pack(push, 1)
       struct CamData
       {
           mat4<F32> dvd_ProjectionMatrix = MAT4_IDENTITY;
           mat4<F32> dvd_ViewMatrix = MAT4_IDENTITY;
           mat4<F32> dvd_ViewProjectionMatrix = MAT4_IDENTITY;
           mat4<F32> dvd_InverseViewMatrix = MAT4_IDENTITY;
-          mat4<F32> dvd_WorldAOVPMatrix = MAT4_IDENTITY;
+          mat4<F32> _reservedCameraMatrix = MAT4_IDENTITY;
           mat4<F32> dvd_PrevViewProjectionMatrix = MAT4_IDENTITY;
           float4    dvd_ViewPort = { 0.0f, 0.0f, 1.0f, 1.0f };
           // x - scale, y - bias, z - light bleed bias, w - min shadow variance
@@ -58,9 +57,6 @@ struct GFXShaderData
           float4    dvd_clipPlanes[Config::MAX_CLIP_DISTANCES];
           float4    _padding_;
       } _camData;
-#pragma pack(pop)
-
-    static_assert(sizeof(CamData) == sizeof(mat4<F32>) * 8, "Wrong GPU data struct size!");
 
     struct PrevFrameData
     {

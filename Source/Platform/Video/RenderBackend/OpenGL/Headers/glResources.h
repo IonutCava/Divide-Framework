@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -107,6 +107,13 @@ constexpr gl46core::GLuint GL_NULL_HANDLE = gl46core::GL_INVALID_INDEX;
 constexpr gl46core::GLuint64 GL_NULL_HANDLE_64 = U64_MAX;
 
 namespace GLUtil {
+
+[[nodiscard]] static constexpr size_t ObjectLabelLength( const std::string_view label, const size_t maxLabelLength ) noexcept
+{
+    return maxLabelLength == 0u ? 0u : std::min( label.size(), maxLabelLength - 1u );
+}
+
+void SetObjectLabel( gl46core::GLenum identifier, gl46core::GLuint handle, std::string_view label );
 
 // Not thread-safe!
 class glTextureViewCache 

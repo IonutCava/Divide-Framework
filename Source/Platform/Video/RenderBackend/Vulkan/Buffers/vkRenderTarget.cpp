@@ -1,4 +1,5 @@
-﻿#include "Headers/vkRenderTarget.h"
+﻿// Copyright (c) 2026 DIVIDE-Studio
+#include "Headers/vkRenderTarget.h"
 
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Textures/Headers/vkTexture.h"
@@ -17,13 +18,53 @@ namespace Divide
         
         for ( auto& info : _colourAttachmentInfo )
         {
-            info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-            info.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+            ResetAttachmentInfo( info );
         }
 
-        auto& info = _depthAttachmentInfo;
-        info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        info.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+        ResetAttachmentInfo( _depthAttachmentInfo );
+    }
+
+    bool vkRenderTarget::GetAttachmentLayerRange( const DrawLayerEntry& entry, const U16 layerCount, const bool isCube, SubRange& rangeOut ) noexcept
+    {
+        const U32 offset = entry._layer._offset;
+        if ( offset >= layerCount || entry._layer._count == 0u ||
+             (isCube ? entry._cubeFace >= 6u : entry._cubeFace != 0u) )
+        {
+            return false;
+        }
+
+        const U32 selectedCount = entry._layer._count == ALL_LAYERS ? layerCount - offset : entry._layer._count;
+        if ( selectedCount > layerCount - offset )
+        {
+            return false;
+        }
+
+        U32 firstLayer = offset;
+        U32 viewLayers = selectedCount;
+        if ( isCube )
+        {
+            firstLayer *= 6u;
+            if ( entry._layer._count == 1u )
+            {
+                firstLayer += entry._cubeFace;
+            }
+            else
+            {
+                if ( entry._cubeFace != 0u )
+                {
+                    return false;
+                }
+                viewLayers *= 6u;
+            }
+        }
+
+        if ( firstLayer >= ALL_LAYERS || viewLayers >= ALL_LAYERS )
+        {
+            return false;
+        }
+
+        rangeOut = { to_U16( firstLayer ), to_U16( viewLayers ) };
+        return true;
     }
 
     bool vkRenderTarget::create()
@@ -58,41 +99,19 @@ namespace Divide
         range.baseArrayLayer = 0u;
         range.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-        const auto& layered = _renderInfoState._layeredInfo._layeredRendering[slotIndex];
         if ( !_attachmentsUsed[slotIndex] )
         {
-            return range;
+            return MOV(range);
         }
 
         const auto& att = _attachments[slotIndex];
         if ( att == nullptr )
         {
-            return range;
+            return MOV(range);
         }
 
         vkTexture* vkTex = static_cast<vkTexture*>(Get(resolve ? att->resolvedTexture() : att->renderTexture()));
-        range.aspectMask = vkTexture::GetAspectFlags(vkTex->descriptor());
-
-        if ( !layered._enabled )
-        {
-            return range;
-        }
-
-        if ( layered._mipLevel != ALL_MIPS)
-        {
-            range.baseMipLevel = layered._mipLevel;
-            range.levelCount = 1u;
-        }
-
-        const SubRange& layerRange = layered._layerRange;
-        if (layerRange._count != ALL_LAYERS)
-        {
-            range.baseArrayLayer = layerRange._offset;
-            // If the texture is a cubemap, the layerRange stored earlier already accounts for cube-face expansion (begin() logic does that)
-            range.layerCount = layerRange._count;
-        }
-
-        return range;
+        return GetAttachmentTransitionRange( vkTexture::GetAspectFlags( vkTex->descriptor() ), _renderInfoState._mipLevel );
     }
 
     void vkRenderTarget::blitFrom( VkCommandBuffer cmdBuffer, vkRenderTarget* source, const RTBlitParams& params ) noexcept
@@ -384,22 +403,6 @@ namespace Divide
             return isResolve ? att->_resolveUsage._usage : att->_renderUsage._usage;
         };
 
-        DrawLayerEntry targetDepthLayer{};
-        for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
-        {
-            if ( !_attachmentsUsed[i] || descriptor._writeLayers[i]._layer._offset == INVALID_INDEX )
-            {
-                continue;
-            }
-
-            if ( descriptor._writeLayers[i]._layer._offset > 0u ||
-                 descriptor._writeLayers[i]._cubeFace > 0u )
-            {
-                targetDepthLayer = descriptor._writeLayers[i];
-                break;
-            }
-        }
-
         PROFILE_SCOPE( "Colour Attachments", Profiler::Category::Graphics);
 
         for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
@@ -425,32 +428,7 @@ namespace Divide
                                     RTUsageTracker::Names::layout[to_base(targetRenderUsage)]);
             }
 
-            const DrawLayerEntry targetColourLayer = descriptor._writeLayers[i]._layer._offset == INVALID_INDEX
-                                                                                    ? targetDepthLayer
-                                                                                    : descriptor._writeLayers[i];
-
             vkTexture* vkTexRender = static_cast<vkTexture*>(Get(attachment->renderTexture()));
-            ImageView viewRender = vkTexRender->getView();
-
-            if ( IsCubeTexture(vkTexRender->descriptor()._texType) )
-            {
-                viewRender._subRange._layerRange =
-                {
-                    ._offset = to_U16(targetColourLayer._cubeFace + (targetColourLayer._layer._offset * 6u)),
-                    ._count = to_U16(targetColourLayer._layer._count * 6u)
-                };
-            }
-            else
-            {
-                assert( targetColourLayer._cubeFace == 0u );
-                viewRender._subRange._layerRange = targetColourLayer._layer;
-            }
-
-            if ( descriptor._mipWriteLevel != ALL_MIPS )
-            {
-                viewRender._subRange._mipLevels._count = 1u;
-                viewRender._subRange._mipLevels._offset = descriptor._mipWriteLevel;
-            }
 
             const bool resolveMSAA = descriptor._autoResolveMSAA && _attachmentsAutoResolve[i];
             const bool sharedTexture = Get(attachment->renderTexture()) == Get(attachment->resolvedTexture());
@@ -492,10 +470,6 @@ namespace Divide
                 {
                     Console::d_errorfn("vkRenderTarget::transitionAttachments skip [ {} ]", vkTexRender->resourceName().c_str());
                 }
-                if (toWrite)
-                {
-                    _renderInfoState._layeredInfo._layeredRendering[i]._enabled = false;
-                }
             }
 
             // Resolve image transition (colour)
@@ -504,46 +478,29 @@ namespace Divide
                 vkTexture* vkTexResolve = static_cast<vkTexture*>(Get(_attachments[i]->resolvedTexture()));
 
 
-                const RTUsageTracker::Layout targetResolveUsage = toWrite ? RTUsageTracker::Layout::ATTACHMENT
-                                                                          : (descriptor._keepMSAADataAfterResolve
-                                                                                    ? RTUsageTracker::Layout::SHADER_READ
-                                                                                    : RTUsageTracker::Layout::ATTACHMENT);
+                const RTUsageTracker::Layout targetResolveUsage = ResolveTargetUsage(toWrite);
 
                 const RTUsageTracker::Layout currentResolveUsage = getCurrentUsage(attachment.get(), true);
 
                 if (currentResolveUsage != targetResolveUsage)
                 {
-                    if (toWrite)
-                    {
-                        vkTexture::TransitionTexture(
-                            vkTexture::TransitionType::SHADER_READ_TO_COLOUR_ATTACHMENT,
-                            computeAttachmentSubresourceRange(i, true),
-                            {
-                                ._image = vkTexResolve->image()->_image,
-                                ._name  = vkTexResolve->resourceName().c_str(),
-                                ._isResolveImage = true
-                            },
-                            memBarriers.emplace_back()
-                        );
-                    }
-                    else if (descriptor._keepMSAADataAfterResolve)
-                    {
-                        vkTexture::TransitionTexture(
-                            vkTexture::TransitionType::COLOUR_ATTACHMENT_TO_SHADER_READ,
-                            computeAttachmentSubresourceRange(i, true),
-                            {
-                                ._image = vkTexResolve->image()->_image,
-                                ._name  = vkTexResolve->resourceName().c_str(),
-                                ._isResolveImage = true
-                            },
-                        memBarriers.emplace_back()
-                        );
-
-                        attachment->_resolveUsage._usage = targetResolveUsage;
-                        if (attachment->_descriptor._externalAttachment != nullptr)
+                    const vkTexture::TransitionType targetTransition = toWrite ? vkTexture::TransitionType::SHADER_READ_TO_COLOUR_ATTACHMENT
+                                                                               : vkTexture::TransitionType::COLOUR_ATTACHMENT_TO_SHADER_READ;
+                    vkTexture::TransitionTexture(
+                        targetTransition,
+                        computeAttachmentSubresourceRange(i, true),
                         {
-                            attachment->_descriptor._externalAttachment->_resolveUsage._usage = targetResolveUsage;
-                        }
+                            ._image = vkTexResolve->image()->_image,
+                            ._name  = vkTexResolve->resourceName().c_str(),
+                            ._isResolveImage = true
+                        },
+                        memBarriers.emplace_back()
+                    );
+
+                    attachment->_resolveUsage._usage = targetResolveUsage;
+                    if (attachment->_descriptor._externalAttachment != nullptr)
+                    {
+                        attachment->_descriptor._externalAttachment->_resolveUsage._usage = targetResolveUsage;
                     }
                 }
                 else if constexpr (ENABLED_DEBUG_PRINTING)
@@ -558,9 +515,6 @@ namespace Divide
         if ( transitionMask[RT_DEPTH_ATTACHMENT_IDX] && _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] )
         {
             PROFILE_SCOPE( "Depth Attachment", Profiler::Category::Graphics );
-
-            const DrawLayerEntry& srcDepthLayer = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
-            const DrawLayerEntry depthEntry = srcDepthLayer._layer._offset == INVALID_INDEX ? targetDepthLayer : srcDepthLayer;
 
             RTAttachment_uptr& attachment = _attachments[RT_DEPTH_ATTACHMENT_IDX];
 
@@ -577,29 +531,6 @@ namespace Divide
             }
 
             vkTexture* vkTexRender = static_cast<vkTexture*>(Get(attachment->renderTexture()));
-            ImageView viewRender = vkTexRender->getView();
-
-            if ( IsCubeTexture( vkTexRender->descriptor()._texType ) )
-            {
-                viewRender._subRange._layerRange = 
-                {
-                    ._offset = to_U16(depthEntry._cubeFace + (depthEntry._layer._offset * 6u)),
-                    ._count = to_U16(depthEntry._layer._count * 6u)
-                };
-            }
-            else
-            {
-                viewRender._subRange._layerRange = depthEntry._layer;
-            }
-
-            if ( descriptor._mipWriteLevel != ALL_MIPS)
-            {
-                viewRender._subRange._mipLevels =
-                {
-                    ._offset = descriptor._mipWriteLevel,
-                    ._count = 1u
-                };
-            }
 
             const bool resolveMSAA = descriptor._autoResolveMSAA && _attachmentsAutoResolve[RT_DEPTH_ATTACHMENT_IDX];
             const bool sharedTexture = Get(attachment->renderTexture()) == Get(attachment->resolvedTexture());
@@ -642,10 +573,6 @@ namespace Divide
                 {
                     Console::d_errorfn("vkRenderTarget::transitionAttachments skip [ {} ]", vkTexRender->resourceName().c_str());
                 }
-                if ( toWrite )
-                {
-                    _renderInfoState._layeredInfo._layeredRendering[RT_DEPTH_ATTACHMENT_IDX]._enabled = false;
-                }
             }
 
             // Resolve image transition (depth)
@@ -654,41 +581,24 @@ namespace Divide
                 vkTexture* vkTexResolve = static_cast<vkTexture*>(Get(attachment->resolvedTexture()));
 
 
-                const RTUsageTracker::Layout targetDepthResolveUsage = toWrite ? RTUsageTracker::Layout::ATTACHMENT
-                                                                                : (descriptor._keepMSAADataAfterResolve
-                                                                                    ? RTUsageTracker::Layout::SHADER_READ
-                                                                                    : RTUsageTracker::Layout::ATTACHMENT);
+                const RTUsageTracker::Layout targetDepthResolveUsage = ResolveTargetUsage(toWrite);
 
                 const RTUsageTracker::Layout currentDepthResolveUsage = getCurrentUsage(attachment.get(), true);
 
                 if ( currentDepthResolveUsage != targetDepthResolveUsage )
                 {
-                    if (toWrite)
-                    {
-                        vkTexture::TransitionTexture(
-                            vkTexture::TransitionType::SHADER_READ_TO_DEPTH_ATTACHMENT,
-                            computeAttachmentSubresourceRange(RT_DEPTH_ATTACHMENT_IDX, true),
-                            {
-                                ._image = vkTexResolve->image()->_image,
-                                ._name  = vkTexResolve->resourceName().c_str(),
-                                ._isResolveImage = true
-                            },
-                            memBarriers.emplace_back()
-                        );
-                    }
-                    else if (descriptor._keepMSAADataAfterResolve)
-                    {
-                        vkTexture::TransitionTexture(
-                            vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ,
-                            computeAttachmentSubresourceRange(RT_DEPTH_ATTACHMENT_IDX, true),
-                            {
-                                ._image = vkTexResolve->image()->_image,
-                                ._name  = vkTexResolve->resourceName().c_str(),
-                                ._isResolveImage = true
-                            },
-                            memBarriers.emplace_back()
-                        );
-                    }
+                    const vkTexture::TransitionType targetTransition = toWrite ? vkTexture::TransitionType::SHADER_READ_TO_DEPTH_ATTACHMENT
+                                                                               : vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ;
+                    vkTexture::TransitionTexture(
+                        targetTransition,
+                        computeAttachmentSubresourceRange(RT_DEPTH_ATTACHMENT_IDX, true),
+                        {
+                            ._image = vkTexResolve->image()->_image,
+                            ._name  = vkTexResolve->resourceName().c_str(),
+                            ._isResolveImage = true
+                        },
+                        memBarriers.emplace_back()
+                    );
 
                     attachment->_resolveUsage._usage = targetDepthResolveUsage;
                     if (attachment->_descriptor._externalAttachment != nullptr)
@@ -725,12 +635,14 @@ namespace Divide
 
         assert(pipelineRenderingCreateInfoOut.sType == VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO);
 
-        _renderInfoState._keptMSAAData = descriptor._keepMSAADataAfterResolve;
+        const U16 targetMipWriteLevel = descriptor._mipWriteLevel == ALL_MIPS ? 0u : descriptor._mipWriteLevel;
+        _renderInfoState._mipLevel = targetMipWriteLevel;
+        _renderingInfo.renderArea.extent.width  = std::max<U32>( 1u, to_U32( getWidth() ) >> targetMipWriteLevel );
+        _renderingInfo.renderArea.extent.height = std::max<U32>( 1u, to_U32( getHeight() ) >> targetMipWriteLevel );
 
-        const bool needLayeredColour = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer._offset != INVALID_INDEX && (descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer._offset > 0u || descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._cubeFace > 0u);
-        DrawLayerEntry targetColourLayer{};
-
-        bool needLayeredDepth = false;
+        const DrawLayerEntry targetColourLayer = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer._offset == INVALID_INDEX
+                                                       ? DrawLayerEntry{}
+                                                       : descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
         DrawLayerEntry targetDepthLayer{};
 
         for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
@@ -740,9 +652,11 @@ namespace Divide
                 continue;
             }
 
-            if ( descriptor._writeLayers[i]._layer._offset != INVALID_INDEX && (descriptor._writeLayers[i]._layer._offset > 0u || descriptor._writeLayers[i]._cubeFace > 0u) )
+            if ( descriptor._writeLayers[i]._layer._offset != INVALID_INDEX &&
+                 (descriptor._writeLayers[i]._layer._offset > 0u ||
+                  descriptor._writeLayers[i]._layer._count != 1u ||
+                  descriptor._writeLayers[i]._cubeFace > 0u) )
             {
-                needLayeredDepth = true;
                 targetDepthLayer = descriptor._writeLayers[i];
                 break;
             }
@@ -752,8 +666,37 @@ namespace Divide
         imageViewDescriptor._subRange = {};
 
         U16 layerCount = 1u;
+        bool haveLayerCount = false;
+        const auto attachmentRange = [targetMipWriteLevel]( const vkTexture& texture, const DrawLayerEntry& entry )
+        {
+            const TextureType type = texture.descriptor()._texType;
+            const U16 availableLayers = type == TextureType::TEXTURE_3D
+                                      ? std::max<U16>( 1u, to_U16( texture.depth() >> targetMipWriteLevel ) )
+                                      : texture.layerCount();
+            SubRange range{};
+            if ( !GetAttachmentLayerRange( entry, availableLayers, IsCubeTexture( type ), range ) )
+            {
+                Console::errorfn( "Invalid render-target layer selection for texture '{}': offset {}, count {}, face {}, available {}",
+                                  texture.resourceName().c_str(), entry._layer._offset, entry._layer._count,
+                                  entry._cubeFace, availableLayers );
+                Console::Flush();
+                std::abort();
+            }
+            return range;
+        };
+        const auto setLayerCount = [&layerCount, &haveLayerCount]( const U16 count )
+        {
+            if ( haveLayerCount && layerCount != count )
+            {
+                Console::errorfn( "Render-target attachments have different layer counts: {} and {}", layerCount, count );
+                Console::Flush();
+                std::abort();
+            }
+            layerCount = count;
+            haveLayerCount = true;
+        };
 
-        U8 stagingIndex = 0u;
+        U8 colourAttachmentCount = 0u;
 
         {
             PROFILE_SCOPE( "Colour Attachments", Profiler::Category::Graphics );
@@ -763,36 +706,17 @@ namespace Divide
                 {
                     vkTexture* vkTexRender = static_cast<vkTexture*>(Get(_attachments[i]->renderTexture()));
                     imageViewDescriptor._subRange = vkTexRender->getView()._subRange;
-                    if ( descriptor._writeLayers[i]._layer._offset != INVALID_INDEX || needLayeredColour )
-                    {
-                        const bool isCube = IsCubeTexture(vkTexRender->descriptor()._texType);
-
-                        targetColourLayer = descriptor._writeLayers[i]._layer._offset == INVALID_INDEX ? targetColourLayer : descriptor._writeLayers[i];
-
-                        if (isCube)
-                        {
-                            imageViewDescriptor._subRange._layerRange = { to_U16(targetColourLayer._cubeFace + (targetColourLayer._layer._offset * 6u)),
-                                                                          to_U16(targetColourLayer._layer._count * 6u) };
-                        }
-                        else
-                        {
-                            DIVIDE_GPU_ASSERT(targetColourLayer._cubeFace == 0u);
-                            imageViewDescriptor._subRange._layerRange = targetColourLayer._layer;
-                        }
-                    }
+                    const DrawLayerEntry& colourLayer = descriptor._writeLayers[i]._layer._offset == INVALID_INDEX
+                                                     ? targetColourLayer
+                                                     : descriptor._writeLayers[i];
+                    imageViewDescriptor._subRange._layerRange = attachmentRange( *vkTexRender, colourLayer );
+                    setLayerCount( imageViewDescriptor._subRange._layerRange._count );
 
                     imageViewDescriptor._type = TextureType::TEXTURE_2D;
-                    if ( descriptor._mipWriteLevel != ALL_MIPS )
-                    {
-                        imageViewDescriptor._subRange._mipLevels = { descriptor._mipWriteLevel, 1u };
-                        _renderInfoState._layeredInfo._layeredRendering[i]._enabled = true;
-                        _renderInfoState._layeredInfo._layeredRendering[i]._mipLevel = descriptor._mipWriteLevel;
-                    }
+                    imageViewDescriptor._subRange._mipLevels = { targetMipWriteLevel, 1u };
 
                     if (imageViewDescriptor._subRange._layerRange._count > 1u)
                     {
-                        _renderInfoState._layeredInfo._layeredRendering[i]._enabled = true;
-                        _renderInfoState._layeredInfo._layeredRendering[i]._layerRange = imageViewDescriptor._subRange._layerRange;
                         imageViewDescriptor._type = TextureType::TEXTURE_2D_ARRAY;
                     }
 
@@ -801,62 +725,43 @@ namespace Divide
                     imageViewDescriptor._usage         = ImageUsage::RT_COLOUR_ATTACHMENT;
 
                     VkRenderingAttachmentInfo& info = _colourAttachmentInfo[i];
+                    ResetAttachmentInfo( info );
                     info.imageView = vkTexRender->getImageView( imageViewDescriptor );
-                    _colourAttachmentFormats[stagingIndex] = vkTexRender->vkFormat();
+                    _colourAttachmentFormats[i] = vkTexRender->vkFormat();
                     
                     info.clearValue = {};
-                    info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
                     const bool resolveMSAA = descriptor._autoResolveMSAA && _attachmentsAutoResolve[i];
-                    // If we specify a clear policy, we want to clear out attachment on load
+                    ConfigureAttachmentLoadStore( info, clearPolicy[i]._enabled, resolveMSAA,
+                                                  descriptor._keepMSAADataAfterResolve );
                     if ( clearPolicy[i]._enabled )
                     {
-                        *info.clearValue.color.float32 = *clearPolicy[i]._colour._v;
-
-                        info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-                    }
-                    else if ( resolveMSAA && !descriptor._keepMSAADataAfterResolve && !_renderInfoState._keptMSAAData)
-                    {
-                        info.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-                    }
-                    else
-                    {
-                        info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+                        std::copy_n( clearPolicy[i]._colour._v, 4u, info.clearValue.color.float32 );
                     }
 
-                    // MSAA complicates things a lot. For best performance we want to inline resolve and also don't care about the msaa target's contents that much
-                    // Ideally, we should not care about our MSAA load and store and just focus on the resolve target ...
                     if ( resolveMSAA )
                     {
                         imageViewDescriptor._resolveTarget = true;
-
-                        if ( !descriptor._keepMSAADataAfterResolve )
-                        {
-                            info.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-                        }
-
                         info.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
-                        info.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                        info.resolveImageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
                         info.resolveImageView = static_cast<vkTexture*>(Get(_attachments[i]->resolvedTexture()))->getImageView( imageViewDescriptor );
                     }
 
-                    _stagingColourAttachmentInfo[stagingIndex] = info;
+                    _stagingColourAttachmentInfo[i] = info;
+                    colourAttachmentCount = to_U8( i + 1u );
                 }
                 else
                 {
-                    _colourAttachmentFormats[stagingIndex] = VK_FORMAT_UNDEFINED;
-                    _stagingColourAttachmentInfo[stagingIndex] = {};
-                    _stagingColourAttachmentInfo[stagingIndex].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                    _colourAttachmentFormats[i] = VK_FORMAT_UNDEFINED;
+                    _stagingColourAttachmentInfo[i] = {};
+                    _stagingColourAttachmentInfo[i].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
                 }
-
-                ++stagingIndex;
             }
         }
 
-        pipelineRenderingCreateInfoOut.colorAttachmentCount = stagingIndex;
+        pipelineRenderingCreateInfoOut.colorAttachmentCount = colourAttachmentCount;
         pipelineRenderingCreateInfoOut.pColorAttachmentFormats = _colourAttachmentFormats.data();
 
-        _renderingInfo.colorAttachmentCount = stagingIndex;
+        _renderingInfo.colorAttachmentCount = colourAttachmentCount;
         _renderingInfo.pColorAttachments = _stagingColourAttachmentInfo.data();
 
         if ( _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] )
@@ -868,36 +773,16 @@ namespace Divide
 
             vkTexture* vkTexRender = static_cast<vkTexture*>(Get(att->renderTexture()));
             imageViewDescriptor._subRange = vkTexRender->getView()._subRange;
-            if ( descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer._offset != INVALID_INDEX || needLayeredDepth )
-            {
-                  // Compute the attachment's effective layer count (handle 3D / array / cubemap)
-                const bool isCube = IsCubeTexture( vkTexRender->descriptor()._texType );
-
-                targetDepthLayer = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer._offset == INVALID_INDEX ? targetDepthLayer : descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
-                if ( isCube )
-                {
-                    imageViewDescriptor._subRange._layerRange = { to_U16(targetDepthLayer._cubeFace + (targetDepthLayer._layer._offset * 6u)),
-                                                                  to_U16(targetDepthLayer._layer._count * 6u) };
-                }
-                else
-                {
-                    assert( targetColourLayer._cubeFace == 0u );
-                    imageViewDescriptor._subRange._layerRange = targetDepthLayer._layer;
-                }
-            }
+            const DrawLayerEntry& depthLayer = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer._offset == INVALID_INDEX
+                                            ? targetDepthLayer
+                                            : descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
+            imageViewDescriptor._subRange._layerRange = attachmentRange( *vkTexRender, depthLayer );
+            setLayerCount( imageViewDescriptor._subRange._layerRange._count );
 
             imageViewDescriptor._type = TextureType::TEXTURE_2D;
-            if ( descriptor._mipWriteLevel != ALL_MIPS )
-            {
-                imageViewDescriptor._subRange._mipLevels = { descriptor._mipWriteLevel, 1u };
-                _renderInfoState._layeredInfo._layeredRendering[RT_DEPTH_ATTACHMENT_IDX]._enabled = true;
-                _renderInfoState._layeredInfo._layeredRendering[RT_DEPTH_ATTACHMENT_IDX]._mipLevel = descriptor._mipWriteLevel;
-            }
+            imageViewDescriptor._subRange._mipLevels = { targetMipWriteLevel, 1u };
             if (imageViewDescriptor._subRange._layerRange._count > 1u)
             {
-                layerCount = imageViewDescriptor._subRange._layerRange._count;
-                _renderInfoState._layeredInfo._layeredRendering[RT_DEPTH_ATTACHMENT_IDX]._enabled = true;
-                _renderInfoState._layeredInfo._layeredRendering[RT_DEPTH_ATTACHMENT_IDX]._layerRange = imageViewDescriptor._subRange._layerRange;
                 imageViewDescriptor._type = TextureType::TEXTURE_2D_ARRAY;
             }
 
@@ -905,30 +790,23 @@ namespace Divide
             imageViewDescriptor._format        = vkTexRender->vkFormat();
             imageViewDescriptor._usage         = hasStencil ? ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT : ImageUsage::RT_DEPTH_ATTACHMENT;
 
+            ResetAttachmentInfo( _depthAttachmentInfo );
             _depthAttachmentInfo.imageView = vkTexRender->getImageView( imageViewDescriptor );
             _depthAttachmentInfo.clearValue.depthStencil.depth = 1.f;
 
-            // We should always load/clear depth values since DONT_CARE will lead to failed depth tests
-            _depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-            _depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            const bool resolveMSAA = descriptor._autoResolveMSAA && _attachmentsAutoResolve[RT_DEPTH_ATTACHMENT_IDX];
+            ConfigureAttachmentLoadStore( _depthAttachmentInfo, clearPolicy[RT_DEPTH_ATTACHMENT_IDX]._enabled,
+                                          resolveMSAA, descriptor._keepMSAADataAfterResolve );
 
-            // If we specify a clear policy, we want to clear out attachment on load
             if ( clearPolicy[RT_DEPTH_ATTACHMENT_IDX]._enabled )
             {
-                _depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
                 _depthAttachmentInfo.clearValue.depthStencil.depth = clearPolicy[RT_DEPTH_ATTACHMENT_IDX]._colour.r;
                 _depthAttachmentInfo.clearValue.depthStencil.stencil = to_U32(clearPolicy[RT_DEPTH_ATTACHMENT_IDX]._colour.g);
             }
 
-            if ( descriptor._autoResolveMSAA && _attachmentsAutoResolve[RT_DEPTH_ATTACHMENT_IDX] )
+            if ( resolveMSAA )
             {
                 imageViewDescriptor._resolveTarget = true;
-
-                if ( !descriptor._keepMSAADataAfterResolve )
-                {
-                    _depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-                }
-
                 VkResolveModeFlagBits chosenDepthResolve = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
                 const VkResolveModeFlags supported = VK_API::s_supportedDepthResolveModes;
                 if ( supported & VK_RESOLVE_MODE_AVERAGE_BIT )

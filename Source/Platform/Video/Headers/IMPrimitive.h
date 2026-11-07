@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -37,6 +37,7 @@
 #include "DescriptorSetsFwd.h"
 #include "Pipeline.h"
 #include "PushConstants.h"
+#include "IMPrimitiveDrawSnapshots.h"
 #include "Platform/Video/GLIM/glim.h"
 #include "Platform/Video/Headers/Commands.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
@@ -139,6 +140,7 @@ class IMPrimitive final {
    private:
     GFXDevice& _context;
     UniformData _additionalUniforms;
+    IMPrimitiveDrawSnapshots _drawSnapshots;
     PushConstantsStruct _fastData;
     NS_GLIM::GLIM_BATCH_uptr _imInterface;
     PipelineDescriptor _basePipelineDescriptor{};

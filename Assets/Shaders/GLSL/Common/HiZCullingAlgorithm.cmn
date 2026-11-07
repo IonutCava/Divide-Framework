@@ -1,11 +1,15 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #ifndef _HIZ_CULL_CMN_
 #define _HIZ_CULL_CMN_
 
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D HiZBuffer;
-uniform vec2 dvd_viewSize;
-uniform vec4 dvd_frustumPlanes[6];
+#ifndef viewProjectionMatrix
 #define viewProjectionMatrix PushData0
-#define viewMatrix PushData1
+#endif
+
+#include "frustumCulling.cmn"
+#include "hizConservative.cmn"
 
 struct AABB
 {
@@ -23,18 +27,6 @@ vec3 getHalfExtents(const in vec3 P, const in float R)
 }
 #endif //!USE_CUSTOM_EXTENTS
 
-
-bool SphereInFrustum(in vec3 pos, in float radius)
-{
-    for (int i = 0; i < 6; ++i)
-    {
-        if (dot(vec4(pos, 1.f), dvd_frustumPlanes[i]) + radius < 0.f)
-        {
-            return false;
-        }
-    }
-    return true;
-}
 
 const vec3 aabb_corners[8] =
 {
@@ -56,23 +48,6 @@ vec3 AABBGetCorner( in AABB aabb, in int index )
     return aabb.min + aabb_corners[index] * extent;
 }
 
-bool PixelCull( in vec3 clip_min, in vec3 clip_max )
-{
-    const vec2 dim = (clip_max.xy - clip_min.xy) * 0.5f * dvd_viewSize;
-    return max( dim.x, dim.y ) < M_EPSILON;
-}
-
-uint GetCullBits( in vec4 pos )
-{
-    return uint( pos.x < -pos.w   * 0x01 )
-        | (uint( pos.x >  pos.w ) * 0x02)
-        | (uint( pos.y < -pos.w ) * 0x04)
-        | (uint( pos.y >  pos.w ) * 0x08)
-        | (uint( pos.z < -pos.w ) * 0x10)
-        | (uint( pos.z >  pos.w ) * 0x20)
-        | (uint( pos.w <= 0 )     * 0x40);
-}
-
 bool HiZCull(const in vec3 position, const in float bSphereRadius) {
     // Basic frustum culling
     if ( !SphereInFrustum(position, bSphereRadius) )
@@ -85,47 +60,47 @@ bool HiZCull(const in vec3 position, const in float bSphereRadius) {
     aabb.min = position - hextents;
     aabb.max = position + hextents;
 
-    vec4 clip_pos = vec4(  0.f );
     vec3 clip_min = vec3(  1.f,  1.f, 1.f );
     vec3 clip_max = vec3( -1.f, -1.f, 0.f );
-    uint cull_bits = 0x7F;
 
     // transform worldspace aabb to screenspace
     for ( int i = 0; i < 8; ++i )
     {
         vec4 projected_corner = viewProjectionMatrix * vec4( AABBGetCorner( aabb, i ), 1.f );
-        cull_bits &= GetCullBits( projected_corner );
-
-        clip_pos = projected_corner;
-        clip_pos.z = max( clip_pos.z, 0.f );
-        clip_pos.xyz /= clip_pos.w;
-        clip_pos.xy = clamp( clip_pos.xy, -1.f, 1.f );
-
-        clip_min = min( clip_pos.xyz, clip_min );
-        clip_max = max( clip_pos.xyz, clip_max );
+        // A near-plane intersection must remain visible; dividing behind-eye
+        // corners cannot bound the projected volume.
+        if (!HIZ_PROJECTABLE_CORNER(projected_corner.w, projected_corner.z) ||
+            any(isnan(projected_corner)) || any(isinf(projected_corner)))
+        {
+            return false;
+        }
+        const vec3 clip_pos = projected_corner.xyz / projected_corner.w;
+        clip_min = min( clip_pos, clip_min );
+        clip_max = max( clip_pos, clip_max );
     }
 
-    bool isVisible = ( cull_bits == 0 && !PixelCull(clip_min, clip_max));
-
-    if (isVisible) 
+    // Partially clipped bounds are deliberately kept, including subpixel edges.
+    if (any(lessThan(clip_min.xy, vec2(-1.f))) || any(greaterThan(clip_max.xy, vec2(1.f))))
     {
-        clip_min.xy = clip_min.xy * vec2( 0.5f ) + vec2( 0.5f );
-        clip_max.xy = clip_max.xy * vec2( 0.5f ) + vec2( 0.5f );
-
-        // Calculate hi-Z buffer mip
-        vec2 size = (clip_max.xy - clip_min.xy) * max( dvd_viewSize.x, dvd_viewSize.y );
-        int mip = int( ceil( log2( max( size.x, size.y ) ) ) );
-        vec2 sample_coord = (clip_min.xy + clip_max.xy) * 0.5f;
-
-        const float a = textureLod( HiZBuffer, clip_min.xy, mip ).r;
-        const float b = textureLod( HiZBuffer, vec2( clip_max.x, clip_min.y ), mip ).r;
-        const float c = textureLod( HiZBuffer, clip_max.xy, mip ).r;
-        const float d = textureLod( HiZBuffer, vec2( clip_min.x, clip_max.y ), mip ).r;
-        const float depth = max( max( max( a, b ), c ), d );
-        isVisible = clip_min.z <= depth + M_EPSILON;
+        return false;
     }
-
-    return !isVisible;
+    const vec2 uv_min = clip_min.xy * 0.5f + 0.5f;
+    const vec2 uv_max = clip_max.xy * 0.5f + 0.5f;
+    const vec2 pixels = (uv_max - uv_min) * vec2(textureSize(HiZBuffer, 0));
+    const int mip = clamp(int(HIZ_MIP_LEVEL(max(pixels.x, pixels.y))), 0, textureQueryLevels(HiZBuffer) - 1);
+    const vec2 dimensions = vec2(textureSize(HiZBuffer, mip));
+    const ivec2 first = ivec2(HIZ_TEXEL(uv_min, dimensions));
+    const ivec2 last = ivec2(HIZ_TEXEL(uv_max, dimensions));
+    if (!HIZ_FOUR_TAP_COVERS(first.x, last.x) || !HIZ_FOUR_TAP_COVERS(first.y, last.y))
+    {
+        return false;
+    }
+    const float a = texelFetch(HiZBuffer, first, mip).r;
+    const float b = texelFetch(HiZBuffer, ivec2(last.x, first.y), mip).r;
+    const float c = texelFetch(HiZBuffer, last, mip).r;
+    const float d = texelFetch(HiZBuffer, ivec2(first.x, last.y), mip).r;
+    const float depth = max(max(a, b), max(c, d));
+    return HIZ_OCCLUDED(clip_min.z, depth);
 }
 
 #endif //_HIZ_CULL_CMN_

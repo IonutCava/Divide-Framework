@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -34,13 +34,24 @@
 #define DVD_RENDER_PASS_NODE_BUFFERED_DATA_H_
 
 namespace Divide {
+    struct RenderPackage;
+
     static constexpr U8 TRANSFORM_IDX = 0u;
     static constexpr U8 MATERIAL_IDX = 1u;
     static constexpr U8 TEXTURES_IDX = 2u;
 
-    static_assert(sizeof(quatf) == sizeof(float4) && sizeof(float4) == 4 * sizeof(F32));
+    [[nodiscard]] constexpr bool RequiresInstancedIndirection( const bool alreadyInstanced,
+                                                               const bool materialInstanced,
+                                                               const U32 instanceCount ) noexcept
+    {
+        return alreadyInstanced || materialInstanced || instanceCount > 1u;
+    }
 
-#pragma pack(push, 1)
+    [[nodiscard]] constexpr U32 IndirectionBaseInstance( const bool instanced, const U32 indirectionIndex ) noexcept
+    {
+        return instanced ? 0u : indirectionIndex + 1u;
+    }
+
     struct TransformData
     {
         float4 _position; //(w - unused)
@@ -55,8 +66,6 @@ namespace Divide {
         float4        _boundingSphere;
         float4        _data; //x = animation frame, y = bone count, z = LoDLevel, w = 4x8u: occlusion cull flag, selection flag, unused, unused
     };
-
-    static_assert(sizeof(NodeTransformData) == sizeof(mat4<F32>) * 2, "Wrong Node Transform Data entry size!");
 
     struct NodeMaterialData
     {
@@ -89,8 +98,10 @@ namespace Divide {
         U32 _padding__0 = 0u;
         U32 _padding__1 = 0u;
     };
+
     [[nodiscard]] size_t HashMaterialData(const NodeMaterialData& dataIn);
-#pragma pack(pop)
+
+    void SetNodeIndirectionIndex( RenderPackage& package, bool instanced, U32 indirectionIndex ) noexcept;
 
 } //namespace Divide
 

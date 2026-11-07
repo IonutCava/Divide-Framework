@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/glStateTracker.h"
 #include "Headers/GLWrapper.h"
@@ -39,7 +39,6 @@ namespace Divide
             };
 
             DIVIDE_UNEXPECTED_CALL();
-            return -1;
         }
 
     }; //namespace 
@@ -52,6 +51,8 @@ namespace Divide
     void GLStateTracker::setDefaultState()
     {
         _activeState = {};
+        // Zero is not a valid patch size; force the first pipeline to set GL_PATCH_VERTICES.
+        _activeState._tessControlPoints = 0u;
         _attributeHash = 0u;
         _activePipeline = nullptr;
         _activeShaderProgram = nullptr;
@@ -81,7 +82,7 @@ namespace Divide
 
         _vaoBufferData = {};
         _endFrameFences = {};
-        _lastSyncedFrameNumber = 0u;
+        _lastSyncedFrameNumber.store( 0u, std::memory_order_relaxed );
 
         _blendPropertiesGlobal.blendSrc( BlendProperty::ONE );
         _blendPropertiesGlobal.blendDest( BlendProperty::ZERO );
@@ -567,7 +568,7 @@ namespace Divide
             {
                 gl46core::glBindFramebuffer( gl46core::GL_DRAW_FRAMEBUFFER, ID );
             } break;
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         };
 
         // Remember the new binding state for future reference
@@ -727,9 +728,12 @@ namespace Divide
 
         if ( enable && _blendPropertiesGlobal != blendingProperties )
         {
+            const bool separateModeChanged = (blendingProperties.blendOpAlpha() == BlendOperation::COUNT) !=
+                                             (_blendPropertiesGlobal.blendOpAlpha() == BlendOperation::COUNT);
             if ( blendingProperties.blendOpAlpha() != BlendOperation::COUNT )
             {
-                if ( blendingProperties.blendSrc() != _blendPropertiesGlobal.blendSrc() ||
+                if ( separateModeChanged ||
+                     blendingProperties.blendSrc() != _blendPropertiesGlobal.blendSrc() ||
                      blendingProperties.blendDest() != _blendPropertiesGlobal.blendDest() ||
                      blendingProperties.blendSrcAlpha() != _blendPropertiesGlobal.blendSrcAlpha() ||
                      blendingProperties.blendDestAlpha() != _blendPropertiesGlobal.blendDestAlpha() )
@@ -751,13 +755,14 @@ namespace Divide
             }
             else
             {
-                if ( blendingProperties.blendSrc() != _blendPropertiesGlobal.blendSrc() ||
+                if ( separateModeChanged ||
+                     blendingProperties.blendSrc() != _blendPropertiesGlobal.blendSrc() ||
                      blendingProperties.blendDest() != _blendPropertiesGlobal.blendDest() )
                 {
                     gl46core::glBlendFunc( GLUtil::glBlendTable[to_base( blendingProperties.blendSrc() )],
                                            GLUtil::glBlendTable[to_base( blendingProperties.blendDest() )] );
                 }
-                if ( blendingProperties.blendOp() != _blendPropertiesGlobal.blendOp() )
+                if ( separateModeChanged || blendingProperties.blendOp() != _blendPropertiesGlobal.blendOp() )
                 {
                     gl46core::glBlendEquation( GLUtil::glBlendOpTable[blendingProperties.blendOp() != BlendOperation::COUNT
                                                                                                     ? to_base( blendingProperties.blendOp() )
@@ -794,9 +799,12 @@ namespace Divide
 
         if ( enable && crtProperties != blendingProperties )
         {
+            const bool separateModeChanged = (blendingProperties.blendOpAlpha() == BlendOperation::COUNT) !=
+                                             (crtProperties.blendOpAlpha() == BlendOperation::COUNT);
             if ( blendingProperties.blendOpAlpha() != BlendOperation::COUNT )
             {
-                if ( blendingProperties.blendSrc() != crtProperties.blendSrc() ||
+                if ( separateModeChanged ||
+                     blendingProperties.blendSrc() != crtProperties.blendSrc() ||
                      blendingProperties.blendDest() != crtProperties.blendDest() ||
                      blendingProperties.blendSrcAlpha() != crtProperties.blendSrcAlpha() ||
                      blendingProperties.blendDestAlpha() != crtProperties.blendDestAlpha() )
@@ -828,7 +836,8 @@ namespace Divide
             }
             else
             {
-                if ( blendingProperties.blendSrc() != crtProperties.blendSrc() ||
+                if ( separateModeChanged ||
+                     blendingProperties.blendSrc() != crtProperties.blendSrc() ||
                      blendingProperties.blendDest() != crtProperties.blendDest() )
                 {
                     gl46core::glBlendFunci( drawBufferIdx,
@@ -839,7 +848,7 @@ namespace Divide
                     _blendPropertiesGlobal.blendDest() = blendingProperties.blendDest();
                 }
 
-                if ( blendingProperties.blendOp() != crtProperties.blendOp() )
+                if ( separateModeChanged || blendingProperties.blendOp() != crtProperties.blendOp() )
                 {
                     gl46core::glBlendEquationi( drawBufferIdx,
                                                 GLUtil::glBlendOpTable[blendingProperties.blendOp() != BlendOperation::COUNT

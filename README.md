@@ -54,6 +54,9 @@ Jolt follows the same AVX/Intel and SSE4.2/Rosetta selection.
 - Build and Run as needed.
 - Works on both Windows and Linux.
 ### Windows:
+- Debug and RelWithDebInfo presets embed compiler debug information in object files
+  (`/Z7`) to avoid long compiler PDB paths. Objects and libraries may be larger;
+  the linker can still produce PDBs for debugging.
 - Engine / Game builds:
    - Open the root folder in Visual Studio (with CMake tools installed).
    - Select the desired preset from the Build Preset dropdown.

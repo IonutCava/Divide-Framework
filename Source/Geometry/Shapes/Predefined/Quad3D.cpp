@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/Quad3D.h"
 
@@ -112,7 +113,6 @@ namespace Divide
         }
 
         DIVIDE_UNEXPECTED_CALL();
-        return geometryBuffer()->getPosition( 0 );
     }
 
     void Quad3D::setNormal( const CornerLocation corner, const float3& normal )
@@ -139,7 +139,7 @@ namespace Divide
                 geometryBuffer()->modifyNormalValue( 3, normal );
             } break;
 
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
     }
 
@@ -180,13 +180,14 @@ namespace Divide
 
     void Quad3D::recomputeBounds()
     {
-        setBounds(
-            BoundingBox
-            {
-                geometryBuffer()->getPosition( 1 ),
-                geometryBuffer()->getPosition( 2 ) + float3{ 0.0f, 0.0f, 0.0025f }
-            }
-        );
+        const VertexBuffer* vertices = geometryBuffer();
+        BoundingBox bounds{ vertices->getPosition( 0u ), vertices->getPosition( 0u ) };
+        for ( U32 i = 1u; i < 4u; ++i )
+        {
+            bounds.add( vertices->getPosition( i ) );
+        }
+        bounds._max.z += 0.0025f;
+        setBounds( bounds );
     }
 
 } //namespace Divide

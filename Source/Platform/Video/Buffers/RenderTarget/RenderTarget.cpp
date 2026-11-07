@@ -76,7 +76,7 @@ bool RenderTarget::create()
                 _attachments[to_base(attDesc._slot)] = std::make_unique<RTAttachment>(*this, attDesc);
                 att = _attachments[to_base(attDesc._slot)].get();
             } break;
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         };
 
         if (printWarning)
@@ -214,7 +214,6 @@ RTAttachment* RenderTarget::getAttachment(const RTAttachmentType type, const RTC
     }
 
     DIVIDE_UNEXPECTED_CALL();
-    return nullptr;
 }
 
 U8 RenderTarget::getAttachmentCount(const RTAttachmentType type) const noexcept
@@ -241,7 +240,6 @@ U8 RenderTarget::getAttachmentCount(const RTAttachmentType type) const noexcept
     }
 
     DIVIDE_UNEXPECTED_CALL();
-    return 0u;
 }
 
 U16 RenderTarget::getWidth() const noexcept

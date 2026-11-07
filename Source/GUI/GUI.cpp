@@ -1,6 +1,7 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/GUI.h"
+#include "Headers/FontVertexFormat.h"
 #include "Headers/SceneGUIElements.h"
 
 #include "Headers/GUIButton.h"
@@ -32,6 +33,29 @@
 
 namespace Divide
 {
+    AttributeMap CreateFontVertexFormat()
+    {
+        AttributeMap format{};
+        format._vertexBindings.emplace_back()._strideInBytes = sizeof( FONSvert );
+
+        AttributeDescriptor& position = format._attributes[to_base( AttribLocation::POSITION )];
+        position._componentsPerElement = 2u;
+        position._dataType = GFXDataFormat::FLOAT_32;
+        position._strideInBytes = offsetof( FONSvert, pos );
+
+        AttributeDescriptor& texCoord = format._attributes[to_base( AttribLocation::TEXCOORD )];
+        texCoord._componentsPerElement = 2u;
+        texCoord._dataType = GFXDataFormat::FLOAT_32;
+        texCoord._strideInBytes = offsetof( FONSvert, tcoords );
+
+        AttributeDescriptor& colour = format._attributes[to_base( AttribLocation::COLOR )];
+        colour._componentsPerElement = 4u;
+        colour._dataType = GFXDataFormat::UNSIGNED_BYTE;
+        colour._normalized = true;
+        colour._strideInBytes = offsetof( FONSvert, colours );
+        return format;
+    }
+
     struct DVDFONSContext final : private NonCopyable
     {
         DVDFONSContext() = default;
@@ -78,11 +102,28 @@ namespace Divide
         }
 
 
+        I32 FONSResizeTexture( Texture* texture, const int width, const int height )
+        {
+            if ( texture == nullptr || width <= 0 || height <= 0 || width > U16_MAX || height > U16_MAX ||
+                 texture->createWithData( {}, vec3<U16>( to_U16( width ), to_U16( height ), 1u ), {} ) != ImageUsage::SHADER_READ )
+            {
+                Console::errorfn( LOCALE_STR( "ERROR_FONT_INIT" ) );
+                return 0;
+            }
+
+            return 1;
+        }
+
         I32 FONSRenderCreate( void* userPtr, int width, int height )
         {
             DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
 
             dvd->_fontRenderingBuffer = dvd->_parent->newGPUBuffer( Config::MAX_FRAMES_IN_FLIGHT + 1u, "GUIFontVBBuffer" );
+            if ( !dvd->_fontRenderingBuffer )
+            {
+                Console::errorfn( LOCALE_STR( "ERROR_FONT_INIT" ) );
+                return 0;
+            }
 
             RefreshBufferSize(dvd);
 
@@ -93,12 +134,7 @@ namespace Divide
             texDescriptor._allowRegionUpdates = true;
 
             dvd->_fontRenderingTexture = CreateResource( resDescriptor );
-            if ( dvd->_fontRenderingTexture != INVALID_HANDLE<Texture>)
-            {
-                Get(dvd->_fontRenderingTexture)->createWithData( {}, vec3<U16>( width, height, 1u), {});
-            }
-
-            return 0;
+            return FONSResizeTexture( Get( dvd->_fontRenderingTexture ), width, height );
         }
     }
 
@@ -426,27 +462,20 @@ namespace Divide
         params.renderResize = []( void* userPtr, int width, int height )
         {
             const DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
-
-            if ( dvd->_fontRenderingTexture != INVALID_HANDLE<Texture>)
-            {
-                Get(dvd->_fontRenderingTexture)->createWithData( {}, vec3<U16>( width, height, 1u), {} );
-                return 1;
-            }
-
-            return FONSRenderCreate( userPtr, width, height );
+            return FONSResizeTexture( Get( dvd->_fontRenderingTexture ), width, height );
         };
         params.renderUpdate = []( void* userPtr, int* rect, const unsigned char* data )
         {
             const DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
-
-            if ( dvd->_fontRenderingTexture == INVALID_HANDLE<Texture> )
+            Texture* texture = Get( dvd->_fontRenderingTexture );
+            if ( texture == nullptr )
             {
-                FONSRenderCreate( userPtr, dvd->_width, dvd->_width );
+                Console::errorfn( LOCALE_STR( "ERROR_FONT_INIT" ) );
+                return;
             }
 
             const I32 w = rect[2] - rect[0];
             const I32 h = rect[3] - rect[1];
-            Texture* texture = Get( dvd->_fontRenderingTexture );
 
             const PixelAlignment pixelUnpackAlignment =
             {
@@ -506,6 +535,12 @@ namespace Divide
         params.userPtr = _fonsContext.get();
 
         _fonsContext->_impl = fonsCreateInternal( &params );
+        if ( _fonsContext->_impl == nullptr )
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_FONT_INIT" ) );
+            _fonsContext.reset();
+            return ErrorCode::FONT_INIT_ERROR;
+        }
 
         std::atomic_uint loadTasks = 0;
         {
@@ -529,26 +564,7 @@ namespace Divide
             descriptor._shaderProgramHandle = _textRenderShader;
             descriptor._stateBlock = context.gfx().get2DStateBlock();
             descriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
-            descriptor._vertexFormat._vertexBindings.emplace_back()._strideInBytes = 2 * sizeof( F32 ) + 2 * sizeof( F32 ) + 4 * sizeof( U8 );
-            AttributeDescriptor& descPos = descriptor._vertexFormat._attributes[to_base( AttribLocation::POSITION )]; //vec2
-            AttributeDescriptor& descUV = descriptor._vertexFormat._attributes[to_base( AttribLocation::TEXCOORD )];  //vec2
-            AttributeDescriptor& descColour = descriptor._vertexFormat._attributes[to_base( AttribLocation::COLOR )]; //vec4
-
-            descPos._vertexBindingIndex = 0u;
-            descPos._componentsPerElement = 2u;
-            descPos._dataType = GFXDataFormat::FLOAT_32;
-
-            descUV._vertexBindingIndex = 0u;
-            descUV._componentsPerElement = 2u;
-            descUV._dataType = GFXDataFormat::FLOAT_32;
-
-            descColour._vertexBindingIndex = 0u;
-            descColour._componentsPerElement = 4u;
-            descColour._normalized = true;
-
-            descPos._strideInBytes = 0u;
-            descUV._strideInBytes = 2 * sizeof( F32 );
-            descColour._strideInBytes = 2 * sizeof( F32 ) + 2 * sizeof( F32 );
+            descriptor._vertexFormat = CreateFontVertexFormat();
 
             BlendingSettings& blend = descriptor._blendStates._settings[0u];
             descriptor._blendStates._blendColour = DefaultColours::BLACK_U8;
@@ -647,12 +663,6 @@ namespace Divide
         recreateDefaultMessageBox();
 
         _init = true;
-        if ( _fonsContext == nullptr )
-        {
-            Console::errorfn( LOCALE_STR( "ERROR_FONT_INIT" ) );
-            return ErrorCode::FONT_INIT_ERROR;
-        }
-
         return ErrorCode::NO_ERR;
     }
 

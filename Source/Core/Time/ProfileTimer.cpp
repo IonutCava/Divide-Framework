@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "Headers/ProfileTimer.h"
 #include "Headers/ApplicationTimer.h"
 
@@ -8,6 +10,12 @@ namespace {
     std::array<bool, Config::Profile::MAX_PROFILE_TIMERS> g_profileTimersState;
 
     bool g_timersInit = false;
+
+    U64 ProfileElapsedMicroseconds() noexcept
+    {
+        static const auto epoch = std::chrono::steady_clock::now();
+        return to_U64(std::chrono::duration_cast<USec>(std::chrono::steady_clock::now() - epoch).count());
+    }
 }
 
 ScopedTimer::ScopedTimer(ProfileTimer& timer) noexcept
@@ -23,12 +31,12 @@ ScopedTimer::~ScopedTimer()
 
 void ProfileTimer::start() noexcept 
 {
-    _timer = App::ElapsedMicroseconds();
+    _timer = ProfileElapsedMicroseconds();
 }
 
 void ProfileTimer::stop() noexcept 
 {
-    _timerAverage += App::ElapsedMicroseconds() - _timer;
+    _timerAverage += ProfileElapsedMicroseconds() - _timer;
     _timerCounter++;
 }
 
@@ -162,7 +170,6 @@ ProfileTimer& ProfileTimer::getNewTimer(const char* timerName)
     }
 
     DIVIDE_UNEXPECTED_CALL_MSG("Reached max profile timer count!");
-    return g_profileTimers[0];
 }
 
 void ProfileTimer::removeTimer(ProfileTimer& timer)

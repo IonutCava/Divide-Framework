@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -48,7 +48,7 @@ namespace Divide {
         VkPipelineVertexInputStateCreateFlags flags{0u};
     };
 
-    VertexInputDescription getVertexDescription(const AttributeMap& vertexFormat);
+    VertexInputDescription getVertexDescription(const AttributeMap& vertexFormat, const AttributeFlags& shaderInputs);
 
     struct VMABuffer
     {
@@ -87,6 +87,7 @@ namespace Divide {
 
     private:
         bool _isMemoryMappable{ false };
+        bool _isMemoryCoherent{ false };
     };
 
     FWD_DECLARE_MANAGED_STRUCT( vkBufferImpl );

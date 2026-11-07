@@ -1,3 +1,4 @@
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/Terrain.h"
 
@@ -12,8 +13,11 @@
 #include "Platform/File/Headers/FileManagement.h"
 
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
+#include "Graphs/Headers/SceneGraph.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Managers/Headers/ProjectManager.h"
+#include "Rendering/Camera/Headers/Camera.h"
+#include "Scenes/Headers/Scene.h"
 
 #include "Environment/Vegetation/Headers/Vegetation.h"
 
@@ -324,7 +328,7 @@ bool Terrain::load( PlatformContext& context )
     terrainMaterial->properties().toggleTransparency(false);
 
     const TerrainDescriptor::LayerData& layerTileData = _descriptor._layerDataEntries;
-    string tileFactorStr = Util::StringFormat("const vec2 CURRENT_TILE_FACTORS[{}] = {\n", layerCount * 4);
+    string tileFactorStr = BuildTerrainTileFactorArrayHeader( layerCount );
     for (U8 i = 0u; i < layerCount; ++i) {
         const TerrainDescriptor::LayerDataEntry& entry = layerTileData[i];
         for (U8 j = 0u; j < 4u; ++j) {
@@ -371,7 +375,7 @@ bool Terrain::load( PlatformContext& context )
     terrainMaterial->setTexture(TextureSlot::HEIGHTMAP,heightMapTexture, heightMapSampler, TextureOperation::NONE, true);
     terrainMaterial->setTexture(TextureSlot::SPECULAR, textureWaterCaustics, albedoSampler, TextureOperation::NONE, true);
     terrainMaterial->setTexture(TextureSlot::METALNESS, textureExtraMaps, albedoSampler, TextureOperation::NONE);
-    terrainMaterial->setTexture(TextureSlot::EMISSIVE, Texture::DefaultTexture2D(), albedoSampler, TextureOperation::NONE);
+    terrainMaterial->setTexture(TextureSlot::EMISSIVE, GetResourceRef(Texture::DefaultTexture2DArray()), albedoSampler, TextureOperation::NONE);
 
     const Configuration::Terrain terrainConfig = context.config().terrain;
     const float2 WorldScale = tessParams().WorldScale();
@@ -433,6 +437,7 @@ bool Terrain::load( PlatformContext& context )
         ShaderModuleDescriptor geomModule = {};
         geomModule._moduleType = ShaderType::GEOMETRY;
         geomModule._sourceFile = "terrainTess.glsl";
+        geomModule._defines.emplace_back("INPUT_PRIMITIVE_SIZE 3");
 
         ShaderModuleDescriptor fragModule = {};
         fragModule._moduleType = ShaderType::FRAGMENT;
@@ -577,6 +582,10 @@ bool Terrain::load( PlatformContext& context )
 
 bool Terrain::unload()
 {
+    for ( TerrainChunk* chunk : _terrainChunks )
+    {
+        Attorney::TerrainChunkVegetation::destroyVegetation( *chunk );
+    }
     DestroyResource(_vegetation);
     return Object3D::unload();
 }
@@ -746,20 +755,27 @@ bool Terrain::loadResources( PlatformContext& context )
 
     createVegetation(context );
 
-    TaskPool& pool = context.taskPool( TaskPoolType::HIGH_PRIORITY );
-    Task* buildTask = CreateTask(TASK_NOP);
-    for ( TerrainChunk* chunk : terrainChunks() )
+    const auto& chunks = terrainChunks();
+    ParallelForDescriptor vegetationJobs{};
+    vegetationJobs._iterCount = to_U32( chunks.size() );
+    vegetationJobs._partitionSize = 1u;
+    const bool needsGLContext = context.gfx().renderAPI() == RenderAPI::OpenGL;
+    if ( needsGLContext )
     {
-        pool.enqueue( *CreateTask( buildTask, [&](const Task&)
-        {
-            Attorney::TerrainChunkVegetation::initVegetation( *chunk, context, _vegetation );
-        }));
+        vegetationJobs._useCurrentThread = false;
+        vegetationJobs._allowPoolIdle = false;
     }
-    pool.enqueue( *buildTask );
-    pool.wait( *buildTask );
+    Parallel_For( context.taskPool( needsGLContext ? TaskPoolType::RENDERER : TaskPoolType::HIGH_PRIORITY ), vegetationJobs,
+                  [&chunks, &context, vegetation = _vegetation]( const Task*, const U32 start, const U32 end )
+    {
+        for ( U32 i = start; i < end; ++i )
+        {
+            Attorney::TerrainChunkVegetation::initVegetation( *chunks[i], context, vegetation );
+        }
+    } );
 
     Console::printfn( LOCALE_STR( "TERRAIN_LOAD_END" ), resourceName() );
-    return load( context );
+    return true;
 }
 
 void Terrain::createVegetation( PlatformContext& context )
@@ -774,14 +790,16 @@ void Terrain::createVegetation( PlatformContext& context )
         string currentMesh = GetVariable( _descriptor, Util::StringFormat( "treeMesh{}", i ) );
         if ( !currentMesh.empty() )
         {
+            const size_t meshIndex = vegDetails.treeMeshes.size();
             vegDetails.treeMeshes.push_back( currentMesh );
+            vegDetails.treeScales[meshIndex] = GetVariableF( _descriptor, Util::StringFormat( "treeScale{}", i ) );
+            vegDetails.treeDensities[meshIndex] = GetVariableF( _descriptor, Util::StringFormat( "treeDensity{}", i ) );
+            vegDetails.treeRotations[meshIndex].set(
+                GetVariableF( _descriptor, Util::StringFormat( "treeRotationX{}", i ) ),
+                GetVariableF( _descriptor, Util::StringFormat( "treeRotationY{}", i ) ),
+                GetVariableF( _descriptor, Util::StringFormat( "treeRotationZ{}", i ) )
+            );
         }
-
-        vegDetails.treeRotations[i - 1].set(
-            GetVariableF( _descriptor, Util::StringFormat( "treeRotationX{}", i ) ),
-            GetVariableF( _descriptor, Util::StringFormat( "treeRotationY{}", i ) ),
-            GetVariableF( _descriptor, Util::StringFormat( "treeRotationZ{}", i ) )
-        );
     }
 
     vegDetails.grassScales.set(
@@ -789,12 +807,6 @@ void Terrain::createVegetation( PlatformContext& context )
         GetVariableF( _descriptor, "grassScale2" ),
         GetVariableF( _descriptor, "grassScale3" ),
         GetVariableF( _descriptor, "grassScale4" ) );
-
-    vegDetails.treeScales.set(
-        GetVariableF( _descriptor, "treeScale1" ),
-        GetVariableF( _descriptor, "treeScale2" ),
-        GetVariableF( _descriptor, "treeScale3" ),
-        GetVariableF( _descriptor, "treeScale4" ) );
 
     string currentImage = GetVariable( _descriptor, "grassBillboard1" );
     if ( !currentImage.empty() )
@@ -941,7 +953,7 @@ void Terrain::postLoad(SceneGraphNode* sgn)
 
     for ( const TerrainChunk* chunk : _terrainChunks )
     {
-        vegetationNodeDescriptor._nodeHandle = FromHandle(_vegetation);
+        vegetationNodeDescriptor._nodeHandle = FromSharedHandle( _vegetation );
         Util::StringFormatTo( vegetationNodeDescriptor._name, "Vegetation_chunk_{}", chunk->id() );
         vegetationNodeDescriptor._dataFlag = chunk->id();
         vegParent->addChildNode( vegetationNodeDescriptor );
@@ -996,7 +1008,7 @@ void Terrain::postBuild( PlatformContext& context )
     _terrainQuadtree.build(_boundingBox, _descriptor._dimensions, this);
 
     // The terrain's final bounding box is the QuadTree's root bounding box
-    _boundingBox.set(_terrainQuadtree.computeBoundingBox());
+    setBounds(_terrainQuadtree.computeBoundingBox());
 
     {
         // widths[0] doesn't define a ring hence -1
@@ -1093,7 +1105,9 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
     }
 
     const float2 SNAP_GRID_SIZE = tessParams().SnapGridSize();
-    float3 cullingEye = cameraSnapshot._eye;
+    float3 cullingEye = renderStagePass._stage == RenderStage::NODE_PREVIEW
+                            ? cameraSnapshot._eye
+                            : sgn->sceneGraph()->parentScene().playerCamera()->snapshot()._eye;
     const float2 eyeXZ = cullingEye.xz();
 
     float2 snappedXZ = eyeXZ;
@@ -1125,7 +1139,7 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
     uniforms->set(_ID("dvd_tessTriangleWidth"),  PushConstantType::FLOAT, triangleWidth);
     uniforms->set(_ID("dvd_frustumPlanes"), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
 
-    Object3D::prepareRender(sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData);
+    SceneNode::prepareRender(sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData);
 }
 
 void Terrain::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut)
@@ -1136,12 +1150,13 @@ void Terrain::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer
     cmd._sourceBuffers =_bufferHandles.data();
     cmd._sourceBuffersCount = to_U32(_bufferHandles.size());
     cmd._cmd.indexCount = to_U32(TessellationParams::QUAD_LIST_INDEX_COUNT);
+    cmd._cmd.instanceCount = 0u;
     for (const auto& tileRing : _tileRings)
     {
-        cmd._cmd.instanceCount += tileRing.tileCount();
+        cmd._cmd.instanceCount += to_U32( tileRing.tileCount() );
     }
 
-    Object3D::buildDrawCommands(sgn, cmdsOut);
+    SceneNode::buildDrawCommands(sgn, cmdsOut);
 }
 
 const vector<VertexBuffer::Vertex>& Terrain::getVerts() const noexcept

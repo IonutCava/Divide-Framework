@@ -1,10 +1,12 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/RenderPassManager.h"
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Editor/Headers/Editor.h"
@@ -60,8 +62,10 @@ RenderPassManager::RenderPassManager(Kernel& parent, GFXDevice& context)
 
 RenderPassManager::~RenderPassManager()
 {
-    DestroyResource( _oitCompositionShader );
-    DestroyResource( _oitCompositionShaderMS );
+    for ( Handle<ShaderProgram>& shader : _oitCompositionShaders )
+    {
+        DestroyResource( shader );
+    }
     DestroyResource( _gbufferResolveShader );
 }
 
@@ -71,19 +75,28 @@ void RenderPassManager::postInit()
     {
         const ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "OITComposition.glsl" };
 
-        ShaderProgramDescriptor shaderDescriptor = {};
-        shaderDescriptor._modules.push_back(vertModule);
-        shaderDescriptor._modules.push_back(fragModule);
-
+        for ( const bool writeNormals : { false, true } )
         {
-            ResourceDescriptor<ShaderProgram> shaderResDesc("OITComposition", shaderDescriptor );
-            _oitCompositionShader = CreateResource(shaderResDesc);
-        }
-        {
-            shaderDescriptor._modules.back()._defines.emplace_back("USE_MSAA_TARGET");
+            for ( const bool useMSAA : { false, true } )
+            {
+                ShaderProgramDescriptor shaderDescriptor = {};
+                shaderDescriptor._modules.push_back( vertModule );
+                shaderDescriptor._modules.push_back( fragModule );
+                if ( !writeNormals )
+                {
+                    shaderDescriptor._modules.back()._defines.emplace_back( "OIT_COLOUR_ONLY" );
+                }
+                if ( useMSAA )
+                {
+                    shaderDescriptor._modules.back()._defines.emplace_back( "USE_MSAA_TARGET" );
+                }
 
-            ResourceDescriptor<ShaderProgram> shaderResMSDesc("OITCompositionMS", shaderDescriptor );
-            _oitCompositionShaderMS = CreateResource(shaderResMSDesc);
+                const auto variant = RenderPassExecutor::SelectOITCompositionVariant( writeNormals, useMSAA );
+                ResourceDescriptor<ShaderProgram> shaderResDesc(
+                    Util::StringFormat( "OITComposition{}{}", writeNormals ? "" : "ColourOnly", useMSAA ? "MS" : "" ),
+                    shaderDescriptor );
+                _oitCompositionShaders[to_base( variant )] = CreateResource( shaderResDesc );
+            }
         }
     }
     {
@@ -100,7 +113,7 @@ void RenderPassManager::postInit()
         _gbufferResolveShader = CreateResource(shaderResolveDesc);
     }
 
-    RenderPassExecutor::PostInit( _context, _oitCompositionShader, _oitCompositionShaderMS, _gbufferResolveShader );
+    RenderPassExecutor::PostInit( _context, _oitCompositionShaders, _gbufferResolveShader );
 }
 
 void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& pool, Task* parentTask)
@@ -109,55 +122,93 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
 
     Time::ScopedTimer timeAll( *_renderPassTimer );
 
-    for ( std::atomic_bool& state : _renderPassCompleted )
+    RenderStageSchedule submissionSchedule{};
+    _stageSchedule.reset();
+    for ( U8 stageIndex = 0u; stageIndex < to_base( RenderStage::COUNT ); ++stageIndex )
     {
-        state.store(false);
+        const auto& pass = _renderPassData[stageIndex]._pass;
+        if ( !DIVIDE_ASSERT( pass != nullptr, "Render stage has no pass" ) )
+        {
+            return;
+        }
+
+        for ( const RenderStage dependency : pass->dependencies() )
+        {
+            if ( !DIVIDE_ASSERT( submissionSchedule.addDependency( stageIndex, to_base( dependency ) ),
+                                 "Invalid render-stage dependency" ) )
+            {
+                return;
+            }
+        }
+
+        for ( const RenderStage dependency : pass->recordingDependencies() )
+        {
+            if ( !DIVIDE_ASSERT( eastl::find( cbegin( pass->dependencies() ), cend( pass->dependencies() ), dependency ) != cend( pass->dependencies() ),
+                                 "Render-stage recording dependencies must also be submission dependencies" ) ||
+                 !DIVIDE_ASSERT( _stageSchedule.addDependency( stageIndex, to_base( dependency ) ),
+                                 "Invalid render-stage recording dependency" ) )
+            {
+                return;
+            }
+        }
     }
 
-    //All of our render passes should run in parallel
-    for (I8 i = to_base(RenderStage::COUNT) - 1; i >= 0; i-- )
-    { 
-        RenderPassData& passData = _renderPassData[i];
-        passData._workTask = CreateTask( parentTask,
-                                        [&, i](const Task& parentTask) {
+    if ( !DIVIDE_ASSERT( submissionSchedule.topologicalOrder( _submissionOrder ), "Render-stage dependencies contain a cycle" ) ||
+         !DIVIDE_ASSERT( _stageSchedule.isAcyclic(), "Render-stage recording dependencies contain a cycle" ) )
+    {
+        return;
+    }
+
+    _stageSchedule.prepare();
+    for ( U8 i = 0u; i < to_base( RenderStage::COUNT ); ++i )
+    {
+        _renderPassData[i]._workTask = CreateTask( parentTask,
+                                        [&, i](const Task& stageTask) {
                                            PROFILE_SCOPE("RenderPass: BuildCommandBuffer", Profiler::Category::Scene );
                                            PROFILE_TAG("Pass IDX", i);
 
-                                           Handle<GFX::CommandBuffer> cmdBufferHandle = GFX::AllocateCommandBuffer( TypeUtil::RenderStageToString( static_cast<RenderStage>(i) ), 1024 );
-                                           GFX::CommandBuffer* cmdBuffer = GFX::Get(cmdBufferHandle);
-
-                                           passData._memCmd = {};
-                                           passData._pass->render(params._playerPass, parentTask, *params._sceneRenderState, *cmdBuffer, passData._memCmd);
-
-                                           Time::ScopedTimer timeGPUFlush( *_processCommandBufferTimer[i] );
-                                           cmdBuffer->batch();
-
-                                           if (!passData._pass->dependencies().empty())
+                                           RenderPassData& passData = _renderPassData[i];
                                            {
-                                               UniqueLock<Mutex> lock( _waitForDependenciesLock );
-                                               _waitForDependencies.wait(lock, [&]() noexcept
+                                               PROFILE_SCOPE( "RenderPass: Record stage commands", Profiler::Category::Scene );
+#if USE_OPTICK
+                                               Str<64> stageScopeName{ "Record stage: " };
+                                               stageScopeName.append( TypeUtil::RenderStageToString( static_cast<RenderStage>(i) ) );
+                                               PROFILE_SCOPE_DYNAMIC( stageScopeName.c_str() );
+#endif //USE_OPTICK
+                                               Handle<GFX::CommandBuffer> cmdBufferHandle = GFX::AllocateCommandBuffer( TypeUtil::RenderStageToString( static_cast<RenderStage>(i) ), 1024 );
+                                               GFX::CommandBuffer* cmdBuffer = GFX::Get(cmdBufferHandle);
+
+                                               passData._memCmd = {};
+                                               passData._pass->render(params._playerPass, stageTask, *params._sceneRenderState, *cmdBuffer, passData._memCmd);
+
+                                               Time::ScopedTimer timeGPUFlush( *_processCommandBufferTimer[i] );
+                                               cmdBuffer->batch();
+
+                                               I32 drawCount = 0;
+                                               for ( const GFX::CommandBase* cmd : cmdBuffer->commands() )
                                                {
-                                                   for ( const RenderStage dep : passData._pass->dependencies() )
+                                                   if ( cmd->type() == GFX::CommandType::DRAW_COMMANDS )
                                                    {
-                                                       if ( !_renderPassCompleted[to_base( dep )] )
-                                                       {
-                                                           return false;
-                                                       }
+                                                       drawCount += to_I32( static_cast<const GFX::DrawCommand*>(cmd)->_drawCommands.size() );
                                                    }
+                                               }
+                                               _drawCallCount[i] = drawCount;
 
-                                                   return true;
-                                               });
-                                            }
+                                               // Submitted by the main thread in dependency order once every stage has finished recording.
+                                               passData._cmdBuffer = cmdBufferHandle;
+                                           }
 
-                                            _context.flushCommandBuffer( MOV(cmdBufferHandle) );
-                                            _renderPassCompleted[i].store(true);
-
-                                           LockGuard<Mutex> w_lock( _waitForDependenciesLock );
-                                           _waitForDependencies.notify_all();
+                                           _stageSchedule.complete( i, [this, &pool]( const U8 readyStage )
+                                           {
+                                               pool.enqueue( *_renderPassData[readyStage]._workTask, TaskPriority::DONT_CARE_NO_IDLE );
+                                           } );
                                        });
-
-        pool.enqueue(*passData._workTask, TaskPriority::DONT_CARE_NO_IDLE);
     }
+
+    _stageSchedule.enqueueRoots( [this, &pool]( const U8 readyStage )
+    {
+        pool.enqueue( *_renderPassData[readyStage]._workTask, TaskPriority::DONT_CARE_NO_IDLE );
+    } );
 }
 
 void RenderPassManager::render(const RenderParams& params)
@@ -174,8 +225,21 @@ void RenderPassManager::render(const RenderParams& params)
     GFXDevice& gfx = _context;
     PlatformContext& context = parent().platformContext();
     ProjectManager* projectManager = parent().projectManager().get();
+    RenderPassExecutor::PrepareGPUBuffers( gfx, projectManager->activePlayerCount() );
+    for ( const auto& executor : _executors )
+    {
+        if ( executor != nullptr )
+        {
+            executor->prepareCommandBuffers( params._playerPass );
+        }
+    }
 
     const Camera* cam = Attorney::ProjectManagerRenderPass::playerCamera(projectManager);
+    const I64 cameraGUID = cam->getGUID();
+    if ( _previousCameraGUID[params._playerPass] != cameraGUID )
+    {
+        _context.invalidatePreviousDepthHistory( params._playerPass );
+    }
 
     LightPool& activeLightPool = Attorney::ProjectManagerRenderPass::lightPool(projectManager);
 
@@ -263,7 +327,6 @@ void RenderPassManager::render(const RenderParams& params)
         postFXCmdBuffer->batch();
     }
 
-    RenderPassExecutor::PrepareGPUBuffers(gfx);
     TaskPool& pool = context.taskPool(TaskPoolType::RENDERER);
     Task* renderTask = CreateTask( TASK_NOP );
     startRenderTasks(params, pool, renderTask);
@@ -276,8 +339,29 @@ void RenderPassManager::render(const RenderParams& params)
 
         gfx.flushCommandBuffer(MOV(skyLightRenderBufferHandle));
 
-        WAIT_FOR_CONDITION( Finished( *renderTask ) );
+        pool.wait( *renderTask );
+        for ( const U8 stageIndex : _submissionOrder )
+        {
+            RenderPassData& passData = _renderPassData[stageIndex];
+            if ( passData._cmdBuffer != INVALID_HANDLE<GFX::CommandBuffer> )
+            {
+                gfx.flushCommandBuffer( MOV( passData._cmdBuffer ) );
+                passData._cmdBuffer = INVALID_HANDLE<GFX::CommandBuffer>;
+            }
+        }
+        activeLightPool.patchShadowIndices( flushMemCmd );
         RenderPassExecutor::FlushBuffersToGPU(flushMemCmd);
+
+        if ( RenderSmokeTest::PerfModeRequested() ) [[unlikely]]
+        {
+            // GL only resolves GPU timer queries while stats are requested; VK timestamps are always on.
+            _context.queryPerformanceStats( true );
+            _context.queryGPUScopeTimings( RenderSmokeTest::GPUScopeTimingsRequested() );
+            if ( GFXDevice::FrameCount() % PERF_METRICS_LOG_INTERVAL == 0u )
+            {
+                logPerfMetrics();
+            }
+        }
 
         if constexpr ( Config::Build::ENABLE_EDITOR )
         {
@@ -304,9 +388,10 @@ void RenderPassManager::render(const RenderParams& params)
     }
 
     _context.setCameraSnapshot(params._playerPass, cam->snapshot());
+    _previousCameraGUID[params._playerPass] = cameraGUID;
 }
 
-RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage, const vector<RenderStage>& dependencies)
+RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage, const vector<RenderStage>& dependencies, const vector<RenderStage>& recordingDependencies)
 {
     DIVIDE_ASSERT(Runtime::isMainThread());
 
@@ -320,12 +405,60 @@ RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage, cons
 
     item = _renderPassData[to_base( renderStage )]._pass.get();
     item->dependencies( dependencies );
+    item->recordingDependencies( recordingDependencies );
     return *item;
 }
 
 U32 RenderPassManager::getLastTotalBinSize(const RenderStage renderStage) const noexcept
 {
     return getPassForStage(renderStage).getLastTotalBinSize();
+}
+
+void RenderPassManager::logPerfMetrics() const
+{
+    const PerformanceMetrics& metrics = _context.getPerformanceMetrics();
+
+    string stageCounts;
+    for ( U8 i = 0u; i < to_base( RenderStage::COUNT ); ++i )
+    {
+        const RenderStage stage = static_cast<RenderStage>(i);
+        stageCounts.append( Util::StringFormat( "{}={}/{} ", TypeUtil::RenderStageToString( stage ), _drawCallCount[i],
+                                                _renderPassData[i]._pass != nullptr ? getLastTotalBinSize( stage ) : 0u ) );
+    }
+
+    const uint4& cullCount = _context.lastCullCount();
+    Console::printfn( "[PerfMetrics] frame={} gpuMS={:.2f} backendDraws={} hiZCulled={} hiZOverflow={} hiZSkipped={} stageDraws/binItems: {}",
+                      GFXDevice::FrameCount(), metrics._gpuTimeInMS, _context.frameDrawCallsPrev(), cullCount.x, cullCount.y, cullCount.w, stageCounts );
+
+    GPUPassTimingTable& passTimings = _context.gpuPassTimings();
+    if ( passTimings._frameCount > 0u )
+    {
+        std::array<size_t, GPU_PASS_TIMESTAMP_CAPACITY> order{};
+        for ( size_t i = 0u; i < passTimings._entryCount; ++i )
+        {
+            order[i] = i;
+        }
+        const auto orderEnd = order.begin() + passTimings._entryCount;
+        std::sort( order.begin(), orderEnd, [&passTimings]( const size_t lhs, const size_t rhs )
+        {
+            return passTimings._entries[lhs]._totalMS > passTimings._entries[rhs]._totalMS;
+        });
+
+        D64 totalMS = 0.0;
+        string passList;
+        for ( size_t i = 0u; i < passTimings._entryCount; ++i )
+        {
+            const GPUPassTimingTable::Entry& entry = passTimings._entries[order[i]];
+            const D64 avgMS = entry._totalMS / passTimings._frameCount;
+            totalMS += avgMS;
+            if ( i < PERF_METRICS_TOP_GPU_PASSES )
+            {
+                passList.append( Util::StringFormat( "[{}]={:.2f} ", entry._name.c_str(), avgMS ) );
+            }
+        }
+        Console::printfn( "[PerfMetrics] gpuPasses frames={} sumMS={:.2f} top: {}", passTimings._frameCount, totalMS, passList );
+    }
+    passTimings.reset();
 }
 
 const RenderPass& RenderPassManager::getPassForStage(const RenderStage renderStage) const noexcept

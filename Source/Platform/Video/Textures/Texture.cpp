@@ -1,5 +1,4 @@
-
-
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/Texture.h"
 
 #include "Core/Headers/ByteBuffer.h"
@@ -9,12 +8,18 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Utility/Headers/DDSCache.h"
 #include "Utility/Headers/Localization.h"
 
 namespace Divide
 {
 
-    constexpr U16 BYTE_BUFFER_VERSION = 1u;
+    namespace
+    {
+        constexpr U16 TRANSPARENCY_CACHE_VERSION = 2u;
+        constexpr size_t TRANSPARENCY_CACHE_SIZE = sizeof(U16) + sizeof(U64) + sizeof(U8) * 4u;
+        Mutex s_transparencyCacheMutex;
+    }
 
     [[nodiscard]] bool IsEmpty( const TextureLayoutChanges& changes ) noexcept
     {
@@ -224,10 +229,10 @@ namespace Divide
 
                     if ( _descriptor._layerCount == 0u )
                     {
-                        _descriptor._layerCount = targetLayers % 6;
+                        _descriptor._layerCount = TextureLayersForImageLayers( _descriptor._texType, targetLayers );
                     }
 
-                    DIVIDE_ASSERT( _descriptor._layerCount == targetLayers % 6 );
+                    DIVIDE_ASSERT( _descriptor._layerCount == TextureLayersForImageLayers( _descriptor._texType, targetLayers ) );
 
                     // We only use cube arrays to simplify some logic in the texturing code
                     if ( _descriptor._texType == TextureType::TEXTURE_CUBE_MAP )
@@ -277,6 +282,67 @@ namespace Divide
         return CachedResource::postLoad();
     }
 
+    bool Texture::HasValidFileLayerCount( const TextureDescriptor& descriptor, const U16 imageLayers ) noexcept
+    {
+        if ( IsCubeTexture( descriptor._texType ) )
+        {
+            return imageLayers > 0u && imageLayers % 6u == 0u;
+        }
+
+        return IsArrayTexture( descriptor._texType ) ? imageLayers == descriptor._layerCount : imageLayers == 1u;
+    }
+
+    U16 Texture::TextureLayersForImageLayers( const TextureType type, const U16 imageLayers ) noexcept
+    {
+        return IsCubeTexture( type ) ? to_U16( imageLayers / 6u ) : imageLayers;
+    }
+
+    U16 Texture::ResolveMipCount( const vec3<U16>& dimensions, const MipMappingState state, const U16 suppliedMipCount ) noexcept
+    {
+        if ( state == MipMappingState::OFF )
+        {
+            return 1u;
+        }
+
+        const U16 longestSide = std::max( { dimensions.width, dimensions.height, dimensions.depth } );
+        const U16 fullMipCount = MipCount( longestSide, U16{ 1u } );
+        return state == MipMappingState::MANUAL && suppliedMipCount > 0u
+             ? std::min( suppliedMipCount, fullMipCount )
+             : fullMipCount;
+    }
+
+    bool Texture::GetViewLayerRange( const TextureType sourceType, TextureType targetType, const U16 textureLayers,
+                                     const SubRange requested, SubRange& rangeOut ) noexcept
+    {
+        if ( targetType == TextureType::COUNT )
+        {
+            targetType = sourceType;
+        }
+
+        U32 availableLayers = sourceType == TextureType::TEXTURE_3D ? 1u : textureLayers;
+        if ( IsCubeTexture( sourceType ) && !IsCubeTexture( targetType ) )
+        {
+            availableLayers *= 6u;
+        }
+
+        if ( availableLayers >= ALL_LAYERS || requested._offset >= availableLayers || requested._count == 0u )
+        {
+            return false;
+        }
+
+        const bool arrayView = IsArrayTexture( targetType );
+        const U32 selectedCount = requested._count == ALL_LAYERS
+                                ? (arrayView ? availableLayers - requested._offset : 1u)
+                                : requested._count;
+        if ( selectedCount > availableLayers - requested._offset || (!arrayView && selectedCount != 1u) )
+        {
+            return false;
+        }
+
+        rangeOut = { requested._offset, to_U16( selectedCount ) };
+        return true;
+    }
+
     /// Load texture data using the specified file name
     bool Texture::loadInternal()
     {
@@ -296,8 +362,11 @@ namespace Divide
 
             ImageTools::ImageData dataStorage = {};
             dataStorage.requestedFormat( requestedFormat );
+            TextureTransparencyInfo transparency{};
 
             bool hasValidEntries = false;
+            GFXImageFormat layerFormat = GFXImageFormat::COUNT;
+            GFXDataFormat layerDataType = GFXDataFormat::COUNT;
             // We loop over every texture in the above list and store it in this temporary string
             const ResourcePath currentTextureFullPath = assetLocation().empty() ? Paths::g_texturesLocation : assetLocation();
 
@@ -311,34 +380,41 @@ namespace Divide
                 }
 
                 // Attempt to load the current entry
-                if ( !loadFile( currentTextureFullPath, Util::Trim(currentTextureFile), dataStorage ) )
+                if ( !loadFile( currentTextureFullPath, Util::Trim(currentTextureFile), dataStorage, transparency ) )
                 {
-                    // Invalid texture files are not handled yet, so stop loading
-                    continue;
+                    return false;
                 }
 
+                if ( hasValidEntries && (dataStorage.format() != layerFormat || dataStorage.dataType() != layerDataType) )
+                {
+                    Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOADER_LAYER_FORMAT" ), resourceName().c_str(), currentTextureFile );
+                    return false;
+                }
+                layerFormat = dataStorage.format();
+                layerDataType = dataStorage.dataType();
                 hasValidEntries = true;
             }
 
-            if ( hasValidEntries )
+            if ( !hasValidEntries )
             {
-                // Create a new Rendering API-dependent texture object
-                _descriptor._baseFormat = dataStorage.format();
-                _descriptor._dataType = dataStorage.dataType();
-                // Uploading to the GPU dependents on the rendering API
-                if (createWithData( dataStorage, {}) != ImageUsage::SHADER_READ )
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                return false;
+            }
 
-                if ( IsCubeTexture( _descriptor._texType ) && dataStorage.layerCount() % 6 != 0  )
-                {
-                    Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOADER_CUBMAP_INIT_COUNT" ), resourceName().c_str() );
-                }
-                else if ( IsArrayTexture( _descriptor._texType ) && !IsCubeTexture( _descriptor._texType ) && dataStorage.layerCount() != depth() )
-                {
-                    Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT" ), resourceName().c_str() );
-                }
+            if ( !HasValidFileLayerCount( _descriptor, dataStorage.layerCount() ) )
+            {
+                Console::errorfn( LOCALE_STR( IsCubeTexture( _descriptor._texType ) ?
+                                             "ERROR_TEXTURE_LOADER_CUBMAP_INIT_COUNT" :
+                                             "ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT" ), resourceName().c_str() );
+                return false;
+            }
+
+            _hasTransparency = transparency.hasTransparency();
+            _hasTranslucency = transparency.hasTranslucency();
+            _descriptor._baseFormat = dataStorage.format();
+            _descriptor._dataType = dataStorage.dataType();
+            if ( createWithData( dataStorage, {} ) != ImageUsage::SHADER_READ )
+            {
+                return false;
             }
         }
 
@@ -359,9 +435,11 @@ namespace Divide
         return 0u;
     }
 
-    bool Texture::loadFile( const ResourcePath& path, const std::string_view name, ImageTools::ImageData& fileData )
+    bool Texture::loadFile( const ResourcePath& path, const std::string_view name, ImageTools::ImageData& fileData,
+                            TextureTransparencyInfo& transparency )
     {
         const bool srgb = _descriptor._packing == GFXImagePacking::NORMALIZED_SRGB;
+        const U16 firstLayer = fileData.layerCount();
 
         if ( !fileExists( path / name ) || !fileData.loadFromFile( _context.context(), srgb, _width, _height, path, name, _descriptor._textureOptions ) )
         {
@@ -372,18 +450,17 @@ namespace Divide
             }
 
             Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOAD" ), name );
-            // missing_texture.jpg must be something that really stands out
-            DIVIDE_EXPECTED_CALL( fileData.loadFromFile( _context.context(), srgb, _width, _height, Paths::g_texturesLocation, s_missingTextureFileName ) );
-        }
-        else if ( !fileData.hasDummyAlphaChannel() )
-        {
-            return checkTransparency( path, name, fileData );
+            if ( !fileData.loadFromFile( _context.context(), srgb, _width, _height, Paths::g_texturesLocation, s_missingTextureFileName ) )
+            {
+                return false;
+            }
         }
 
-        return true;
+        return CheckTextureTransparency( _context.context(), _descriptor._textureOptions._alphaChannelTransparency,
+                                         path, name, fileData, firstLayer, transparency );
     }
 
-    ImageUsage Texture::prepareTextureData( const vec3<U16>& dimensions, const U16 layers, const bool makeImmutable)
+    ImageUsage Texture::prepareTextureData( const vec3<U16>& dimensions, const U16 layers, const bool makeImmutable, const U16 suppliedMipCount )
     {
         _width  = dimensions.x;
         _height = dimensions.y;
@@ -392,7 +469,7 @@ namespace Divide
 
         DIVIDE_ASSERT( _width > 0u && _height > 0u && _depth > 0u && _layerCount > 0u, "Texture error: Invalid texture dimensions!" );
 
-        validateDescriptor(makeImmutable);
+        validateDescriptor( makeImmutable, suppliedMipCount );
         return ImageUsage::UNDEFINED;
     }
 
@@ -405,16 +482,39 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
-        ImageUsage ret = prepareTextureData(imageData.dimensions(0u, 0u), imageData.layerCount(), true);
+        if ( !ImageTools::HaveCompatibleMipChains( imageData.imageLayers() ) ||
+             (IsCubeTexture( _descriptor._texType ) && imageData.layerCount() % 6u != 0u) )
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOADER_MIP_CHAINS" ), resourceName().c_str() );
+            return ImageUsage::UNDEFINED;
+        }
+
+        const bool uploadsImageData = !IsRenderTargetAttachment( descriptor() );
+        const vec3<U16> dimensions = imageData.dimensions( 0u, 0u );
+        const bool compressed = IsCompressed( _descriptor._baseFormat );
+        const bool autoCompressed = uploadsImageData && compressed && _descriptor._mipMappingState == MipMappingState::AUTO;
+        if ( autoCompressed )
+        {
+            const U16 fullMipCount = ResolveMipCount( dimensions, MipMappingState::AUTO, 0u );
+            if ( imageData.mipCount() < fullMipCount && !_descriptor._textureOptions._skipMipMaps )
+            {
+                Console::warnfn( "Compressed texture '{}' supplies {} of {} mip levels; sampling is limited to the supplied levels.",
+                                 resourceName().c_str(), imageData.mipCount(), fullMipCount );
+            }
+            _descriptor._mipMappingState = MipMappingState::MANUAL;
+        }
+
+        const bool writableMips = _descriptor._allowRegionUpdates ||
+                                  HasUsageFlagSet( _descriptor, ImageUsage::SHADER_WRITE ) ||
+                                  HasUsageFlagSet( _descriptor, ImageUsage::SHADER_READ_WRITE );
+        const bool useSuppliedMipCount = uploadsImageData && !imageData.hasDummyData() &&
+                                         (autoCompressed || (!writableMips && (_loadedFromFile || compressed)));
+        const U16 textureLayers = TextureLayersForImageLayers( _descriptor._texType, imageData.layerCount() );
+        ImageUsage ret = prepareTextureData( dimensions, textureLayers, true, useSuppliedMipCount ? imageData.mipCount() : 0u );
         DIVIDE_UNUSED(ret);
 
-        if ( !IsRenderTargetAttachment(descriptor()) )
+        if ( uploadsImageData )
         {
-            if (IsCompressed(_descriptor._baseFormat) && _descriptor._mipMappingState == MipMappingState::AUTO)
-            {
-                _descriptor._mipMappingState = MipMappingState::MANUAL;
-            }
-
             loadDataInternal(imageData, pixelUnpackAlignment);
 
             ret = ImageUsage::SHADER_READ;
@@ -586,115 +686,169 @@ namespace Divide
         }
     }
 
-    bool Texture::checkTransparency( const ResourcePath& path, const std::string_view name, ImageTools::ImageData& fileData )
+    bool CheckTextureTransparency( PlatformContext& context, const bool inspectAlpha, const ResourcePath& path,
+                                   const std::string_view name, const ImageTools::ImageData& fileData,
+                                   const U16 firstLayer, TextureTransparencyInfo& transparency )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( fileData.ignoreAlphaChannelTransparency() || fileData.hasDummyAlphaChannel() )
+        if ( !inspectAlpha )
         {
-            _hasTransparency = false;
-            _hasTranslucency = false;
             return true;
         }
 
-        const U32 layer = to_U32( fileData.layerCount() - 1 );
-
-        // Extract width, height and bit depth
-        const U16 width = fileData.dimensions( layer, 0u ).width;
-        const U16 height = fileData.dimensions( layer, 0u ).height;
-        // If we have an alpha channel, we must check for translucency/transparency
-
-        const ResourcePath cachePath = Paths::Textures::g_metadataLocation / path;
-        const string cacheName = string(name) + ".cache";
-
-        ByteBuffer metadataCache;
-        bool skip = false;
-        if ( metadataCache.loadFromFile( cachePath, cacheName ) )
+        if ( firstLayer >= fileData.layerCount() )
         {
-            auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
-            metadataCache >> tempVer;
-            if ( tempVer == BYTE_BUFFER_VERSION )
-            {
-                metadataCache >> _hasTransparency;
-                metadataCache >> _hasTranslucency;
-                skip = true;
-            }
-            else
-            {
-                metadataCache.clear();
-            }
+            Console::errorfn( "Texture '{}' did not provide an image layer for alpha inspection.", name );
+            return false;
         }
 
-        if ( !skip )
+        TextureTransparencyInfo fileTransparency{};
+        if ( fileData.hasDummyAlphaChannel() || !HasAlphaChannel( fileData.format() ) )
         {
-            if ( HasAlphaChannel( fileData.format() ) )
-            {
-                bool hasTranslucentOrOpaquePixels = false;
-                // Allow about 4 pixels per partition to be ignored
-                constexpr U32 transparentPixelsSkipCount = 4u;
+            fileTransparency._hasVisiblePixel = true;
+            transparency.merge( fileTransparency );
+            return true;
+        }
 
-                std::atomic_uint transparentPixelCount = 0u;
+        const ResourcePath cachePath = Paths::Textures::g_metadataLocation / path;
+        ByteBuffer metadataCache;
+        std::error_code fileError;
+        const auto sourceTime = std::filesystem::last_write_time( fileData.decodedPath().fileSystemPath(), fileError );
+        U64 sourceSize = 0u;
+        if ( !fileError )
+        {
+            sourceSize = to_U64( std::filesystem::file_size( fileData.decodedPath().fileSystemPath(), fileError ) );
+        }
+        const bool cacheAvailable = !fileError;
+        U64 sourceFingerprint = 0u;
+        string cacheName;
+        bool cacheHit = false;
+        if ( cacheAvailable )
+        {
+            const vec3<U16>& dimensions = fileData.dimensions( firstLayer, 0u );
+            const string signature = Util::StringFormat( "{}|{}|{}|{}|{}|{}|{}|{}|{}",
+                                                         fileData.decodedPath(), sourceTime.time_since_epoch().count(), sourceSize,
+                                                         to_base( fileData.format() ), to_base( fileData.dataType() ),
+                                                         dimensions.width, dimensions.height, dimensions.depth,
+                                                         fileData.layerCount() - firstLayer );
+            sourceFingerprint = _ID( signature.c_str() );
+            cacheName = Util::StringFormat( "{}.alpha-{}-{}.cache", name, TRANSPARENCY_CACHE_VERSION, sourceFingerprint );
+
+            {
+                LockGuard<Mutex> lock( s_transparencyCacheMutex );
+                if ( fileExists( cachePath / cacheName ) )
+                {
+                    if ( metadataCache.loadFromFile( cachePath, cacheName ) &&
+                         metadataCache.storageSize() == TRANSPARENCY_CACHE_SIZE )
+                    {
+                        U16 version = 0u;
+                        U64 fingerprint = 0u;
+                        metadataCache >> version >> fingerprint >> fileTransparency._nonOpaquePixels
+                                      >> fileTransparency._hasVisiblePixel >> fileTransparency._hasTranslucentPixel;
+                        cacheHit = version == TRANSPARENCY_CACHE_VERSION && fingerprint == sourceFingerprint &&
+                                   fileTransparency._nonOpaquePixels <= TextureTransparencyInfo::PIXEL_THRESHOLD &&
+                                   (!fileTransparency._hasTranslucentPixel ||
+                                    (fileTransparency._hasVisiblePixel && fileTransparency._nonOpaquePixels > 0u));
+                    }
+                    if ( !cacheHit )
+                    {
+                        Console::warnfn( "Ignoring invalid transparency metadata '{}'.", cachePath / cacheName );
+                        const FileError error = deleteFile( cachePath, cacheName );
+                        if ( error != FileError::NONE && error != FileError::FILE_NOT_FOUND )
+                        {
+                            Console::warnfn( "Could not remove invalid transparency metadata '{}'.", cachePath / cacheName );
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            Console::warnfn( "Could not inspect texture source '{}' for transparency caching: {}.",
+                             fileData.decodedPath(), fileError.message() );
+        }
+
+        if ( !cacheHit )
+        {
+            fileTransparency = {};
+            for ( U32 layer = firstLayer; layer < fileData.layerCount() && !fileTransparency.hasTranslucency(); ++layer )
+            {
+                const vec3<U16>& dimensions = fileData.dimensions( layer, 0u );
+                if ( dimensions.width == 0u || dimensions.height == 0u || dimensions.depth == 0u )
+                {
+                    Console::errorfn( "Texture '{}' has an empty image layer for alpha inspection.", name );
+                    return false;
+                }
+                const U32 partitionSize = std::max( 16u, to_U32( dimensions.width / 10u ) );
+                std::array<TextureTransparencyInfo, 11> partitions{};
 
                 Parallel_For
                 (
-                    _context.context().taskPool( TaskPoolType::HIGH_PRIORITY ),
+                    context.taskPool( TaskPoolType::HIGH_PRIORITY ),
                     ParallelForDescriptor
                     {
-                        ._iterCount = width,
-                        ._partitionSize = std::max(16u, to_U32(width / 10)),
+                        ._iterCount = dimensions.width,
+                        ._partitionSize = partitionSize,
                         ._useCurrentThread = true
                     },
                     [&]( const Task* /*parent*/, const U32 start, const U32 end )
                     {
-                        U8 tempA = 0u;
-                        for ( U32 i = start; i < end; ++i )
+                        TextureTransparencyInfo local{};
+                        for ( U32 x = start; x < end && !local.hasTranslucency(); ++x )
                         {
-                            for ( I32 j = 0; j < height; ++j )
+                            for ( U16 slice = 0u; slice < dimensions.depth && !local.hasTranslucency(); ++slice )
                             {
-                                if ( _hasTransparency && (_hasTranslucency || hasTranslucentOrOpaquePixels) )
+                                for ( I32 y = 0; y < dimensions.height; ++y )
                                 {
-                                    return;
-                                }
-                                fileData.getAlpha( i, j, tempA, layer );
-                                if ( IS_IN_RANGE_INCLUSIVE( tempA, 0, 250 ) )
-                                {
-                                    if ( transparentPixelCount.fetch_add( 1u ) >= transparentPixelsSkipCount )
+                                    U8 alpha = 0u;
+                                    fileData.getAlpha( to_I32( x ), y, alpha, layer, 0u, slice );
+                                    local.add( alpha );
+                                    if ( local.hasTranslucency() )
                                     {
-                                        _hasTransparency = true;
-                                        _hasTranslucency = tempA > 1;
-                                        if ( _hasTranslucency )
-                                        {
-                                            hasTranslucentOrOpaquePixels = true;
-                                            return;
-                                        }
+                                        break;
                                     }
-                                }
-                                else if ( tempA > 250 )
-                                {
-                                    hasTranslucentOrOpaquePixels = true;
                                 }
                             }
                         }
+                        partitions[start / partitionSize] = local;
                     }
                 );
 
-                if ( _hasTransparency && !_hasTranslucency && !hasTranslucentOrOpaquePixels)
+                for ( const TextureTransparencyInfo& partition : partitions )
                 {
-                    // All the alpha values are 0, so this channel is useless.
-                    _hasTransparency = _hasTranslucency = false;
+                    fileTransparency.merge( partition );
                 }
+            }
 
-                metadataCache << BYTE_BUFFER_VERSION;
-                metadataCache << _hasTransparency;
-                metadataCache << _hasTranslucency;
-                DIVIDE_EXPECTED_CALL( metadataCache.dumpToFile( cachePath, cacheName ) );
+            if ( cacheAvailable )
+            {
+                metadataCache.clear();
+                metadataCache << TRANSPARENCY_CACHE_VERSION << sourceFingerprint << fileTransparency._nonOpaquePixels
+                              << fileTransparency._hasVisiblePixel << fileTransparency._hasTranslucentPixel;
+                LockGuard<Mutex> lock( s_transparencyCacheMutex );
+                const ImageTools::DDSCache::WriteResult result = ImageTools::DDSCache::Write
+                (
+                    cachePath, cacheName, [&]( const ResourcePath& tempPath )
+                    {
+                        const FileNameAndPath temp = splitPathToNameAndLocation( tempPath );
+                        return metadataCache.dumpToFile( temp._path, temp._fileName );
+                    }
+                );
+                if ( result._status != ImageTools::DDSCache::WriteStatus::CREATED &&
+                     result._status != ImageTools::DDSCache::WriteStatus::ALREADY_EXISTS )
+                {
+                    Console::warnfn( "Could not write transparency metadata '{}' (status {}, error {}).",
+                                     cachePath / cacheName, to_base( result._status ), to_base( result._error ) );
+                }
             }
         }
 
+        transparency.merge( fileTransparency );
         Console::printfn( LOCALE_STR( "TEXTURE_HAS_TRANSPARENCY_TRANSLUCENCY" ),
                           name,
-                          _hasTransparency ? "yes" : "no",
-                          _hasTranslucency ? "yes" : "no" );
+                          transparency.hasTransparency() ? "yes" : "no",
+                          transparency.hasTranslucency() ? "yes" : "no" );
 
         return true;
     }
@@ -709,7 +863,7 @@ namespace Divide
         }
     }
 
-    void Texture::validateDescriptor(const bool makeImmutable)
+    void Texture::validateDescriptor( const bool makeImmutable, const U16 suppliedMipCount )
     {
         DIVIDE_UNUSED(makeImmutable);
 
@@ -742,7 +896,7 @@ namespace Divide
                 case GFXImageFormat::BC6u: break;
 
                 case GFXImageFormat::COUNT:
-                default: DIVIDE_UNEXPECTED_CALL(); break;
+                default: DIVIDE_UNEXPECTED_CALL();
             }
 
             DIVIDE_GPU_ASSERT(valid, "SRGB textures are only supported for RGB/BGR(A) normalized formats!" );
@@ -754,22 +908,28 @@ namespace Divide
 
         // We may have a 1D texture
         DIVIDE_ASSERT( _width > 0u && _height > 0u );
+        _mipCount = ResolveMipCount( {_width, _height, _depth}, _descriptor._mipMappingState, suppliedMipCount );
+    }
+
+    namespace
+    {
+        SubRange ResolveViewLayers( const Texture& texture, const TextureType targetType, const SubRange requested )
         {
-            //http://www.opengl.org/registry/specs/ARB/texture_non_power_of_two.txt
-            if ( _descriptor._mipMappingState != MipMappingState::OFF )
+            SubRange range{};
+            if ( !Texture::GetViewLayerRange( texture.descriptor()._texType, targetType, texture.layerCount(), requested, range ) )
             {
-                _mipCount = MipCount(_width, _height);
+                Console::errorfn( "Invalid texture view layers for '{}': offset {}, count {}, available {}",
+                                  texture.resourceName().c_str(), requested._offset, requested._count, texture.layerCount() );
+                Console::Flush();
+                std::abort();
             }
-            else
-            {
-                _mipCount = 1u;
-            }
+            return range;
         }
     }
 
     ImageView Texture::getView() const noexcept
     {
-        const U16 layerCount = _descriptor._texType == TextureType::TEXTURE_3D ? 1u : _depth;
+        const SubRange layerRange = ResolveViewLayers( *this, _descriptor._texType, { 0u, ALL_LAYERS } );
 
         return ImageView
         {
@@ -787,10 +947,7 @@ namespace Divide
                 {
                     ._count = _mipCount
                 },
-                ._layerRange = 
-                {
-                    ._count = layerCount
-                }
+                ._layerRange = layerRange
             }
         };
     }
@@ -799,6 +956,7 @@ namespace Divide
     {
         ImageView ret = getView();
         ret._targetType = targetType;
+        ret._subRange._layerRange = ResolveViewLayers( *this, targetType, { 0u, ALL_LAYERS } );
         return ret;
     }
 
@@ -812,7 +970,7 @@ namespace Divide
     ImageView Texture::getView( const SubRange mipRange, const SubRange layerRange ) const noexcept
     {
         ImageView ret = getView( mipRange );
-        ret._subRange._layerRange = { layerRange._offset, std::min(layerRange._count, ret._subRange._layerRange._count) };
+        ret._subRange._layerRange = ResolveViewLayers( *this, _descriptor._texType, layerRange );
         return ret;
     }
 
@@ -826,7 +984,7 @@ namespace Divide
     ImageView Texture::getView( const TextureType targetType, const SubRange mipRange, const SubRange layerRange ) const noexcept
     {
         ImageView ret = getView( targetType, mipRange );
-        ret._subRange._layerRange = { layerRange._offset, std::min( layerRange._count, ret._subRange._layerRange._count ) };
+        ret._subRange._layerRange = ResolveViewLayers( *this, targetType, layerRange );
         return ret;
     }
 };

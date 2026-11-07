@@ -39,7 +39,6 @@ namespace Divide
                 }
 
                 DIVIDE_UNEXPECTED_CALL();
-                return 0u;
             }
             case RenderStage::REFRACTION:
             {
@@ -62,7 +61,6 @@ namespace Divide
                 }
 
                 DIVIDE_UNEXPECTED_CALL();
-                return 0u;
             }
             case RenderStage::SHADOW:
             {
@@ -95,17 +93,14 @@ namespace Divide
                         assert( lightPass == 0u );
                         return lightIndex + offsetSpot;
                     }
-                    default:
-                        DIVIDE_UNEXPECTED_CALL();
-                        break;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 }
-            } break;
+            }
             case RenderStage::COUNT:
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
 
         DIVIDE_UNEXPECTED_CALL();
-        return 0u;
     }
 
 } //namespace Divide

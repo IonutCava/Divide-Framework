@@ -1,5 +1,9 @@
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #include "Headers/GFXDevice.h"
 #include "Headers/GFXRTPool.h"
+#include "Headers/BlurPass.h"
 #include "Editor/Headers/Editor.h"
 
 #include "Core/Headers/Kernel.h"
@@ -7,6 +11,7 @@
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/DisplayManager.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
@@ -18,6 +23,7 @@
 
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Headers/Renderer.h"
+#include "Rendering/Lighting/Headers/ClusteredLighting.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
 
 #include "Geometry/Material/Headers/Material.h"
@@ -26,7 +32,9 @@
 #include "Platform/File/Headers/FileManagement.h"
 
 #include "Platform/Headers/PlatformRuntime.h"
+#include "Platform/Video/Headers/GPUCompletionGuard.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
+#include "Platform/Video/Headers/OcclusionCullDispatch.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
@@ -38,6 +46,8 @@
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 
 #include "Headers/CommandBufferPool.h"
+
+#include <cstdlib>
 
 namespace Divide
 {
@@ -91,9 +101,32 @@ namespace Divide
         /// How many writes we can basically issue per frame to our scratch buffers before we have to sync
         constexpr size_t TargetBufferSizeCam = 1024u;
 
-        constexpr U32 GROUP_SIZE_AABB = 64u;
+        constexpr U32 GROUP_SIZE_AABB = OCCLUSION_CULL_GROUP_SIZE;
+        constexpr U32 INSTANCE_COUNT_PATCH_GROUP_SIZE = 64u;
         constexpr U32 MAX_INVOCATIONS_BLUR_SHADER_LAYERED = 4u;
-        constexpr U32 DEPTH_REDUCE_LOCAL_SIZE = 32u;
+        // HiZ reduction has no shared memory, so 16x16 (256 invocations) keeps occupancy good without needing 1024-invocation groups.
+        constexpr U32 DEPTH_REDUCE_LOCAL_SIZE = 16u;
+
+        struct RequiredComputeWorkgroup
+        {
+            const char* _shader;
+            U32 _x, _y, _z;
+        };
+
+        /// Every fixed compute workgroup shape the engine dispatches. Literal shapes mirror the layout declared in the named shader/source.
+        constexpr std::array<RequiredComputeWorkgroup, 10> REQUIRED_COMPUTE_WORKGROUPS
+        { {
+            { "lightCull.glsl", Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS, Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS, Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS },
+            { "HiZConstruct.glsl", DEPTH_REDUCE_LOCAL_SIZE, DEPTH_REDUCE_LOCAL_SIZE, 1u },
+            { "HiZOcclusionCull.glsl", GROUP_SIZE_AABB, 1u, 1u },
+            { "instanceCountPatch.glsl", INSTANCE_COUNT_PATCH_GROUP_SIZE, 1u, 1u },
+            { "instanceCullVegetation.glsl", 64u, 1u, 1u },               // Vegetation.cpp WORK_GROUP_SIZE
+            { "luminanceCalc.glsl (histogram)", 16u, 16u, 1u },           // PreRenderBatch.cpp GROUP_X/Y_THREADS
+            { "luminanceCalc.glsl (average)", 256u, 1u, 1u },             // PreRenderBatch.cpp GROUP_SIZE
+            { "irradianceCalc.glsl (irradiance)", 8u, 8u, 1u },
+            { "irradianceCalc.glsl (BRDF LUT)", 16u, 16u, 1u },
+            { "irradianceCalc.glsl (prefilter)", 8u, 8u, 1u },
+        } };
 
         FORCE_INLINE U32 getGroupCount( const U32 threadCount, U32 const localSize )
         {
@@ -130,7 +163,7 @@ namespace Divide
     };
 
     D64 GFXDevice::s_interpolationFactor = 1.0;
-    U64 GFXDevice::s_frameCount = 0u;
+    std::atomic<U64> GFXDevice::s_frameCount = 0u;
 
     DeviceInformation GFXDevice::s_deviceInformation{};
     GFXDevice::IMPrimitivePool GFXDevice::s_IMPrimitivePool{};
@@ -145,11 +178,12 @@ namespace Divide
 
     RenderTargetID RenderTargetNames::BACK_BUFFER = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SCREEN = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::SCREEN_PREV = INVALID_RENDER_TARGET_ID;
+    std::array<RenderTargetID, Config::MAX_LOCAL_PLAYER_COUNT> RenderTargetNames::SCREEN_PREV = create_array<Config::MAX_LOCAL_PLAYER_COUNT, RenderTargetID>( INVALID_RENDER_TARGET_ID );
     RenderTargetID RenderTargetNames::NORMALS_RESOLVED = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SSAO_RESULT = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::BLOOM_RESULT = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SSR_RESULT = INVALID_RENDER_TARGET_ID;
+    std::array<RenderTargetID, Config::MAX_LOCAL_PLAYER_COUNT> RenderTargetNames::PREVIOUS_DEPTH = create_array<Config::MAX_LOCAL_PLAYER_COUNT, RenderTargetID>( INVALID_RENDER_TARGET_ID );
     RenderTargetID RenderTargetNames::OIT = INVALID_RENDER_TARGET_ID;
 
     std::array<RenderTargetID, Config::MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW>  RenderTargetNames::REFLECT::PLANAR     = create_array<Config::MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW, RenderTargetID>(INVALID_RENDER_TARGET_ID);
@@ -260,12 +294,14 @@ namespace Divide
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 5,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_GEOMETRY ); // TREE_DATA;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 6,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_GEOMETRY ); // GRASS_DATA;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 7,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE );              // ATOMIC_COUNTER;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 8,   DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_SCENE;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 9,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_NORMAL;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 10,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_INDICES;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 11,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_GRID;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 8,   DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::COMPUTE_AND_FRAGMENT ); // LIGHT_SCENE;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 9,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::VERTEX_FRAGMENT_COMPUTE ); // LIGHT_NORMAL;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 10,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_FRAGMENT ); // LIGHT_INDICES;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 11,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_FRAGMENT ); // LIGHT_GRID;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 12,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE );              // LIGHT_CLUSTER_AABB;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 13,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE );              // LIGHT_GLOBAL_INDEX_COUNT;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 14,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE );              // COMPACTED_INSTANCE_DATA;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 15,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE );              // VISIBLE_INSTANCE_COUNTS;
         
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 0,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // ENV Prefiltered
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 1,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // ENV Irradiance
@@ -275,7 +311,7 @@ namespace Divide
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 5,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // Shadow Cube
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 6,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // Shadow Single
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 7,  DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::FRAGMENT );             // PROBE_DATA;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 8,  DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::ALL_DRAW );             // SCENE_DATA;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 8,  DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::ALL );                  // SCENE_DATA;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 9,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::FRAGMENT );             // LIGHT_SHADOW;
 
         _api->initDescriptorSets();
@@ -322,6 +358,130 @@ namespace Divide
         DIVIDE_ASSERT( _impl._bindingCount < MAX_BINDINGS_PER_DESCRIPTOR_SET - 1u);
         _impl._bindings[_impl._bindingCount++] = newBindingData;
         dirty( true );
+    }
+
+    void AccumulateGPUPassTimings( const std::span<const F32> timestampsMS, const std::span<const GPUPassTimingTable::Name> passNames, GPUPassTimingTable& table ) noexcept
+    {
+        if ( passNames.empty() || timestampsMS.size() < passNames.size() + 1u )
+        {
+            return;
+        }
+
+        for ( size_t i = 0u; i < passNames.size(); ++i )
+        {
+            const D64 durationMS = std::max( to_D64( timestampsMS[i + 1u] ) - to_D64( timestampsMS[i] ), 0.0 );
+
+            size_t entry = 0u;
+            while ( entry < table._entryCount && table._entries[entry]._name != passNames[i] )
+            {
+                ++entry;
+            }
+
+            if ( entry == table._entryCount )
+            {
+                if ( table._entryCount == table._entries.size() ) [[unlikely]]
+                {
+                    continue;
+                }
+                table._entries[entry]._name = passNames[i];
+                table._entries[entry]._totalMS = 0.0;
+                ++table._entryCount;
+            }
+            table._entries[entry]._totalMS += durationMS;
+        }
+        ++table._frameCount;
+    }
+
+    std::string_view NormalizeGPUScopeName( std::string_view scopeName ) noexcept
+    {
+        while ( !scopeName.empty() && (scopeName.front() == ' ' || scopeName.front() == '-') )
+        {
+            scopeName.remove_prefix( 1u );
+        }
+
+        const size_t paren = scopeName.find( " (" );
+        const size_t bracket = scopeName.find( " [" );
+        scopeName = scopeName.substr( 0u, std::min( paren, bracket ) );
+
+        while ( !scopeName.empty() && scopeName.back() == ' ' )
+        {
+            scopeName.remove_suffix( 1u );
+        }
+        return scopeName;
+    }
+
+    void GFXDevice::writeGPUPassTimestamp( const GPUPassTimingTable::Name& name )
+    {
+        // The last slot is reserved for the closing timestamp written after the final command buffer.
+        if ( _gpuScopeNames != nullptr && _gpuScopeNames->_count + 1u < GPU_PASS_TIMESTAMP_CAPACITY ) [[likely]]
+        {
+            _api->writePassTimestamp( _gpuScopeNames->_count );
+            _gpuScopeNames->_names[_gpuScopeNames->_count++] = name;
+        }
+    }
+
+    void GFXDevice::pushGPUScopeTimestamp( const std::string_view scopeName )
+    {
+        if ( _gpuScopeDepth < GPU_SCOPE_MAX_DEPTH ) [[likely]]
+        {
+            GPUPassTimingTable::Name& label = _gpuScopeStack[_gpuScopeDepth + 1u];
+            label = _gpuScopeStack[0u];
+            // Stay within the inline capacity: Str overflows to the heap.
+            constexpr size_t MaxLabelLength = 63u;
+            const std::string_view normalized = NormalizeGPUScopeName( scopeName );
+            if ( label.size() + 1u < MaxLabelLength )
+            {
+                label.append( "/" );
+                label.append( normalized.data(), std::min( normalized.size(), MaxLabelLength - label.size() ) );
+            }
+            if ( _gpuScopePendingPop )
+            {
+                _gpuScopePendingPop = false;
+                // A repeated sibling scope (e.g. per-chunk culling) continues the previous one instead of spending
+                // two more timestamps. Only barriers can separate them (see flushPendingGPUScopeTimestamp's caller).
+                const bool repeatsLastScope = _gpuScopeNames != nullptr &&
+                                              _gpuScopeNames->_count > 0u &&
+                                              _gpuScopeNames->_names[_gpuScopeNames->_count - 1u] == label;
+                if ( repeatsLastScope )
+                {
+                    ++_gpuScopeDepth;
+                    return;
+                }
+                writeGPUScopeTimestamp( _gpuScopeStack[_gpuScopeDepth] );
+            }
+            writeGPUScopeTimestamp( label );
+        }
+        ++_gpuScopeDepth;
+    }
+
+    void GFXDevice::flushPendingGPUScopeTimestamp()
+    {
+        if ( _gpuScopePendingPop )
+        {
+            _gpuScopePendingPop = false;
+            writeGPUScopeTimestamp( _gpuScopeStack[_gpuScopeDepth] );
+        }
+    }
+
+    void GFXDevice::writeGPUScopeTimestamp( const GPUPassTimingTable::Name& name )
+    {
+        // Past this buffer's slot budget, the rest of its GPU time is attributed to the last timed scope.
+        if ( _gpuScopeNames != nullptr && _gpuScopeNames->_count < _gpuScopeSlotLimit ) [[likely]]
+        {
+            writeGPUPassTimestamp( name );
+        }
+    }
+
+    void GFXDevice::popGPUScopeTimestamp()
+    {
+        if ( _gpuScopeDepth == 0u ) [[unlikely]]
+        {
+            return;
+        }
+        --_gpuScopeDepth;
+        // Time after a scope closes belongs to its parent (or to the command buffer itself at depth 0).
+        // The parent's timestamp is deferred until the next non-barrier command so repeated siblings can merge.
+        _gpuScopePendingPop = _gpuScopeDepth < GPU_SCOPE_MAX_DEPTH;
     }
 
     GFXDevice::GFXDevice( PlatformContext& context )
@@ -408,26 +568,29 @@ namespace Divide
         DIVIDE_GPU_ASSERT( Config::MAX_CULL_DISTANCES <= s_deviceInformation._maxCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts" );
         DIVIDE_GPU_ASSERT( Config::MAX_CULL_DISTANCES + Config::MAX_CLIP_DISTANCES <= s_deviceInformation._maxClipAndCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts" );
 
-        DIVIDE_GPU_ASSERT( Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS < s_deviceInformation._maxWorkgroupSize[0] &&
-                           Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS < s_deviceInformation._maxWorkgroupSize[1] &&
-                           Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorkgroupSize[2] );
+        for ( const RequiredComputeWorkgroup& group : REQUIRED_COMPUTE_WORKGROUPS )
+        {
+            if ( !SupportsComputeWorkgroup( s_deviceInformation, group._x, group._y, group._z ) )
+            {
+                Console::errorfn( LOCALE_STR( "ERROR_INSUFFICIENT_COMPUTE_WORKGROUP" ),
+                                  group._shader, group._x, group._y, group._z,
+                                  s_deviceInformation._maxWorkgroupSize[0], s_deviceInformation._maxWorkgroupSize[1], s_deviceInformation._maxWorkgroupSize[2],
+                                  s_deviceInformation._maxWorkgroupInvocations );
+                return ErrorCode::GFX_OLD_HARDWARE;
+            }
+        }
 
-        DIVIDE_GPU_ASSERT( to_U32( Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS ) *
-                           Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS *
-                           Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorkgroupInvocations );
-
+        _uniformUploadArena = std::make_unique<UniformUploadArena>( *this );
+        _uniformUploadFailed = false;
         _rtPool = std::make_unique<GFXRTPool>( *this );
 
-        I32 numLightsPerCluster = config.rendering.numLightsPerCluster;
-        if ( numLightsPerCluster < 0 )
+        const I32 configuredLightsPerCluster = config.rendering.numLightsPerCluster;
+        const I32 numLightsPerCluster = ClusteredLighting::ResolveLightsPerCluster( configuredLightsPerCluster );
+        if ( configuredLightsPerCluster == 0 )
         {
-            numLightsPerCluster = to_I32( Config::Lighting::ClusteredForward::MAX_LIGHTS_PER_CLUSTER );
+            Console::warnfn( LOCALE_STR( "WARN_ZERO_LIGHTS_PER_CLUSTER" ), numLightsPerCluster );
         }
-        else
-        {
-            numLightsPerCluster = std::min( numLightsPerCluster, to_I32( Config::Lighting::ClusteredForward::MAX_LIGHTS_PER_CLUSTER ) );
-        }
-        if ( numLightsPerCluster != config.rendering.numLightsPerCluster )
+        if ( numLightsPerCluster != configuredLightsPerCluster )
         {
             config.rendering.numLightsPerCluster = numLightsPerCluster;
             config.changed( true );
@@ -554,6 +717,14 @@ namespace Divide
             {
                 Util::StringFormatTo( bufferDescriptor._name, "CULL_COUNTER_{}", i );
                 _gfxBuffers._perFrameBuffers[i]._cullCounter = newShaderBuffer( bufferDescriptor );
+                ShaderBuffer& counter = *_gfxBuffers._perFrameBuffers[i]._cullCounter;
+                _gfxBuffers._perFrameBuffers[i]._cullCounterReadbacks.reset( counter.queueLength() );
+                for ( U16 slot = 0u; slot < counter.queueLength(); ++slot )
+                {
+                    const BufferLock lock = counter.clearData( { 0u, 1u } );
+                    DIVIDE_UNUSED( lock );
+                    counter.incQueue();
+                }
             }
         }
         _gpuBlock._camNeedsUpload = true;
@@ -655,10 +826,13 @@ namespace Divide
             AddImageUsageFlag( screenAttachment._texDescriptor, ImageUsage::SHADER_READ);
             screenAttachment._sampler = defaultSamplerMips;
             screenDesc._msaaSamples = 0u;
-            screenDesc._name = "Screen Prev";
             screenDesc._attachments = { screenAttachment };
 
-            RenderTargetNames::SCREEN_PREV = _rtPool->allocateRT( screenDesc )._targetID;
+            for ( U8 player = 0u; player < Config::MAX_LOCAL_PLAYER_COUNT; ++player )
+            {
+                screenDesc._name = Util::StringFormat( "Screen Prev {}", player );
+                RenderTargetNames::SCREEN_PREV[player] = _rtPool->allocateRT( screenDesc )._targetID;
+            }
 
             screenDesc._name = "Screen Blur";
             RenderTargetNames::UTILS.BLUR  = _rtPool->allocateRT( screenDesc )._targetID;
@@ -786,7 +960,8 @@ namespace Divide
         hiZSampler._anisotropyLevel = 0u;
         hiZSampler._magFilter = TextureFilter::NEAREST;
         hiZSampler._minFilter = TextureFilter::NEAREST;
-        hiZSampler._mipSampling = TextureMipSampling::NONE;
+        hiZSampler._mipSampling = TextureMipSampling::NEAREST;
+        hiZSampler._lod._min = 0.f;
 
         RenderTargetDescriptor hizRTDesc = {};
         hizRTDesc._attachments =
@@ -797,6 +972,22 @@ namespace Divide
             hizRTDesc._name = "HiZ";
             hizRTDesc._resolution = renderResolution;
             RenderTargetNames::UTILS.HI_Z = _rtPool->allocateRT( hizRTDesc )._targetID;
+
+            // Hi-Z's base level is dilated for culling, so temporal effects need the original depth separately.
+            TextureDescriptor previousDepthDescriptor = hiZDescriptor;
+            previousDepthDescriptor._mipMappingState = MipMappingState::OFF;
+
+            RenderTargetDescriptor previousDepthRTDesc = {};
+            previousDepthRTDesc._attachments =
+            {
+                InternalRTAttachmentDescriptor{ previousDepthDescriptor, hiZSampler, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
+            };
+            previousDepthRTDesc._resolution = renderResolution;
+            for ( U8 player = 0u; player < Config::MAX_LOCAL_PLAYER_COUNT; ++player )
+            {
+                previousDepthRTDesc._name = Util::StringFormat( "Previous Depth {}", player );
+                RenderTargetNames::PREVIOUS_DEPTH[player] = _rtPool->allocateRT( previousDepthRTDesc )._targetID;
+            }
 
             hizRTDesc._resolution.set( reflectRes, reflectRes );
             hizRTDesc._name = "HiZ_Reflect";
@@ -996,7 +1187,7 @@ namespace Divide
             compModule._defines.emplace_back( Util::StringFormat( "LOCAL_SIZE {}", DEPTH_REDUCE_LOCAL_SIZE ) );
             compModule._defines.emplace_back( "imageSizeIn PushData0[0].xy");
             compModule._defines.emplace_back( "imageSizeOut PushData0[0].zw");
-            compModule._defines.emplace_back( "wasEven (uint(PushData0[1].x) == 1u)");
+            compModule._defines.emplace_back( "isBaseLevel (uint(PushData0[1].x) == 1u)");
 
             compModule._sourceFile = "HiZConstruct.glsl";
 
@@ -1034,6 +1225,24 @@ namespace Divide
             _hIZCullPipeline = newPipeline( pipelineDescriptor );
         }
         {
+            ShaderModuleDescriptor compModule = {};
+            compModule._moduleType = ShaderType::COMPUTE;
+            compModule._defines.emplace_back( Util::StringFormat( "WORK_GROUP_SIZE {}", INSTANCE_COUNT_PATCH_GROUP_SIZE ) );
+            compModule._sourceFile = "instanceCountPatch.glsl";
+
+            ShaderProgramDescriptor shaderDescriptor = {};
+            shaderDescriptor._modules.push_back( compModule );
+
+            ResourceDescriptor<ShaderProgram> descriptor( "InstanceCountPatch", shaderDescriptor );
+            descriptor.waitForReady( false );
+            _instanceCountPatchProgram = CreateResource( descriptor, loadTasks );
+
+            PipelineDescriptor pipelineDescriptor = {};
+            pipelineDescriptor._shaderProgramHandle = _instanceCountPatchProgram;
+            pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
+            _instanceCountPatchPipeline = newPipeline( pipelineDescriptor );
+        }
+        {
             ShaderModuleDescriptor vertModule = {};
             vertModule._moduleType = ShaderType::VERTEX;
             vertModule._sourceFile = "baseVertexShaders.glsl";
@@ -1062,12 +1271,17 @@ namespace Divide
             ShaderModuleDescriptor fragModule = {};
             fragModule._moduleType = ShaderType::FRAGMENT;
             fragModule._sourceFile = "fbPreview.glsl";
-            fragModule._variant = "LinearDepth.ScenePlanes";
+            fragModule._variant = "LinearDepth";
 
             ShaderProgramDescriptor shaderDescriptor = {};
             shaderDescriptor._modules.push_back( vertModule );
             shaderDescriptor._modules.push_back( fragModule );
 
+            ResourceDescriptor<ShaderProgram> previewDepth( "fbPreviewLinearDepth", shaderDescriptor );
+            previewDepth.waitForReady( false );
+            _previewDepthMapShader = CreateResource( previewDepth, loadTasks );
+
+            shaderDescriptor._modules.back()._variant = "LinearDepth.ScenePlanes";
             ResourceDescriptor<ShaderProgram> previewReflectionRefractionDepth( "fbPreviewLinearDepthScenePlanes", shaderDescriptor );
             previewReflectionRefractionDepth.waitForReady( false );
             _previewRenderTargetDepth = CreateResource( previewReflectionRefractionDepth, loadTasks );
@@ -1246,6 +1460,11 @@ namespace Divide
         _renderer = std::make_unique<Renderer>( context() );
 
         WAIT_FOR_CONDITION( loadTasks.load() == 0 );
+        if ( ResourceCache::Inspect( _previewDepthMapShader )._state != ResourceState::RES_LOADED )
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_STARTUP_SHADER_LOAD_FAILED" ), "fbPreviewLinearDepth" );
+            return ErrorCode::GLSL_INIT_ERROR;
+        }
         const DisplayWindow* mainWindow = context().app().windowManager().mainWindow();
 
         SizeChangeParams params{};
@@ -1284,6 +1503,23 @@ namespace Divide
             s_renderThread._thread.join();
         }
 
+        if ( !TeardownAfterGPUCompletion( _uniformUploadArena != nullptr,
+                                          [this] { return _api->waitForGPUIdle(); },
+                                          [this] { releaseRenderingResources(); } ) )
+        {
+            Console::errorfn( "Renderer: GPU completion failed during uniform upload arena teardown" );
+            if ( RenderSmokeTest::Enabled() )
+            {
+                RenderSmokeTest::Fail( "gpu_completion", "GPU completion failed during uniform upload arena teardown",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            Console::Flush();
+            std::_Exit( EXIT_FAILURE );
+        }
+    }
+
+    void GFXDevice::releaseRenderingResources()
+    {
         _debugLines.reset();
         _debugBoxes.reset();
         _debugOBBs.reset();
@@ -1304,6 +1540,7 @@ namespace Divide
         DestroyResource(_renderTargetDraw );
         DestroyResource(_hIZConstructProgram );
         DestroyResource(_hIZCullProgram );
+        DestroyResource( _instanceCountPatchProgram );
         DestroyResource(_displayShader );
         DestroyResource(_depthShader );
         DestroyResource(_blurBoxShaderSingle );
@@ -1322,6 +1559,7 @@ namespace Divide
         Texture::OnShutdown();
         ShaderProgram::DestroyStaticData();
         assert( ShaderProgram::ShaderProgramCount() == 0 );
+        _uniformUploadArena.reset();
         // Close the rendering API
         _api->closeRenderingAPI();
         _api.reset();
@@ -1383,17 +1621,78 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        _api->prepareFlushWindow( window );
-        const vec2<U16> windowDimensions = window.getDrawableSize();
-        setViewport( { 0, 0, windowDimensions.width, windowDimensions.height } );
-        setScissor( { 0, 0, windowDimensions.width, windowDimensions.height } );
+        const bool canFlush = _api->prepareFlushWindow( window );
+        if ( canFlush )
+        {
+            const vec2<U16> windowDimensions = window.getDrawableSize();
+            setViewport( { 0, 0, windowDimensions.width, windowDimensions.height } );
+            setScissor( { 0, 0, windowDimensions.width, windowDimensions.height } );
+        }
 
         {
             LockGuard<Mutex> w_lock( _queuedCommandbufferLock );
             GFX::CommandBufferQueue& queue = window.getCurrentCommandBufferQueue();
-            for ( const GFX::CommandBufferQueue::Entry& entry : queue._commandBuffers )
+            if ( canFlush )
             {
-                flushCommandBufferInternal( entry._buffer );
+                const bool isMainWindow = window.getGUID() == context().mainWindow().getGUID();
+                const bool timePasses = isMainWindow && queryPerformanceStats();
+                GPUPassNameFrame& passNames = _gpuPassNames[FrameCount() % GPU_PASS_NAME_HISTORY];
+                if ( timePasses )
+                {
+                    U64 resolvedFrame = U64_MAX;
+                    const U32 timestampCount = _api->readPassTimestamps( _gpuPassTimestampScratch, resolvedFrame );
+                    const GPUPassNameFrame& resolvedNames = _gpuPassNames[resolvedFrame % GPU_PASS_NAME_HISTORY];
+                    if ( timestampCount > 0u && resolvedNames._frameNumber == resolvedFrame && resolvedNames._count + 1u == timestampCount )
+                    {
+                        AccumulateGPUPassTimings( { _gpuPassTimestampScratch.data(), timestampCount },
+                                                  { resolvedNames._names.data(), resolvedNames._count },
+                                                  _gpuPassTimings );
+                    }
+                }
+                if ( isMainWindow )
+                {
+                    passNames._frameNumber = FrameCount();
+                    passNames._count = 0u;
+                }
+                _gpuScopeNames = timePasses ? &passNames : nullptr;
+                _gpuScopeTimingActive = timePasses && queryGPUScopeTimings();
+
+                const size_t bufferCount = queue._commandBuffers.size();
+                for ( size_t bufferIdx = 0u; bufferIdx < bufferCount; ++bufferIdx )
+                {
+                    const GFX::CommandBufferQueue::Entry& entry = queue._commandBuffers[bufferIdx];
+                    const GFX::CommandBuffer* buffer = GFX::Get( entry._buffer );
+#if USE_OPTICK
+                    Str<96> submitScopeName{ "Submit: " };
+                    submitScopeName.append( buffer->name().c_str() );
+                    PROFILE_SCOPE_DYNAMIC( submitScopeName.c_str() );
+#endif //USE_OPTICK
+                    // Past capacity, the remaining GPU time is attributed to the last timed entry.
+                    if ( timePasses )
+                    {
+                        _gpuScopeStack[0u] = buffer->name();
+                        _gpuScopeDepth = 0u;
+                        _gpuScopePendingPop = false;
+                        writeGPUPassTimestamp( _gpuScopeStack[0u] );
+                        if ( _gpuScopeTimingActive )
+                        {
+                            // Split the free slots evenly between this and the remaining buffers so a scope-heavy
+                            // stage (e.g. SHADOW) cannot starve later buffers of their boundary timestamps.
+                            const U32 remainingBuffers = to_U32( bufferCount - bufferIdx - 1u );
+                            const U32 reserved = passNames._count + remainingBuffers + 1u;
+                            const U32 freeSlots = reserved < GPU_PASS_TIMESTAMP_CAPACITY ? GPU_PASS_TIMESTAMP_CAPACITY - reserved : 0u;
+                            _gpuScopeSlotLimit = passNames._count + freeSlots / (remainingBuffers + 1u);
+                        }
+                    }
+                    flushCommandBufferInternal( entry._buffer );
+                }
+
+                if ( timePasses && passNames._count > 0u )
+                {
+                    _api->writePassTimestamp( passNames._count );
+                }
+                _gpuScopeNames = nullptr;
+                _gpuScopeTimingActive = false;
             }
             ResetCommandBufferQueue(queue);
         }
@@ -1405,8 +1704,21 @@ namespace Divide
         return true;
     }
 
+    void GFXDevice::reportUniformUploadFailure( const std::string_view shaderName, const std::string_view blockName ) noexcept
+    {
+        if ( !_uniformUploadFailed )
+        {
+            Console::errorfn( "Renderer: uniform upload failed for shader '{}' block '{}'", shaderName, blockName );
+        }
+        _uniformUploadFailed = true;
+    }
+
     bool GFXDevice::frameStarted( [[maybe_unused]] const FrameEvent& evt )
     {
+        if ( _uniformUploadFailed )
+        {
+            return false;
+        }
         for ( GFXDescriptorSet& set : _descriptorSets )
         {
             set.clear();
@@ -1426,10 +1738,12 @@ namespace Divide
             }
         }
 
-        ShaderProgram::OnBeginFrame( *this );
-
         if ( _api->frameStarted() )
         {
+            if ( !_uniformUploadArena->beginFrame( FrameCount() ) )
+            {
+                return false;
+            }
             _context.app().windowManager().drawToWindow(context().mainWindow());
             return true;
         }
@@ -1467,6 +1781,15 @@ namespace Divide
         }
 
         context().app().windowManager().flushWindow();
+        _debugViews.releaseRetired();
+
+        {
+            LockGuard<Mutex> counterLock( _cullCounterLock );
+            for ( GFXBuffers::PerFrameBuffers& frameBuffers : _gfxBuffers._perFrameBuffers )
+            {
+                frameBuffers._cullCounterReadbacks.releaseReserved();
+            }
+        }
 
 
         /*while ( !s_renderThread._windows.empty() )
@@ -1509,9 +1832,12 @@ namespace Divide
         }
 
         _gfxBuffers.onEndFrame();
-        ShaderProgram::OnEndFrame( *this );
-        
-        DIVIDE_EXPECTED_CALL( _api->frameEnded() );
+        _performanceMetrics._uniformBufferVRAMUsage = _uniformUploadArena->totalBufferSize();
+
+        if ( !_api->frameEnded() || _uniformUploadFailed )
+        {
+            return false;
+        }
 
         {
             PROFILE_SCOPE( "Lifetime updates", Profiler::Category::Graphics );
@@ -1525,7 +1851,7 @@ namespace Divide
 
             _performanceMetrics._scratchBufferQueueUsage[0] = to_U32( _gfxBuffers.crtBuffers()._camWritesThisFrame );
             _performanceMetrics._scratchBufferQueueUsage[1] = to_U32( _gfxBuffers.crtBuffers()._renderWritesThisFrame );
-            ++s_frameCount;
+            s_frameCount.fetch_add(1u, std::memory_order_relaxed);
         }
  
         return true;
@@ -1682,6 +2008,20 @@ namespace Divide
         }
     }
 
+    void GFX::RecordBlurDrawCommands( CommandBuffer& buffer,
+                                     PushConstantsStruct pushData,
+                                     const bool gaussian,
+                                     const U8 layerCount )
+    {
+        const U8 loopCount = gaussian ? 1u : layerCount;
+        for ( U8 loop = 0u; loop < loopCount; ++loop )
+        {
+            pushData.data[0]._vec[0].x = gaussian ? 0.f : to_F32( loop );
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( buffer )->_fastData = pushData;
+            GFX::EnqueueCommand<GFX::DrawCommand>( buffer )->_drawCommands.emplace_back();
+        }
+    }
+
     void GFXDevice::blurTarget( RenderTargetHandle& blurSource,
                                 RenderTargetHandle& blurBuffer,
                                 const RenderTargetHandle& blurTarget,
@@ -1700,8 +2040,6 @@ namespace Divide
         pushData.data[0]._vec[1].y = to_F32( layerCount );
         pushData.data[0]._vec[1].z = 0.f;
         pushData.data[0]._vec[1].w = 0.f;
-
-        const U8 loopCount = gaussian ? 1u : layerCount;
 
         {// Blur horizontally
             pushData.data[0]._vec[0].x = 0.f;
@@ -1724,21 +2062,7 @@ namespace Divide
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, inputAttachment->texture(), inputAttachment->_descriptor._sampler );
 
-    
-            if ( !gaussian && layerCount > 1 )
-            {
-                pushData.data[0]._vec[0].x = 0.f;
-            }
-
-            for ( U8 loop = 0u; loop < loopCount; ++loop )
-            {
-                if ( !gaussian && loop > 0u )
-                {
-                    pushData.data[0]._vec[0].x = to_F32( loop );
-                    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut)->_fastData = pushData;
-                }
-                GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
-            }
+            GFX::RecordBlurDrawCommands( bufferInOut, pushData, gaussian, layerCount );
 
             GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
         }
@@ -1760,17 +2084,7 @@ namespace Divide
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, bufferAttachment->texture(), bufferAttachment->_descriptor._sampler );
 
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = pushData;
-
-            for ( U8 loop = 0u; loop < loopCount; ++loop )
-            {
-                if ( !gaussian && loop > 0u )
-                {
-                    pushData.data[0]._vec[0].x = to_F32( loop );
-                    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = pushData;
-                }
-                GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
-            }
+            GFX::RecordBlurDrawCommands( bufferInOut, pushData, gaussian, layerCount );
 
             GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
         }
@@ -1856,10 +2170,18 @@ namespace Divide
         // Update render targets with the new resolution
         _rtPool->getRenderTarget( RenderTargetNames::BACK_BUFFER )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SCREEN )->resize( w, h );
-        _rtPool->getRenderTarget( RenderTargetNames::SCREEN_PREV )->resize( w, h );
+        for ( const RenderTargetID previousScreen : RenderTargetNames::SCREEN_PREV )
+        {
+            _rtPool->getRenderTarget( previousScreen )->resize( w, h );
+        }
         _rtPool->getRenderTarget( RenderTargetNames::SSAO_RESULT )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SSR_RESULT )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::UTILS.HI_Z )->resize( w, h );
+        for ( const RenderTargetID historyTarget : RenderTargetNames::PREVIOUS_DEPTH )
+        {
+            _rtPool->getRenderTarget( historyTarget )->resize( w, h );
+        }
+        _previousDepthHistoryValid.fill( false );
         _rtPool->getRenderTarget( RenderTargetNames::UTILS.BLUR )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::OIT )->resize( w, h );
 
@@ -2019,19 +2341,20 @@ namespace Divide
             data.dvd_ProjectionMatrix.set( cameraSnapshot._projectionMatrix );
             data.dvd_camProperties.xyz.set( zNear, zFar, cameraSnapshot._fov );
 
-            if ( cameraSnapshot._isOrthoCamera )
+            // Exponential depth slices (ref: http://www.aortiz.me/2018/12/21/CG.html). Clustered passes require valid planes
+            // (enforced in Renderer::prepareLighting); other cameras, such as shadow passes, never sample the light grid.
+            if ( ClusteredLighting::IsValidClusterDepthRange( zNear, zFar ) )
             {
-                data.dvd_lightingTweakValues.x = 1.f; //scale
-                data.dvd_lightingTweakValues.y = 0.f; //bias
-            }
-            else
-            {
-                //ref: http://www.aortiz.me/2018/12/21/CG.html
                 constexpr F32 CLUSTERS_Z = to_F32( Config::Lighting::ClusteredForward::CLUSTERS_Z );
                 const F32 zLogRatio = std::log( zFar / zNear );
 
                 data.dvd_lightingTweakValues.x = CLUSTERS_Z / zLogRatio; //scale
                 data.dvd_lightingTweakValues.y = -(CLUSTERS_Z * std::log( zNear ) / zLogRatio); //bias
+            }
+            else
+            {
+                data.dvd_lightingTweakValues.x = 1.f; //scale
+                data.dvd_lightingTweakValues.y = 0.f; //bias
             }
             projectionDirty = true;
         }
@@ -2064,18 +2387,14 @@ namespace Divide
         }
     }
 
-    void GFXDevice::worldAOViewProjectionMatrix( const mat4<F32>& vpMatrix ) noexcept
-    {
-        GFXShaderData::CamData& data = _gpuBlock._camData;
-        data.dvd_WorldAOVPMatrix = vpMatrix;
-        _gpuBlock._camNeedsUpload = true;
-    }
-
     void GFXDevice::prevViewProjectionMatrix( const mat4<F32>& vpMatrix ) noexcept
     {
         GFXShaderData::CamData& data = _gpuBlock._camData;
-        data.dvd_PrevViewProjectionMatrix = vpMatrix;
-        _gpuBlock._camNeedsUpload = true;
+        if ( data.dvd_PrevViewProjectionMatrix != vpMatrix )
+        {
+            data.dvd_PrevViewProjectionMatrix = vpMatrix;
+            _gpuBlock._camNeedsUpload = true;
+        }
     } 
     
 
@@ -2102,9 +2421,8 @@ namespace Divide
         if ( projectionDirty || viewDirty )
         {
             mat4<F32>::Multiply( frameData._previousProjectionMatrix, frameData._previousViewMatrix, frameData._previousViewProjectionMatrix );
-
-            prevViewProjectionMatrix(frameData._previousProjectionMatrix);
         }
+        prevViewProjectionMatrix( frameData._previousViewProjectionMatrix );
     }
 
     bool GFXDevice::setViewport( const Rect<I32>& viewport )
@@ -2143,11 +2461,33 @@ namespace Divide
     {
         return _gpuBlock._prevFrameData[index];
     }
+
+    bool GFXDevice::previousDepthHistoryValid( const PlayerIndex player ) const noexcept
+    {
+        return _previousDepthHistoryValid[player];
+    }
+
+    void GFXDevice::invalidatePreviousDepthHistory( const PlayerIndex player ) noexcept
+    {
+        _previousDepthHistoryValid[player] = false;
+    }
+
+    void GFXDevice::storePreviousDepthHistory( const PlayerIndex player, const RenderTargetID source, GFX::CommandBuffer& bufferInOut )
+    {
+        DIVIDE_ASSERT( source != INVALID_RENDER_TARGET_ID );
+        (void)constructHIZ( source, RenderTargetNames::PREVIOUS_DEPTH[player], bufferInOut, false );
+        _previousDepthHistoryValid[player] = true;
+    }
 #pragma endregion
 
 #pragma region Command buffers, occlusion culling, etc
-    void GFXDevice::validateAndUploadDescriptorSets()
+    bool GFXDevice::validateAndUploadDescriptorSets()
     {
+        if ( _uniformUploadFailed )
+        {
+            return false;
+        }
+
         if (!uploadGPUBlock())
         {
             NOP();
@@ -2167,7 +2507,15 @@ namespace Divide
             set.dirty( false );
         }
 
-        _api->bindShaderResources( setEntries );
+        if ( !_api->bindShaderResources( setEntries ) )
+        {
+            for ( auto& set : _descriptorSets )
+            {
+                set.dirty( true );
+            }
+            return false;
+        }
+        return true;
     }
 
     void GFXDevice::flushCommandBuffer( Handle<GFX::CommandBuffer>&& commandBuffer )
@@ -2189,11 +2537,46 @@ namespace Divide
         _api->preFlushCommandBuffer( commandBuffer );
 
         const GFX::CommandBuffer::CommandList& commands = GFX::Get(commandBuffer)->commands();
-        for ( GFX::CommandBase* cmd : commands )
+        for ( size_t commandIndex = 0u; commandIndex < commands.size(); ++commandIndex )
         {
-            if ( IsSubmitCommand( cmd->type() ) )
+            GFX::CommandBase* cmd = commands[commandIndex];
+            if ( _gpuScopeTimingActive ) [[unlikely]]
             {
-                validateAndUploadDescriptorSets();
+                switch ( cmd->type() )
+                {
+                    case GFX::CommandType::BEGIN_DEBUG_SCOPE: pushGPUScopeTimestamp( cmd->As<GFX::BeginDebugScopeCommand>()->_scopeName.c_str() ); break;
+                    case GFX::CommandType::END_DEBUG_SCOPE: popGPUScopeTimestamp(); break;
+                    case GFX::CommandType::MEMORY_BARRIER: break;
+                    default: flushPendingGPUScopeTimestamp(); break;
+                }
+            }
+
+            if ( IsSubmitCommand( cmd->type() ) && !validateAndUploadDescriptorSets() )
+            {
+                continue;
+            }
+
+            if ( cmd->type() == GFX::CommandType::DRAW_COMMANDS &&
+                 commandIndex > 0u && commands.size() - commandIndex > 2u &&
+                 commands[commandIndex - 1u]->type() == GFX::CommandType::SEND_PUSH_CONSTANTS &&
+                 commands[commandIndex + 1u]->type() == GFX::CommandType::SEND_PUSH_CONSTANTS &&
+                 commands[commandIndex + 2u]->type() == GFX::CommandType::DRAW_COMMANDS )
+            {
+                const GFX::DrawCommand& draw = *cmd->As<GFX::DrawCommand>();
+                if ( draw._drawCommands.size() == 1u && _api->supportsIndirectDrawBatching( draw._drawCommands.front() ) )
+                {
+                    GenericDrawCommand batch{};
+                    const size_t consumed = GFX::CollectIndirectDrawBatch( commands, commandIndex, true,
+                                                                            GetDeviceInformation()._maxDrawIndirectCount, batch );
+                    if ( consumed > 0u )
+                    {
+                        PROFILE_SCOPE( "Batched indirect draw", Profiler::Category::Graphics );
+                        GFX::DrawCommand combined{ MOV( batch ) };
+                        _api->flushCommand( &combined );
+                        commandIndex += consumed;
+                        continue;
+                    }
+                }
             }
 
             switch ( cmd->type() )
@@ -2203,7 +2586,44 @@ namespace Divide
                     PROFILE_SCOPE( "READ_BUFFER_DATA", Profiler::Category::Graphics );
 
                     const GFX::ReadBufferDataCommand& crtCmd = *cmd->As<GFX::ReadBufferDataCommand>();
-                    crtCmd._buffer->readData( { crtCmd._offsetElementCount, crtCmd._elementCount }, crtCmd._target );
+                    const U16 queueIndex = crtCmd._queueIndex == U16_MAX ? crtCmd._buffer->queueIndex() : crtCmd._queueIndex;
+
+                    BufferReadbackRequest readback{};
+                    readback._buffer = crtCmd._buffer;
+                    readback._offsetElementCount = crtCmd._offsetElementCount;
+                    readback._elementCount = crtCmd._elementCount;
+                    readback._target = crtCmd._target;
+                    readback._queueIndex = queueIndex;
+                    readback._windowGUID = context().activeWindow().getGUID();
+
+                    GFXBuffers::PerFrameBuffers* owner = nullptr;
+                    {
+                        LockGuard<Mutex> counterLock( _cullCounterLock );
+                        for ( GFXBuffers::PerFrameBuffers& frameBuffers : _gfxBuffers._perFrameBuffers )
+                        {
+                            if ( frameBuffers._cullCounter.get() == crtCmd._buffer &&
+                                 frameBuffers._cullCounterReadbacks.markInFlight( queueIndex ) )
+                            {
+                                owner = &frameBuffers;
+                                readback._target = { frameBuffers._cullCounterReadbacks.readbackData( queueIndex ), sizeof( uint4 ) };
+                                readback._completion = [this, owner, queueIndex]( const bool readSucceeded )
+                                {
+                                    LockGuard<Mutex> completionLock( _cullCounterLock );
+                                    DIVIDE_UNUSED( owner->_cullCounterReadbacks.complete( queueIndex,
+                                                                                           readSucceeded,
+                                                                                           _lastCullCount,
+                                                                                           _lastCompletedCullCounterSequence ) );
+                                };
+                                break;
+                            }
+                        }
+                    }
+
+                    const bool queued = _api->queueBufferReadback( MOV( readback ) );
+                    if ( !queued && readback._completion )
+                    {
+                        readback._completion( false );
+                    }
                 } break;
                 case GFX::CommandType::CLEAR_BUFFER_DATA:
                 {
@@ -2213,7 +2633,8 @@ namespace Divide
                     if ( crtCmd._buffer != nullptr )
                     {
                         GFX::MemoryBarrierCommand memCmd{};
-                        memCmd._bufferLocks.push_back( crtCmd._buffer->clearData( { crtCmd._offsetElementCount, crtCmd._elementCount } ) );
+                        const U16 queueIndex = crtCmd._queueIndex == U16_MAX ? crtCmd._buffer->queueIndex() : crtCmd._queueIndex;
+                        memCmd._bufferLocks.push_back( crtCmd._buffer->clearData( { crtCmd._offsetElementCount, crtCmd._elementCount }, queueIndex ) );
                         _api->flushCommand( &memCmd );
                     }
                 } break;
@@ -2338,7 +2759,8 @@ namespace Divide
 
     void GFXDevice::PopDebugMessage()
     {
-        s_debugScope[s_debugScopeDepth--] = {};
+        assert(s_debugScopeDepth > 0u);
+        s_debugScope[--s_debugScopeDepth] = {};
     }
 
     void GFXDevice::ClearDebugMessages()
@@ -2354,7 +2776,7 @@ namespace Divide
     /// Transform our depth buffer to a HierarchicalZ buffer (for occlusion queries and screen space reflections)
     /// Based on RasterGrid implementation: http://rastergrid.com/blog/2010/10/hierarchical-z-map-based-occlusion-culling/
     /// Modified with nVidia sample code: https://github.com/nvpro-samples/gl_occlusion_culling
-    std::pair<Handle<Texture>, SamplerDescriptor> GFXDevice::constructHIZ( RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut )
+    std::pair<Handle<Texture>, SamplerDescriptor> GFXDevice::constructHIZ( RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut, const bool dilateBaseLevel )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -2363,16 +2785,17 @@ namespace Divide
         const RTAttachment* SrcAtt = _rtPool->getRenderTarget( depthBuffer )->getAttachment( RTAttachmentType::DEPTH );
         const RTAttachment* HiZAtt = _rtPool->getRenderTarget( HiZTarget )->getAttachment( RTAttachmentType::COLOUR );
         ResourcePtr<Texture> HiZTex = Get(HiZAtt->texture());
-        DIVIDE_ASSERT( HiZTex->descriptor()._mipMappingState == MipMappingState::MANUAL );
+        DIVIDE_ASSERT( HiZTex->descriptor()._mipMappingState == (dilateBaseLevel ? MipMappingState::MANUAL : MipMappingState::OFF) );
 
-        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( cmdBufferInOut )->_scopeName = "Construct Hi-Z";
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( cmdBufferInOut )->_scopeName = dilateBaseLevel ? "Construct Hi-Z" : "Capture Previous Depth";
         GFX::EnqueueCommand<GFX::BindPipelineCommand>( cmdBufferInOut )->_pipeline = _hIZPipeline;
 
         U32 twidth = HiZTex->width();
         U32 theight = HiZTex->height();
-        bool wasEven = false;
-        U32 owidth = twidth;
-        U32 oheight = theight;
+        // Level 0 reads the depth buffer, so start from its real size; each later level reads the previous HiZ mip.
+        U32 owidth = Get( SrcAtt->texture() )->width();
+        U32 oheight = Get( SrcAtt->texture() )->height();
+        DIVIDE_ASSERT( dilateBaseLevel || (HiZTex->mipCount() == 1u && owidth == twidth && oheight == theight) );
 
         for ( U16 i = 0u; i < HiZTex->mipCount(); ++i )
         {
@@ -2405,7 +2828,7 @@ namespace Divide
 
             PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( cmdBufferInOut )->_fastData;
             pushConstants.data[0]._vec[0].set( owidth, oheight, twidth, theight );
-            pushConstants.data[0]._vec[1].x = wasEven ? 1.f : 0.f;
+            pushConstants.data[0]._vec[1].x = i == 0u && dilateBaseLevel ? 1.f : 0.f;
 
             GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( cmdBufferInOut )->_workGroupSize =
             {
@@ -2414,7 +2837,6 @@ namespace Divide
                 1u
             };
 
-            wasEven = twidth % 2 == 0 && theight % 2 == 0;
             owidth = twidth;
             oheight = theight;
             twidth /= 2;
@@ -2443,20 +2865,56 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const U32 cmdCount = *passData._lastCommandCount;
-        const U32 threadCount = getGroupCount( cmdCount, GROUP_SIZE_AABB );
-
-        if ( threadCount == 0u || !enableOcclusionCulling() )
+        if ( cmdCount == 0u || !enableOcclusionCulling() )
         {
             GFX::EnqueueCommand<GFX::AddDebugMessageCommand>( bufferInOut )->_msg = "Occlusion Culling Skipped";
             return;
         }
 
+        OcclusionCullDispatch dispatch{};
+        const DeviceInformation& deviceInfo = GetDeviceInformation();
+        if ( !TryPlanOcclusionCullDispatch( cmdCount, deviceInfo._maxWorkgroupCount[0], deviceInfo._maxWorkgroupCount[1], dispatch ) )
+        {
+            Console::warnfn( "Hi-Z occlusion skipped: {} commands exceed compute dispatch limits ({} x {})",
+                             cmdCount, deviceInfo._maxWorkgroupCount[0], deviceInfo._maxWorkgroupCount[1] );
+            GFX::EnqueueCommand<GFX::AddDebugMessageCommand>( bufferInOut )->_msg = "Occlusion Culling Skipped: Dispatch Limit";
+            return;
+        }
+
         ResourcePtr<Texture> hizTex = Get(hizBuffer);
 
-        ShaderBuffer* cullBuffer = _gfxBuffers.crtBuffers()._cullCounter.get();
+        LockGuard<Mutex> counterLock( _cullCounterLock );
+        GFXBuffers::PerFrameBuffers& frameBuffers = _gfxBuffers.crtBuffers();
+        ShaderBuffer* cullBuffer = frameBuffers._cullCounter.get();
+        bool collectStats = queryPerformanceStats() && countCulledNodes;
+        U16 counterQueueIndex = U16_MAX;
+        if ( collectStats )
+        {
+            const U64 sequence = _nextCullCounterSequence + 1u;
+            const U16 reserved = frameBuffers._cullCounterReadbacks.reserve( cullBuffer->queueIndex(), sequence );
+            if ( reserved != U16_MAX )
+            {
+                while ( cullBuffer->queueIndex() != reserved )
+                {
+                    cullBuffer->incQueue();
+                }
+                counterQueueIndex = reserved;
+                _nextCullCounterSequence = sequence;
+            }
+            collectStats = counterQueueIndex != U16_MAX;
+        }
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Occlusion Cull";
 
-        // Not worth the overhead for a handful of items and the Pre-Z pass should handle overdraw just fine
+        if ( collectStats )
+        {
+            GFX::ClearBufferDataCommand clearAtomicCounter{};
+            clearAtomicCounter._buffer = cullBuffer;
+            clearAtomicCounter._offsetElementCount = 0u;
+            clearAtomicCounter._elementCount = 1u;
+            clearAtomicCounter._queueIndex = counterQueueIndex;
+            GFX::EnqueueCommand( bufferInOut, clearAtomicCounter );
+        }
+
         GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _hIZCullPipeline;
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
@@ -2471,7 +2929,7 @@ namespace Divide
             Set( binding._data, cullBuffer, { 0u, 1u });
         }
 
-        passData._uniforms->set( _ID( "dvd_countCulledItems" ), PushConstantType::UINT, countCulledNodes ? 1u : 0u );
+        passData._uniforms->set( _ID( "dvd_countCulledItems" ), PushConstantType::UINT, collectStats ? 1u : 0u );
         passData._uniforms->set( _ID( "dvd_numEntities" ), PushConstantType::UINT, cmdCount );
         passData._uniforms->set( _ID( "dvd_viewSize" ), PushConstantType::VEC2, float2( hizTex->width(), hizTex->height() ) );
         passData._uniforms->set( _ID( "dvd_frustumPlanes" ), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
@@ -2484,35 +2942,64 @@ namespace Divide
         mat4<F32>::Multiply( cameraSnapshot._projectionMatrix, cameraSnapshot._viewMatrix, fastConstants.data[0] );
         fastConstants.data[1] = cameraSnapshot._viewMatrix;
 
-        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( bufferInOut )->_workGroupSize = { threadCount, 1, 1 };
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( bufferInOut )->_workGroupSize = { dispatch._groupsX, dispatch._groupsY, 1u };
 
-        // Occlusion culling barrier
-        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back(BufferLock
+        if ( collectStats )
         {
-            ._range = {0u, U32_MAX },
-            ._type = BufferSyncUsage::GPU_WRITE_TO_CPU_READ,
-            ._buffer = cullBuffer->getBufferImpl()
-        });
+            // Occlusion counter writes must be visible to the deferred host read.
+            GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back(BufferLock
+            {
+                ._range = {0u, U32_MAX },
+                ._type = BufferSyncUsage::GPU_WRITE_TO_CPU_READ,
+                ._buffer = cullBuffer->getBufferImpl()
+            });
+        }
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
-        if ( queryPerformanceStats() && countCulledNodes )
+        if ( collectStats )
         {
             GFX::ReadBufferDataCommand readAtomicCounter;
             readAtomicCounter._buffer = cullBuffer;
-            readAtomicCounter._target = { &_lastCullCount, 4 * sizeof( U32 ) };
+            readAtomicCounter._target = { frameBuffers._cullCounterReadbacks.readbackData( counterQueueIndex ), sizeof( uint4 ) };
             readAtomicCounter._offsetElementCount = 0;
             readAtomicCounter._elementCount = 1;
+            readAtomicCounter._queueIndex = counterQueueIndex;
             GFX::EnqueueCommand( bufferInOut, readAtomicCounter );
 
             cullBuffer->incQueue();
-
-            GFX::ClearBufferDataCommand clearAtomicCounter{};
-            clearAtomicCounter._buffer = cullBuffer;
-            clearAtomicCounter._offsetElementCount = 0;
-            clearAtomicCounter._elementCount = 1;
-            GFX::EnqueueCommand( bufferInOut, clearAtomicCounter );
         }
+    }
+
+    void GFXDevice::patchInstanceCounts( ShaderBuffer* countBuffer, const U32 recordOffset, const U32 recordCount, GFX::CommandBuffer& bufferInOut )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        if ( countBuffer == nullptr || recordCount == 0u )
+        {
+            return;
+        }
+
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Patch Instance Counts";
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _instanceCountPatchPipeline;
+        {
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 13u, ShaderStageVisibility::COMPUTE );
+            Set( binding._data, countBuffer, { 0u, countBuffer->getPrimitiveCount() } );
+        }
+
+        // Fast constants are copied into the command, so consecutive passes cannot overwrite each other's ranges.
+        auto pushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
+        pushConstantsCmd->_fastData.data[0] = MAT4_ZERO;
+        pushConstantsCmd->_fastData.data[0].m[0][0] = to_F32( recordOffset );
+        pushConstantsCmd->_fastData.data[0].m[0][1] = to_F32( recordCount );
+
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( bufferInOut )->_workGroupSize =
+        {
+            (recordCount + INSTANCE_COUNT_PATCH_GROUP_SIZE - 1u) / INSTANCE_COUNT_PATCH_GROUP_SIZE, 1u, 1u
+        };
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 #pragma endregion
 
@@ -2567,35 +3054,18 @@ namespace Divide
 
     void GFXDevice::initDebugViews()
     {
-        // Lazy-load preview shader
-        if ( _previewDepthMapShader != INVALID_HANDLE<ShaderProgram>)
+        if ( _debugViews.beginDefaultViewInitialization() )
         {
-            ShaderModuleDescriptor vertModule = {};
-            vertModule._moduleType = ShaderType::VERTEX;
-            vertModule._sourceFile = "baseVertexShaders.glsl";
-            vertModule._variant = "FullScreenQuad";
-
-            ShaderModuleDescriptor fragModule = {};
-            fragModule._moduleType = ShaderType::FRAGMENT;
-            fragModule._sourceFile = "fbPreview.glsl";
-            fragModule._variant = "LinearDepth";
-
-            ShaderProgramDescriptor shaderDescriptor = {};
-            shaderDescriptor._modules.push_back( vertModule );
-            shaderDescriptor._modules.push_back( fragModule );
-
-            // The LinearDepth variant converts the depth values to linear values between the 2 scene z-planes
-            _previewDepthMapShader = CreateResource( ResourceDescriptor<ShaderProgram>( "fbPreviewLinearDepth", shaderDescriptor ) );
-
             DebugView_ptr HiZ = std::make_shared<DebugView>();
             HiZ->_shader = _renderTargetDraw;
             HiZ->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::UTILS.HI_Z )->getAttachment( RTAttachmentType::COLOUR )->texture();
             HiZ->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::UTILS.HI_Z )->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
             HiZ->_name = "Hierarchical-Z";
             HiZ->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.f );
-            HiZ->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            HiZ->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
             HiZ->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             HiZ->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 1u );
+            HiZ->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
             HiZ->_cycleMips = true;
 
             DebugView_ptr DepthPreview = std::make_shared<DebugView>();
@@ -2612,10 +3082,12 @@ namespace Divide
             NormalPreview->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::NORMALS_RESOLVED )->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
             NormalPreview->_name = "Normals";
             NormalPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
-            NormalPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, true );
+            NormalPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 1u );
             NormalPreview->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             NormalPreview->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 2u );
             NormalPreview->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
+            NormalPreview->_shaderData.set( _ID( "scaleAndBias" ), PushConstantType::UINT, 1u );
+            NormalPreview->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
 
             DebugView_ptr VelocityPreview = std::make_shared<DebugView>();
             VelocityPreview->_shader = _renderTargetDraw;
@@ -2623,12 +3095,13 @@ namespace Divide
             VelocityPreview->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::VELOCITY )->_descriptor._sampler;
             VelocityPreview->_name = "Velocity Map";
             VelocityPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
-            VelocityPreview->_shaderData.set( _ID( "scaleAndBias" ), PushConstantType::BOOL, true );
-            VelocityPreview->_shaderData.set( _ID( "normalizeOutput" ), PushConstantType::BOOL, true );
-            VelocityPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            VelocityPreview->_shaderData.set( _ID( "scaleAndBias" ), PushConstantType::UINT, 1u );
+            VelocityPreview->_shaderData.set( _ID( "normalizeOutput" ), PushConstantType::UINT, 0u );
+            VelocityPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
             VelocityPreview->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             VelocityPreview->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 2u );
             VelocityPreview->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 5.0f );
+            VelocityPreview->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
 
             DebugView_ptr SSAOPreview = std::make_shared<DebugView>();
             SSAOPreview->_shader = _renderTargetDraw;
@@ -2636,10 +3109,11 @@ namespace Divide
             SSAOPreview->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::SSAO_RESULT )->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
             SSAOPreview->_name = "SSAO Map";
             SSAOPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
-            SSAOPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            SSAOPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
             SSAOPreview->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             SSAOPreview->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 1u );
             SSAOPreview->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );  
+            SSAOPreview->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
             
             DebugView_ptr BloomPreview = std::make_shared<DebugView>();
             BloomPreview->_shader = _renderTargetDraw;
@@ -2647,10 +3121,11 @@ namespace Divide
             BloomPreview->_sampler = renderTargetPool().getRenderTarget(RenderTargetNames::BLOOM_RESULT)->getAttachment(RTAttachmentType::COLOUR)->_descriptor._sampler;
             BloomPreview->_name = "BLOOM Map";
             BloomPreview->_shaderData.set(_ID("lodLevel"), PushConstantType::FLOAT, 0.0f);
-            BloomPreview->_shaderData.set(_ID("channelsArePacked"), PushConstantType::BOOL, false);
+            BloomPreview->_shaderData.set(_ID("channelsArePacked"), PushConstantType::UINT, 0u);
             BloomPreview->_shaderData.set(_ID("startChannel"), PushConstantType::UINT, 0u);
             BloomPreview->_shaderData.set(_ID("channelCount"), PushConstantType::UINT, 3u);
             BloomPreview->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
+            BloomPreview->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
 
             DebugView_ptr AlphaAccumulationHigh = std::make_shared<DebugView>();
             AlphaAccumulationHigh->_shader = _renderTargetDraw;
@@ -2658,10 +3133,11 @@ namespace Divide
             AlphaAccumulationHigh->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::ALBEDO )->_descriptor._sampler;
             AlphaAccumulationHigh->_name = "Alpha Accumulation High";
             AlphaAccumulationHigh->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
-            AlphaAccumulationHigh->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            AlphaAccumulationHigh->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
             AlphaAccumulationHigh->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             AlphaAccumulationHigh->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 4u );
             AlphaAccumulationHigh->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
+            AlphaAccumulationHigh->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
 
             DebugView_ptr AlphaRevealageHigh = std::make_shared<DebugView>();
             AlphaRevealageHigh->_shader = _renderTargetDraw;
@@ -2669,10 +3145,11 @@ namespace Divide
             AlphaRevealageHigh->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::REVEALAGE )->_descriptor._sampler;
             AlphaRevealageHigh->_name = "Alpha Revealage High";
             AlphaRevealageHigh->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
-            AlphaRevealageHigh->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            AlphaRevealageHigh->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
             AlphaRevealageHigh->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             AlphaRevealageHigh->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 1u );
             AlphaRevealageHigh->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
+            AlphaRevealageHigh->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
 
             SamplerDescriptor lumaSampler = {};
             lumaSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
@@ -2689,10 +3166,11 @@ namespace Divide
             Luminance->_sampler = lumaSampler;
             Luminance->_name = "Luminance";
             Luminance->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
-            Luminance->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            Luminance->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
             Luminance->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             Luminance->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 1u );
             Luminance->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
+            Luminance->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
 
             const RenderTargetHandle& edgeRTHandle = getRenderer().postFX().getFilterBatch().edgesRT();
 
@@ -2702,10 +3180,11 @@ namespace Divide
             Edges->_sampler = renderTargetPool().getRenderTarget( edgeRTHandle._targetID )->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
             Edges->_name = "Edges";
             Edges->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
-            Edges->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+            Edges->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
             Edges->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             Edges->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 4u );
             Edges->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
+            Edges->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
 
             addDebugView( HiZ );
             addDebugView( DepthPreview );
@@ -2717,8 +3196,6 @@ namespace Divide
             addDebugView( AlphaRevealageHigh );
             addDebugView( Luminance );
             addDebugView( Edges );
-
-            WAIT_FOR_CONDITION( Get(_previewDepthMapShader)->getState() == ResourceState::RES_LOADED );
         }
     }
 
@@ -2730,9 +3207,11 @@ namespace Divide
 
         initDebugViews();
 
+        LockGuard<Mutex> lock( _debugViews._lock );
+        const auto& views = _debugViews._active;
         constexpr I32 columnCount = 6u;
-        I32 viewCount = to_I32( _debugViews.size() );
-        for ( const auto& view : _debugViews )
+        I32 viewCount = to_I32( views.size() );
+        for ( const auto& view : views )
         {
             if ( !view->_enabled )
             {
@@ -2767,14 +3246,14 @@ namespace Divide
         Pipeline* crtPipeline = nullptr;
         U16 idx = 0u;
         const I32 mipTimer = to_I32( std::ceil( Time::App::ElapsedMilliseconds() / 750.0f ) );
-        for ( U16 i = 0; i < to_U16( _debugViews.size() ); ++i )
+        for ( U16 i = 0; i < to_U16( views.size() ); ++i )
         {
-            if ( !_debugViews[i]->_enabled )
+            if ( !views[i]->_enabled )
             {
                 continue;
             }
 
-            const DebugView_ptr& view = _debugViews[i];
+            const DebugView_ptr& view = views[i];
 
             if ( view->_cycleMips )
             {
@@ -2834,49 +3313,96 @@ namespace Divide
         GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut )->_viewport.set( previousViewport );
     }
 
-    DebugView* GFXDevice::addDebugView( const std::shared_ptr<DebugView>& view )
+    bool DebugViewRegistry::beginDefaultViewInitialization()
     {
-        LockGuard<Mutex> lock( _debugViewLock );
+        LockGuard<Mutex> lock( _lock );
+        return !std::exchange( _defaultViewsInitialized, true );
+    }
 
-        _debugViews.push_back( view );
+    DebugView* DebugViewRegistry::add( const DebugView_ptr& view )
+    {
+        LockGuard<Mutex> lock( _lock );
 
-        if ( _debugViews.back()->_sortIndex == -1 )
+        _active.push_back( view );
+
+        if ( _active.back()->_sortIndex == -1 )
         {
-            _debugViews.back()->_sortIndex = to_I16( _debugViews.size() );
+            _active.back()->_sortIndex = to_I16( _active.size() );
         }
 
-        eastl::sort( eastl::begin( _debugViews ),
-                     eastl::end( _debugViews ),
+        eastl::sort( eastl::begin( _active ),
+                     eastl::end( _active ),
                      []( const std::shared_ptr<DebugView>& a, const std::shared_ptr<DebugView>& b ) noexcept -> bool
                      {
-                         if ( a->_groupID == b->_groupID )
-                         {
-                             return a->_sortIndex < b->_sortIndex;
-                         }
-                         if ( a->_sortIndex == b->_sortIndex )
-                         {
-                             return a->_groupID < b->_groupID;
-                         }
-
-                         return a->_groupID < b->_groupID&& a->_sortIndex < b->_sortIndex;
+                         return std::pair{ a->_groupID, a->_sortIndex } < std::pair{ b->_groupID, b->_sortIndex };
                      } );
 
         return view.get();
     }
 
+    bool DebugViewRegistry::remove( const DebugView* view )
+    {
+        LockGuard<Mutex> lock( _lock );
+        if ( view == nullptr )
+        {
+            return false;
+        }
+
+        bool removed = false;
+        for ( auto it = _active.begin(); it != _active.end(); )
+        {
+            if ( it->get() == view )
+            {
+                _retired.push_back( *it );
+                it = _active.erase( it );
+                removed = true;
+            }
+            else
+            {
+                ++it;
+            }
+        }
+        return removed;
+    }
+
+    void DebugViewRegistry::releaseRetired()
+    {
+        LockGuard<Mutex> lock( _lock );
+        _retired.clear();
+    }
+
+    void DebugViewRegistry::clear()
+    {
+        LockGuard<Mutex> lock( _lock );
+        _active.clear();
+        _retired.clear();
+        _defaultViewsInitialized = false;
+    }
+
+    void DebugViewRegistry::getNames( vector<std::tuple<string, I16, I16, bool>>& namesOut ) const
+    {
+        LockGuard<Mutex> lock( _lock );
+        namesOut.clear();
+        for ( const auto& view : _active )
+        {
+            namesOut.emplace_back( view->_name, view->_groupID, view->_sortIndex, view->_enabled.load( std::memory_order_relaxed ) );
+        }
+    }
+
+    DebugView* GFXDevice::addDebugView( const std::shared_ptr<DebugView>& view )
+    {
+        return _debugViews.add( view );
+    }
+
     bool GFXDevice::removeDebugView( DebugView* view )
     {
-        return dvd_erase_if( _debugViews,
-                             [view]( const std::shared_ptr<DebugView>& entry ) noexcept
-                             {
-                                 return view != nullptr && view->getGUID() == entry->getGUID();
-                             } );
+        return _debugViews.remove( view );
     }
 
     void GFXDevice::toggleDebugView( const I16 index, const bool state )
     {
-        LockGuard<Mutex> lock( _debugViewLock );
-        for ( auto& view : _debugViews )
+        LockGuard<Mutex> lock( _debugViews._lock );
+        for ( auto& view : _debugViews._active )
         {
             if ( view->_sortIndex == index )
             {
@@ -2888,8 +3414,8 @@ namespace Divide
 
     void GFXDevice::toggleDebugGroup( I16 group, const bool state )
     {
-        LockGuard<Mutex> lock( _debugViewLock );
-        for ( auto& view : _debugViews )
+        LockGuard<Mutex> lock( _debugViews._lock );
+        for ( auto& view : _debugViews._active )
         {
             if ( view->_groupID == group )
             {
@@ -2900,8 +3426,8 @@ namespace Divide
 
     bool GFXDevice::getDebugGroupState( I16 group ) const
     {
-        LockGuard<Mutex> lock( _debugViewLock );
-        for ( const auto& view : _debugViews )
+        LockGuard<Mutex> lock( _debugViews._lock );
+        for ( const auto& view : _debugViews._active )
         {
             if ( view->_groupID == group )
             {
@@ -2917,13 +3443,7 @@ namespace Divide
 
     void GFXDevice::getDebugViewNames( vector<std::tuple<string, I16, I16, bool>>& namesOut )
     {
-        namesOut.resize( 0 );
-
-        LockGuard<Mutex> lock( _debugViewLock );
-        for ( auto& view : _debugViews )
-        {
-            namesOut.emplace_back( view->_name, view->_groupID, view->_sortIndex, view->_enabled );
-        }
+        _debugViews.getNames( namesOut );
     }
 
     PipelineDescriptor& GFXDevice::getDebugPipeline( const IM::BaseDescriptor& descriptor ) noexcept

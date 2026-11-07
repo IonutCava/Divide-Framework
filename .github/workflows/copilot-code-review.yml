@@ -1,0 +1,16 @@
+# Copyright (c) 2026 DIVIDE-Studio
+# Dedicated Copilot code-review setup; omit build steps to keep review startup lightweight.
+name: Copilot Code Review Setup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Use lightweight review environment
+        run: echo "Code review skips engine builds and dependency provisioning."

@@ -1,10 +1,14 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/LightPool.h"
 
+#include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"
+#include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Core/Time/Headers/ProfileTimer.h"
+#include "Graphs/Headers/SceneGraph.h"
 #include "Managers/Headers/ProjectManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
@@ -12,9 +16,13 @@
 #include "Platform/File/Headers/FileManagement.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
+#include "Rendering/Lighting/Headers/LightUploadState.h"
+#include "Scenes/Headers/Scene.h"
 
 #include "ECS/Components/Headers/SpotLightComponent.h"
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
+
+#include <bit>
 
 namespace Divide
 {
@@ -56,7 +64,7 @@ namespace Divide
     void LightPool::InitStaticData( PlatformContext& context )
     {
         ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
+        bufferDescriptor._ringBufferLength = (Config::MAX_FRAMES_IN_FLIGHT + 1u) * Config::MAX_LOCAL_PLAYER_COUNT;
         bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
         bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
 
@@ -147,7 +155,8 @@ namespace Divide
     {
         ShadowMap::reset();
 
-        const SharedLock<SharedMutex> r_lock( _lightLock );
+        LockGuard<SharedMutex> w_lock( _lightLock );
+        setDebugLightLocked( nullptr );
         for ( const LightList& lightList : _lights )
         {
             if ( !lightList.empty() )
@@ -175,7 +184,11 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         LockGuard<SharedMutex> w_lock( _movedSceneVolumesLock );
-        _movedSceneVolumes.clear();
+        const size_t consumed = _shadowMovementBatch.finish( _movedSceneVolumes.size() );
+        if ( consumed > 0u )
+        {
+            _movedSceneVolumes.erase( _movedSceneVolumes.begin(), _movedSceneVolumes.begin() + consumed );
+        }
         return true;
     }
 
@@ -212,6 +225,10 @@ namespace Divide
             return false;
         }
 
+        if ( _debugLight == &light )
+        {
+            setDebugLightLocked( nullptr );
+        }
         _lights[to_U32( light.getLightType() )].erase( it );  // remove it from the map
         _totalLightCount -= 1u;
         return true;
@@ -225,6 +242,23 @@ namespace Divide
         _movedSceneVolumes.push_back( { volume , staticSource } );
     }
 
+    void LightPool::onVolumeChanged( const BoundingSphere& previous, const bool previousStatic,
+                                     const BoundingSphere& current, const bool currentStatic )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
+        LockGuard<SharedMutex> w_lock( _movedSceneVolumesLock );
+        AppendShadowVolumeChange( _movedSceneVolumes, previous, previousStatic, current, currentStatic );
+    }
+
+    void LightPool::invalidateShadowLayers(const BoundingSphere& volume, const U32 layerMask, const LightType lightType,
+                                           const std::optional<BoundingSphere>& influenceBounds)
+    {
+        assert(layerMask != 0u);
+        LockGuard<SharedMutex> w_lock(_movedSceneVolumesLock);
+        _movedSceneVolumes.push_back({volume, false, layerMask, lightType, influenceBounds});
+    }
+
     //ToDo: Generate shadow maps in parallel - Ionut
     void LightPool::generateShadowMaps( const Camera& playerCamera, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
@@ -232,24 +266,39 @@ namespace Divide
 
         Time::ScopedTimer timer( _shadowPassTimer );
 
-        std::array<I32, to_base( LightType::COUNT )> indexCounter{};
-        std::array<bool, to_base( LightType::COUNT )> shadowsGenerated{};
+        ShadowPassSlots<to_base( LightType::COUNT )> slots( Config::Lighting::MAX_SHADOW_CASTING_LIGHTS );
 
         ShadowMap::resetShadowMaps( );
 
         const Frustum& camFrustum = playerCamera.getFrustum();
-
-        U32 totalShadowLightCount = 0u;
+        const CameraSnapshot& camera = playerCamera.snapshot();
+        const auto& shadowSettings = _context.config().rendering.shadowMapping;
+        const bool cameraChanged = _directionalShadowCamera.update(
+            camera._viewMatrix, camera._projectionMatrix, camera._zPlanes.x, camera._zPlanes.y );
 
         constexpr U8 stageIndex = to_U8( RenderStage::SHADOW );
         LightList& sortedLights = _sortedLights[stageIndex];
 
-        GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
+        ShadowMovementBatch::Snapshot movementSnapshot{};
+        {
+            LockGuard<SharedMutex> lock( _movedSceneVolumesLock );
+            movementSnapshot = _shadowMovementBatch.begin( _movedSceneVolumes.size() );
+        }
+
+        for ( Light* light : sortedLights )
+        {
+            light->shadowPropertyIndex( -1 );
+            if ( movementSnapshot._invalidateAll ||
+                 ( cameraChanged && light->getLightType() == LightType::DIRECTIONAL ) )
+            {
+                light->staticShadowsDirty( true );
+                light->dynamicShadowsDirty( true );
+            }
+        }
+
         for ( Light* light : sortedLights )
         {
             const LightType lType = light->getLightType();
-            computeMipMapsCommand._texture = ShadowMap::getShadowMap( lType )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
-            computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
 
             // Skip non-shadow casting lights (and free up resources if any are used by it)
             if ( !light->enabled() || !light->castsShadows() )
@@ -264,38 +313,33 @@ namespace Divide
                 continue;
             }
 
-            // We have a global shadow casting budget that we need to consider
-            if ( ++totalShadowLightCount >= Config::Lighting::MAX_SHADOW_CASTING_LIGHTS )
-            {
-                break;
-            }
-
-            // Make sure we do not go over our shadow casting budget and only consider visible and cache invalidated lights
-            I32& counter = indexCounter[to_base( lType )];
-            if ( counter == GetMaxLights( lType ) || !IsLightInViewFrustum( camFrustum, light ) )
-            {
-                continue;
-            }
-
-            if ( !isShadowCacheInvalidated( playerCamera.snapshot()._eye, light ) && ShadowMap::markShadowMapsUsed( *light ) )
+            // Remember scene changes even for lights that are not selected this frame.
+            const bool cacheInvalidated = isShadowCacheInvalidated( light, movementSnapshot._count );
+            const U32 typeIndex = to_U32( lType );
+            const U32 typeLimit = to_U32( GetMaxLights( lType ) );
+            const bool shadowTypeEnabled = lType == LightType::DIRECTIONAL ? shadowSettings.csm.enabled :
+                                           lType == LightType::POINT ? shadowSettings.point.enabled :
+                                           lType == LightType::SPOT && shadowSettings.spot.enabled;
+            if ( !_lightTypeState[typeIndex] || !shadowTypeEnabled || light->range() <= 0.f ||
+                 !slots.hasCapacity( typeIndex, typeLimit ) || !IsLightInViewFrustum( camFrustum, light ) )
             {
                 continue;
             }
 
-            // We have a valid shadow map update request at this point. Register our properties slot ...
-            const I32 shadowIndex = counter++;
+            const bool cacheValid = ShadowMap::tryReuseShadowMaps( *light );
+            const U8 layerCount = to_U8(ShadowMap::getLightLayerRequirements(*light));
+            const U32 updateMask = ShadowLayerUpdateMask(layerCount, light->shadowLayersDirty(), cacheValid, cacheInvalidated);
+            const bool reuseCached = updateMask == 0u;
+            bool pendingCasters = false;
+            if ( !reuseCached && !ShadowMap::generateShadowMaps( playerCamera, *light, pendingCasters, bufferInOut, memCmdInOut, updateMask ) )
+            {
+                continue;
+            }
+            const I32 shadowIndex = slots.reserve( typeIndex, typeLimit );
+            assert( shadowIndex >= 0 );
             light->shadowPropertyIndex( shadowIndex );
 
-            // ... and update the shadow map
-            if ( !ShadowMap::generateShadowMaps( playerCamera, *light, bufferInOut, memCmdInOut ) )
-            {
-                continue;
-            }
-
             const Light::ShadowProperties& propsSource = light->getShadowProperties();
-            SubRange& layerRange = computeMipMapsCommand._layerRange;
-            layerRange._offset = std::min( layerRange._offset, light->getShadowArrayOffset() );
-
             switch ( lType )
             {
                 case LightType::POINT:
@@ -303,7 +347,6 @@ namespace Divide
                     PointShadowProperties& propsTarget = _shadowBufferData._pointLights[shadowIndex];
                     propsTarget._details = propsSource._lightDetails;
                     propsTarget._position = propsSource._lightPosition[0];
-                    layerRange._count = std::max( layerRange._count, to_U16( light->getShadowArrayOffset() + 1u ) );
                 } break;
                 case LightType::SPOT:
                 {
@@ -311,7 +354,6 @@ namespace Divide
                     propsTarget._details = propsSource._lightDetails;
                     propsTarget._vpMatrix = propsSource._lightVP[0];
                     propsTarget._position = propsSource._lightPosition[0];
-                    layerRange._count = std::max( layerRange._count, to_U16( light->getShadowArrayOffset() + 1u ) );
                 } break;
                 case LightType::DIRECTIONAL:
                 {
@@ -320,31 +362,48 @@ namespace Divide
 
                     for ( U8 i = 0u; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i)
                     {
-                        std::memcpy( propsTarget._position[i]._v, propsSource._lightPosition[0]._v, sizeof(F32) * 4u);
+                        std::memcpy( propsTarget._position[i]._v, propsSource._lightPosition[i]._v, sizeof(F32) * 4u);
                     }
 
                     for ( U8 i = 0u; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i)
                     {
                         std::memcpy( propsTarget._vpMatrix[i].m, propsSource._lightVP[i].m, sizeof(F32) * 16u );
                     }
-
-                    layerRange._count = std::max( layerRange._count, to_U16( light->getShadowArrayOffset() + static_cast<DirectionalLightComponent*>(light)->csmSplitCount() ) );
                 } break;
 
                 default:
                 case LightType::COUNT:
                     DIVIDE_UNEXPECTED_CALL();
-                    break;
             }
-            light->cleanShadowProperties();
 
-            shadowsGenerated[to_base( lType )] = true;
+            if ( !reuseCached )
+            {
+                light->cleanShadowProperties();
+                if ( pendingCasters )
+                {
+                    light->dynamicShadowsDirty( true );
+                }
 
-            GFX::EnqueueCommand( bufferInOut, computeMipMapsCommand );
+                GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
+                computeMipMapsCommand._texture = ShadowMap::getShadowMap( lType )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
+                computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
+                ForEachShadowLayerRange(updateMask, layerCount, [&](const U8 first, const U8 count)
+                {
+                    computeMipMapsCommand._layerRange = {to_U16(light->getShadowArrayOffset() + first), count};
+                    GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
+                });
+            }
         }
 
-        ShadowMap::generateWorldAO( playerCamera, bufferInOut, memCmdInOut );
+        BoundingBox staticBounds{};
+        float2 staticHeightRange{ 0.f, 0.f };
+        if ( parentScene().sceneGraph()->staticGeometryBounds( staticBounds ) )
+        {
+            staticHeightRange.set( staticBounds._min.y, staticBounds._max.y );
+        }
+        _shadowBufferData._worldAOVPMatrix = ShadowMap::generateWorldAO( playerCamera, staticHeightRange, bufferInOut, memCmdInOut );
 
+        _shadowBufferData._cameraViewDepthRow = camera._viewMatrix.getCol( 2 );
         memCmdInOut._bufferLocks.push_back( s_shadowBuffer->writeData( _shadowBufferData.data() ) );
 
         _shadowBufferDirty = true;
@@ -354,22 +413,63 @@ namespace Divide
 
     void LightPool::debugLight( Light* light )
     {
-        _debugLight = light;
-        ShadowMap::setDebugViewLight( context().gfx(), _debugLight );
-    }
-
-    Light* LightPool::getLight( const I64 lightGUID, const LightType type ) const
-    {
-        SharedLock<SharedMutex> r_lock( _lightLock );
-
-        const LightList::const_iterator it = findLight( lightGUID, type );
-        if ( it != eastl::end( _lights[to_U32( type )] ) )
+        I64 lightGUID = -1;
+        LightType lightType = LightType::COUNT;
+        if ( light != nullptr )
         {
-            return *it;
+            SharedLock<SharedMutex> lock( _lightLock );
+            for ( const LightList& lights : _lights )
+            {
+                const auto it = eastl::find( lights.cbegin(), lights.cend(), light );
+                if ( it != lights.cend() )
+                {
+                    lightGUID = light->getGUID();
+                    lightType = light->getLightType();
+                    break;
+                }
+            }
+            if ( lightType == LightType::COUNT )
+            {
+                Console::errorfn( "[Shadow Preview] Cannot select a light outside this pool." );
+                return;
+            }
         }
 
-        DIVIDE_UNEXPECTED_CALL();
-        return nullptr;
+        if ( light != nullptr && !ShadowMap::prepareDebugViewShader( lightType ) )
+        {
+            return;
+        }
+
+        LockGuard<SharedMutex> lock( _lightLock );
+        if ( light != nullptr )
+        {
+            const auto it = findLightLocked( lightGUID, lightType );
+            if ( it == _lights[to_base( lightType )].cend() || *it != light )
+            {
+                Console::errorfn( "[Shadow Preview] The selected light was removed before the preview was ready." );
+                return;
+            }
+        }
+        setDebugLightLocked( light );
+    }
+
+    Light* LightPool::debugLight() const noexcept
+    {
+        SharedLock<SharedMutex> lock( _lightLock );
+        return _debugLight;
+    }
+
+    void LightPool::setDebugLightLocked( Light* light )
+    {
+        if ( light == nullptr )
+        {
+            ShadowMap::clearDebugViewLight( context().gfx(), _debugLight );
+        }
+        else
+        {
+            ShadowMap::setDebugViewLight( context().gfx(), light );
+        }
+        _debugLight = light;
     }
 
     U32 LightPool::uploadLightList( const RenderStage stage, const LightList& lights, const mat4<F32>& viewMatrix )
@@ -391,7 +491,7 @@ namespace Divide
 
             if ( _lightTypeState[typeIndex] && light->enabled() && light->range() > 0.f )
             {
-                if ( ++ret > Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME )
+                if ( !TryReserveLightUploadSlot( ret, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME ) )
                 {
                     break;
                 }
@@ -405,12 +505,15 @@ namespace Divide
                 }
 
                 LightProperties& temp = crtData[ret - 1];
+                _uploadedLights[stageIndex][ret - 1] = light;
                 light->getDiffuseColour( tempColour );
                 temp._diffuse.set( tempColour * light->intensity(), isSpot ? std::cos( Angle::to_RADIANS( spot->outerConeCutoffAngle() ) ) : 0.f );
                 // Omni and spot lights have a position. Directional lights have this set to (0,0,0)
                 temp._position.set( isDir ? VECTOR3_ZERO : (viewMatrix * float4( light->positionCache(), 1.0f )).xyz, light->range() );
                 temp._direction.set( isOmni ? VECTOR3_ZERO : (viewMatrix * float4( light->directionCache(), 0.0f )).xyz, isSpot ? std::cos( Angle::to_RADIANS( spot->coneCutoffAngle() ) ) : 0.f );
-                temp._options.xyz = { typeIndex, light->shadowPropertyIndex(), isSpot ? to_I32( spot->coneSlantHeight() ) : 0 };
+                // The shadow slot (y) is assigned by the shadow pass, which may still be recording: see patchShadowIndices.
+                temp._options.xyz = { typeIndex, -1,
+                                      isSpot ? std::bit_cast<I32>( spot->coneSlantHeight() ) : 0 };
 
                 ++lightCount[typeIndex];
             }
@@ -471,6 +574,7 @@ namespace Divide
 
         U32& totalLightCount = _sortedLightPropertiesCount[stageIndex];
         totalLightCount = uploadLightList( stage, sortedLights, cameraSnapshot._viewMatrix );
+        _lightDataUploaded[stageIndex] = true;
 
         SceneData& crtData = _sortedSceneProperties[stageIndex];
         crtData._globalData.set(
@@ -490,7 +594,10 @@ namespace Divide
 
         {
             PROFILE_SCOPE( "LightPool::UploadLightDataToGPU", Profiler::Category::Graphics );
-            memCmdInOut._bufferLocks.push_back(s_lightBuffer->writeData( { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount }, &_sortedLightProperties[stageIndex] ) );
+            if ( ShouldUploadLightData( totalLightCount ) )
+            {
+                memCmdInOut._bufferLocks.push_back(s_lightBuffer->writeData( { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount }, &_sortedLightProperties[stageIndex] ) );
+            }
         }
 
         {
@@ -499,22 +606,75 @@ namespace Divide
         }
     }
 
-    [[nodiscard]] bool LightPool::isShadowCacheInvalidated( [[maybe_unused]] const float3& cameraPosition, Light* const light )
+    void LightPool::patchShadowIndices( GFX::MemoryBarrierCommand& memCmdInOut )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        for ( size_t stageIndex = 0u; stageIndex < to_size( RenderStage::COUNT ); ++stageIndex )
         {
-            SharedLock<SharedMutex> r_lock( _movedSceneVolumesLock );
-            if ( _movedSceneVolumes.empty() )
+            if ( !_lightDataUploaded[stageIndex] )
             {
-                return light->staticShadowsDirty() || light->dynamicShadowsDirty();
+                continue;
+            }
+            _lightDataUploaded[stageIndex] = false;
+
+            const U32 lightCount = _sortedLightPropertiesCount[stageIndex];
+            if ( !ShouldUploadLightData( lightCount ) )
+            {
+                continue;
+            }
+
+            LightData& crtData = _sortedLightProperties[stageIndex];
+            const UploadedLights& lights = _uploadedLights[stageIndex];
+            bool anyShadowCaster = false;
+            for ( U32 i = 0u; i < lightCount; ++i )
+            {
+                const Light* light = lights[i];
+                const I32 shadowIndex = light->castsShadows() ? light->shadowPropertyIndex() : -1;
+                crtData[i]._options.y = shadowIndex;
+                anyShadowCaster = anyShadowCaster || shadowIndex != -1;
+            }
+
+            if ( anyShadowCaster )
+            {
+                memCmdInOut._bufferLocks.push_back( s_lightBuffer->writeData( { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount }, &crtData ) );
             }
         }
+    }
 
-        const BoundingSphere& lightBounds = light->boundingVolume();
+    [[nodiscard]] bool LightPool::isShadowCacheInvalidated( Light* const light, const size_t movedVolumeCount )
+    {
+        const bool rangeChanged = light->_shadowRangeState.update( light->range() );
+        bool directionalSettingsChanged = false;
+        if ( light->getLightType() == LightType::DIRECTIONAL )
         {
+            auto& directional = *static_cast<DirectionalLightComponent*>( light );
+            directionalSettingsChanged = directional._shadowDirectionalSettings.update(
+                directional.csmNearClipOffset(), directional.csmUseSceneAABBFit() );
+        }
+        if ( rangeChanged || directionalSettingsChanged )
+        {
+            light->staticShadowsDirty( true );
+            light->dynamicShadowsDirty( true );
+        }
+
+        if ( movedVolumeCount > 0u )
+        {
+            const BoundingSphere& lightBounds = light->boundingVolume();
             SharedLock<SharedMutex> r_lock( _movedSceneVolumesLock );
-            for ( const MovingVolume& volume : _movedSceneVolumes )
+            assert( movedVolumeCount <= _movedSceneVolumes.size() );
+            for ( size_t i = 0u; i < movedVolumeCount; ++i )
             {
-                if ( volume._volume.collision( lightBounds ) )
+                const MovingVolume& volume = _movedSceneVolumes[i];
+                if (!volume.affectsLight(light->getLightType(), lightBounds))
+                {
+                    continue;
+                }
+                if (volume._layerMask != 0u)
+                {
+                    light->shadowLayersDirty(light->shadowLayersDirty() | volume._layerMask);
+                }
+                else
                 {
                     if ( volume._staticSource )
                     {

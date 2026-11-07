@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -229,9 +229,9 @@ namespace Divide
         /// init default culling values like max cull distance and other scene related states
         void initDefaultCullValues( RenderStage stage, NodeCullParams& cullParamsInOut ) noexcept;
         /// get the full list of reflective nodes
-        void getSortedReflectiveNodes( const Camera* camera, RenderStage stage, bool inView, VisibleNodeList<>& nodesOut ) const;
+        void getSortedReflectiveNodes( const Camera* camera, bool inView, VisibleNodeList<>& nodesOut ) const;
         /// get the full list of refractive nodes
-        void getSortedRefractiveNodes( const Camera* camera, RenderStage stage, bool inView, VisibleNodeList<>& nodesOut ) const;
+        void getSortedRefractiveNodes( const Camera* camera, bool inView, VisibleNodeList<>& nodesOut ) const;
 
         const VisibleNodeList<>& getRenderedNodeList() const noexcept;
 

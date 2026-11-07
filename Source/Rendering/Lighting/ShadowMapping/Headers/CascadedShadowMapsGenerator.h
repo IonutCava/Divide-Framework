@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -57,22 +57,23 @@ class CascadedShadowMapsGenerator final : public ShadowMapGenerator {
     explicit CascadedShadowMapsGenerator(GFXDevice& context);
     ~CascadedShadowMapsGenerator() override;
 
-    void render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) override;
-    void generateWorldAO( const Camera& playerCamera, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
+    void render(const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, U32 layerMask) override;
+    [[nodiscard]] mat4<F32> generateWorldAO( const Camera& activeCamera, const float2& staticHeightRange, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
    protected:
     using SplitDepths = std::array<F32, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT>;
 
     SplitDepths calculateSplitDepths( DirectionalLightComponent& light, const float2 nearFarPlanes) const noexcept;
 
-    void applyFrustumSplits(DirectionalLightComponent& light, const Camera& shadowCamera, U8 numSplits) const;
+    void applyFrustumSplits(DirectionalLightComponent& light, const Camera& shadowCamera, U8 numSplits, U32 layerMask) const;
 
     void updateMSAASampleCount(U8 sampleCount) override;
 
   protected:
-    void blurTarget( U16 layerOffset, U16 layerCount, GFX::CommandBuffer& bufferInOut );
+    void blurTarget(U16 layerOffset, U16 layerCount, GFX::CommandBuffer& bufferInOut, U8 firstLayer = 0u);
 
   protected:
+    Camera* _worldAOCamera = nullptr;
     Pipeline* _blurPipelineCSM = nullptr;
     Pipeline* _blurPipelineAO = nullptr;
     Handle<ShaderProgram> _blurDepthMapShader = INVALID_HANDLE<ShaderProgram>;

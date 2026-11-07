@@ -6,6 +6,8 @@
 
 namespace Divide
 {
+    DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(SelectionComponent);
+
     SelectionComponent::SelectionComponent(SceneGraphNode* parentSGN, PlatformContext& context)
         : BaseComponentType<SelectionComponent, ComponentType::SELECTION>(parentSGN, context)
     {

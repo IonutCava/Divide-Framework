@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -117,6 +117,22 @@ struct Console : NonCopyable
         COUNT = 9
     };
 
+    class ScopedFlags
+    {
+    public:
+        ScopedFlags(U32 enabledMask, U32 disabledMask) noexcept;
+        ~ScopedFlags() noexcept;
+
+        ScopedFlags(const ScopedFlags&) = delete;
+        ScopedFlags& operator=(const ScopedFlags&) = delete;
+        ScopedFlags(ScopedFlags&&) = delete;
+        ScopedFlags& operator=(ScopedFlags&&) = delete;
+
+    private:
+        U32 _previousEnabled;
+        U32 _previousDisabled;
+    };
+
     struct OutputEntry
     {
         string _text{};
@@ -136,10 +152,18 @@ struct Console : NonCopyable
 
     static void  ToggleFlag( const Flags flag, const bool state )
     {
-        state ? s_flags |= to_base(flag) : s_flags &= ~to_base(flag);
+        const U32 mask = to_U32( to_base(flag) );
+        if ( state )
+        {
+            s_flags.fetch_or( mask, std::memory_order_relaxed );
+        }
+        else
+        {
+            s_flags.fetch_and( ~mask, std::memory_order_relaxed );
+        }
     }
 
-    [[nodiscard]] static bool  IsFlagSet( const Flags flag ) { return s_flags & to_base(flag); }
+    [[nodiscard]] static bool IsFlagSet(Flags flag) noexcept;
 
     [[nodiscard]] static size_t BindConsoleOutput(const ConsolePrintCallback& guiConsoleCallback);
     [[nodiscard]] static bool   UnbindConsoleOutput(size_t& index);
@@ -147,11 +171,12 @@ struct Console : NonCopyable
     protected:
         static void Output(std::string_view text, bool newline, EntryType type);
         static void Output(std::ostream& outStream, std::string_view text, bool newline, EntryType type);
-        static void DecorateAndPrint(std::ostream& outStream, std::string_view text, bool newline, EntryType type);
+        static void DecorateAndPrint(std::ostream& outStream, std::string_view text, bool newline, EntryType type, U32 flags);
         static void PrintToFile(const OutputEntry& entry);
 
         static void FlushOutputStreams();
     private:
+        [[nodiscard]] static U32 EffectiveFlags() noexcept;
 
         enum class StreamType : U8
         {
@@ -162,9 +187,8 @@ struct Console : NonCopyable
 
         static std::ofstream                     s_logStream;
         static std::ofstream                     s_errorStream;
-        static SharedMutex                       s_callbackLock;
         static vector<ConsolePrintCallbackEntry> s_guiConsoleCallbacks;
-        static U32                               s_flags;
+        static std::atomic<U32>                  s_flags;
         static std::atomic_bool                  s_running;
         static std::array<bool, to_base(StreamType::COUNT)> s_streamDirty;
 };

@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -33,6 +33,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_EDITOR_H_
 #define DVD_EDITOR_H_
 
+#include "GizmoSelectionRefresh.h"
 #include "UndoManager.h"
 
 #include "Core/Headers/FrameListener.h"
@@ -363,6 +364,7 @@ namespace Divide
         EditorOptionsWindow_uptr _optionsWindow;
         UndoManager_uptr         _undoManager;
         Gizmo_uptr               _gizmo ;
+        GizmoSelectionRefresh    _gizmoSelectionRefresh;
 
         DisplayWindow* _mainWindow = nullptr;
         vector<std::pair<ImTextureData*, Handle<Texture>>> _fontTextures;
@@ -767,6 +769,11 @@ namespace Divide
 
         class EditorEditorComponent
         {
+
+            static void registerUnsavedSceneChanges( Editor& editor ) noexcept
+            {
+                editor.unsavedSceneChanges( true );
+            }
 
             static void onRemoveComponent( const Editor& editor, const EditorComponent& comp )
             {

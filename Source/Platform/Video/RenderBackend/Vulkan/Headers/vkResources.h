@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -34,6 +34,7 @@
 #define VK_RESOURCES_H
 
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
+#include "Core/Headers/RenderSmokeTest.h"
 
 #include "vkInitializers.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
@@ -62,7 +63,10 @@ namespace Divide {
 
 class VKDevice;
 class vkShaderProgram;
+class Pipeline;
 enum class DescriptorSetBindingType : U8;
+
+[[noreturn]] void ReportVulkanDeviceLost( const char* operation, const VKDevice* device = nullptr ) noexcept;
 
 FWD_DECLARE_MANAGED_CLASS( VKSwapChain );
 
@@ -99,13 +103,51 @@ struct CompiledPipeline
 {
     VkPipelineBindPoint _bindPoint{ VK_PIPELINE_BIND_POINT_MAX_ENUM };
     vkShaderProgram* _program{ nullptr };
+    I64 _programGUID{ I64_LOWEST };
     VkPipeline _vkPipeline{ VK_NULL_HANDLE };
     VkPipeline _vkPipelineWireframe{ VK_NULL_HANDLE };
     VkPipelineLayout _vkPipelineLayout{ VK_NULL_HANDLE };
     PrimitiveTopology _topology{ PrimitiveTopology::COUNT };
     VkShaderStageFlags _stageFlags{ VK_FLAGS_NONE };
     VkDescriptorSetLayout* _descriptorSetlayout{ nullptr };
+    bool _multiDrawCompatible{ false };
     bool _isValid{false};
+};
+
+[[nodiscard]] constexpr bool IndexedIndirectBatchBuffersCompatible( const BufferUsageType first,
+                                                                    const BufferUsageType second ) noexcept
+{
+    return ( first == BufferUsageType::VERTEX_BUFFER && second == BufferUsageType::INDEX_BUFFER ) ||
+           ( first == BufferUsageType::INDEX_BUFFER && second == BufferUsageType::VERTEX_BUFFER );
+}
+
+struct VKRenderingSignature
+{
+    std::array<VkFormat, to_base( RTColourAttachmentSlot::COUNT )> _colourFormats{};
+    U32 _colourAttachmentCount{ 0u };
+    U32 _viewMask{ 0u };
+    VkFormat _depthFormat{ VK_FORMAT_UNDEFINED };
+    VkFormat _stencilFormat{ VK_FORMAT_UNDEFINED };
+    U8 _sampleCount{ 0u };
+
+    [[nodiscard]] static VKRenderingSignature From( const VkPipelineRenderingCreateInfo& info, U8 sampleCount ) noexcept;
+    bool operator==( const VKRenderingSignature& ) const noexcept = default;
+};
+
+struct VKPipelineCacheKey
+{
+    size_t _pipelineStateHash{ 0u };
+    size_t _blendStateHash{ 0u };
+    U32 _colourWrite{ 0u };
+    VKRenderingSignature _rendering{};
+
+    [[nodiscard]] static VKPipelineCacheKey From( const Pipeline& pipeline, const VKRenderingSignature& rendering, bool dynamicBlendState ) noexcept;
+    bool operator==( const VKPipelineCacheKey& ) const noexcept = default;
+};
+
+struct VKPipelineCacheKeyHash
+{
+    [[nodiscard]] size_t operator()( const VKPipelineCacheKey& key ) const noexcept;
 };
 
 struct PipelineBuilder
@@ -142,6 +184,26 @@ struct DynamicBinding
 };
 
 using DynamicBindings = fixed_vector<DynamicBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET>;
+
+class VKImmediateSubmitStatus
+{
+public:
+    [[nodiscard]] bool record( const VkResult result ) noexcept
+    {
+        if ( result != VK_SUCCESS )
+        {
+            _failed.store( true, std::memory_order_release );
+            return false;
+        }
+        return true;
+    }
+
+    [[nodiscard]] bool failed() const noexcept { return _failed.load( std::memory_order_acquire ); }
+    void reset() noexcept { _failed.store( false, std::memory_order_release ); }
+
+private:
+    std::atomic_bool _failed{ false };
+};
 
 struct VKImmediateCmdContext
 {
@@ -185,6 +247,56 @@ struct DescriptorAllocator
     vke::DescriptorAllocatorPool_uptr _allocatorPool{ nullptr };
 };
 
+struct VKBufferBindingState
+{
+    struct VertexBinding
+    {
+        VkBuffer _buffer{ VK_NULL_HANDLE };
+        VkDeviceSize _offset{ 0u };
+        bool _valid{ false };
+    };
+
+    [[nodiscard]] bool updateVertexBinding( const U16 binding, const VkBuffer buffer, const VkDeviceSize offset ) noexcept
+    {
+        if ( binding >= _vertexBindings.size() )
+        {
+            return true;
+        }
+
+        VertexBinding& current = _vertexBindings[binding];
+        if ( current._valid && current._buffer == buffer && current._offset == offset )
+        {
+            return false;
+        }
+
+        current = { buffer, offset, true };
+        return true;
+    }
+
+    [[nodiscard]] bool updateIndexBinding( const VkBuffer buffer, const VkDeviceSize offset, const VkIndexType type ) noexcept
+    {
+        if ( _indexValid && _indexBuffer == buffer && _indexOffset == offset && _indexType == type )
+        {
+            return false;
+        }
+
+        _indexBuffer = buffer;
+        _indexOffset = offset;
+        _indexType = type;
+        _indexValid = true;
+        return true;
+    }
+
+    void reset() noexcept { *this = {}; }
+
+private:
+    std::array<VertexBinding, to_base( AttribLocation::COUNT )> _vertexBindings{};
+    VkBuffer _indexBuffer{ VK_NULL_HANDLE };
+    VkDeviceSize _indexOffset{ 0u };
+    VkIndexType _indexType{ VK_INDEX_TYPE_UINT16 };
+    bool _indexValid{ false };
+};
+
 struct VKPerWindowState
 {
     DisplayWindow* _window{ nullptr };
@@ -193,6 +305,10 @@ struct VKPerWindowState
 
     VkExtent2D _windowExtents{};
     bool _skipEndFrame{ false };
+    bool _frameInProgress{ false };
+    bool _recreateAfterPresent{ false };
+    bool _needsRecreate{ false };
+    VKBufferBindingState _bufferBindings{};
 
     struct VKDynamicState
     {
@@ -200,6 +316,16 @@ struct VKPerWindowState
         RTBlendStates _blendStates{};
         bool _frontFaceInverted{ false };
         bool _isSet{ false };
+
+        [[nodiscard]] bool needsStencilTestUpdate( const bool enabled ) const noexcept
+        {
+            return !_isSet || _block._stencilEnabled != enabled;
+        }
+
+        [[nodiscard]] bool needsStencilValuesReset() const noexcept
+        {
+            return !_isSet || !_block._stencilEnabled;
+        }
 
     } _activeState;
 };
@@ -213,12 +339,16 @@ struct VKStateTracker
     VKImmediateCmdContext* IMCmdContext( QueueType type ) const;
 
     VKDevice* _device{ nullptr };
+    VKImmediateSubmitStatus _immediateSubmitStatus{};
     VKPerWindowState* _activeWindow{ nullptr };
 
 
     VMAAllocatorInstance _allocatorInstance{};
     std::array<DescriptorAllocator, to_base( DescriptorSetUsage::COUNT )> _descriptorAllocators;
     CompiledPipeline _pipeline{};
+    const Pipeline* _logicalPipeline{ nullptr };
+    VKRenderingSignature _renderingSignature{};
+    VKRenderingSignature _boundRenderingSignature{};
 
     VkPipelineRenderingCreateInfo _pipelineRenderInfo{};
 
@@ -228,7 +358,6 @@ struct VKStateTracker
     VkShaderStageFlags _pipelineStageMask{ VK_FLAGS_NONE };
 
     RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
-    size_t _renderTargetFormatHash{0u};
     size_t _activeRenderTargetColourAttachmentCount{ 0u };
     vec2<U16> _activeRenderTargetDimensions{ 1u };
 
@@ -237,6 +366,13 @@ struct VKStateTracker
 
     bool* _enabledAPIDebugging;
     bool* _assertOnAPIError;
+
+    [[nodiscard]] bool needsGraphicsPipelineRebind() const noexcept
+    {
+        return _logicalPipeline != nullptr &&
+               _pipeline._bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS &&
+               _boundRenderingSignature != _renderingSignature;
+    }
 
 
    private:
@@ -373,16 +509,22 @@ inline std::string VKErrorString(VkResult errorCode)
     }
 }
 #ifndef VK_CHECK
-#define VK_CHECK(x)                                                                            \
-    do                                                                                         \
-    {                                                                                          \
-        VkResult err = x;                                                                      \
-        if (err)                                                                               \
-        {                                                                                      \
-            Console::errorfn(LOCALE_STR("ERROR_GENERIC_VK"), VKErrorString(err).c_str());\
-            DIVIDE_UNEXPECTED_CALL();                                                          \
-        }                                                                                      \
-    } while (0)
+#define VK_CHECK(x)                                                                                           \
+    do                                                                                                        \
+    {                                                                                                         \
+        const VkResult err = (x);                                                                            \
+        if ( err != VK_SUCCESS )                                                                              \
+        {                                                                                                     \
+            if ( err == VK_ERROR_DEVICE_LOST && RenderSmokeTest::Enabled() )                                 \
+            {                                                                                                 \
+                ReportVulkanDeviceLost( #x );                                                                \
+            }                                                                                                 \
+            const std::string vkErrorString = VKErrorString( err );                                          \
+            const std::string vkFailureMsg = vkErrorString + " (" + std::to_string( static_cast<int>( err ) ) + ")"; \
+            Console::errorfn( LOCALE_STR( "ERROR_GENERIC_VK" ), vkFailureMsg.c_str() );                    \
+            DIVIDE_UNEXPECTED_CALL_MSG( vkFailureMsg.c_str() );                                               \
+        }                                                                                                     \
+    } while ( 0 )
 #endif //VK_CHECK
 
 #ifndef VK_PROFILE

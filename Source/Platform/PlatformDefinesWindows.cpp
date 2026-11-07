@@ -145,7 +145,7 @@ namespace Divide {
             case ThreadPriority::TIME_CRITICAL: ::SetThreadPriority(thread, THREAD_PRIORITY_TIME_CRITICAL); break;
 
             default:
-            case ThreadPriority::COUNT:          DIVIDE_UNEXPECTED_CALL();                                  break;
+            case ThreadPriority::COUNT:          DIVIDE_UNEXPECTED_CALL();
         }
     }
 

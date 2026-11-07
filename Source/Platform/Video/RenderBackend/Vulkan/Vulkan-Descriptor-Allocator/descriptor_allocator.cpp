@@ -1,6 +1,8 @@
-    
+    // Copyright (c) 2020 vblanco20-1
+    // Copyright (c) 2026 DIVIDE-Studio
 
     #include "descriptor_allocator.h"
+    #include "Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h"
 
     namespace vke {
 
@@ -11,6 +13,15 @@
         {
             return errorResult == VK_ERROR_FRAGMENTED_POOL ||
                    errorResult == VK_ERROR_OUT_OF_POOL_MEMORY;
+        }
+
+        void ReportDescriptorFailure(const char* operation, const VkResult result)
+        {
+            if (result == VK_ERROR_DEVICE_LOST && Divide::RenderSmokeTest::Enabled())
+            {
+                Divide::ReportVulkanDeviceLost(operation);
+            }
+            Divide::Console::errorfn("{} failed: {} ({})", operation, Divide::VKErrorString(result), Divide::to_I32(result));
         }
     }
 
@@ -84,6 +95,10 @@
         PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Graphics );
 
         DescriptorAllocatorPool*implPool = static_cast<DescriptorAllocatorPool*>(ownerPool);
+        if (implPool == nullptr || vkPool == VK_NULL_HANDLE)
+        {
+            return false;
+        }
 
         VkDescriptorSetAllocateInfo allocInfo{ .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
         allocInfo.descriptorPool = vkPool;
@@ -96,11 +111,25 @@
             //we reallocate pools on memory error
             if (IsMemoryError(result))
             {
+                if (retryCount >= Divide::U8_MAX - 1u)
+                {
+                    ReportDescriptorFailure("vkAllocateDescriptorSets", result);
+                    return false;
+                }
+
                 //out of space need reallocate
                 implPool->ReturnAllocator(*this, true);
+                ownerPool = nullptr;
+                vkPool = VK_NULL_HANDLE;
+                poolIdx = -1;
 
                 DescriptorAllocatorHandle newHandle = implPool->GetAllocator();
-                
+                if (newHandle.ownerPool == nullptr)
+                {
+                    return false;
+                }
+
+                ownerPool = newHandle.ownerPool;
                 vkPool = newHandle.vkPool;
                 poolIdx = newHandle.poolIdx;
 
@@ -108,14 +137,11 @@
                 newHandle.poolIdx = -1;
                 newHandle.ownerPool = nullptr;
 
-                DIVIDE_GPU_ASSERT( retryCount < (Divide::U8_MAX - 1u), "DescriptorAllocatorHandle::Allocate failed to allocate descriptor sets: memory error!");
-                //could be good idea to avoid infinite loop here
-                return Allocate(layout, builtSet, retryCount + 1);
+                return Allocate(layout, builtSet, Divide::to_U8(retryCount + 1u));
             }
             else
             {
-                //stuff is truly broken
-                DIVIDE_UNEXPECTED_CALL();
+                ReportDescriptorFailure("vkAllocateDescriptorSets", result);
                 return false;
             }
         }
@@ -147,8 +173,13 @@
         pool_info.poolSizeCount = Divide::to_U32(sizes.size());
         pool_info.pPoolSizes = sizes.data();
 
-        VkDescriptorPool descriptorPool;
-        vkCreateDescriptorPool(_device, &pool_info, nullptr, &descriptorPool);
+        VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
+        const VkResult result = vkCreateDescriptorPool(_device, &pool_info, nullptr, &descriptorPool);
+        if (result != VK_SUCCESS)
+        {
+            ReportDescriptorFailure("vkCreateDescriptorPool", result);
+            return VK_NULL_HANDLE;
+        }
 
         return descriptorPool;
     }
@@ -259,7 +290,10 @@
         {
             //static pool has to be free-able
             allocator.pool = createPool(2000, poolIndex == 0 ? VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT : 0 );
-            foundAllocator = true;
+            if (allocator.pool == VK_NULL_HANDLE)
+            {
+                return {};
+            }
         }
 
         DescriptorAllocatorHandle ret{};

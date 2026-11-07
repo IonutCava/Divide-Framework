@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/TerrainChunk.h"
 #include "Headers/Terrain.h"
@@ -10,11 +10,10 @@
 
 namespace Divide {
 
-U32 TerrainChunk::_chunkID = 0;
-
 TerrainChunk::TerrainChunk(Terrain* const parentTerrain,
-                           QuadtreeNode& parentNode) noexcept
-    : _id(_chunkID++)
+                           QuadtreeNode& parentNode,
+                           const U32 id) noexcept
+    : _id(id)
     , _quadtreeNode(parentNode)
     , _parentTerrain(parentTerrain)
 {

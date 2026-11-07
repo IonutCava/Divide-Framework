@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -35,6 +35,7 @@
 
 #include "Core/Headers/KernelComponent.h"
 
+#include "RenderStageSchedule.h"
 #include "Rendering/RenderPass/Headers/RenderPass.h"
 #include "Rendering/RenderPass/Headers/RenderQueue.h"
 
@@ -47,6 +48,7 @@ namespace Divide
     struct NodeMaterialData;
     struct PerPassData;
     struct RTDrawDescriptor;
+    struct ShadowCasterBounds;
 
     class Camera;
     class SceneGraph;
@@ -70,7 +72,8 @@ namespace Divide
         // source node is used to determine if the current pass is triggered by a specific node:
         // e.g. a light node for shadow mapping, a reflector for reflection (or refraction), etc
         // safe to be set to null
-        FeedBackContainer* _feedBackContainer{ nullptr };
+        ShadowCasterBounds* _shadowBoundsFeedback{ nullptr };
+        bool* _pendingShaderOut{ nullptr };
         const SceneGraphNode* _sourceNode{ nullptr };
         Str<64> _passName{};
         I64 _singleNodeRenderGUID{ -1 };  //-1 = none;
@@ -93,6 +96,7 @@ namespace Divide
                        1 << to_base( Flags::DRAW_TRANSLUCENT_NODES );
 
         bool _refreshLightData{true};
+        bool _enableDeformation{true};
         bool _useMSAA{false};
     };
 
@@ -120,7 +124,9 @@ namespace Divide
         void render( const RenderParams& params );
 
         /// Add a new pass that will run once for each of the RenderStages specified
-        RenderPass& setRenderPass( RenderStage renderStage, const vector<RenderStage>& dependencies = {} );
+        /// dependencies: stages submitted to the GPU before this one.
+        /// recordingDependencies: stages whose CPU recording must complete first (subset of dependencies).
+        RenderPass& setRenderPass( RenderStage renderStage, const vector<RenderStage>& dependencies = {}, const vector<RenderStage>& recordingDependencies = {} );
 
         [[nodiscard]] U32 getLastTotalBinSize( RenderStage renderStage ) const noexcept;
         [[nodiscard]] I32 drawCallCount( const RenderStage stage ) const noexcept
@@ -133,6 +139,10 @@ namespace Divide
 
         private:
         void startRenderTasks( const RenderParams& params, TaskPool& pool, Task* parentTask );
+        void logPerfMetrics() const;
+
+        static constexpr U64 PERF_METRICS_LOG_INTERVAL = 64u;
+        static constexpr size_t PERF_METRICS_TOP_GPU_PASSES = 48u;
 
         private:
         friend class RenderPassExecutor;
@@ -141,8 +151,8 @@ namespace Divide
         private:
         GFXDevice& _context;
 
-        Handle<ShaderProgram> _oitCompositionShader = INVALID_HANDLE<ShaderProgram>;
-        Handle<ShaderProgram> _oitCompositionShaderMS = INVALID_HANDLE<ShaderProgram>;
+        RenderPassExecutor::OITCompositionShaders _oitCompositionShaders =
+            create_array<to_base( RenderPassExecutor::OITCompositionVariant::COUNT )>( INVALID_HANDLE<ShaderProgram> );
         Handle<ShaderProgram> _gbufferResolveShader = INVALID_HANDLE<ShaderProgram>;
 
         struct RenderPassData
@@ -150,14 +160,13 @@ namespace Divide
             Task* _workTask{ nullptr };
             std::unique_ptr<RenderPass> _pass{ nullptr };
             GFX::MemoryBarrierCommand _memCmd{};
+            Handle<GFX::CommandBuffer> _cmdBuffer{ INVALID_HANDLE<GFX::CommandBuffer> };
         };
 
-        Mutex _waitForDependenciesLock;
-        std::condition_variable _waitForDependencies;
-
         std::array<RenderPassData, to_base(RenderStage::COUNT)> _renderPassData{};
-        std::array<std::atomic_bool, to_base( RenderStage::COUNT )> _renderPassCompleted{};
-
+        RenderStageSchedule _stageSchedule;
+        std::array<U8, to_base( RenderStage::COUNT )> _submissionOrder{};
+        std::array<I64, Config::MAX_LOCAL_PLAYER_COUNT> _previousCameraGUID = create_array<Config::MAX_LOCAL_PLAYER_COUNT, I64>( -1 );
 
         std::array<RenderPassExecutor_uptr, to_base( RenderStage::COUNT )> _executors;
         std::array<Time::ProfileTimer*, to_base( RenderStage::COUNT )> _processCommandBufferTimer = create_array<to_base( RenderStage::COUNT ), Time::ProfileTimer*>( nullptr );

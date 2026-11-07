@@ -21,7 +21,7 @@
  * Author: Scott Lee
 */
 
-/* Copyright (c) 2018 DIVIDE-Studio
+/* Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -913,11 +913,16 @@ namespace Divide
     /**********************************************************************************************************************
      * vec4 -  A 4-tuple used to represent things like a vector in 4D space (w-component) or just 4 values linked together
      *********************************************************************************************************************/
+    // pack(1) caps member alignment on Itanium-ABI compilers (GCC/Clang), which would drop SimdVector's
+    // alignas(16) and let aligned SSE accesses fault on misaligned temporaries. The class-level alignas
+    // restores the SIMD alignment (matching MSVC) without changing the layout of non-SIMD vectors.
+    template <typename T>
+    constexpr size_t Vec4Alignment = alignof(SimdVector<T>) >= 16u ? alignof(SimdVector<T>) : 1u;
+
 #pragma pack(push)
 #pragma pack(1)
-     //__declspec(align(alignment))
     template <typename T>
-    class vec4
+    class alignas(Vec4Alignment<T>) vec4
     {
         static_assert(ValidMathType<T>, "Invalid base type!");
 

@@ -1,4 +1,6 @@
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/ImageTools.h"
+#include "Headers/DDSCache.h"
 
 #include "Utility/Headers/Localization.h"
 #include "Platform/File/Headers/FileManagement.h"
@@ -42,6 +44,7 @@ namespace nvttHelpers
     {
         void error(nvtt::Error e) override
         {
+            _failed.store( true, std::memory_order_relaxed );
             constexpr std::array<const char*, static_cast<size_t>(nvtt::Error::Error_Count)> nvttErrors
             {{
                 "UNKNOWN",
@@ -55,6 +58,8 @@ namespace nvttHelpers
 
             Console::errorfn(LOCALE_STR("ERROR_IMAGE_TOOLS_NVT_ERROR"), nvttErrors[to_size(e)]);
         }
+
+        std::atomic_bool _failed{ false };
     };
 
     struct OutputHandler : public nvtt::OutputHandler
@@ -210,6 +215,68 @@ namespace
     }
 }
 
+DDSCache::WriteResult DDSCache::Write( const ResourcePath& cachePath, const std::string_view cacheFileName,
+                                      const std::function<bool( const ResourcePath& )>& generate )
+{
+    const ResourcePath cacheFilePath = cachePath / cacheFileName;
+    const size_t cacheFilePathHash = _ID( cacheFilePath.string() );
+    do
+    {
+        {
+            UniqueLock<Mutex> lock( s_imageCompressionMutex );
+            if ( s_fileLoadingHashes.insert( cacheFilePathHash ).second )
+            {
+                break;
+            }
+        }
+        std::this_thread::yield();
+    } while ( true );
+
+    const string tempFileName = string{ cacheFileName } + ".tmp";
+    bool removeTempFile = false;
+    SCOPE_EXIT
+    {
+        if ( removeTempFile )
+        {
+            const FileError error = deleteFile( cachePath, tempFileName );
+            if ( error != FileError::NONE && error != FileError::FILE_NOT_FOUND )
+            {
+                Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DDS_DELETE_ERROR" ), cachePath / tempFileName );
+            }
+        }
+
+        UniqueLock<Mutex> lock( s_imageCompressionMutex );
+        DIVIDE_EXPECTED_CALL( s_fileLoadingHashes.erase( cacheFilePathHash ) > 0u );
+    };
+
+    if ( fileExists( cacheFilePath ) )
+    {
+        return { WriteStatus::ALREADY_EXISTS, FileError::NONE };
+    }
+
+    const std::string parentPath = cacheFilePath.fileSystemPath().parent_path().generic_string();
+    const FileError directoryError = parentPath.empty() ? FileError::NONE : createDirectory( ResourcePath{ parentPath } );
+    if ( directoryError != FileError::NONE )
+    {
+        return { WriteStatus::DIRECTORY_ERROR, directoryError };
+    }
+
+    removeTempFile = true;
+    if ( !generate( cachePath / tempFileName ) )
+    {
+        return { WriteStatus::CONVERSION_ERROR, FileError::NONE };
+    }
+
+    const FileError moveError = moveFile( cachePath, tempFileName, cachePath, cacheFileName );
+    if ( moveError != FileError::NONE )
+    {
+        return { WriteStatus::MOVE_ERROR, moveError };
+    }
+
+    removeTempFile = false;
+    return { WriteStatus::CREATED, FileError::NONE };
+}
+
 void OnStartup(const bool upperLeftOrigin)
 {
     s_useUpperLeftOrigin = upperLeftOrigin;
@@ -231,6 +298,66 @@ void OnShutdown()
 bool UseUpperLeftOrigin() noexcept
 {
     return s_useUpperLeftOrigin;
+}
+
+bool HaveCompatibleMipChains( const vector<ImageLayer>& layers ) noexcept
+{
+    if ( layers.empty() || layers.front().mipCount() == 0u )
+    {
+        return false;
+    }
+
+    const U8 mipCount = layers.front().mipCount();
+    for ( const ImageLayer& layer : layers )
+    {
+        if ( layer.mipCount() != mipCount )
+        {
+            return false;
+        }
+    }
+
+    vec3<U16> expectedDimensions{};
+    for ( U8 m = 0u; m < mipCount; ++m )
+    {
+        const LayerData* reference = layers.front().getMip( m );
+        if ( reference == nullptr || reference->_size == 0u || reference->data() == nullptr )
+        {
+            return false;
+        }
+
+        if ( m == 0u )
+        {
+            expectedDimensions = reference->_dimensions;
+            if ( expectedDimensions.width == 0u || expectedDimensions.height == 0u || expectedDimensions.depth == 0u )
+            {
+                return false;
+            }
+        }
+        else
+        {
+            if ( expectedDimensions.width == 1u && expectedDimensions.height == 1u && expectedDimensions.depth == 1u )
+            {
+                return false;
+            }
+            expectedDimensions.width = std::max<U16>( 1u, expectedDimensions.width / 2u );
+            expectedDimensions.height = std::max<U16>( 1u, expectedDimensions.height / 2u );
+            expectedDimensions.depth = std::max<U16>( 1u, expectedDimensions.depth / 2u );
+        }
+
+        for ( const ImageLayer& layer : layers )
+        {
+            const LayerData* mip = layer.getMip( m );
+            if ( mip == nullptr || mip->data() == nullptr || mip->_size != reference->_size ||
+                 mip->_dimensions.width != expectedDimensions.width ||
+                 mip->_dimensions.height != expectedDimensions.height ||
+                 mip->_dimensions.depth != expectedDimensions.depth )
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 bool ImageData::loadFromMemory( std::span<const Byte> data, const vec3<U16>& dimensions, const U16 layerCount, const U8 numComponents)
@@ -532,6 +659,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
     _path = path;
     _name = name;
 
+    _hasDummyAlphaChannel = false;
     ignoreAlphaChannelTransparency(!options._alphaChannelTransparency);
 
     // We can handle DDS files directly in a very FATAL way
@@ -610,9 +738,6 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
 
         const ResourcePath cachePath = Paths::Textures::g_metadataLocation / _path;
 
-        // Try and save regular images to DDS for better compression next time
-        DIVIDE_EXPECTED_CALL( createDirectory(cachePath) == FileError::NONE );
-
         const string cacheFileName = Util::StringFormat("{}.{}", _name, Paths::Textures::g_ddsExtension);
 
         const ResourcePath cacheFilePath = cachePath / cacheFileName;
@@ -622,47 +747,18 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         {
             ddsConversionTask = CreateTask( [fullPath, cacheFilePath, cachePath, cacheFileName, options]( const Task& )
             {
-                const size_t cacheFilePathHash = _ID(cacheFilePath.string());
-                do
+                const DDSCache::WriteResult result = DDSCache::Write( cachePath, cacheFileName, [&]( const ResourcePath& cacheFilePathTemp )
                 {
+                    nvtt::Context context;
+                    context.enableCudaAcceleration(true);
+
+                    nvtt::Surface image;
+                    bool hasAlpha = false;
+                    if ( !image.load(fullPath.c_str(), &hasAlpha) )
                     {
-                        UniqueLock<Mutex> lock(s_imageCompressionMutex);
-
-                        if (s_fileLoadingHashes.insert(cacheFilePathHash).second)
-                        {
-                            break;
-                        }
+                        return false;
                     }
-                    std::this_thread::yield();
-                } while (true);
 
-                bool success = false;
-
-                const string cacheFileNameTemp = cacheFileName + ".tmp";
-
-                SCOPE_EXIT
-                {
-                    DIVIDE_EXPECTED_CALL(success && moveFile(cachePath, cacheFileNameTemp, cachePath, cacheFileName) == FileError::NONE);
-
-                    UniqueLock<Mutex> lock(s_imageCompressionMutex);
-                    DIVIDE_EXPECTED_CALL(s_fileLoadingHashes.erase(cacheFilePathHash) > 0u);
-                };
-
-                {
-                    // Check if the file was created between the check and the task actually starting
-                    if (fileExists(ResourcePath{ cacheFilePath }))
-                    {
-                        return;
-                    }
-                }
-
-                nvtt::Context context;
-                context.enableCudaAcceleration(true);
-
-                nvtt::Surface image;
-                bool hasAlpha = false;
-                if (image.load(fullPath.c_str(), &hasAlpha))
-                {
                     image.setNormalMap(options._isNormalMap);
 
                     constexpr bool isGreyScale = false;
@@ -676,8 +772,6 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                     {
                         compressionOptions.setColorWeights(1, 1, 0);
                     }
-
-                    const ResourcePath cacheFilePathTemp = cachePath / cacheFileNameTemp;
 
                     nvttHelpers::ErrorHandler errorHandler;
                     nvtt::OutputOptions outputOptions;
@@ -705,7 +799,12 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                             break;
                     }
 
-                    DIVIDE_EXPECTED_CALL( context.outputHeader(image, image.countMipmaps(), compressionOptions, outputOptions) );
+                    const I32 mipCount = options._skipMipMaps ? 1 : image.countMipmaps();
+                    if ( !context.outputHeader(image, mipCount, compressionOptions, outputOptions) ||
+                         errorHandler._failed.load( std::memory_order_relaxed ) )
+                    {
+                        return false;
+                    }
                     
                     F32 coverage = 0.f;
                     if (options._isNormalMap)
@@ -718,7 +817,11 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         image.setAlphaMode(nvtt::AlphaMode::AlphaMode_Transparency);
                     }
 
-                    DIVIDE_EXPECTED_CALL( context.compress(image, 0, 0, compressionOptions, outputOptions) );
+                    if ( !context.compress(image, 0, 0, compressionOptions, outputOptions) ||
+                         errorHandler._failed.load( std::memory_order_relaxed ) )
+                    {
+                        return false;
+                    }
 
                     // Build and output mipmaps.
                     if (!options._skipMipMaps)
@@ -735,12 +838,32 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                                 image.scaleAlphaToCoverage(coverage, Config::ALPHA_DISCARD_THRESHOLD);
                             }
 
-                            DIVIDE_EXPECTED_CALL( context.compress(image, 0, m, compressionOptions, outputOptions) );
+                            if ( !context.compress(image, 0, m, compressionOptions, outputOptions) ||
+                                 errorHandler._failed.load( std::memory_order_relaxed ) )
+                            {
+                                return false;
+                            }
 
                             m++;
                         }
                     }
-                    success = true;
+                    return true;
+                } );
+
+                switch ( result._status )
+                {
+                    case DDSCache::WriteStatus::CREATED:
+                    case DDSCache::WriteStatus::ALREADY_EXISTS:
+                        break;
+                    case DDSCache::WriteStatus::DIRECTORY_ERROR:
+                    case DDSCache::WriteStatus::MOVE_ERROR:
+                        Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DDS_WRITE_ERROR" ),
+                                          cacheFilePath, Names::fileError[to_base( result._error )] );
+                        break;
+                    case DDSCache::WriteStatus::CONVERSION_ERROR:
+                        Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DDS_CONVERSION_ERROR" ), fullPath, cacheFilePath );
+                        break;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 }
             });
 
@@ -765,8 +888,8 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                     ddsConversionTask = nullptr;
                 }
             }
-            // Or we assume it's already created, so just check that it exists
-            else if ( fileExists( cacheFilePath ) )
+            // A completed conversion must be loaded just like an existing cache entry.
+            if ( ddsConversionTask == nullptr && fileExists( cacheFilePath ) )
             {
                 // Try and load it normally...
                 if (loadDDS_NVTT( srgb, refWidth, refHeight, cachePath, cacheFileName ))
@@ -792,6 +915,12 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         return loadFromFile( context, srgb, refWidth, refHeight, path, name, options, true );
                     }
                 }
+            }
+
+            if ( ddsConversionTask == nullptr && _loadingData._loadedDDSData )
+            {
+                Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DDS_LAYER_REQUIRED" ), cacheFilePath );
+                return false;
             }
         }
 #       endif //!IS_MACOS_BUILD
@@ -867,7 +996,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         dataLDR = stbi__hdr_to_ldr( dataHDR, width, height, comp );
                         dataHDR = nullptr;
                     } break;
-                    default: DIVIDE_UNEXPECTED_CALL(); break;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 };
                 _sourceDataType = SourceDataType::BYTE;
             } break;
@@ -886,7 +1015,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         data16Bit = stbi__hdr_to_16( dataHDR, width, height, comp );
                         dataHDR = nullptr;
                     } break;
-                    default: DIVIDE_UNEXPECTED_CALL(); break;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 };
                 _sourceDataType = SourceDataType::SHORT;
             } break;
@@ -911,7 +1040,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         dataUINT = stbi_convert<U32, stbi__uint16>( data16Bit, width, height, comp );
                         data16Bit = nullptr;
                     } break;
-                    default: DIVIDE_UNEXPECTED_CALL(); break;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 };
                 _sourceDataType = SourceDataType::UINT;
             } break;
@@ -920,7 +1049,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
             case GFXDataFormat::SIGNED_INT:
             {
                 DIVIDE_UNEXPECTED_CALL_MSG("Signed data types not supported when loading from file!");
-            } break;
+            }
             case GFXDataFormat::FLOAT_16:
             {
                 switch ( _sourceDataType )
@@ -940,7 +1069,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         dataHalf = stbi__hdr_to_half( dataHDR, width, height, comp );
                         dataHDR = nullptr;
                     }break;
-                    default: DIVIDE_UNEXPECTED_CALL(); break;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 };
                 _sourceDataType = SourceDataType::HALF;
             } break;
@@ -959,11 +1088,11 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         data16Bit = nullptr;
                     }break;
                     case SourceDataType::FLOAT: break;
-                    default: DIVIDE_UNEXPECTED_CALL(); break;
+                    default: DIVIDE_UNEXPECTED_CALL();
                 }
                 _sourceDataType = SourceDataType::FLOAT;
             } break;
-            default: DIVIDE_UNEXPECTED_CALL_MSG("Invalid requested texture format!"); break;
+            default: DIVIDE_UNEXPECTED_CALL_MSG("Invalid requested texture format!");
         }
 
         _dataType = _requestedDataFormat;
@@ -978,7 +1107,6 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         case 4 : _format = GFXImageFormat::RGBA; break;
         default:
             DIVIDE_UNEXPECTED_CALL();
-            break;
     }
 
     if (refWidth != 0 && refHeight != 0 && (refWidth != width || refHeight != height))
@@ -1065,6 +1193,10 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         DIVIDE_UNEXPECTED_CALL();
     }
 
+    if ( ret )
+    {
+        _decodedPath = path / name;
+    }
     ++_loadingData._fileIndex;
     return ret;
 }
@@ -1240,7 +1372,7 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
             } break;
             default:
             {
-                DIVIDE_UNEXPECTED_CALL();
+                DIVIDE_ASSERT(false);
                 return false;
             }
         }
@@ -1251,7 +1383,7 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
         {
             default:
             case IL_COLOUR_INDEX: 
-                DIVIDE_UNEXPECTED_CALL();
+                DIVIDE_ASSERT(false);
                 return false;
             case IL_ALPHA:
             case IL_LUMINANCE:
@@ -1348,41 +1480,61 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
                 }
 
 
-                if ( compressed && image == 0 && face == 0 && m == 0 )
+                if ( compressed && m == 0 )
                 {
-                    _decompressedData.resize( to_size( imageInfo.Width ) * imageInfo.Height * imageInfo.Depth * 4 );
-                    ilCopyPixels( 0, 0, 0, imageInfo.Width, imageInfo.Height, imageInfo.Depth, IL_RGBA, IL_UNSIGNED_BYTE, _decompressedData.data() );
-                    if ( checkError( devilErrors ) )
+                    const size_t decodedSize = to_size( width ) * height * depth * 4u;
+                    if ( decodedSize > U32_MAX )
                     {
-                        Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
+                        Console::errorfn( "DDS inspection data is too large for '{}'.", fullPath );
+                        return false;
+                    }
+                    vector<U8>& decoded = layer.decompressedData();
+                    decoded.resize( decodedSize );
+                    const ILuint copied = ilCopyPixels( 0, 0, 0, width, height, depth, IL_RGBA, IL_UNSIGNED_BYTE, decoded.data() );
+                    const bool failed = checkError( devilErrors );
+                    if ( failed || copied != decodedSize )
+                    {
+                        Console::errorfn( "Failed to decode DDS inspection data for '{}': {}.", fullPath, devilErrors );
+                        return false;
                     }
                 }
             }
         }
     }
 
+    _decodedPath = path / name;
     return true;
 }
 
-UColour4 ImageData::getColour(const I32 x, const I32 y, [[maybe_unused]] U32 layer, const U8 mipLevel) const
+UColour4 ImageData::getColour(const I32 x, const I32 y, const U32 layer, const U8 mipLevel, const U16 slice) const
 {
     UColour4 returnColour;
-    getColour(x, y, returnColour.r, returnColour.g, returnColour.b, returnColour.a, mipLevel);
+    getColour(x, y, returnColour.r, returnColour.g, returnColour.b, returnColour.a, layer, mipLevel, slice);
     return returnColour;
 }
 
 namespace
 {
-    [[nodiscard]] FORCE_INLINE U8 F32ToU8Colour(const F32 val) noexcept { return to_U8((val / F32_MAX) * 255); }
+    [[nodiscard]] FORCE_INLINE U8 F32ToU8Colour(const F32 val) noexcept { return to_U8(std::clamp(val, 0.f, 1.f) * 255.f); }
     [[nodiscard]] FORCE_INLINE U8 U32ToU8Colour(const U32 val) noexcept { return to_U8(CLAMPED(val, 0u, 255u)); }
     [[nodiscard]] FORCE_INLINE U8 U16ToU8Colour(const U16 val) noexcept { return to_U8((val / ( U16_MAX * 1.f )) * 255); }
     [[nodiscard]] FORCE_INLINE U8 HalfToU8Colour(const glm::detail::hdata val) noexcept { return F32ToU8Colour(glm::detail::toFloat32(val)); }
     [[nodiscard]] FORCE_INLINE U8 U8ToU8Colour(const U8 val) noexcept { return val; }
+
+    template<typename T>
+    [[nodiscard]] T ReadImageComponent( const LayerData& mip, const size_t index ) noexcept
+    {
+        const size_t offset = index * sizeof( T );
+        assert( offset <= mip._size && sizeof( T ) <= mip._size - offset );
+        T value{};
+        std::memcpy( &value, static_cast<const U8*>( mip.data() ) + offset, sizeof( T ) );
+        return value;
+    }
 };
 
-void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& c, const U32 layer, const U8 mipLevel) const
+void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& c, const U32 layer, const U8 mipLevel, const U16 slice) const
 {
-    assert(comp >= 0 && comp < 4);
+    assert(comp < 4);
     assert(!IsCompressed(_format) || mipLevel == 0);
     assert(_layers.size() > layer);
 
@@ -1393,14 +1545,23 @@ void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& 
     }
 
     const LayerData* mip = _layers[layer].getMip(mipLevel);
+    assert(mip != nullptr);
+    assert(x >= 0 && x < mip->_dimensions.width && y >= 0 && y < mip->_dimensions.height && slice < mip->_dimensions.depth);
 
-    // Decompressed data is always UByte-RGBA
-    const U32 pixelStride = IsCompressed(_format) ? 4 : _bpp / 8;
-    const I32 idx = ((y * mip->_dimensions.width + x) * pixelStride) + comp;
+    const U8 channelCount = IsCompressed(_format) ? 4u : NumChannels(_format);
+    if (comp >= channelCount)
+    {
+        c = 0u;
+        return;
+    }
+    const U8 channel = IsBGRTexture(_format) && comp < 3u ? to_U8(2u - comp) : comp;
+    const size_t pixel = (to_size(slice) * mip->_dimensions.height + to_size(y)) * mip->_dimensions.width + to_size(x);
+    const size_t idx = pixel * channelCount + channel;
     if (IsCompressed(_format))
     {
-        // Decompressed data is always UByte-RGBA
-        c = _decompressedData[idx];
+        const vector<U8>& decoded = _layers[layer].decompressedData();
+        assert(idx < decoded.size());
+        c = decoded[idx];
     }
     else
     {
@@ -1408,95 +1569,35 @@ void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& 
         {
             case SourceDataType::BYTE : 
             {
-                c = U8ToU8Colour( static_cast<const U8*>(mip->data())[idx] );
+                c = U8ToU8Colour( ReadImageComponent<U8>( *mip, idx ) );
             } break;
             case SourceDataType::SHORT:
             {
-                c = U16ToU8Colour( static_cast<const U16*>(mip->data())[idx] );
+                c = U16ToU8Colour( ReadImageComponent<U16>( *mip, idx ) );
             } break;
             case SourceDataType::HALF:
             {
-                c = HalfToU8Colour( static_cast<const glm::detail::hdata*>(mip->data())[idx] );
+                c = HalfToU8Colour( ReadImageComponent<glm::detail::hdata>( *mip, idx ) );
             } break;
             case SourceDataType::FLOAT:
             {
-                c = F32ToU8Colour( static_cast<const F32*>(mip->data())[idx] );
+                c = F32ToU8Colour( ReadImageComponent<F32>( *mip, idx ) );
             } break;
             case SourceDataType::UINT:
             {
-                c = U32ToU8Colour( static_cast<const U32*>(mip->data())[idx] );
+                c = U32ToU8Colour( ReadImageComponent<U32>( *mip, idx ) );
             } break;
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
     }
 }
 
-void ImageData::getColour(const I32 x, const I32 y, U8& r, U8& g, U8& b, U8& a, const U32 layer, const U8 mipLevel) const
+void ImageData::getColour(const I32 x, const I32 y, U8& r, U8& g, U8& b, U8& a, const U32 layer, const U8 mipLevel, const U16 slice) const
 {
-    assert(!IsCompressed(_format) || mipLevel == 0);
-    assert(_layers.size() > layer);
-
-    const LayerData* mip = _layers[layer].getMip(mipLevel);
-    // Decompressed data is always UByte-RGBA
-    const U32 pixelStride = IsCompressed(_format) ? 4 : _bpp / 8;
-    const I32 idx = ((y * mip->_dimensions.width + x) * pixelStride);
-
-    if (IsCompressed(_format))
-    {
-        // Decompressed data is always UByte-RGBA
-        const U8* src = _decompressedData.data();
-        r = src[idx + 0];
-        g = src[idx + 1];
-        b = src[idx + 2]; 
-        a = HasAlphaChannel(_format) ? src[idx + 3] : 255;
-    }
-    else
-    {
-        switch ( _sourceDataType )
-        {
-            case SourceDataType::BYTE:
-            {
-                const U8* src = static_cast<U8*>(mip->data());
-                r = U8ToU8Colour( src[idx + 0] );
-                g = U8ToU8Colour( src[idx + 1] );
-                b = U8ToU8Colour( src[idx + 2] );
-                a = HasAlphaChannel( _format ) ? U8ToU8Colour( src[idx + 3] ) : 255;
-            } break;
-            case SourceDataType::SHORT:
-            {
-                const U16* src = static_cast<U16*>(mip->data());
-                r = U16ToU8Colour( src[idx + 0] );
-                g = U16ToU8Colour( src[idx + 1] );
-                b = U16ToU8Colour( src[idx + 2] );
-                a = HasAlphaChannel( _format ) ? U16ToU8Colour( src[idx + 3] ) : 255;
-            } break;
-            case SourceDataType::HALF:
-            {
-                const U8* src = static_cast<U8*>(mip->data());
-                r = HalfToU8Colour( src[idx + 0] );
-                g = HalfToU8Colour( src[idx + 1] );
-                b = HalfToU8Colour( src[idx + 2] );
-                a = HasAlphaChannel( _format ) ? HalfToU8Colour( src[idx + 3] ) : 255;
-            } break;
-            case SourceDataType::FLOAT:
-            {
-                const F32* src = static_cast<F32*>(mip->data());
-                r = F32ToU8Colour( src[idx + 0] );
-                g = F32ToU8Colour( src[idx + 1] );
-                b = F32ToU8Colour( src[idx + 2] );
-                a = HasAlphaChannel( _format ) ? F32ToU8Colour( src[idx + 3] ) : 255;
-            } break;
-            case SourceDataType::UINT:
-            {
-                const U8* src = static_cast<U8*>(mip->data());
-                r = U32ToU8Colour( src[idx + 0] );
-                g = U32ToU8Colour( src[idx + 1] );
-                b = U32ToU8Colour( src[idx + 2] );
-                a = HasAlphaChannel( _format ) ? U32ToU8Colour( src[idx + 3] ) : 255;
-            } break;
-            default: DIVIDE_UNEXPECTED_CALL(); break;
-        }
-    }
+    getColourComponent(x, y, 0u, r, layer, mipLevel, slice);
+    getColourComponent(x, y, 1u, g, layer, mipLevel, slice);
+    getColourComponent(x, y, 2u, b, layer, mipLevel, slice);
+    getColourComponent(x, y, 3u, a, layer, mipLevel, slice);
 }
 
 namespace 
@@ -1552,7 +1653,7 @@ bool SaveImage(const ResourcePath& filename, const U16 width, const U16 height, 
         case 2: sourceIsBGR ? flipAndConvertToRGB8<2, true>( imageData, dest, width, height, bytesPerPixel ) : flipAndConvertToRGB8<2, false>( imageData, dest, width, height, bytesPerPixel ); break;
         case 3: sourceIsBGR ? flipAndConvertToRGB8<3, true>( imageData, dest, width, height, bytesPerPixel ) : flipAndConvertToRGB8<3, false>( imageData, dest, width, height, bytesPerPixel ); break;
         case 4: sourceIsBGR ? flipAndConvertToRGB8<4, true>( imageData, dest, width, height, bytesPerPixel ) : flipAndConvertToRGB8<4, false>( imageData, dest, width, height, bytesPerPixel ); break;
-        default: DIVIDE_UNEXPECTED_CALL(); return false;
+        default: DIVIDE_ASSERT(false); return false;
     }
 
     switch (format)
@@ -1561,7 +1662,7 @@ bool SaveImage(const ResourcePath& filename, const U16 width, const U16 height, 
         case SaveImageFormat::BMP: return stbi_write_bmp(filename.string().c_str(), width, height, 3, pix.data())                           == 1;
         case SaveImageFormat::TGA: return stbi_write_tga(filename.string().c_str(), width, height, 3, pix.data())                           == 1;
         case SaveImageFormat::JPG: return stbi_write_jpg(filename.string().c_str(), width, height, 3, pix.data(), 85)                       == 1;
-        default: DIVIDE_UNEXPECTED_CALL(); break;
+        default: DIVIDE_ASSERT(false); break;
     }
 
     return false;
@@ -1572,4 +1673,3 @@ bool SaveImageHDR(const ResourcePath& filename, const U16 width, const U16 heigh
     return stbi_write_hdr(filename.string().c_str(), width, height, numberOfComponents, imageData) == 1;
 }
 }  // namespace Divide::ImageTools
-

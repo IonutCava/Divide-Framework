@@ -1,5 +1,7 @@
 --Fragment.SSAOCalc
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 /*******************************************************************************
 Copyright (C) 2013 John Chapman
 
@@ -10,6 +12,7 @@ See "license.txt" or "http://copyfree.org/licenses/mit/license.txt".
 
 #include "utility.frag"
 #include "sceneData.cmn"
+#include "ssaoResampling.cmn"
 
 #define projectionMatrix PushData0
 #define invProjectionMatrix PushData1
@@ -29,9 +32,8 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texDepthMap;
 
 #if !defined(COMPUTE_HALF_RES)
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texNormals;
-#define GetNormal(UV) texture(texNormals, UV).rg
 #else //!COMPUTE_HALF_RES
-#define GetNormal(UV) texture(texDepthMap, UV).gb
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texFullDepthMap;
 #endif //!COMPUTE_HALF_RES
 
 // This constant removes artifacts caused by neighbour fragments with minimal depth difference.
@@ -51,13 +53,27 @@ void main(void) {
         return;
     }
 
-    const float sceneRange = _zPlanes.y - _zPlanes.x;
+#if defined(COMPUTE_HALF_RES)
+    const ivec2 fullSize = textureSize(texFullDepthMap, 0);
+    const ivec2 halfSize = textureSize(texDepthMap, 0);
+    const ivec2 halfPixel = min(ivec2(VAR._texCoord * vec2(halfSize)), halfSize - 1);
+    const vec4 depthAndNormal = texelFetch(texDepthMap, halfPixel, 0);
+    const int sampleOffset = int(depthAndNormal.a);
+    const ivec2 sourcePixel = SSAO_DOWNSAMPLE_SOURCE_PIXEL(halfPixel, ivec2(sampleOffset & 1, sampleOffset >> 1), fullSize - 1);
+    const vec2 sceneUV = SSAO_SOURCE_UV(vec2(sourcePixel), vec2(fullSize));
+    const float sceneDepth = depthAndNormal.r;
+    const vec2 encodedNormal = depthAndNormal.gb;
+#else
+    const vec2 sceneUV = VAR._texCoord;
     const float sceneDepth = texture(texDepthMap, VAR._texCoord).r;
+    const vec2 encodedNormal = texture(texNormals, VAR._texCoord).rg;
+#endif
+    const float sceneRange = _zPlanes.y - _zPlanes.x;
     const float linDepth01 = ToLinearDepth( sceneDepth, _zPlanes ) / sceneRange;
     if ( linDepth01 <= maxRange )
     {
         // Normal gathering.
-        const vec3 normalView = normalize(unpackNormal(GetNormal(VAR._texCoord)));
+        const vec3 normalView = normalize(unpackNormal(encodedNormal));
         // Calculate the rotation  for the kernel.
         const vec3 randomVector = texture(texNoise, VAR._texCoord * SSAO_NOISE_SCALE).rgb;
         // Using Gram-Schmidt process to get an orthogonal vector to the normal vector.
@@ -69,7 +85,7 @@ void main(void) {
         // Final matrix to reorient the kernel depending on the normal and the random vector.
         const mat3 kernelMatrix = mat3(tangentView, bitangentView, normalView);
 
-        const vec3 fragPos = ViewSpacePos(VAR._texCoord, sceneDepth, invProjectionMatrix);
+        const vec3 fragPos = ViewSpacePos(sceneUV, sceneDepth, invProjectionMatrix);
         float occlusion = 0.f;
         // Go through the kernel samples and create occlusion factor.
         for (int i = 0; i < SSAO_SAMPLE_COUNT; ++i)
@@ -84,7 +100,12 @@ void main(void) {
             const vec3 samplePointNDC = Homogenize(projectionMatrix * vec4(samplePos, 1.f));
             const vec2 samplePointUv = samplePointNDC.xy * 0.5f + 0.5f;
 
-            const float sampleDepth = ViewSpaceZ(texture(texDepthMap, samplePointUv).r, invProjectionMatrix );
+#if defined(COMPUTE_HALF_RES)
+            const ivec2 samplePixel = clamp(ivec2(SSAO_HALF_SAMPLE_POSITION(samplePointUv, vec2(fullSize))), ivec2(0), halfSize - 1);
+            const float sampleDepth = ViewSpaceZ(texelFetch(texDepthMap, samplePixel, 0).r, invProjectionMatrix);
+#else
+            const float sampleDepth = ViewSpaceZ(texture(texDepthMap, samplePointUv).r, invProjectionMatrix);
+#endif
 
             // If the depth for that XY position in the scene is larger than
             // the sample's, then the sample is occluded by scene's geometry and
@@ -133,8 +154,8 @@ void main() {
     float result = texture(texSSAO, VAR._texCoord).r;
     const float depthDelta = depthThreshold * _zPlanes.y;
 
-    for (int x = -blurKernelSize; x < blurKernelSize; ++x) {
-        for (int y = -blurKernelSize; y < blurKernelSize; ++y) {
+    for (int x = -blurKernelSize; x <= blurKernelSize; ++x) {
+        for (int y = -blurKernelSize; y <= blurKernelSize; ++y) {
             if (x != 0 || y != 0) 
             {
                 const vec2 tex_offset = min(vec2(1.0), max(vec2(0.0), VAR._texCoord + vec2(x, y) * texelSize));
@@ -278,65 +299,36 @@ void main() {
 
 --Fragment.SSAODownsample
 
+#include "ssaoResampling.cmn"
+
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texDepthMap;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texNormal;
 
-layout(location = 0) out vec3 _outColour;
+layout(location = 0) out vec4 _outColour;
 
-float most_representative() {
-    float samples[] = float[](
-        textureOffset(texDepthMap, VAR._texCoord, ivec2(0, 0)).r,
-        textureOffset(texDepthMap, VAR._texCoord, ivec2(0, 1)).r,
-        textureOffset(texDepthMap, VAR._texCoord, ivec2(1, 0)).r,
-        textureOffset(texDepthMap, VAR._texCoord, ivec2(1, 1)).r);
-
-    float centr = (samples[0] + samples[1] + samples[2] + samples[3]) / 4.0f;
-    float dist[] = float[](
-        abs(centr - samples[0]),
-        abs(centr - samples[1]),
-        abs(centr - samples[2]),
-        abs(centr - samples[3]));
-
-    float max_dist = max(max(dist[0], dist[1]), max(dist[2], dist[3]));
-    float rem_samples[3];
-    int rejected_idx[3];
-
-    int j = 0; int i; int k = 0;
-    for (i = 0; i < 4; i++) {
-        if (dist[i] < max_dist) {
-            rem_samples[j] = samples[i];
-            j++;
-        } else {
-            /* for the edge case where 2 or more samples
-               have max_dist distance from the centroid */
-            rejected_idx[k] = i;
-            k++;
+int representativeDepthIndex(in vec4 samples) {
+    const float center = dot(samples, vec4(0.25f));
+    int rejected = 0;
+    float maxDistance = abs(samples[0] - center);
+    for (int i = 1; i < 4; ++i) {
+        const float distance = abs(samples[i] - center);
+        if (distance > maxDistance) {
+            maxDistance = distance;
+            rejected = i;
         }
     }
 
-    /* also for the edge case where 2 or more samples
-       have max_dist distance from the centroid */
-    if (j < 2) {
-        for (i = 3; i > j; i--) {
-            rem_samples[i] = samples[rejected_idx[k]];
-            k--;
+    const float retainedCenter = (samples.x + samples.y + samples.z + samples.w - samples[rejected]) / 3.0f;
+    int best = rejected == 0 ? 1 : 0;
+    float minDistance = abs(samples[best] - retainedCenter);
+    for (int i = 0; i < 4; ++i) {
+        const float distance = abs(samples[i] - retainedCenter);
+        if (i != rejected && distance < minDistance) {
+            minDistance = distance;
+            best = i;
         }
     }
-
-    centr = (rem_samples[0] + rem_samples[1] + rem_samples[2]) / 3.0;
-
-    dist[0] = abs(rem_samples[0] - centr);
-    dist[1] = abs(rem_samples[1] - centr);
-    dist[2] = abs(rem_samples[2] - centr);
-
-    float min_dist = min(dist[0], min(dist[1], dist[2]));
-    for (int i = 0; i < 3; i++) {
-        if (dist[i] == min_dist)
-            return rem_samples[i];
-    }
-
-    /* should never reach */
-    return samples[0];
+    return best;
 }
 
 
@@ -346,33 +338,27 @@ void main()
                                    ivec2(0, 1),
                                    ivec2(1, 1),
                                    ivec2(1, 0));
-   float d[] = float[] (
-      textureOffset(texDepthMap, VAR._texCoord, offsets[0]).r,
-      textureOffset(texDepthMap, VAR._texCoord, offsets[1]).r,
-      textureOffset(texDepthMap, VAR._texCoord, offsets[2]).r,
-      textureOffset(texDepthMap, VAR._texCoord, offsets[3]).r);
- 
-   vec3 pn[] = vec3[](
-       textureOffset(texNormal, VAR._texCoord, offsets[0]).rga,
-       textureOffset(texNormal, VAR._texCoord, offsets[1]).rga,
-       textureOffset(texNormal, VAR._texCoord, offsets[2]).rga,
-       textureOffset(texNormal, VAR._texCoord, offsets[3]).rga);
-
-   const float best_depth = most_representative();
-
-   int i = 0;
-   for (; i < 4; ++i) {
-      if (abs(best_depth - d[i]) <= M_EPSILON) {
-          break;
-      }
+   const ivec2 sourceSize = textureSize(texDepthMap, 0);
+   const ivec2 targetSize = (sourceSize + 1) / 2;
+   const ivec2 targetPixel = ivec2(VAR._texCoord * vec2(targetSize));
+   const ivec2 sourceMax = sourceSize - 1;
+   float d[4];
+   vec2 pn[4];
+   for (int i = 0; i < 4; ++i)
+   {
+       const ivec2 sourcePixel = SSAO_DOWNSAMPLE_SOURCE_PIXEL(targetPixel, offsets[i], sourceMax);
+       d[i] = texelFetch(texDepthMap, sourcePixel, 0).r;
+       pn[i] = texelFetch(texNormal, sourcePixel, 0).rg;
    }
 
-   _outColour = vec3(d[i], pn[i].rg);
+   const int i = representativeDepthIndex(vec4(d[0], d[1], d[2], d[3]));
+   _outColour = vec4(d[i], pn[i], float(offsets[i].x + offsets[i].y * 2));
 }
 
 --Fragment.SSAOUpsample
 
 #include "utility.frag"
+#include "ssaoResampling.cmn"
 
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texSSAOLinear;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texDepthMap;
@@ -381,41 +367,42 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 3) uniform sampler2D texSSAONearest;
 
 layout(location = 0) out float _ssaoOut;
 
-float nearest_depth_ao() {
-    float d[] = float[](
-        textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(0, 0)).r,
-        textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(0, 1)).r,
-        textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(1, 0)).r,
-        textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(1, 1)).r);
+void main()
+{
+    const ivec2 offsets[] = ivec2[](ivec2(0, 0),
+                                    ivec2(0, 1),
+                                    ivec2(1, 0),
+                                    ivec2(1, 1));
+    const ivec2 sourceSize = textureSize(texSSAONormalsDepth, 0);
+    const ivec2 fullSize = textureSize(texDepthMap, 0);
+    const vec2 halfPosition = SSAO_HALF_GRID_POSITION(VAR._texCoord * vec2(fullSize), vec2(fullSize), vec2(fullSize & ivec2(1)));
+    const ivec2 base = ivec2(floor(halfPosition));
+    const vec2 halfUV = SSAO_SOURCE_UV(halfPosition, vec2(sourceSize));
+    const ivec2 sourceMax = sourceSize - 1;
+    float d[4];
+    float ao[4];
+    vec3 n[4];
+    for (int i = 0; i < 4; ++i)
+    {
+        const ivec2 sourcePixel = SSAO_CLAMP_SOURCE_PIXEL(base, offsets[i], ivec2(0), sourceMax);
+        const vec3 depthAndNormal = texelFetch(texSSAONormalsDepth, sourcePixel, 0).rgb;
+        d[i] = depthAndNormal.r;
+        n[i] = unpackNormal(depthAndNormal.gb);
+        ao[i] = texelFetch(texSSAONearest, sourcePixel, 0).r;
+    }
 
-    float ao[] = float[](
-        textureOffset(texSSAONearest, VAR._texCoord, ivec2(0, 0)).r,
-        textureOffset(texSSAONearest, VAR._texCoord, ivec2(0, 1)).r,
-        textureOffset(texSSAONearest, VAR._texCoord, ivec2(1, 0)).r,
-        textureOffset(texSSAONearest, VAR._texCoord, ivec2(1, 1)).r);
-
-    float d0 = texture(texDepthMap, VAR._texCoord).r;
-    float min_dist = 1.0;
-
-    int best_depth_idx;
-    for (int i = 0; i < 4; i++) {
-        float dist = abs(d0 - d[i]);
-
-        if (min_dist > dist) {
+    const float d0 = texture(texDepthMap, VAR._texCoord).r;
+    int best_depth_idx = 0;
+    float min_dist = abs(d0 - d[0]);
+    for (int i = 1; i < 4; ++i)
+    {
+        const float dist = abs(d0 - d[i]);
+        if (min_dist > dist)
+        {
             min_dist = dist;
             best_depth_idx = i;
         }
     }
-
-    return ao[best_depth_idx];
-}
-
-void main() {
-    vec3 n[] = vec3[](
-        unpackNormal(textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(0, 0)).gb),
-        unpackNormal(textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(0, 1)).gb),
-        unpackNormal(textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(1, 0)).gb),
-        unpackNormal(textureOffset(texSSAONormalsDepth, VAR._texCoord, ivec2(1, 1)).gb));
 
     float dot01 = dot(n[0], n[1]);
     float dot02 = dot(n[0], n[2]);
@@ -424,5 +411,5 @@ void main() {
     float min_dot = min(dot01, min(dot02, dot03));
     float s = step(0.997f, min_dot);
 
-    _ssaoOut = mix(nearest_depth_ao(), texture(texSSAOLinear, VAR._texCoord).r, s);
+    _ssaoOut = mix(ao[best_depth_idx], texture(texSSAOLinear, halfUV).r, s);
 }

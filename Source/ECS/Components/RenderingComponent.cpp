@@ -1,3 +1,6 @@
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #include "Headers/RenderingComponent.h"
 #include "Headers/AnimationComponent.h"
 #include "Headers/BoundsComponent.h"
@@ -21,21 +24,39 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 #include "Scenes/Headers/SceneState.h"
+#include "Scenes/Headers/Scene.h"
 
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Shapes/Headers/Mesh.h"
 
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
+#include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
 #include "Rendering/RenderPass/Headers/RenderPassExecutor.h"
+
+#include "Utility/Headers/Localization.h"
 
 namespace Divide
 {
 
+    DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(RenderingComponent);
+
     namespace
     {
         constexpr I16 g_renderRangeLimit = I16_MAX;
+    }
+
+    void SetNodeIndirectionIndex( RenderPackage& package, const bool instanced, const U32 indirectionIndex ) noexcept
+    {
+        if ( instanced )
+        {
+            if ( indirectionIndex == NodeIndirectionData::INVALID_IDX )
+            {
+                DIVIDE_UNEXPECTED_CALL_MSG( "Instanced draw has no node indirection index" );
+            }
+            package.pushConstantsCmd()._uniformData->set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, indirectionIndex );
+        }
     }
 
     RenderingComponent::RenderingComponent( SceneGraphNode* parentSGN, PlatformContext& context )
@@ -137,9 +158,12 @@ namespace Divide
             return;
         }
 
-        if ( Material::Clone(material, _materialInstance, (_parentSGN->name() + "_instance").c_str()) &&
-             _materialInstance != INVALID_HANDLE<Material> )
+        Handle<Material> newInstance = INVALID_HANDLE<Material>;
+        if ( Material::Clone(material, newInstance, (_parentSGN->name() + "_instance").c_str()) &&
+             newInstance != INVALID_HANDLE<Material> )
         {
+            DestroyResource( _materialInstance );
+            _materialInstance = newInstance;
             ResourcePtr<Material> mat = Get(_materialInstance);
 
             DIVIDE_ASSERT( !mat->resourceName().empty() );
@@ -181,7 +205,8 @@ namespace Divide
             _editorComponent.registerField( MOV( renderLodField ) );
 
             mat->properties().isStatic( _parentSGN->usageContext() == NodeUsageContext::NODE_STATIC );
-            mat->properties().isInstanced( mat->properties().isInstanced() || isInstanced() );
+            isInstanced( RequiresInstancedIndirection( isInstanced(), mat->properties().isInstanced(), _parentSGN->instanceCount() ) );
+            mat->properties().isInstanced( isInstanced() );
         }
     }
 
@@ -204,9 +229,9 @@ namespace Divide
         {
             for ( auto& pacakgesPerIndex : packagesPerPassIndex )
             {
-                for ( PackageEntry& entry : pacakgesPerIndex )
+                for ( const auto& entry : pacakgesPerIndex )
                 {
-                    Clear( entry._package );
+                    Clear( entry->_package );
                 }
             }
         }
@@ -214,6 +239,7 @@ namespace Divide
 
     void RenderingComponent::updateReflectRefractDescriptors(const bool reflectState, const bool refractState )
     {
+        LockGuard<SharedMutex> w_lock( _renderPackagesLock );
         _updateReflection = reflectState;
         _updateRefraction = refractState;
     }
@@ -229,9 +255,9 @@ namespace Divide
                 {
                     for ( auto& pacakgesPerIndex : packagesPerPassIndex )
                     {
-                        for ( PackageEntry& entry : pacakgesPerIndex )
+                        for ( const auto& entry : pacakgesPerIndex )
                         {
-                            Clear( entry._package );
+                            Clear( entry->_package );
                         }
                     }
                 }
@@ -244,9 +270,15 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
         PROFILE_TAG( "Node", (_parentSGN->name().c_str()) );
 
-        // Can we render without a material? Maybe. IDK.
         bool shaderJustFinishedLoading = false;
-        if ( _materialInstance == INVALID_HANDLE<Material> || Get(_materialInstance)->canDraw( renderStagePass, shaderJustFinishedLoading ) )
+        bool materialReady = true;
+        if ( _materialInstance != INVALID_HANDLE<Material> )
+        {
+            LockGuard<SharedMutex> w_lock( _drawCommands._dataLock );
+            materialReady = Get(_materialInstance)->canDraw( renderStagePass, shaderJustFinishedLoading );
+        }
+
+        if ( materialReady )
         {
             if ( shaderJustFinishedLoading )
             {
@@ -261,6 +293,12 @@ namespace Divide
         }
 
         return false;
+    }
+
+    bool RenderingComponent::shaderPending( const RenderStagePass& renderStagePass ) const
+    {
+        SharedLock<SharedMutex> r_lock( _drawCommands._dataLock );
+        return _materialInstance != INVALID_HANDLE<Material> && Get(_materialInstance)->shaderPending( renderStagePass );
     }
 
     void RenderingComponent::onParentUsageChanged( const NodeUsageContext context ) const
@@ -293,7 +331,7 @@ namespace Divide
 
     void RenderingComponent::setIndexBufferElementOffset(const size_t indexOffset) noexcept
     {
-        _indexBufferOffsetCount = indexOffset;
+        _indexBufferOffsetCount.store( indexOffset, std::memory_order_relaxed );
     }
 
     void RenderingComponent::setLoDIndexOffset( const U8 lodIndex, size_t indexOffset, size_t indexCount ) noexcept
@@ -391,6 +429,12 @@ namespace Divide
         return MAX_LOD_LEVEL;
     }
 
+    void RenderingComponent::setInstanceShaderBuffer( ShaderBuffer* buffer, const U32 dataIndex ) noexcept
+    {
+        _instanceShaderBuffer = buffer;
+        _instanceShaderDataIndex = dataIndex;
+    }
+
     bool RenderingComponent::prepareDrawPackage( const CameraSnapshot& cameraSnapshot,
                                                  const SceneRenderState& sceneRenderState,
                                                  const RenderStagePass& renderStagePass,
@@ -399,53 +443,68 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        bool hasCommands = hasDrawCommands();
+        bool hasCommands = false;
+        bool needsNewShader = false;
 
         if ( refreshData )
         {
-            if ( !hasCommands )
+            const bool drawGeometry = renderOptionEnabled( RenderOptions::RENDER_GEOMETRY ) &&
+                                      sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_GEOMETRY );
+            const bool drawWireframe = renderOptionEnabled( RenderOptions::RENDER_WIREFRAME ) &&
+                                       sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_WIREFRAME );
             {
-                U8 drawCmdOptions = 0u;
-                if (renderOptionEnabled(RenderOptions::RENDER_GEOMETRY) && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY))
-                {
-                    drawCmdOptions |= to_base(CmdRenderOptions::RENDER_GEOMETRY);
-                }
-
-                if (renderOptionEnabled(RenderOptions::RENDER_WIREFRAME) && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME))
-                {
-                    drawCmdOptions |= to_base(CmdRenderOptions::RENDER_WIREFRAME);
-                }
-
                 LockGuard<SharedMutex> w_lock( _drawCommands._dataLock );
-                _parentSGN->getNode().buildDrawCommands( _parentSGN, _drawCommands._data );
-                hasCommands = !_drawCommands._data.empty();
+                if ( _drawCommands._data.empty() )
+                {
+                    U8 drawCmdOptions = 0u;
+                    if ( drawGeometry )
+                    {
+                        drawCmdOptions |= to_base( CmdRenderOptions::RENDER_GEOMETRY );
+                    }
+                    if ( drawWireframe )
+                    {
+                        drawCmdOptions |= to_base( CmdRenderOptions::RENDER_WIREFRAME );
+                    }
 
-                if (hasCommands)
+                    _parentSGN->getNode().buildDrawCommands( _parentSGN, _drawCommands._data );
+                    for ( GenericDrawCommand& cmd : _drawCommands._data )
+                    {
+                        enableOptions( cmd, drawCmdOptions );
+                        isInstanced( RequiresInstancedIndirection( isInstanced(), false, cmd._cmd.instanceCount ) );
+                    }
+                }
+                else
                 {
                     for ( GenericDrawCommand& cmd : _drawCommands._data )
                     {
-                        enableOptions(cmd, drawCmdOptions);
-                        if ( cmd._cmd.instanceCount > 1 )
-                        {
-                            isInstanced( true );
-                        }
+                        setOption( cmd, CmdRenderOptions::RENDER_GEOMETRY, drawGeometry );
+                        setOption( cmd, CmdRenderOptions::RENDER_WIREFRAME, drawWireframe );
                     }
                 }
-            }
-            else
-            {
-                LockGuard<SharedMutex> w_lock( _drawCommands._dataLock );
-                for ( GenericDrawCommand& cmd : _drawCommands._data )
+                hasCommands = !_drawCommands._data.empty();
+
+                if ( hasCommands && _materialInstance != INVALID_HANDLE<Material> )
                 {
-                    setOption(cmd, CmdRenderOptions::RENDER_GEOMETRY,  renderOptionEnabled(RenderOptions::RENDER_GEOMETRY)  && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY ));
-                    setOption(cmd, CmdRenderOptions::RENDER_WIREFRAME, renderOptionEnabled(RenderOptions::RENDER_WIREFRAME) && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME));
+                    ResourcePtr<Material> mat = Get(_materialInstance);
+                    if ( isInstanced() )
+                    {
+                        mat->properties().isInstanced( true );
+                    }
+                    needsNewShader = mat->properties().needsNewShader();
                 }
+            }
+
+            if ( needsNewShader )
+            {
+                return false;
             }
 
             if ( hasCommands )
             {
                 const BoundsComponent* bComp = _parentSGN->get<BoundsComponent>();
-                const float3& cameraEye = cameraSnapshot._eye;
+                const float3& cameraEye = renderStagePass._stage == RenderStage::NODE_PREVIEW
+                                              ? cameraSnapshot._eye
+                                              : sceneRenderState.parentScene().playerCamera()->snapshot()._eye;
                 const SceneNodeRenderState& renderState = _parentSGN->getNode<>().renderState();
                 if ( renderState.lod0OnCollision() && bComp->getBoundingBox().containsPoint( cameraEye ) )
                 {
@@ -460,24 +519,27 @@ namespace Divide
                 }
             }
         }
+        else
+        {
+            SharedLock<SharedMutex> r_lock( _drawCommands._dataLock );
+            hasCommands = !_drawCommands._data.empty();
+            needsNewShader = hasCommands && _materialInstance != INVALID_HANDLE<Material> &&
+                             Get(_materialInstance)->properties().needsNewShader();
+        }
 
-        if ( hasCommands )
+        if ( hasCommands && !needsNewShader )
         {
             RenderPackage& pkg = getDrawPackage( renderStagePass );
 
             if ( pkg.pipelineCmd()._pipeline == nullptr )
             {
                 // New packages will not have any reflect/refract data
-                _updateReflection = _updateRefraction = true;
-
-                if ( isInstanced() )
                 {
-                    pkg.pushConstantsCmd()._uniformData->set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, 0u );
-                    if ( _materialInstance != INVALID_HANDLE<Material> )
-                    {
-                        Get(_materialInstance)->properties().isInstanced( true );
-                    }
+                    LockGuard<SharedMutex> w_lock( _renderPackagesLock );
+                    _updateReflection = _updateRefraction = true;
                 }
+
+                SetNodeIndirectionIndex( pkg, isInstanced(), _indirectionBufferEntry );
                 PipelineDescriptor pipelineDescriptor = {};
 
                 if ( _materialInstance != INVALID_HANDLE<Material> )
@@ -485,10 +547,23 @@ namespace Divide
                     ResourcePtr<Material> mat = Get(_materialInstance);
                     pipelineDescriptor._stateBlock = mat->getOrCreateRenderStateBlock( renderStagePass );
                     pipelineDescriptor._shaderProgramHandle = mat->getProgramHandle( renderStagePass );
+                    if ( pipelineDescriptor._shaderProgramHandle == INVALID_HANDLE<ShaderProgram> )
+                    {
+                        return false;
+                    }
+                    const ShaderProgram* const program = Get( pipelineDescriptor._shaderProgramHandle );
+                    if ( program == nullptr )
+                    {
+                        Console::errorfn( LOCALE_STR( "MATERIAL_SHADER_RESOURCE_MISSING" ), mat->resourceName().c_str() );
+                        return false;
+                    }
                     pipelineDescriptor._primitiveTopology = mat->topology();
                     pipelineDescriptor._vertexFormat = mat->shaderAttributes();
                     pkg.descriptorSetCmd()._usage = DescriptorSetUsage::PER_DRAW;
-                    pkg.descriptorSetCmd()._set = mat->getDescriptorSet( renderStagePass );
+                    if ( !mat->getDescriptorSet( renderStagePass, program->descriptor(), pkg.descriptorSetCmd()._set ) )
+                    {
+                        return false;
+                    }
                 }
                 else
                 {
@@ -518,11 +593,20 @@ namespace Divide
                     state1.blendDest( BlendProperty::INV_SRC_COLOR );
                     state1.blendOp( BlendOperation::ADD );
 
+                    BlendingSettings& normalState = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::NORMALS )];
+                    normalState.enabled( true );
+                    normalState.blendSrc( BlendProperty::ONE );
+                    normalState.blendDest( BlendProperty::ONE );
+                    normalState.blendOp( BlendOperation::ADD );
+
                     BlendingSettings& state2 = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::MODULATE )];
                     state2.enabled( true );
                     state2.blendSrc( BlendProperty::ZERO );
                     state2.blendDest( BlendProperty::INV_SRC_COLOR );
                     state2.blendOp( BlendOperation::ADD );
+                    state2.blendSrcAlpha( BlendProperty::ZERO );
+                    state2.blendDestAlpha( BlendProperty::ONE );
+                    state2.blendOpAlpha( BlendOperation::ADD );
                 }
 
                 pipelineDescriptor._stateBlock._primitiveRestartEnabled = primitiveRestartRequired();
@@ -531,6 +615,7 @@ namespace Divide
 
             if ( !IsDepthPass( renderStagePass ) )
             {
+                SharedLock<SharedMutex> r_lock( _renderPackagesLock );
                 const auto updateBinding = [](DescriptorSet& targetSet, const U8 slot, DescriptorSetBindingData& data )
                 {
                     for ( U8 i = 0u; i < targetSet._bindingCount; ++i )
@@ -582,11 +667,47 @@ namespace Divide
                     }
                     updateBinding( pkg.descriptorSetCmd()._set, 11, data );
                 }
+
             }
             Attorney::SceneGraphNodeComponent::prepareRender( _parentSGN, *this, pkg, postDrawMemCmd, cameraSnapshot, renderStagePass, refreshData );
+
+            if ( _instanceShaderBuffer != nullptr )
+            {
+                if ( !DIVIDE_ASSERT( !_parentSGN->HasComponents( ComponentType::ANIMATION ),
+                                     "Instance and animation buffers cannot share PER_DRAW slot 13" ) )
+                {
+                    return false;
+                }
+
+                DescriptorSet& set = pkg.descriptorSetCmd()._set;
+                DescriptorSetBinding* instanceBinding = nullptr;
+                for ( U8 i = 0u; i < set._bindingCount; ++i )
+                {
+                    if ( set._bindings[i]._slot == 13u )
+                    {
+                        instanceBinding = &set._bindings[i];
+                        break;
+                    }
+                }
+                if ( instanceBinding == nullptr )
+                {
+                    instanceBinding = &AddBinding( set, 13u, ShaderStageVisibility::VERTEX );
+                }
+                Set( instanceBinding->_data, _instanceShaderBuffer );
+                pkg.pushConstantsCmd()._uniformData->set( _ID( "dvd_instanceDataIndex" ), PushConstantType::UINT, _instanceShaderDataIndex );
+            }
         }
 
-        return hasCommands;
+        return hasCommands && !needsNewShader;
+    }
+
+    RenderPackage& RenderingComponent::prepareDependency( const CameraSnapshot& cameraSnapshot,
+                                                          const RenderStagePass& renderStagePass,
+                                                          GFX::MemoryBarrierCommand& postDrawMemCmd )
+    {
+        RenderPackage& pkg = getDrawPackage( renderStagePass );
+        Attorney::SceneGraphNodeComponent::prepareRender( _parentSGN, *this, pkg, postDrawMemCmd, cameraSnapshot, renderStagePass, true );
+        return pkg;
     }
 
     void RenderingComponent::retrieveDrawCommands( const RenderStagePass& stagePass, const U32 cmdOffset, DrawCommandContainer& cmdsInOut )
@@ -594,10 +715,13 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         RenderPackage& pkg = getDrawPackage( stagePass );
-        if ( isInstanced() )
+        if (stagePass._passType != RenderPassType::MAIN_PASS)
         {
-            pkg.pushConstantsCmd()._uniformData->set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, _indirectionBufferEntry);
+            RenderStagePass preparedPass = stagePass;
+            preparedPass._passType = RenderPassType::MAIN_PASS;
+            pkg.drawCommandsOverride(getDrawPackage(preparedPass).drawCommandsOverride());
         }
+        SetNodeIndirectionIndex( pkg, isInstanced(), _indirectionBufferEntry );
         pkg.stagePassBaseIndex( BaseIndex( stagePass ) );
 
         pkg.drawCmdOffset( cmdOffset + to_U32( cmdsInOut.size() ) );
@@ -606,11 +730,13 @@ namespace Divide
         const bool autoIndex = offset != 0u || count != 0u;
 
         SharedLock<SharedMutex> r_lock2( _drawCommands._dataLock );
-        for ( const GenericDrawCommand& gCmd : _drawCommands._data )
+        const GenericDrawCommandContainer& commands = pkg.drawCommandsOverride() != nullptr
+            ? *pkg.drawCommandsOverride() : _drawCommands._data;
+        for ( const GenericDrawCommand& gCmd : commands )
         {
             IndirectIndexedDrawCommand& iCmd = cmdsInOut.emplace_back(gCmd._cmd);
 
-            iCmd.baseInstance = isInstanced() ? 0u : (_indirectionBufferEntry + 1u); //Make sure to substract 1 in the shader!
+            iCmd.baseInstance = IndirectionBaseInstance( isInstanced(), _indirectionBufferEntry );
 
             if ( autoIndex )
             {
@@ -618,7 +744,8 @@ namespace Divide
                 iCmd.indexCount = to_U32( count );
             }
 
-            iCmd.firstIndex += to_U32(_indexBufferOffsetCount);
+            iCmd.firstIndex += to_U32( _indexBufferOffsetCount.load( std::memory_order_relaxed ) );
+
         }
     }
 
@@ -633,7 +760,9 @@ namespace Divide
 
         {
             SharedLock<SharedMutex> r_lock( _drawCommands._dataLock );
-            drawCmd = GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ _drawCommands._data });
+            drawCmd = GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+            drawCmd->_drawCommands = pkg->drawCommandsOverride() != nullptr
+                ? *pkg->drawCommandsOverride() : _drawCommands._data;
         }
 
         U32 startOffset = pkg->drawCmdOffset();
@@ -652,28 +781,30 @@ namespace Divide
 
         {
             SharedLock<SharedMutex> r_lock( _renderPackagesLock );
-            for ( PackageEntry& entry : pacakgesPerIndex )
+            for ( const auto& entry : pacakgesPerIndex )
             {
-                if ( entry._index == renderStagePass._index )
+                if ( entry->_index == renderStagePass._index )
                 {
-                    return entry._package;
+                    return entry->_package;
                 }
             }
         }
 
         LockGuard<SharedMutex> w_lock( _renderPackagesLock );
         // check again
-        for ( PackageEntry& entry : pacakgesPerIndex )
+        for ( const auto& entry : pacakgesPerIndex )
         {
-            if ( entry._index == renderStagePass._index )
+            if ( entry->_index == renderStagePass._index )
             {
-                return entry._package;
+                return entry->_package;
             }
         }
 
-        PackageEntry& entry = pacakgesPerIndex.emplace_back();
-        entry._index = renderStagePass._index;
-        return entry._package;
+        auto entry = std::make_unique<PackageEntry>();
+        entry->_index = renderStagePass._index;
+        RenderPackage& package = entry->_package;
+        pacakgesPerIndex.emplace_back( MOV(entry) );
+        return package;
     }
 
     bool RenderingComponent::updateReflection( const ReflectorType reflectorType,
@@ -694,9 +825,9 @@ namespace Divide
                                                              ? RenderTargetNames::REFLECT::PLANAR_OIT[reflectionIndex]
                                                              : INVALID_RENDER_TARGET_ID );
 
-            const U16 reflectionIndexWithOffset = GetNodeReflectionIndexOffset() + // Offset by environment probe count
-                                                  (reflectorType == ReflectorType::PLANAR ? Config::MAX_REFLECTIVE_CUBE_NODES_IN_VIEW : 0u) + // Ofset by cube reflectors if target is PLANAR
-                                                  reflectionIndex; //Offset by our budget ID
+            const U16 stageIndex = reflectorType == ReflectorType::CUBE
+                                       ? to_U16( GetNodeReflectionCubeIndexOffset() + reflectionIndex )
+                                       : reflectionIndex;
             RenderCbkParams params
             {
                 _gfxContext,
@@ -706,7 +837,7 @@ namespace Divide
                 RenderTargetNames::REFLECT::UTILS.HI_Z,
                 reflectorType,
                 RefractorType::COUNT,
-                reflectionIndexWithOffset,
+                stageIndex,
                 camera
             };
 
@@ -715,6 +846,7 @@ namespace Divide
                 // Grab the updated reflection texture
                 RTAttachment* targetAtt = _gfxContext.renderTargetPool().getRenderTarget(reflectRTID)->getAttachment(RTAttachmentType::COLOUR);
 
+                LockGuard<SharedMutex> w_lock( _renderPackagesLock );
                 // Grab our internal texture handle and swap our internal texture to the updated one
                 if (reflectorType == ReflectorType::PLANAR)
                 {
@@ -723,12 +855,13 @@ namespace Divide
                 }
                 else
                 {
-                    _refractionCube = { targetAtt->texture(), targetAtt->_descriptor._sampler };
+                    _reflectionCube = { targetAtt->texture(), targetAtt->_descriptor._sampler };
                     _reflectionPlanar = { INVALID_HANDLE<Texture>, {} };
                 }
 
                 // Inform the shader of our update
                 _materialUpdateMask |= to_base(MaterialUpdateResult::NEW_REFLECTION);
+                _updateReflection = true;
 
                 // Return true so we can keep track of our budget
                 return true;
@@ -756,9 +889,6 @@ namespace Divide
                                                              ? RenderTargetNames::REFRACT::PLANAR_OIT[refractionIndex]
                                                              : INVALID_RENDER_TARGET_ID);
 
-            const U16 refractionIndexWithOffset = GetNodeRefractionIndexOffset() + // Offset by environment probe count
-                                                  (refractorType == RefractorType::PLANAR ? Config::MAX_REFRACTIVE_CUBE_NODES_IN_VIEW : 0u) + // Ofset by cube refractors if target is PLANAR
-                                                  refractionIndex; //Offset by our budget ID
             RenderCbkParams params
             {
                 _gfxContext,
@@ -768,7 +898,7 @@ namespace Divide
                 RenderTargetNames::REFRACT::UTILS.HI_Z,
                 ReflectorType::COUNT,
                 refractorType,
-                refractionIndexWithOffset,
+                refractionIndex,
                 camera 
             };
 
@@ -777,6 +907,7 @@ namespace Divide
                 // Grab the updated refraction texture
                 RTAttachment* targetAtt = _gfxContext.renderTargetPool().getRenderTarget( refractRTID )->getAttachment( RTAttachmentType::COLOUR );
 
+                LockGuard<SharedMutex> w_lock( _renderPackagesLock );
                 // Grab our internal texture handle and swap our internal texture to the updated one
                 if (refractorType == RefractorType::PLANAR)
                 {
@@ -791,6 +922,7 @@ namespace Divide
 
                 // Inform the shader of our update
                 _materialUpdateMask |= to_base( MaterialUpdateResult::NEW_REFRACTION );
+                _updateRefraction = true;
 
                 // Return true so we can keep track of our budget
                 return true;

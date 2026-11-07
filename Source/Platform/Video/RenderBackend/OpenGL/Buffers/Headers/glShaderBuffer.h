@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -50,6 +50,7 @@ class glShaderBuffer final : public ShaderBuffer {
         [[nodiscard]] inline const glBufferImpl_uptr& bufferImpl() const noexcept { return _bufferImpl; }
 
         [[nodiscard]] LockableBuffer* getBufferImpl() override final;
+        [[nodiscard]] bool supportsPersistentWrites() const noexcept override;
 
     protected:
         void readBytesInternal(BufferRange<> range, std::pair<bufferPtr, size_t> outData) override;

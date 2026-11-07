@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/ByteBuffer.h"
 
@@ -61,12 +61,23 @@ bool ByteBuffer::loadFromFile(const ResourcePath& path, const std::string_view f
     if (readFile(path, fileName, FileType::BINARY, data) == FileError::NONE)
     {
         data.seekg(0, std::ios::end);
-        const size_t fileSize = to_size(data.tellg());
+        const auto endPosition = data.tellg();
+        if (endPosition < 0)
+        {
+            Console::errorfn("Failed to determine the size of byte buffer file '{}'.", path / fileName);
+            return false;
+        }
+        const size_t fileSize = to_size(endPosition);
         data.seekg(0);
         _storage.resize(fileSize);
-        data.read(reinterpret_cast<char*>(_storage.data()), fileSize);
+        if (fileSize > 0u && !data.read(reinterpret_cast<char*>(_storage.data()), fileSize))
+        {
+            Console::errorfn("Failed to read byte buffer file '{}'.", path / fileName);
+            clear();
+            return false;
+        }
         _wpos = fileSize;
-        return version == 0u || to_U8(_storage.back()) == version;
+        return version == 0u || (!_storage.empty() && to_U8(_storage.back()) == version);
     }
 
     return false;

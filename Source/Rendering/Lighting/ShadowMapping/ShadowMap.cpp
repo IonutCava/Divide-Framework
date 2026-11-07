@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/ShadowMap.h"
 #include "Headers/CascadedShadowMapsGenerator.h"
@@ -15,6 +16,7 @@
 #include "Managers/Headers/ProjectManager.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
+#include "Rendering/Lighting/Headers/ShadowPassState.h"
 
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -26,9 +28,42 @@
 
 namespace Divide
 {
+    namespace
+    {
+        Mutex s_shadowPreviewLock;
+        Handle<ShaderProgram> s_layeredPreviewShader = INVALID_HANDLE<ShaderProgram>;
+        Handle<ShaderProgram> s_cubePreviewShader = INVALID_HANDLE<ShaderProgram>;
+
+        Handle<ShaderProgram> CreateShadowPreviewShader( const bool cubemap )
+        {
+            ShaderModuleDescriptor vertModule = {};
+            vertModule._moduleType = ShaderType::VERTEX;
+            vertModule._sourceFile = "baseVertexShaders.glsl";
+            vertModule._variant = "FullScreenQuad";
+            if ( cubemap )
+            {
+                vertModule._defines.emplace_back( "SPLAT_R_CHANNEL" );
+            }
+
+            ShaderModuleDescriptor fragModule = {};
+            fragModule._moduleType = ShaderType::FRAGMENT;
+            fragModule._sourceFile = "fbPreview.glsl";
+            fragModule._variant = cubemap ? "Cube.Shadow" : "Layered.LinearDepth";
+
+            ShaderProgramDescriptor shaderDescriptor = {};
+            shaderDescriptor._modules.push_back( vertModule );
+            shaderDescriptor._modules.push_back( fragModule );
+
+            ResourceDescriptor<ShaderProgram> descriptor(
+                cubemap ? "fbPreview.Cube.Shadow" : "fbPreview.Layered.LinearDepth", shaderDescriptor );
+            descriptor.waitForReady( true );
+            return CreateResource( descriptor );
+        }
+    }
+
     Mutex ShadowMap::s_shadowMapUsageLock;
     std::array<ShadowMap::LayerLifetimeMask, to_base( ShadowType::COUNT )> ShadowMap::s_shadowMapLifetime;
-    vector<std::unique_ptr<ShadowMapGenerator>> ShadowMap::s_shadowMapGenerators;
+    std::array<std::unique_ptr<ShadowMapGenerator>, to_base( ShadowType::COUNT )> ShadowMap::s_shadowMapGenerators;
 
     vector<DebugView_ptr> ShadowMap::s_debugViews;
     std::array<RenderTargetHandle, to_base( ShadowType::COUNT )> ShadowMap::s_shadowMaps;
@@ -116,7 +151,10 @@ namespace Divide
         shadowMapSamplerCache._mipSampling = TextureMipSampling::NONE;
         shadowMapSamplerCache._anisotropyLevel = 0u;
 
-        s_shadowMapGenerators.resize(0u);
+        for ( auto& generator : s_shadowMapGenerators )
+        {
+            generator.reset();
+        }
 
         for ( U8 i = 0; i < to_U8( ShadowType::COUNT ); ++i )
         {
@@ -126,7 +164,7 @@ namespace Divide
                 case ShadowType::SINGLE:
                 {
                     const bool isCSM = i == to_U8( ShadowType::CSM );
-                    if ( isCSM && !settings.csm.enabled )
+                    if ( isCSM && !settings.enabled && !settings.csm.enabled )
                     {
                         continue;
                     }
@@ -172,14 +210,14 @@ namespace Divide
                     }
                     if ( isCSM )
                     {
-                        s_shadowMapGenerators.emplace_back(std::make_unique<CascadedShadowMapsGenerator>( context ) );
+                        s_shadowMapGenerators[i] = std::make_unique<CascadedShadowMapsGenerator>( context );
                     }
                     else
                     {
-                        s_shadowMapGenerators.emplace_back(std::make_unique<SingleShadowMapGenerator>( context ));
+                        s_shadowMapGenerators[i] = std::make_unique<SingleShadowMapGenerator>( context );
                     }
 
-                    s_shadowMapLifetime[i].resize( shadowMapDescriptor._layerCount );
+                    s_shadowMapLifetime[i].resize( isCSM ? WORLD_AO_LAYER_INDEX : shadowMapDescriptor._layerCount );
                 } break;
                 case ShadowType::CUBEMAP:
                 {
@@ -232,7 +270,7 @@ namespace Divide
                         s_shadowMapCaches[i] = context.renderTargetPool().allocateRT( desc );
                     }
 
-                    s_shadowMapGenerators.emplace_back(std::make_unique<CubeShadowMapGenerator>( context ));
+                    s_shadowMapGenerators[i] = std::make_unique<CubeShadowMapGenerator>( context );
                     s_shadowMapLifetime[i].resize( colourMapDescriptor._layerCount );
                 } break;
                 default:
@@ -243,6 +281,13 @@ namespace Divide
 
     void ShadowMap::destroyShadowMaps( GFXDevice& context )
     {
+        {
+            LockGuard<Mutex> lock( s_shadowPreviewLock );
+            setDebugViewLightLocked( context, nullptr );
+            DestroyResource( s_layeredPreviewShader );
+            DestroyResource( s_cubePreviewShader );
+        }
+
         for ( U8 t = 0u; t < to_base( ShadowType::COUNT ); ++t )
         {
             for ( auto& camera : s_shadowCameras[t] )
@@ -251,8 +296,6 @@ namespace Divide
             }
             s_shadowCameras[t].clear();
         }
-
-        s_debugViews.clear();
 
         for ( RenderTargetHandle& handle : s_shadowMaps )
         {
@@ -268,7 +311,10 @@ namespace Divide
             handle._rt = nullptr;
         }
 
-        s_shadowMapGenerators.resize( 0 );
+        for ( auto& generator : s_shadowMapGenerators )
+        {
+            generator.reset();
+        }
     }
 
     void ShadowMap::reset()
@@ -280,6 +326,7 @@ namespace Divide
             {
                 mast._lifetime = MAX_SHADOW_FRAME_LIFETIME;
                 mast._lightGUID = -1;
+                mast._contentLayers = 0u;
             }
         }
     }
@@ -335,109 +382,78 @@ namespace Divide
 
     bool ShadowMap::freeShadowMapOffsetLocked( const Light& light )
     {
-        const U16 layerOffset = light.getShadowArrayOffset();
-        if ( layerOffset == ALL_LAYERS )
-        {
-            return true;
-        }
-
-        const U32 layerRequirement = getLightLayerRequirements( light );
         const ShadowType sType = getShadowTypeForLightType( light.getLightType() );
 
         LayerLifetimeMask& lifetimeMask = s_shadowMapLifetime[to_U32( sType )];
-        for ( U32 i = layerOffset; i < layerOffset + layerRequirement; ++i )
+        ReleaseShadowLayers( lifetimeMask, light.getGUID(), MAX_SHADOW_FRAME_LIFETIME );
+        return true;
+    }
+
+    bool ShadowMap::tryReuseShadowMaps( const Light& light )
+    {
+        LockGuard<Mutex> w_lock( s_shadowMapUsageLock );
+        return tryReuseShadowMapsLocked( light );
+    }
+
+    bool ShadowMap::tryReuseShadowMapsLocked( const Light& light )
+    {
+        const U16 offset = light.getShadowArrayOffset();
+        const ShadowType shadowType = getShadowTypeForLightType( light.getLightType() );
+        const U32 contentCount = getLightLayerRequirements( light );
+        const size_t reservationCount = ShadowReservationCount( contentCount, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT,
+                                                                 shadowType == ShadowType::CSM );
+        if ( offset == ALL_LAYERS || reservationCount == 0u )
         {
-            lifetimeMask[i]._lifetime = MAX_SHADOW_FRAME_LIFETIME;
-            lifetimeMask[i]._lightGUID = -1;
+            return false;
         }
 
-        return true;
+        LayerLifetimeMask& lifetimeMask = s_shadowMapLifetime[to_U32( shadowType )];
+        return TryReuseShadowLayers( lifetimeMask, light.getGUID(), offset, reservationCount, contentCount );
     }
 
     bool ShadowMap::commitLayerRange( Light& light )
     {
-        const U32 layerCount = getLightLayerRequirements( light );
-        if ( layerCount == 0u ) [[unlikely]]
+        const ShadowType shadowType = getShadowTypeForLightType( light.getLightType() );
+        const U32 contentCount = getLightLayerRequirements( light );
+        const size_t reservationCount = ShadowReservationCount( contentCount, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT,
+                                                                 shadowType == ShadowType::CSM );
+        if ( reservationCount == 0u ) [[unlikely]]
         {
             return false;
         }
 
         const U16 crtArrayOffset = light.getShadowArrayOffset();
 
-        const ShadowType shadowType = getShadowTypeForLightType( light.getLightType() );
-
         LockGuard<Mutex> w_lock( s_shadowMapUsageLock );
         LayerLifetimeMask& lifetimeMask = s_shadowMapLifetime[to_U32( shadowType )];
         if ( crtArrayOffset != ALL_LAYERS ) [[likely]]
         {
-            bool valid = true;
-            for ( U16 i = 0u; i < layerCount; ++i )
-            {
-                if ( lifetimeMask[crtArrayOffset + i]._lightGUID == light.getGUID() )
-                {
-                    lifetimeMask[crtArrayOffset + i]._lifetime = 0u;
-                }
-                else
-                {
-                    valid = false;
-                }
-
-            }
-            if ( valid ) [[likely]]
+            if ( tryReuseShadowMapsLocked( light ) ) [[likely]]
             {
                 return true;
             }
-            else
-            {
-                freeShadowMapOffsetLocked( light );
-            }
+            freeShadowMapOffsetLocked( light );
+            light.setShadowArrayOffset( ALL_LAYERS );
         }
-
-        // Common case. Broken out for ease of debugging
-        if ( layerCount == 1u )
+        size_t offset = FindAvailableShadowLayers( lifetimeMask, reservationCount, MAX_SHADOW_FRAME_LIFETIME );
+        if ( offset == lifetimeMask.size() )
         {
-            for ( U16 i = 0u; i < lifetimeMask.size(); ++i )
-            {
-                if ( lifetimeMask[i]._lifetime >= MAX_SHADOW_FRAME_LIFETIME )
-                {
-                    lifetimeMask[i]._lifetime = 0u;
-                    lifetimeMask[i]._lightGUID = light.getGUID();
-                    light.setShadowArrayOffset( i );
-                    return true;
-                }
-            }
+            // Layers not used in this pass can be reclaimed before their cache lifetime expires.
+            offset = FindAvailableShadowLayers( lifetimeMask, reservationCount, 1u );
         }
-        else
+        if ( offset == lifetimeMask.size() )
         {
-            // Really only happens for directional lights due to the way CSM is laid out
-            const U16 availableLayers = to_U16( lifetimeMask.size() );
-            bool found = false;
-            for ( U16 i = 0u; i < availableLayers - layerCount; ++i )
-            {
-                for ( U16 j = i; j < i + layerCount; ++j )
-                {
-                    if ( lifetimeMask[j]._lifetime < MAX_SHADOW_FRAME_LIFETIME )
-                    {
-                        found = false;
-                        break;
-                    }
-
-                    found = true;
-                }
-                if ( found )
-                {
-                    for ( U16 j = i; j < i + layerCount; ++j )
-                    {
-                        lifetimeMask[j]._lifetime = 0u;
-                        lifetimeMask[j]._lightGUID = light.getGUID();
-                    }
-                    light.setShadowArrayOffset( i );
-                    return true;
-                }
-            }
+            return false;
         }
 
-        return false;
+        for ( size_t i = offset; i < offset + reservationCount; ++i )
+        {
+            lifetimeMask[i]._lifetime = 0u;
+            lifetimeMask[i]._lightGUID = light.getGUID();
+            lifetimeMask[i]._contentLayers = to_U16( contentCount );
+        }
+        light.setShadowArrayOffset( to_U16( offset ) );
+        return true;
     }
 
     U32 ShadowMap::getLightLayerRequirements( const Light& light )
@@ -459,40 +475,37 @@ namespace Divide
     {
         if ( !commitLayerRange( light ) )
         {
-            // If we don't have enough resources available, something went terribly wrong as we limit shadow casting lights per-type
-            // and allocate enough slices for the worst case -Ionut
-            DIVIDE_UNEXPECTED_CALL();
+            Console::errorfn( "Unable to allocate shadow layers for light [{}] (requested {}).",
+                              light.getGUID(), getLightLayerRequirements( light ) );
             return false;
         }
 
         return true;
     }
 
-    bool ShadowMap::generateShadowMaps( const Camera& playerCamera, Light& light, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+    bool ShadowMap::generateShadowMaps( const Camera& playerCamera, Light& light, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, const U32 layerMask )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const U8 shadowTypeIdx = to_base( getShadowTypeForLightType( light.getLightType() ) );
         if ( s_shadowMapGenerators[shadowTypeIdx] == nullptr ) [[unlikely]]
         {
-            // If we don't have enough resources available, something went terribly wrong as we limit shadow casting lights per-type
-            // and allocate enough slices for the worst case -Ionut
-            DIVIDE_UNEXPECTED_CALL();
+            Console::errorfn( "Missing shadow generator for light [{}] (shadow type {}).", light.getGUID(), shadowTypeIdx );
             return false;
         }
 
-            if ( markShadowMapsUsed( light ) ) [[likely]]
-            {
-                s_shadowMapGenerators[shadowTypeIdx]->render( playerCamera, light, s_shadowPassIndex[shadowTypeIdx]++, bufferInOut, memCmdInOut );
-                return true;
-            }
+        if ( markShadowMapsUsed( light ) ) [[likely]]
+        {
+            s_shadowMapGenerators[shadowTypeIdx]->render( playerCamera, light, s_shadowPassIndex[shadowTypeIdx]++, pendingCastersOut, bufferInOut, memCmdInOut, layerMask );
+            return true;
+        }
 
         return false;
     }
 
-    void ShadowMap::generateWorldAO( const Camera& playerCamera, GFX::CommandBuffer& bufferInOut,GFX::MemoryBarrierCommand& memCmdInOut )
+    mat4<F32> ShadowMap::generateWorldAO( const Camera& activeCamera, const float2& staticHeightRange, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        static_cast<CascadedShadowMapsGenerator*>(s_shadowMapGenerators[to_base( ShadowType::CSM )].get())->generateWorldAO( playerCamera , bufferInOut, memCmdInOut );
+        return static_cast<CascadedShadowMapsGenerator*>(s_shadowMapGenerators[to_base( ShadowType::CSM )].get())->generateWorldAO( activeCamera, staticHeightRange, bufferInOut, memCmdInOut );
     }
 
     const RenderTargetHandle& ShadowMap::getShadowMap( const LightType type )
@@ -522,7 +535,59 @@ namespace Divide
         }
     }
 
+    bool ShadowMap::prepareDebugViewShader( const LightType type )
+    {
+        if ( type == LightType::COUNT )
+        {
+            Console::errorfn( "[Shadow Preview] Cannot preview an invalid light type." );
+            return false;
+        }
+
+        const bool cubemap = type == LightType::POINT;
+        {
+            LockGuard<Mutex> lock( s_shadowPreviewLock );
+            if ( (cubemap ? s_cubePreviewShader : s_layeredPreviewShader) != INVALID_HANDLE<ShaderProgram> )
+            {
+                return true;
+            }
+        }
+
+        Handle<ShaderProgram> created = CreateShadowPreviewShader( cubemap );
+        if ( created == INVALID_HANDLE<ShaderProgram> )
+        {
+            Console::errorfn( "[Shadow Preview] Failed to load the shadow preview shader." );
+            return false;
+        }
+
+        {
+            LockGuard<Mutex> lock( s_shadowPreviewLock );
+            Handle<ShaderProgram>& cached = cubemap ? s_cubePreviewShader : s_layeredPreviewShader;
+            if ( cached == INVALID_HANDLE<ShaderProgram> )
+            {
+                cached = created;
+                created = INVALID_HANDLE<ShaderProgram>;
+            }
+        }
+        DestroyResource( created );
+        return true;
+    }
+
     void ShadowMap::setDebugViewLight( GFXDevice& context, Light* light )
+    {
+        LockGuard<Mutex> lock( s_shadowPreviewLock );
+        setDebugViewLightLocked( context, light );
+    }
+
+    void ShadowMap::clearDebugViewLight( GFXDevice& context, const Light* light )
+    {
+        LockGuard<Mutex> lock( s_shadowPreviewLock );
+        if ( light != nullptr && s_shadowPreviewLight == light )
+        {
+            setDebugViewLightLocked( context, nullptr );
+        }
+    }
+
+    void ShadowMap::setDebugViewLightLocked( GFXDevice& context, Light* light )
     {
         if ( light == s_shadowPreviewLight )
         {
@@ -544,29 +609,25 @@ namespace Divide
         // Add new views if needed
         if ( light != nullptr && light->castsShadows() )
         {
-            ShaderModuleDescriptor vertModule = {};
-            vertModule._moduleType = ShaderType::VERTEX;
-            vertModule._sourceFile = "baseVertexShaders.glsl";
-            vertModule._variant = "FullScreenQuad";
+            const LightType lightType = light->getLightType();
+            if ( lightType == LightType::COUNT )
+            {
+                Console::errorfn( "[Shadow Preview] Cannot preview an invalid light type." );
+                s_shadowPreviewLight = nullptr;
+                return;
+            }
+            const Handle<ShaderProgram> previewShader = lightType == LightType::POINT ? s_cubePreviewShader : s_layeredPreviewShader;
+            if ( previewShader == INVALID_HANDLE<ShaderProgram> )
+            {
+                Console::errorfn( "[Shadow Preview] Failed to load the shadow preview shader." );
+                s_shadowPreviewLight = nullptr;
+                return;
+            }
 
-            ShaderModuleDescriptor fragModule = {};
-            fragModule._moduleType = ShaderType::FRAGMENT;
-            fragModule._sourceFile = "fbPreview.glsl";
-
-            switch ( light->getLightType() )
+            switch ( lightType )
             {
                 case LightType::DIRECTIONAL:
                 {
-
-                    fragModule._variant = "Layered.LinearDepth";
-
-                    ShaderProgramDescriptor shaderDescriptor = {};
-                    shaderDescriptor._modules.push_back( vertModule );
-                    shaderDescriptor._modules.push_back( fragModule );
-
-                    ResourceDescriptor<ShaderProgram> shadowPreviewShader( "fbPreview.Layered.LinearDepth", shaderDescriptor );
-                    shadowPreviewShader.waitForReady( true );
-                    Handle<ShaderProgram> previewShader = CreateResource( shadowPreviewShader );
                     const U8 splitCount = static_cast<DirectionalLightComponent&>(*light).csmSplitCount();
 
                     constexpr I16 Base = 2;
@@ -576,7 +637,7 @@ namespace Divide
                         shadow->_texture = getShadowMap( LightType::DIRECTIONAL )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
                         shadow->_sampler = getShadowMap( LightType::DIRECTIONAL )._rt->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
                         shadow->_shader = previewShader;
-                        shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, i + light->getShadowArrayOffset() );
+                        shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, to_I32( i ) + to_I32( light->getShadowArrayOffset() ) );
                         shadow->_groupID = Base + to_I16( light->shadowPropertyIndex() );
                         shadow->_enabled = true;
                         Util::StringFormatTo( shadow->_name, "CSM_{}", i + light->getShadowArrayOffset() );
@@ -586,20 +647,12 @@ namespace Divide
                 case LightType::SPOT:
                 {
                     constexpr I16 Base = 22;
-                    fragModule._variant = "Layered.LinearDepth";
-
-                    ShaderProgramDescriptor shaderDescriptor = {};
-                    shaderDescriptor._modules.push_back( vertModule );
-                    shaderDescriptor._modules.push_back( fragModule );
-
-                    ResourceDescriptor<ShaderProgram> shadowPreviewShader( "fbPreview.Layered.LinearDepth", shaderDescriptor );
-                    shadowPreviewShader.waitForReady( true );
 
                     DebugView_ptr shadow = std::make_shared<DebugView>( to_I16( I16_MAX - 1 ) );
                     shadow->_texture = getShadowMap( LightType::SPOT )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
                     shadow->_sampler = getShadowMap( LightType::SPOT )._rt->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
-                    shadow->_shader = CreateResource( shadowPreviewShader );
-                    shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, light->getShadowArrayOffset() );
+                    shadow->_shader = previewShader;
+                    shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, to_I32( light->getShadowArrayOffset() ) );
                     shadow->_enabled = true;
                     shadow->_groupID = Base + to_I16( light->shadowPropertyIndex() );
                     Util::StringFormatTo( shadow->_name, "SM_{}", light->getShadowArrayOffset() );
@@ -608,16 +661,6 @@ namespace Divide
                 case LightType::POINT:
                 {
                     constexpr I16 Base = 222;
-                    fragModule._variant = "Cube.Shadow";
-
-                    ShaderProgramDescriptor shaderDescriptor = {};
-                    shaderDescriptor._modules.push_back( vertModule );
-                    shaderDescriptor._modules.back()._defines.emplace_back( "SPLAT_R_CHANNEL" );
-                    shaderDescriptor._modules.push_back( fragModule );
-
-                    ResourceDescriptor<ShaderProgram> shadowPreviewShader( "fbPreview.Cube.Shadow", shaderDescriptor );
-                    shadowPreviewShader.waitForReady( true );
-                    Handle<ShaderProgram> previewShader = CreateResource( shadowPreviewShader );
 
                     for ( U8 i = 0u; i < 6u; ++i )
                     {
@@ -625,8 +668,8 @@ namespace Divide
                         shadow->_texture = getShadowMap( LightType::POINT )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
                         shadow->_sampler = getShadowMap( LightType::POINT )._rt->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
                         shadow->_shader = previewShader;
-                        shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, light->getShadowArrayOffset() );
-                        shadow->_shaderData.set( _ID( "face" ), PushConstantType::INT, i );
+                        shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, to_I32( light->getShadowArrayOffset() ) );
+                        shadow->_shaderData.set( _ID( "face" ), PushConstantType::INT, to_I32( i ) );
                         shadow->_groupID = Base + to_I16( light->shadowPropertyIndex() );
                         shadow->_enabled = true;
                         Util::StringFormatTo( shadow->_name, "CubeSM_{}_face_{}", light->getShadowArrayOffset(), i );

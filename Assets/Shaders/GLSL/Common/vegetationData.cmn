@@ -1,19 +1,51 @@
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #ifndef _VEGETATION_DATA_CMN_
 #define _VEGETATION_DATA_CMN_
 
+#if defined(TARGET_VULKAN)
+#define VEGETATION_INSTANCE_INDEX (uint(dvd_InstanceIndex) - uint(DVD_GL_BASE_INSTANCE))
+#else
+#define VEGETATION_INSTANCE_INDEX uint(dvd_InstanceIndex)
+#endif
+
+#if defined(VEGETATION_TREE_DRAW)
+uniform uint dvd_instanceDataIndex = 0u;
+#else
 uniform uint dvd_terrainChunkOffset = 0u;
+#endif
 
 struct VegetationData {
     vec4 positionAndScale;
     vec4 orientationQuad;
-    //x - array index, y - lod z - render flag, w - height scale
+    // x - grass layer/tree species, y - grass LoD/tree cull radius, z - visibility/fade, w - camera distance
     vec4 data;
 };
 
 #if defined(MAX_TREE_INSTANCES)
+#if defined(VEGETATION_TREE_DRAW)
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 13, std430) coherent COMP_ONLY_RW buffer dvd_treeTransformBlock {
+#else
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 5, std430) coherent COMP_ONLY_RW buffer dvd_treeTransformBlock {
+#endif
     VegetationData treeData[];
 };
+
+#if defined(CULL_TREES)
+// Must match MAX_VEGETATION_TREE_MESHES (VegetationDescriptor.h).
+#define VEGETATION_TREE_SPECIES_COUNT 4u
+
+// Per chunk and species, visible instances compacted by the cull shader. Tree draws read this buffer.
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 14, std430) coherent buffer dvd_treeDrawBlock {
+    VegetationData treeDrawData[];
+};
+
+// One visible instance count per chunk and species. Patched into the indirect draw commands.
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 15, std430) coherent buffer dvd_treeVisibleCountBlock {
+    uint treeVisibleCounts[];
+};
+#endif //CULL_TREES
 
 #endif //MAX_TREE_INSTANCES
 

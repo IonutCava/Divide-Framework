@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/DirectionalLightComponent.h"
 #include "Managers/Headers/ProjectManager.h"
@@ -11,16 +12,16 @@
 
 namespace Divide {
 
+DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(DirectionalLightComponent);
+
 namespace {
     constexpr F32 g_defaultLightDistance = 500.0f;
 }
 
 DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, PlatformContext& context)
     : BaseComponentType<DirectionalLightComponent, ComponentType::DIRECTIONAL_LIGHT>(sgn, context), 
-      Light(sgn, -1, LightType::DIRECTIONAL, *sgn->sceneGraph()->parentScene().lightPool())
+      Light(sgn, g_defaultLightDistance, LightType::DIRECTIONAL, *sgn->sceneGraph()->parentScene().lightPool())
 {
-    range(g_defaultLightDistance);
-
     _shadowProperties._lightDetails.z = 0.00001f;
     csmSplitCount(context.config().rendering.shadowMapping.csm.splitCount);
 
@@ -69,7 +70,7 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
     Attorney::SceneNodeLightComponent::setBounds(sgn->getNode(), BoundingBox(float3(-g_defaultLightDistance * 0.5f), float3(-g_defaultLightDistance * 0.5f)));
 
     _positionCache.set(VECTOR3_ZERO);
-    _feedbackContainers.resize(csmSplitCount());
+    _cascadeBoundsFeedback.resize(csmSplitCount());
 }
 
 void DirectionalLightComponent::lockDirection(const bool state) noexcept {

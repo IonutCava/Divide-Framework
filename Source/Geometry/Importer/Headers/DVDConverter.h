@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -87,6 +87,7 @@ namespace Divide {
 class SubMesh;
 class VertexBuffer;
 class PlatformContext;
+class Bone;
 
 namespace DVDConverter {
     void OnStartup(const PlatformContext& context);
@@ -96,6 +97,17 @@ namespace DVDConverter {
     [[nodiscard]] bool Load(PlatformContext& context, Import::ImportData& target);
 
     namespace detail{
+        enum class BoneBindingStatus : U8
+        {
+            REGISTERED,
+            REUSED,
+            CONFLICT,
+            LIMIT_EXCEEDED
+        };
+
+        [[nodiscard]] BoneBindingStatus RegisterBoneBinding( Bone& bone, const mat4<F32>& offset,
+                                                             U16& nextBoneIndex ) noexcept;
+
         void LoadSubMeshGeometry(const aiMesh* source, 
                                  Import::SubMeshData& subMeshData,
                                  Import::ImportData& target);

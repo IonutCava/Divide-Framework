@@ -5,6 +5,8 @@
 
 namespace Divide {
 
+DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(NavigationComponent);
+
 NavigationComponent::NavigationComponent(SceneGraphNode* parentSGN, PlatformContext& context)
     : BaseComponentType<NavigationComponent, ComponentType::NAVIGATION>(parentSGN, context),
       _navigationContext(NavigationContext::NODE_IGNORE),

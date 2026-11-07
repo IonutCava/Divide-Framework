@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/Material.h"
 
 namespace Divide {
@@ -62,6 +62,7 @@ void Material::Properties::ignoreTexDiffuseAlpha(const bool state) noexcept
     if (overrides()._ignoreTexDiffuseAlpha != state)
     {
         overrides()._ignoreTexDiffuseAlpha = state;
+        _transparencyUpdated = true;
         _needsNewShader = true;
     }
 }

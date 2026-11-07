@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2021 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2021-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -36,6 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Math/Headers/MathHelper.h"
 #include "ECS/Components/Headers/EditorComponent.h"
 #include "Editor.h"
+#include "PropertyEditState.h"
 #include "UndoManager.h"
 #include "Platform/Headers/PlatformDefines.h"
 #include "Platform/Video/Headers/RenderAPIEnums.h"
@@ -46,7 +47,8 @@ namespace Divide::Util
 {
 
 template<typename T, bool SeparateActivate, typename Pred>
-inline void RegisterUndo(Editor& editor, PushConstantType type, const T& oldVal, const T& newVal, const char* name, Pred&& dataSetter)
+inline void RegisterUndo(Editor& editor, PushConstantType type, const T& oldVal, const T& newVal, const char* name, Pred&& dataSetter,
+                         const DELEGATE<void, std::string_view>& onChanged, const I64 ownerGUID)
 {
     NO_DESTROY static hashMapDefaultAlloc<U64, UndoEntry<T>> _undoEntries;
 
@@ -62,8 +64,39 @@ inline void RegisterUndo(Editor& editor, PushConstantType type, const T& oldVal,
         undo._name = name;
         undo._newVal = newVal;
         undo._dataSetter = dataSetter;
+        undo._onChangedCbk = onChanged;
+        undo._ownerGUID = ownerGUID;
         editor.registerUndoEntry(undo);
     }
+}
+
+template<typename T>
+inline void RegisterFieldUndo(Editor& editor, const EditorComponentField& field, const char* name, const T& oldValue, const T& newValue)
+{
+    if (COMPARE(oldValue, newValue))
+    {
+        return;
+    }
+
+    UndoEntry<T> undo = {};
+    undo._type = field._basicType;
+    undo._name = name;
+    undo._oldVal = oldValue;
+    undo._newVal = newValue;
+    undo._onChangedCbk = field._onUndoRedo;
+    undo._ownerGUID = field._undoOwnerGUID;
+    undo._dataSetter = [data = field._data, setter = field._dataSetter, userData = field._userData](const T& value)
+    {
+        if (setter != nullptr)
+        {
+            setter(&value, userData);
+        }
+        else
+        {
+            *static_cast<T*>(data) = value;
+        }
+    };
+    editor.registerUndoEntry(undo);
 }
 
 template<typename T, bool isSlider>
@@ -81,7 +114,7 @@ inline DrawReturnValue DrawVecComponent(ImGuiDataType data_type,
                                         ImGuiInputTextFlags flags,
                                         const char* format)
 {
-    bool ret = false, wasDeactivated = false;
+    bool ret = false;
 
     const T cStep = IS_ZERO( step ) ? 100 : (step * 100);
     const void* step_ptr = IS_ZERO(step) ? nullptr : (void*)&step;
@@ -96,7 +129,8 @@ inline DrawReturnValue DrawVecComponent(ImGuiDataType data_type,
     }
 
     PushButtonStyle(true, buttonColour, buttonColourHovered, buttonColourActive);
-    if (ImGui::Button(label, buttonSize)) {
+    const bool wasReset = ImGui::Button(label, buttonSize);
+    if (wasReset) {
         value = resetValue;
         ret = true;
     }
@@ -109,6 +143,7 @@ inline DrawReturnValue DrawVecComponent(ImGuiDataType data_type,
     ImGui::SameLine();
 
     const string fieldName = Util::StringFormat( "##_value_{}_", label );
+    const U32 item = ImGui::GetID(fieldName.c_str());
     if constexpr(isSlider)
     {
         ret = ImGui::DragScalar( fieldName.c_str(), data_type, &value, 0.1f, &minValue, &maxValue, format, readOnly ? ImGuiSliderFlags_NoInput : 0u ) || ret;
@@ -118,9 +153,9 @@ inline DrawReturnValue DrawVecComponent(ImGuiDataType data_type,
         ret = ImGui::InputScalar( fieldName.c_str(), data_type, &value, step_ptr, step_fast_ptr, format, flags) || ret;
     }
 
-    if (ret && ImGui::IsItemDeactivated()) {
-        wasDeactivated = true;
-    }
+    const bool wasActivated = ImGui::IsItemActivated();
+    const bool wasDeactivated = ImGui::IsItemDeactivated();
+    const bool wasDeactivatedAfterEdit = ImGui::IsItemDeactivatedAfterEdit();
 
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
     {
@@ -132,7 +167,8 @@ inline DrawReturnValue DrawVecComponent(ImGuiDataType data_type,
         ImGui::EndDisabled();
     }
 
-    return { ret, wasDeactivated };
+    return { ret, wasDeactivated, wasDeactivatedAfterEdit, wasReset,
+             wasActivated ? item : 0u, wasDeactivated ? item : 0u };
 }
 
 template<typename T, size_t N, bool isSlider>
@@ -148,19 +184,23 @@ inline DrawReturnValue DrawVec(ImGuiDataType data_type,
                                 const T stepFast,
                                 const char* format)
 {
-    bool ret = false, wasDeactivated = false;
+    DrawReturnValue result;
     BeginPropertyTable(N, label);
     for (size_t i = 0; i < N; ++i)
     {
         const DrawReturnValue temp = DrawVecComponent<T, isSlider>(data_type, compLabels[i], values[i], resetValue, minValue, maxValue, step, stepFast, Colours[i % 3], ColoursHovered[i % 3], Colours[i % 3], flags, format);
-        ret = temp.wasChanged || ret;
-        wasDeactivated = temp.wasDeactivated || wasDeactivated;
+        result.wasChanged = temp.wasChanged || result.wasChanged;
+        result.wasDeactivated = temp.wasDeactivated || result.wasDeactivated;
+        result.wasDeactivatedAfterEdit = temp.wasDeactivatedAfterEdit || result.wasDeactivatedAfterEdit;
+        result.wasReset = temp.wasReset || result.wasReset;
+        if (temp.activatedItem != 0u) result.activatedItem = temp.activatedItem;
+        if (temp.deactivatedItem != 0u) result.deactivatedItem = temp.deactivatedItem;
         ImGui::SameLine();
     }
     ImGui::Dummy(ImVec2(0,0));
     EndPropertyTable();
 
-    return { ret, wasDeactivated };
+    return result;
 }
 
 template<typename T, size_t N, bool isSlider>
@@ -245,7 +285,8 @@ inline bool inputOrSlider(Editor& parent, const bool isSlider, const char* label
 template<typename FieldDataType, typename ComponentType, size_t num_comp, bool IsSlider>
 inline bool inputOrSlider(Editor& parent, const char* label, const F32 stepIn, const ImGuiDataType data_type, EditorComponentField& field, const ImGuiInputTextFlags flags, const char* format)
 {
-    FieldDataType val = field.get<FieldDataType>();
+    const FieldDataType previous = field.get<FieldDataType>();
+    FieldDataType val = previous;
 
     const ComponentType cStep = static_cast<ComponentType>(stepIn * 100);
     const ComponentType min   = static_cast<ComponentType>(field._range.min);
@@ -279,7 +320,7 @@ inline bool inputOrSlider(Editor& parent, const char* label, const F32 stepIn, c
                                                          static_cast<ComponentType>(stepIn),
                                                          cStep,
                                                          GetFormat(data_type, format, field._hexadecimal));
-    if (ret.wasDeactivated && max > min)
+    if ((ret.wasDeactivated || ret.wasReset) && max > min)
     {
         if constexpr(num_comp > 1)
         {
@@ -294,30 +335,51 @@ inline bool inputOrSlider(Editor& parent, const char* label, const F32 stepIn, c
         }
     }
 
-    if (IsSlider || ret.wasChanged)
+    if (field._readOnly)
     {
-        auto* tempData = field._data;
-        auto tempSetter = field._dataSetter;
-
-        RegisterUndo<FieldDataType, IsSlider>(parent, field._basicType, field.get<FieldDataType>(), val, label, [tempData, tempSetter, userData = field._userData](const FieldDataType& oldVal)
-        {
-            if (tempSetter != nullptr)
-            {
-                tempSetter(&oldVal, userData);
-            }
-            else
-            {
-                *static_cast<FieldDataType*>(tempData) = oldVal;
-            }
-        });
+        return false;
     }
 
-    if (!field._readOnly && ret.wasChanged && !COMPARE(val, field.get<FieldDataType>()))
+    if (!field._onUndoRedo)
+    {
+        if (IsSlider || ret.wasChanged)
+        {
+            RegisterUndo<FieldDataType, IsSlider>(parent, field._basicType, previous, val, label,
+                [data = field._data, setter = field._dataSetter, userData = field._userData](const FieldDataType& value)
+                {
+                    if (setter != nullptr)
+                    {
+                        setter(&value, userData);
+                    }
+                    else
+                    {
+                        *static_cast<FieldDataType*>(data) = value;
+                    }
+                });
+        }
+        if (ret.wasChanged && !COMPARE(val, previous))
+        {
+            field.set(val);
+        }
+        return ret.wasChanged;
+    }
+
+    NO_DESTROY static PropertyEditState<FieldDataType> editState;
+    if ((ret.wasChanged || ret.wasDeactivated) && !COMPARE(val, previous))
     {
         field.set(val);
     }
 
-    return ret.wasChanged;
+    const FieldDataType current = field.get<FieldDataType>();
+    const auto registerChange = [&](const FieldDataType& oldValue, const FieldDataType& newValue)
+    {
+        RegisterFieldUndo(parent, field, label, oldValue, newValue);
+    };
+
+    RecordPropertyEdits(editState, ret.activatedItem, ret.deactivatedItem, ret.wasDeactivatedAfterEdit,
+                        ret.wasReset, previous, current, registerChange);
+
+    return ret.wasChanged || !COMPARE(current, previous);
 }
 
 template<typename T, size_t num_rows>
@@ -334,7 +396,8 @@ inline bool inputMatrix(Editor & parent, const char* label, const F32 stepIn, co
     const void* step = IS_ZERO(stepIn) ? nullptr : (void*)&stepIn;
     const void* step_fast = step == nullptr ? nullptr : (void*)&cStep;
 
-    T mat = field.get<T>();
+    const T previous = field.get<T>();
+    T mat = previous;
     if (field._readOnly)
     {
         ImGui::BeginDisabled();
@@ -343,28 +406,19 @@ inline bool inputMatrix(Editor & parent, const char* label, const F32 stepIn, co
     bool showTooltip = false, copyToClipboard = false;;
     const char* parsedFormat = GetFormat(data_type, format, field._hexadecimal);
     bool ret = false;
+    DrawReturnValue edit = {};
 
     ImGui::PushItemWidth(250);
-    ret = ImGui::InputScalarN(Util::StringFormat("##{}_0", label).c_str(), data_type, (void*)mat._vec[0]._v, num_rows, step, step_fast, parsedFormat, flags);
-    showTooltip = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || showTooltip;
-    copyToClipboard = (showTooltip && ImGui::IsMouseClicked(0)) || copyToClipboard;
-
-    ret = ImGui::InputScalarN(Util::StringFormat("##{}_1", label).c_str(), data_type, (void*)mat._vec[1]._v, num_rows, step, step_fast, parsedFormat, flags) || ret;
-    showTooltip = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || showTooltip;
-    copyToClipboard = (showTooltip && ImGui::IsMouseClicked(0)) || copyToClipboard;
-
-    if constexpr(num_rows > 2)
+    for (size_t row = 0u; row < num_rows; ++row)
     {
-        ret = ImGui::InputScalarN(Util::StringFormat("##{}_2", label).c_str(), data_type, (void*)mat._vec[2]._v, num_rows, step, step_fast, parsedFormat, flags) || ret;
+        const string rowName = Util::StringFormat("##{}_{}", label, row);
+        const U32 item = ImGui::GetID(rowName.c_str());
+        ret = ImGui::InputScalarN(rowName.c_str(), data_type, (void*)mat._vec[row]._v, num_rows, step, step_fast, parsedFormat, flags) || ret;
+        if (ImGui::IsItemActivated()) edit.activatedItem = item;
+        if (ImGui::IsItemDeactivated()) edit.deactivatedItem = item;
+        edit.wasDeactivatedAfterEdit = ImGui::IsItemDeactivatedAfterEdit() || edit.wasDeactivatedAfterEdit;
         showTooltip = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || showTooltip;
         copyToClipboard = (showTooltip && ImGui::IsMouseClicked(0)) || copyToClipboard;
-
-        if constexpr(num_rows > 3)
-        {
-            ret = ImGui::InputScalarN(Util::StringFormat("##{}_3", label).c_str(), data_type, (void*)mat._vec[3]._v, num_rows, step, step_fast, parsedFormat, flags) || ret;
-            showTooltip = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || showTooltip;
-            copyToClipboard = (showTooltip && ImGui::IsMouseClicked(0)) || copyToClipboard;
-        }
     }
 
     ImGui::PopItemWidth();
@@ -409,11 +463,25 @@ inline bool inputMatrix(Editor & parent, const char* label, const F32 stepIn, co
         }
     }
 
-    if (ret && !field._readOnly && mat != field.get<T>())
+    if (!field._readOnly && field._onUndoRedo)
+    {
+        if (ret && mat != previous)
+        {
+            field.set<>(mat);
+        }
+        const T current = field.get<T>();
+        NO_DESTROY static PropertyEditState<T> editState;
+        RecordPropertyEdits(editState, edit.activatedItem, edit.deactivatedItem, edit.wasDeactivatedAfterEdit,
+                            false, previous, current, [&](const T& oldValue, const T& newValue)
+                            {
+                                RegisterFieldUndo(parent, field, label, oldValue, newValue);
+                            });
+    }
+    else if (ret && !field._readOnly && mat != previous)
     {
         auto* tempData = field._data;
         auto tempSetter = field._dataSetter;
-        RegisterUndo<T, false>(parent, field._basicType, field.get<T>(), mat, label, [tempData, tempSetter, userData = field._userData](const T& oldVal)
+        RegisterUndo<T, false>(parent, field._basicType, previous, mat, label, [tempData, tempSetter, userData = field._userData](const T& oldVal)
         {
             if (tempSetter != nullptr)
             {
@@ -423,7 +491,7 @@ inline bool inputMatrix(Editor & parent, const char* label, const F32 stepIn, co
             {
                 *static_cast<T*>(tempData) = oldVal;
             }
-        });
+        }, field._onUndoRedo, field._undoOwnerGUID);
         field.set<>(mat);
     }
 

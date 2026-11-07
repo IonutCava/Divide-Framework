@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2026 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -37,6 +37,7 @@
 #include "GFXShaderData.h"
 #include "Pipeline.h"
 #include "Commands.h"
+#include "CullCounterReadbackState.h"
 #include "PushConstants.h"
 #include "RenderAPIWrapper.h"
 #include "RenderStagePass.h"
@@ -72,7 +73,6 @@ class Quad3D;
 class Texture;
 class Object3D;
 class GFXRTPool;
-class ShadowMap;
 class IMPrimitive;
 class WindowManager;
 class ResourceCache;
@@ -82,7 +82,7 @@ class SceneShaderData;
 class SceneRenderState;
 class KernelApplication;
 class ShaderComputeQueue;
-class CascadedShadowMapsGenerator;
+class UniformUploadArena;
 
 struct SizeChangeParams;
 struct ShaderBufferDescriptor;
@@ -104,7 +104,6 @@ namespace Attorney
     class GFXDeviceGFXRTPool;
     class GFXDeviceProjectManager;
     class GFXDeviceShaderProgram;
-    class GFXDeviceShadowMap;
     class GFXDeviceWindowManager;
     class KernelApplication;
 };
@@ -131,6 +130,13 @@ struct DebugView final : GUIDWrapper
         : GUIDWrapper()
         , _sortIndex(to_I16(sortIndex))
     {
+        _shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.f );
+        _shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.f );
+        _shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 4u );
+        _shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
+        _shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
+        _shaderData.set( _ID( "scaleAndBias" ), PushConstantType::UINT, 0u );
+        _shaderData.set( _ID( "normalizeOutput" ), PushConstantType::UINT, 0u );
         _shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 0u );
     }
 
@@ -142,11 +148,29 @@ struct DebugView final : GUIDWrapper
     I16 _groupID = -1;
     I16 _sortIndex = -1;
     U8 _textureBindSlot = 0u;
-    bool _enabled = false;
+    std::atomic_bool _enabled{ false };
     bool _cycleMips = false;
 };
 
 FWD_DECLARE_MANAGED_STRUCT(DebugView);
+
+class DebugViewRegistry final
+{
+  public:
+    [[nodiscard]] bool beginDefaultViewInitialization();
+    DebugView* add(const DebugView_ptr& view);
+    bool remove(const DebugView* view);
+    void releaseRetired();
+    void clear();
+    void getNames(vector<std::tuple<string, I16, I16, bool>>& namesOut) const;
+
+  private:
+    friend class GFXDevice;
+    mutable Mutex _lock;
+    vector<DebugView_ptr> _active;
+    vector<DebugView_ptr> _retired;
+    bool _defaultViewsInitialized = false;
+};
 
 template<typename Descriptor, size_t N>
 struct DebugPrimitiveHandler
@@ -201,11 +225,12 @@ struct RenderTargetNames
     static PerPassUtils   UTILS;
     static RenderTargetID BACK_BUFFER;
     static RenderTargetID SCREEN;
-    static RenderTargetID SCREEN_PREV;
+    static std::array<RenderTargetID, Config::MAX_LOCAL_PLAYER_COUNT> SCREEN_PREV;
     static RenderTargetID NORMALS_RESOLVED;
     static RenderTargetID SSAO_RESULT;
     static RenderTargetID BLOOM_RESULT;
     static RenderTargetID SSR_RESULT;
+    static std::array<RenderTargetID, Config::MAX_LOCAL_PLAYER_COUNT> PREVIOUS_DEPTH;
     static RenderTargetID OIT;
 
     // No CUBE OIT for cube reflections and refractions (yet) -Ionut
@@ -226,6 +251,36 @@ struct RenderTargetNames
     };
 };
 
+/// Per-command-buffer GPU times, summed by command buffer name over a number of frames.
+struct GPUPassTimingTable
+{
+    using Name = Str<64>;
+
+    struct Entry
+    {
+        Name _name;
+        D64 _totalMS{ 0.0 };
+    };
+
+    std::array<Entry, GPU_PASS_TIMESTAMP_CAPACITY> _entries{};
+    size_t _entryCount{ 0u };
+    U32 _frameCount{ 0u };
+
+    void reset() noexcept
+    {
+        _entryCount = 0u;
+        _frameCount = 0u;
+    }
+};
+
+/// Adds one frame of pass timings: timestampsMS[i] is written before passNames[i] and timestampsMS[passNames.size()] after the last pass.
+/// Ignores the frame if fewer than passNames.size() + 1 timestamps are supplied.
+void AccumulateGPUPassTimings( std::span<const F32> timestampsMS, std::span<const GPUPassTimingTable::Name> passNames, GPUPassTimingTable& table ) noexcept;
+
+/// Strips per-instance decorations from a debug scope name so timings of e.g. every "Custom pass ( SHADOW - x )" merge into one entry:
+/// leading " - " markers and everything from the first " (" or " [" are removed.
+[[nodiscard]] std::string_view NormalizeGPUScopeName( std::string_view scopeName ) noexcept;
+
 /// Rough around the edges Adapter pattern abstracting the actual rendering API and access to the GPU
 class GFXDevice final : public PlatformContextComponent, public FrameListener
 {
@@ -234,7 +289,6 @@ class GFXDevice final : public PlatformContextComponent, public FrameListener
     friend class Attorney::GFXDeviceGraphicsResource;
     friend class Attorney::GFXDeviceGFXRTPool;
     friend class Attorney::GFXDeviceShaderProgram;
-    friend class Attorney::GFXDeviceShadowMap;
     friend class Attorney::GFXDeviceWindowManager;
     friend class Attorney::GFXDeviceProjectManager;
 
@@ -280,7 +334,7 @@ public:  // GPU interface
     void debugDrawSphere(const I64 ID, IM::SphereDescriptor descriptor) noexcept;
     void debugDrawCone(const I64 ID, IM::ConeDescriptor descriptor) noexcept;
     void debugDrawFrustum(const I64 ID, IM::FrustumDescriptor descriptor) noexcept;
-    void validateAndUploadDescriptorSets();
+    [[nodiscard]] bool validateAndUploadDescriptorSets();
     /// Generate a cubemap from the given position
     /// It renders the entire scene graph (with culling) as default
     /// use the callback param to override the draw function
@@ -302,6 +356,9 @@ public:  // GPU interface
 
     const GFXShaderData::CamData& cameraData() const noexcept;
     const GFXShaderData::PrevFrameData& previousFrameData( PlayerIndex player ) const noexcept;
+    [[nodiscard]] bool previousDepthHistoryValid( PlayerIndex player ) const noexcept;
+    void invalidatePreviousDepthHistory( PlayerIndex player ) noexcept;
+    void storePreviousDepthHistory( PlayerIndex player, RenderTargetID source, GFX::CommandBuffer& bufferInOut );
 
     /// Returns true if the viewport was changed
     bool setViewport(const Rect<I32>& viewport);
@@ -348,12 +405,14 @@ public:  // Accessors and Mutators
 
     [[nodiscard]] PerformanceMetrics& getPerformanceMetrics() noexcept;
     [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept;
+    /// GPU time per command buffer name, accumulated while queryPerformanceStats() is enabled. Callers reset it after consuming.
+    [[nodiscard]] GPUPassTimingTable& gpuPassTimings() noexcept { return _gpuPassTimings; }
 
     void onThreadCreated(const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread) const;
 
     static void FrameInterpolationFactor(const D64 interpolation) noexcept { s_interpolationFactor = interpolation; }
     [[nodiscard]] static D64 FrameInterpolationFactor() noexcept { return s_interpolationFactor; }
-    [[nodiscard]] static U64 FrameCount() noexcept { return s_frameCount; }
+    [[nodiscard]] static U64 FrameCount() noexcept { return s_frameCount.load(std::memory_order_relaxed); }
 
     static const DeviceInformation& GetDeviceInformation() noexcept;
     static void OverrideDeviceInformation(const DeviceInformation& info) noexcept;
@@ -382,6 +441,9 @@ public:
     /// The OpenGL implementation creates either an 'Uniform Buffer Object' if unbound is false
     /// or a 'Shader Storage Block Object' otherwise
     [[nodiscard]] ShaderBuffer_uptr     newShaderBuffer(const ShaderBufferDescriptor& descriptor);
+    [[nodiscard]] UniformUploadArena& uniformUploadArena() noexcept { return *_uniformUploadArena; }
+    [[nodiscard]] bool uniformUploadFailed() const noexcept { return _uniformUploadFailed; }
+    void reportUniformUploadFailure( std::string_view shaderName, std::string_view blockName ) noexcept;
     /// Create and return a new graphics pipeline. This is only used for caching and doesn't use the object arena
     [[nodiscard]] Pipeline*             newPipeline(const PipelineDescriptor& descriptor);
 
@@ -406,6 +468,10 @@ public:
     PROPERTY_RW(MaterialDebugFlag, materialDebugFlag, MaterialDebugFlag::COUNT);
     PROPERTY_RW(RenderAPI, renderAPI, RenderAPI::COUNT);
     PROPERTY_RW(bool, queryPerformanceStats, false);
+    /// Opt-in vertex/primitive/tessellation counters. Much more expensive than the GPU timer (~10x frame time on GL/AMD).
+    PROPERTY_RW(bool, queryPipelineStatistics, false);
+    /// When set together with queryPerformanceStats, pass timings are split into exclusive time per (normalised) debug scope.
+    PROPERTY_RW(bool, queryGPUScopeTimings, false);
     PROPERTY_RW(bool, enableOcclusionCulling, true);
     PROPERTY_R_IW(U32, frameDrawCalls, 0u);
     PROPERTY_R_IW(U32, frameDrawCallsPrev, 0u);
@@ -469,8 +535,11 @@ protected:
                        bool countCulledNodes,
                        GFX::CommandBuffer& bufferInOut);
 
+    /// Clamps indirect draw instance counts to GPU-written counts. The PER_BATCH command buffer must be bound. Records follow the commands in the same buffer: {commandIndex, countElement, 0, 0, 0}.
+    void patchInstanceCounts(ShaderBuffer* countBuffer, U32 recordOffset, U32 recordCount, GFX::CommandBuffer& bufferInOut);
+
     // Returns the HiZ texture that can be sent directly to occlusionCull
-    std::pair<Handle<Texture>, SamplerDescriptor> constructHIZ(RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut);
+    std::pair<Handle<Texture>, SamplerDescriptor> constructHIZ(RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut, bool dilateBaseLevel = true);
 
     [[nodiscard]] RenderAPIWrapper& getAPIImpl() { return *_api; }
     [[nodiscard]] const RenderAPIWrapper& getAPIImpl() const { return *_api; }
@@ -483,16 +552,18 @@ private:
     void renderFromCamera(const CameraSnapshot& cameraSnapshot);
     void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept;
     void prevViewProjectionMatrix(const mat4<F32>& vpMatrix) noexcept;
-    void worldAOViewProjectionMatrix(const mat4<F32>& vpMatrix) noexcept;
 
     [[nodiscard]] ErrorCode createAPIInstance(RenderAPI api);
 
+    void releaseRenderingResources();
     void renderThread();
     void addRenderWork(DELEGATE<void>&& work);
 
 private:
     RenderAPIWrapper_uptr _api;
     Renderer_uptr _renderer;
+    std::unique_ptr<UniformUploadArena> _uniformUploadArena;
+    bool _uniformUploadFailed{ false };
 
     std::unique_ptr<ShaderComputeQueue> _shaderComputeQueue;
 
@@ -525,6 +596,7 @@ private:
     Handle<ShaderProgram> _renderTargetDraw = INVALID_HANDLE<ShaderProgram>;
     Handle<ShaderProgram> _hIZConstructProgram = INVALID_HANDLE<ShaderProgram>;
     Handle<ShaderProgram> _hIZCullProgram = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _instanceCountPatchProgram = INVALID_HANDLE<ShaderProgram>;
     Handle<ShaderProgram> _displayShader = INVALID_HANDLE<ShaderProgram>;
     Handle<ShaderProgram> _depthShader = INVALID_HANDLE<ShaderProgram>;
     Handle<ShaderProgram> _blurBoxShaderSingle = INVALID_HANDLE<ShaderProgram>;
@@ -535,6 +607,7 @@ private:
 
     Pipeline* _hIZPipeline = nullptr;
     Pipeline* _hIZCullPipeline = nullptr;
+    Pipeline* _instanceCountPatchPipeline = nullptr;
     PipelineDescriptor _debugGizmoPipeline;
     PipelineDescriptor _debugGizmoPipelineNoDepth;
     PipelineDescriptor _debugGizmoPipelineNoCull;
@@ -553,11 +626,38 @@ private:
 
     vec2<U16> _renderingResolution;
     GFXShaderData _gpuBlock;
+    std::array<bool, Config::MAX_LOCAL_PLAYER_COUNT> _previousDepthHistoryValid{};
 
-    mutable Mutex _debugViewLock;
-    vector<DebugView_ptr> _debugViews;
+    DebugViewRegistry _debugViews;
 
     Mutex _queuedCommandbufferLock;
+    Mutex _cullCounterLock;
+
+    /// Command buffer names submitted per frame, kept long enough to match backend timestamps resolved several frames later.
+    static constexpr U8 GPU_PASS_NAME_HISTORY = 8u;
+    struct GPUPassNameFrame
+    {
+        std::array<GPUPassTimingTable::Name, GPU_PASS_TIMESTAMP_CAPACITY> _names{};
+        U64 _frameNumber{ U64_MAX };
+        U32 _count{ 0u };
+    };
+    std::array<GPUPassNameFrame, GPU_PASS_NAME_HISTORY> _gpuPassNames{};
+    std::array<F32, GPU_PASS_TIMESTAMP_CAPACITY> _gpuPassTimestampScratch{};
+    GPUPassTimingTable _gpuPassTimings{};
+
+    /// Debug scope timing state, only valid while flushWindow() translates main-window command buffers with scope timing enabled.
+    static constexpr U8 GPU_SCOPE_MAX_DEPTH = 16u;
+    void writeGPUPassTimestamp( const GPUPassTimingTable::Name& name );
+    void writeGPUScopeTimestamp( const GPUPassTimingTable::Name& name );
+    void flushPendingGPUScopeTimestamp();
+    void pushGPUScopeTimestamp( std::string_view scopeName );
+    void popGPUScopeTimestamp();
+    GPUPassNameFrame* _gpuScopeNames{ nullptr };
+    bool _gpuScopeTimingActive{ false };
+    bool _gpuScopePendingPop{ false };
+    std::array<GPUPassTimingTable::Name, GPU_SCOPE_MAX_DEPTH + 1u> _gpuScopeStack{};
+    U8 _gpuScopeDepth{ 0u };
+    U32 _gpuScopeSlotLimit{ 0u };
 
     struct GFXBuffers
     {
@@ -568,6 +668,7 @@ private:
             BufferRange<> _camBufferWriteRange;
             ShaderBuffer_uptr _camDataBuffer = nullptr;
             ShaderBuffer_uptr _cullCounter = nullptr;
+            CullCounterReadbackState _cullCounterReadbacks;
             size_t _camWritesThisFrame = 0u;
             size_t _renderWritesThisFrame = 0u;
         } _perFrameBuffers[PER_FRAME_BUFFER_COUNT];
@@ -583,6 +684,9 @@ private:
         inline void onEndFrame() noexcept;
 
     } _gfxBuffers;
+
+    U64 _nextCullCounterSequence{ 0u };
+    U64 _lastCompletedCullCounterSequence{ 0u };
 
     Mutex _pipelineCacheLock;
     hashMap<size_t, Pipeline, NoHash<size_t>> _pipelineCache;
@@ -601,7 +705,7 @@ private:
     static IMPrimitivePool s_IMPrimitivePool;
 
     static D64 s_interpolationFactor;
-    static U64 s_frameCount;
+    static std::atomic<U64> s_frameCount;
 
     static DeviceInformation s_deviceInformation;
 };
@@ -677,17 +781,6 @@ namespace Attorney
         friend class Divide::ProjectManager;
     };
 
-    class GFXDeviceShadowMap
-    {
-        static void worldAOViewProjectionMatrix( GFXDevice& device, const mat4<F32>& vpMatrix ) noexcept
-        {
-            device.worldAOViewProjectionMatrix( vpMatrix );
-        }
-
-        friend class Divide::ShadowMap;
-        friend class Divide::CascadedShadowMapsGenerator;
-    }; 
-    
     class GFXDeviceWindowManager
     {
         static void drawToWindow( GFXDevice& device, DisplayWindow& window )

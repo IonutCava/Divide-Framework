@@ -1,23 +1,50 @@
 # Agent codebase reference
 
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
+
 These guides are task-scoped notes, not the framework's human-facing feature overview.
 Start with the repository-wide instructions in [AGENTS.md](../../AGENTS.md), then read only the relevant guides.
 Source paths below and in the guides are relative to the repository root.
 
 | Guide | Scope and starting points |
 |---|---|
-| [Rendering](rendering.md) | `Kernel`, `GFXDevice`, `RenderPassExecutor`, `Renderer`, PostFX; stage dependencies and feature insertion points |
+| [Rendering](rendering.md) | `Kernel`, `GFXDevice`, `RenderPassExecutor`, `Renderer`, PostFX; stage dependencies, profiling and smoke diagnosis |
 | [Shaders and descriptors](shader-descriptors.md) | `ShaderProgram`, `ShaderDataUploader`, `GLSLToSPIRV`, backend shader programs; bindings and cache compatibility |
 | [GPU resources](gpu-resources.md) | `vkDevice`, `VKWrapper`, GL/Vulkan buffer and texture implementations; allocation, capabilities, coordinate/colour conventions |
 | [Asset pipeline](asset-pipeline.md) | `MeshImporter`, `DVDConverter`, `VertexBuffer`, `Texture`, `ImageTools`; import, cache, and upload |
+| [Scene loading](scene-loading.md) | `ProjectManager`, `ScenePool`, `SceneGraph`, transform and bounds systems; scene selection, XML and activation |
+| [Editor windows](editor.md) | `Editor`, `DockedWindow`, property/undo handling, gizmos, output and persisted layouts |
 | [Threading](threading.md) | `PlatformContext`, task pools, render preparation, resource synchronization, Vulkan queue usage |
 | [Networking](networking.md) | `Client`, `Connection`; context ownership, heartbeat cancellation and loopback test initialization |
+
+## Assertions and fatal calls
+
+`Source/Platform/Headers/PlatformDefines.h` routes assertions through
+`Assert::Callback`, which may continue after a Debug assertion. The
+`DIVIDE_UNEXPECTED_CALL` and `DIVIDE_UNEXPECTED_CALL_MSG` macros instead report
+the source and message, flush the console when available, and abort in every
+build even when assertions can continue. They do not perform normal shutdown.
+Expected-call and GPU-validation macros retain their existing assertion and
+validation-gating behavior. Use a recoverable assertion or explicit error
+return when a fallback is intended; changing the unexpected-call contract
+affects all its callers.
+
+## Math SIMD alignment
+
+`Source/Core/Math/Headers/MathVectors.h` declares `vec4` inside `#pragma pack(1)`.
+GCC/Clang cap member alignment under packing, so `vec4` carries a class-level
+`alignas(Vec4Alignment<T>)` to preserve SIMD alignment without changing packed
+non-SIMD vector layouts. Packing an enclosing type can still suppress the alignment
+of its `float4` or matrix members and make SIMD accesses fault. GPU records use
+natural alignment and test their shader-visible offsets and sizes; see
+[Rendering](rendering.md). Keep the layout and alignment tests when
+changing these types.
 
 ## Debugging routes
 
 - Both GL and Vulkan fail: start in shared `GFXDevice`, `ShaderProgram`, `RenderPassExecutor`, and descriptor setup.
-- GL only: inspect persistent mapped buffers, locks/sync, allocation churn, and GL binding/state translation.
-- Vulkan only: inspect usage flags, image layouts, staging lifetimes, and descriptor/push-descriptor state.
+- GL only: inspect persistent mapped buffers, locks/sync, allocation churn, and GL binding/state translation; the [smoke runner](rendering.md#framework-smoke-diagnosis) can capture a same-GPU comparison.
+- Vulkan only: inspect usage flags, image layouts, staging lifetimes, and descriptor/push-descriptor state; the opt-in [smoke runner](rendering.md#framework-smoke-diagnosis) captures first-failure evidence.
 - Imported assets only: inspect cache formats, attribute presence, LoD/index partitions, and array/cubemap ordering.
 
 ## Maintaining these notes

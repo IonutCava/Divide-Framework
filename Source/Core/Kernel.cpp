@@ -1,6 +1,10 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "Headers/Kernel.h"
 #include "Headers/Configuration.h"
 #include "Headers/PlatformContext.h"
+#include "Headers/RenderSmokeTest.h"
+#include "Headers/ThreadPoolSizing.h"
 
 #include "Core/Debugging/Headers/DebugInterface.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
@@ -31,30 +35,19 @@ namespace Divide
 namespace
 {
     constexpr U32 g_printTimerBase = 15u;
-    constexpr U8  g_warmupFrameCount = 8u;
-
-    constexpr U32 g_mininumTotalWorkerCount = 16u;
-    static U32 g_totalWorkerCount = 8u;
-    constexpr U8 g_renderThreadCount = 1u;
+    ThreadPoolSizing::Counts g_threadPoolSizes = ThreadPoolSizing::Calculate( ThreadPoolSizing::MIN_TOTAL_WORKERS );
 
     U32 g_printTimer = g_printTimerBase;
 };
 
 size_t Kernel::TotalThreadCount( const TaskPoolType type ) noexcept
 {
-    constexpr U8 g_renderThreadPoolSize = 6u;
-    constexpr U8 g_assetLoadingPoolSize = 4u;
-    constexpr U8 g_backupThreadPoolSize = 2u;
-
-    DIVIDE_ASSERT(g_totalWorkerCount >= g_mininumTotalWorkerCount);
-    static_assert(g_renderThreadPoolSize + g_assetLoadingPoolSize + g_backupThreadPoolSize + g_renderThreadCount < g_mininumTotalWorkerCount);
-
     switch ( type )
     {
-        case TaskPoolType::ASSET_LOADER:  return g_assetLoadingPoolSize;
-        case TaskPoolType::RENDERER:      return g_renderThreadPoolSize;
-        case TaskPoolType::LOW_PRIORITY:  return g_backupThreadPoolSize;
-        case TaskPoolType::HIGH_PRIORITY: return std::max(g_totalWorkerCount - g_backupThreadPoolSize - g_assetLoadingPoolSize - g_renderThreadPoolSize - g_renderThreadCount, 4u);
+        case TaskPoolType::ASSET_LOADER:  return g_threadPoolSizes._asset;
+        case TaskPoolType::RENDERER:      return g_threadPoolSizes._render;
+        case TaskPoolType::LOW_PRIORITY: return g_threadPoolSizes._lowPriority;
+        case TaskPoolType::HIGH_PRIORITY: return g_threadPoolSizes._highPriority;
 
         default: 
             DIVIDE_UNEXPECTED_CALL();
@@ -63,10 +56,8 @@ size_t Kernel::TotalThreadCount( const TaskPoolType type ) noexcept
             break;
     }
 
-    return TotalThreadCount(TaskPoolType::ASSET_LOADER) +
-           TotalThreadCount(TaskPoolType::RENDERER) +
-           TotalThreadCount(TaskPoolType::LOW_PRIORITY) +
-           TotalThreadCount(TaskPoolType::HIGH_PRIORITY);
+    return g_threadPoolSizes._asset + g_threadPoolSizes._render +
+           g_threadPoolSizes._lowPriority + g_threadPoolSizes._highPriority;
 }
 
 Kernel::Kernel(const I32 argc, char** argv, Application& parentApp)
@@ -189,13 +180,17 @@ void Kernel::onLoop()
         Time::ScopedTimer timer(_appLoopTimerMain);
 
         ResourceCache::OnFrameStart();
+        RenderSmokeTest::BeginFrame();
 
         if (!keepAlive())
         {
             // exiting the rendering loop will return us to the last control point
             _platformContext.app().mainLoopActive(false);
 
-            DIVIDE_EXPECTED_CALL( projectManager()->saveActiveScene(true, false) );
+            if ( !RenderSmokeTest::Enabled() )
+            {
+                DIVIDE_EXPECTED_CALL( projectManager()->saveActiveScene(true, false) );
+            }
 
             return;
         }
@@ -248,6 +243,11 @@ void Kernel::onLoop()
             if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_ENDED, evt))
             {
                 keepAlive(false);
+            }
+
+            if ( RenderSmokeTest::ReadyToStop() )
+            {
+                _platformContext.app().RequestShutdown( false );
             }
 
             if (_platformContext.app().RestartRequested() || _platformContext.app().ShutdownRequested() )
@@ -640,17 +640,22 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
         _renderTimer.erase(begin(_renderTimer) + i);
     }
 
+    if ( playerCount > 0u )
+    {
+        RenderSmokeTest::MarkSceneFrame();
+    }
+
     return true;
 }
 
-// The first loops compiles all the visible data, so do not render the first couple of frames
+// Render one initial frame behind the splash before enabling the editor.
 void Kernel::warmup()
 {
     Console::printfn(LOCALE_STR("START_RENDER_LOOP"));
 
     _timingData.freezeGameTime(true);
 
-    for (U8 i = 0u; i < g_warmupFrameCount; ++i)
+    for (U8 i = 0u; i < STARTUP_WARMUP_FRAME_COUNT; ++i)
     {
         onLoop();
     }
@@ -661,6 +666,11 @@ void Kernel::warmup()
     stopSplashScreen();
 
     Attorney::ProjectManagerKernel::initPostLoadState(_projectManager.get());
+    if ( RenderSmokeTest::Enabled() && keepAlive() && _projectManager->loadComplete() )
+    {
+        _platformContext.gfx().materialDebugFlag( RenderSmokeTest::MaterialView() );
+        RenderSmokeTest::MarkSceneReady();
+    }
 }
 
 
@@ -701,12 +711,54 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         Console::printfn( LOCALE_STR( "START_APPLICATION_PROJECT_ARGUMENT" ) , config.startupProject.c_str() );
     }
 
+    if ( RenderSmokeTest::Enabled() )
+    {
+        const bool vulkan = RenderSmokeTest::SelectedBackend() == RenderSmokeTest::Backend::VULKAN;
+        const bool perfMode = RenderSmokeTest::PerfModeRequested();
+        if ( !Config::Build::IS_EDITOR_BUILD || ( vulkan && !perfMode && !Config::ENABLE_GPU_VALIDATION ) ||
+             Util::FindCommandLineArgument( _argc, _argv, "disableEditor" ) ||
+             Util::FindCommandLineArgument( _argc, _argv, "disableRenderAPIDebugging" ) )
+        {
+            Console::errorfn( "The render smoke test requires an editor build and API debugging." );
+            return ErrorCode::RENDER_SMOKE_TEST_FAILED;
+        }
+
+        config.startupProject = RenderSmokeTest::Project().empty() ? Config::DEFAULT_PROJECT_NAME : RenderSmokeTest::Project().c_str();
+        config.runtime.enableEditor = true;
+        // The smoke backend switch is explicit; override in memory only (config.xml is not written back).
+        config.runtime.targetRenderingAPI = to_U8( vulkan ? RenderAPI::Vulkan : RenderAPI::OpenGL );
+        // Perf mode measures renderer cost without validation layers / GL debug output.
+        config.debug.renderer.enableRenderAPIDebugging = !perfMode;
+        if ( perfMode )
+        {
+            config.debug.renderer.enableRenderAPIBestPractices = false;
+        }
+    }
+
     if (config.runtime.targetRenderingAPI >= to_U8(RenderAPI::COUNT))
     {
         config.runtime.targetRenderingAPI = to_U8(RenderAPI::OpenGL);
     }
 
-    g_totalWorkerCount = std::max( config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : std::thread::hardware_concurrency(), g_mininumTotalWorkerCount);
+    const U32 totalWorkerCount = config.runtime.maxWorkerThreads > 0
+        ? to_U32( config.runtime.maxWorkerThreads )
+        : std::thread::hardware_concurrency();
+    const I16 requestedAssetWorkers = config.runtime.assetLoaderThreads;
+    const U32 assetWorkerCount = requestedAssetWorkers > 0 ? to_U32( requestedAssetWorkers ) : 0u;
+    g_threadPoolSizes = ThreadPoolSizing::Calculate( totalWorkerCount, assetWorkerCount );
+
+    if ( requestedAssetWorkers < 0 )
+    {
+        Console::warnfn( LOCALE_STR( "INVALID_ASSET_LOADER_THREADS" ), requestedAssetWorkers );
+    }
+    else if ( assetWorkerCount != 0u && assetWorkerCount != g_threadPoolSizes._asset )
+    {
+        Console::warnfn( LOCALE_STR( "LIMIT_ASSET_LOADER_THREADS" ),
+                         assetWorkerCount, g_threadPoolSizes._asset );
+    }
+    Console::printfn( LOCALE_STR( "TASK_POOL_SIZES" ),
+                     g_threadPoolSizes._asset, g_threadPoolSizes._render,
+                     g_threadPoolSizes._highPriority, g_threadPoolSizes._lowPriority );
 
     _platformContext.pfx().apiID(PXDevice::PhysicsAPI::Jolt);
     _platformContext.sfx().apiID(SFXDevice::AudioAPI::SDL);
@@ -787,11 +839,13 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     _inputConsumers.emplace_back(_projectManager.get(), InputConsumerType::Scene);
 
     // Add our needed app-wide render passes. RenderPassManager is responsible for deleting these!
+    // Shadow maps only need to be submitted first: stages record in parallel with SHADOW and LightPool patches shadow indices afterwards.
+    // DISPLAY/NODE_PREVIEW still wait for reflection/refraction recording, which assigns the reflector/refractor textures they sample.
     _renderPassManager->setRenderPass(RenderStage::SHADOW,       {   });
     _renderPassManager->setRenderPass(RenderStage::REFLECTION,   { RenderStage::SHADOW });
     _renderPassManager->setRenderPass(RenderStage::REFRACTION,   { RenderStage::SHADOW });
-    _renderPassManager->setRenderPass(RenderStage::DISPLAY,      { RenderStage::REFLECTION, RenderStage::REFRACTION });
-    _renderPassManager->setRenderPass(RenderStage::NODE_PREVIEW, { RenderStage::REFLECTION, RenderStage::REFRACTION });
+    _renderPassManager->setRenderPass(RenderStage::DISPLAY,      { RenderStage::REFLECTION, RenderStage::REFRACTION }, { RenderStage::REFLECTION, RenderStage::REFRACTION });
+    _renderPassManager->setRenderPass(RenderStage::NODE_PREVIEW, { RenderStage::REFLECTION, RenderStage::REFRACTION }, { RenderStage::REFLECTION, RenderStage::REFRACTION });
 
     Console::printfn(LOCALE_STR("SCENE_ADD_DEFAULT_CAMERA"));
 
@@ -844,7 +898,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     Str<256> startupProject = config.startupProject.c_str();
     if ( Config::Build::IS_EDITOR_BUILD && config.runtime.enableEditor)
     {
-        startupProject = Config::DEFAULT_PROJECT_NAME;
+        startupProject = RenderSmokeTest::Project().empty() ? Config::DEFAULT_PROJECT_NAME : RenderSmokeTest::Project().c_str();
         Console::printfn(LOCALE_STR("START_FRAMEWORK_EDITOR"), startupProject.c_str() );
     }
     else
@@ -867,6 +921,12 @@ ErrorCode Kernel::initialize(const string& entryPoint)
             targetProject = project;
             break;
         }
+    }
+
+    if ( targetProject._guid == 0 && !RenderSmokeTest::Project().empty() )
+    {
+        Console::errorfn( "Render smoke test project [ {} ] not found.", startupProject.c_str() );
+        return ErrorCode::MISSING_PROJECT_DATA;
     }
 
     while ( targetProject._guid == 0 )
@@ -947,7 +1007,10 @@ void Kernel::shutdown()
 {
     Console::printfn(LOCALE_STR("STOP_KERNEL"));
 
-    _platformContext.config().save();
+    if ( !RenderSmokeTest::Enabled() )
+    {
+        _platformContext.config().save();
+    }
 
     for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i)
     {
@@ -1188,4 +1251,3 @@ void Kernel::unlockInputFromConsumer(const InputConsumerType type)
 
 #pragma endregion
 };
-

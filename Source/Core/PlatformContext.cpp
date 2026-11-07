@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/PlatformContext.h"
 #include "Headers/Configuration.h"
@@ -42,6 +42,7 @@ PlatformContext::PlatformContext(Application& app)
 
 PlatformContext::~PlatformContext()
 {
+    ShutdownConditionalWait(*this);
     assert(_gfx == nullptr);
 }
 

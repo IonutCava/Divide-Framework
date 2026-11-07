@@ -1,4 +1,5 @@
-﻿
+﻿// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Editor/Headers/UndoManager.h"
 #include "Editor/Headers/Utils.h"
@@ -615,7 +616,7 @@ namespace Divide
                                 case LightType::COUNT:
                                 {
                                     DIVIDE_UNEXPECTED_CALL();
-                                } break;
+                                }
                             }
                         }
                     }
@@ -973,17 +974,24 @@ namespace Divide
                             const bool isSelected = crtMode == n;
                             if ( ImGui::Selectable( field.getDisplayName( n ), isSelected ) )
                             {
-                                typeUndo._type = PushConstantType::UINT;
-                                typeUndo._name = "Drop Down Selection";
-                                typeUndo._oldVal = crtMode;
-                                typeUndo._newVal = n;
-                                typeUndo._dataSetter = [&field]( const U32& data )
+                                if ( field._onUndoRedo )
                                 {
-                                    field.set( data );
-                                };
+                                    Util::RegisterFieldUndo( _parent, field, field._name.c_str(), crtMode, n );
+                                }
+                                else
+                                {
+                                    typeUndo._type = PushConstantType::UINT;
+                                    typeUndo._name = "Drop Down Selection";
+                                    typeUndo._oldVal = crtMode;
+                                    typeUndo._newVal = n;
+                                    typeUndo._dataSetter = [&field]( const U32& data )
+                                    {
+                                        field.set( data );
+                                    };
+                                    _context.editor().registerUndoEntry( typeUndo );
+                                }
 
                                 field.set( n );
-                                _context.editor().registerUndoEntry( typeUndo );
                                 break;
                             }
                             if ( isSelected )
@@ -1398,6 +1406,10 @@ namespace Divide
             {
                 program = Get( shaderHandle );
                 shaderName = program->resourceName().c_str();
+            }
+            else
+            {
+                shaderName = material->shaderPending( currentStagePass ) ? "Loading..." : "Failed";
             }
             stateBlock = material->getOrCreateRenderStateBlock( currentStagePass );
         }
@@ -2541,7 +2553,6 @@ namespace Divide
 
                 ImFont* boldFont = ImGui::GetIO().Fonts->Fonts[1];
 
-                static UndoEntry<bool> undo = {};
                 bool val = field.get<bool>();
                 if ( field._type == EditorComponentFieldType::SWITCH_TYPE )
                 {
@@ -2570,10 +2581,17 @@ namespace Divide
 
                 if ( ret && !field._readOnly )
                 {
-                    RegisterUndo<bool, false>( _parent, PushConstantType::BOOL, !val, val, name, [&field]( const bool& oldVal )
-                                               {
-                                                   field.set( oldVal );
-                                               } );
+                    if ( field._onUndoRedo )
+                    {
+                        Util::RegisterFieldUndo( _parent, field, name, !val, val );
+                    }
+                    else
+                    {
+                        RegisterUndo<bool, false>( _parent, PushConstantType::BOOL, !val, val, name, [&field]( const bool& oldVal )
+                                                   {
+                                                       field.set( oldVal );
+                                                   } );
+                    }
                     field.set<bool>( val );
                 }
                 if ( field._readOnly )
@@ -2590,7 +2608,7 @@ namespace Divide
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<I16, I16, 1>( _parent, isSlider, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputOrSlider<I8,  I8,  1>( _parent, isSlider, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     default:
-                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL();
                 }
             }break;
             case PushConstantType::UINT:
@@ -2602,7 +2620,7 @@ namespace Divide
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<U16, U16, 1>( _parent, isSlider, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputOrSlider<U8,  U8,  1>( _parent, isSlider, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     default:
-                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL();
                 }
             }break;
             case PushConstantType::DOUBLE:
@@ -2622,7 +2640,7 @@ namespace Divide
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec2<I16>, I16, 2>( _parent, isSlider, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec2<I8>,  I8,  2>( _parent, isSlider, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     default:
-                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL();
                 }
             }break;
             case PushConstantType::IVEC3:
@@ -2634,7 +2652,7 @@ namespace Divide
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec3<I16>, I16, 3>( _parent, isSlider, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec3<I8>,  I8,  3>( _parent, isSlider, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     default:
-                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL();
                 }
             }break;
             case PushConstantType::IVEC4:
@@ -2646,7 +2664,7 @@ namespace Divide
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec4<I16>, I16, 4>( _parent, isSlider, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec4<I8>,  I8,  4>( _parent, isSlider, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     default:
-                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL();
                 }
             }break;
             case PushConstantType::UVEC2:
@@ -2658,7 +2676,7 @@ namespace Divide
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec2<U16>, U16, 2>( _parent, isSlider, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec2<U8>,  U8,  2>( _parent, isSlider, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     default:
-                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL();
                 }
             }break;
             case PushConstantType::UVEC3:
@@ -2670,7 +2688,7 @@ namespace Divide
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec3<U16>, U16, 3>( _parent, isSlider, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec3<U8>,  U8,  3>( _parent, isSlider, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     default:
-                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL();
                 }
             }break;
             case PushConstantType::UVEC4:
@@ -2682,7 +2700,7 @@ namespace Divide
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec4<U16>, U16, 4>( _parent, isSlider, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec4<U8>,  U8,  4>( _parent, isSlider, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     default:
-                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL();
                 }
             }break;
             case PushConstantType::VEC2:
@@ -2718,7 +2736,7 @@ namespace Divide
                     case PushConstantSize::WORD:  ret = Util::inputMatrix<mat2<I16>, 2>( _parent, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat2<I8>,  2>( _parent, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     default:
-                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL();
                 }
             }break;
             case PushConstantType::IMAT3:
@@ -2730,7 +2748,7 @@ namespace Divide
                     case PushConstantSize::WORD:  ret = Util::inputMatrix<mat3<I16>, 3>( _parent, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat3<I8>,  3>( _parent, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     default:
-                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL();
                 }
                 ImGui::Separator();
             }break;
@@ -2743,7 +2761,7 @@ namespace Divide
                     case PushConstantSize::WORD:  ret = Util::inputMatrix<mat4<I16>, 4>( _parent, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat4<I8>,  4>( _parent, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     default:
-                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL();
                 }
                 ImGui::Separator();
             }break;
@@ -2756,7 +2774,7 @@ namespace Divide
                     case PushConstantSize::WORD:  ret = Util::inputMatrix<mat2<U16>, 2>( _parent, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat2<U8>,  2>( _parent, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     default:
-                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL();
                 }
             }break;
             case PushConstantType::UMAT3:
@@ -2768,7 +2786,7 @@ namespace Divide
                     case PushConstantSize::WORD:  ret = Util::inputMatrix<mat3<U16>, 3>( _parent, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat3<U8>,  3>( _parent, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     default:
-                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL();
                 }
             }break;
             case PushConstantType::UMAT4:
@@ -2780,7 +2798,7 @@ namespace Divide
                     case PushConstantSize::WORD:  ret = Util::inputMatrix<mat4<U16>, 4>( _parent, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputMatrix<mat4<U8>,  4>( _parent, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     default:
-                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                    case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL();
                 }
             }break;
             case PushConstantType::MAT2:

@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/Material.h"
 #include "Headers/ShaderComputeQueue.h"
@@ -21,6 +21,60 @@ namespace Divide
     namespace
     {
         constexpr size_t g_materialXMLVersion = 1u;
+
+        [[nodiscard]] bool HasDefine( const ModuleDefines& defines, const std::string_view name ) noexcept
+        {
+            return std::ranges::any_of( defines, [name]( const ModuleDefine& define )
+            {
+                const std::string_view text{ define._define.c_str() };
+                return define._addPrefix && text.starts_with( name ) &&
+                       ( text.size() == name.size() || text[name.size()] == ' ' || text[name.size()] == '\t' );
+            } );
+        }
+
+        [[nodiscard]] bool HasShaderDefine( const ShaderProgramDescriptor& descriptor, const std::string_view name ) noexcept
+        {
+            if ( HasDefine( descriptor._globalDefines, name ) )
+            {
+                return true;
+            }
+
+            return std::ranges::any_of( descriptor._modules, [name]( const ShaderModuleDescriptor& module )
+            {
+                return HasDefine( module._defines, name );
+            } );
+        }
+
+        [[nodiscard]] bool HasRawShaderText( const ShaderProgramDescriptor& descriptor ) noexcept
+        {
+            const auto hasRaw = []( const ModuleDefines& defines )
+            {
+                return std::ranges::any_of( defines, []( const ModuleDefine& define )
+                {
+                    return !define._addPrefix && define._define != "DEFINE_PLACEHOLDER";
+                } );
+            };
+            if ( hasRaw( descriptor._globalDefines ) )
+            {
+                return true;
+            }
+            return std::ranges::any_of( descriptor._modules, [&hasRaw]( const ShaderModuleDescriptor& module )
+            {
+                return hasRaw( module._defines );
+            } );
+        }
+
+        [[nodiscard]] bool HasBinding( const DescriptorSet& descriptor, const U8 slot ) noexcept
+        {
+            for ( U8 i = 0u; i < descriptor._bindingCount; ++i )
+            {
+                if ( descriptor._bindings[i]._slot == slot )
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
     };
 
     namespace TypeUtil
@@ -195,16 +249,13 @@ namespace Divide
     Material::Material( const ResourceDescriptor<Material>& descriptor )
         : CachedResource( descriptor, "Material")
     {
-        const ShaderProgramInfo defaultShaderInfo = {};
         // Could just direct copy the arrays, but this looks cool
         for ( U8 s = 0u; s < to_U8( RenderStage::COUNT ); ++s )
         {
-            auto& perPassInfo = _shaderInfo[s];
             auto& perPassStates = _defaultRenderStates[s];
 
             for ( U8 p = 0u; p < to_U8( RenderPassType::COUNT ); ++p )
             {
-                perPassInfo[p].fill( defaultShaderInfo );
                 perPassStates[p].fill( {{}, false});
             }
         }
@@ -289,6 +340,7 @@ namespace Divide
         cloneMat->_baseMaterial = src;
 
         cloneMat->_properties = srcMat->_properties;
+        cloneMat->_baseShaderData = srcMat->_baseShaderData;
         cloneMat->_extraShaderDefines = srcMat->_extraShaderDefines;
         cloneMat->_computeShaderCBK = srcMat->_computeShaderCBK;
         cloneMat->_computeRenderStateCBK = srcMat->_computeRenderStateCBK;
@@ -323,8 +375,19 @@ namespace Divide
                       auto& variantMapDst = cloneMat->_shaderInfo[s][p];
                 for ( U8 v = 0u; v < to_U8( RenderStagePass::VariantType::COUNT ); ++v )
                 {
-                    variantMapDst[v] = variantMapSrc[v].clone();
-                }
+                          if ( variantMapDst[v]._shaderQueued.load( std::memory_order_acquire ) )
+                          {
+                              cloneMat->_context->shaderComputeQueue().cancel( variantMapDst[v] );
+                          }
+                          if ( variantMapDst[v]._shaderRef != INVALID_HANDLE<ShaderProgram> )
+                          {
+                              if ( ResourceCache::Inspect( variantMapDst[v]._shaderRef )._state != ResourceState::RES_LOADED )
+                              {
+                                  cloneMat->_context->shaderComputeQueue().waitForPendingLoads();
+                              }
+                          }
+                          variantMapDst[v] = variantMapSrc[v].clone();
+                      }
             }
         }
 
@@ -341,7 +404,15 @@ namespace Divide
         if ( properties()._transparencyUpdated )
         {
             ret |= to_base( MaterialUpdateResult::NEW_TRANSPARENCY );
-            updateTransparency();
+            {
+                LockGuard<SharedMutex> w_lock( _textureLock );
+                const TranslucencySource previousSource = properties().translucencySource();
+                updateTransparency();
+                if ( previousSource != properties().translucencySource() )
+                {
+                    invalidateDescriptorSets();
+                }
+            }
             properties()._transparencyUpdated = false;
         }
         if ( properties()._cullUpdated )
@@ -420,11 +491,7 @@ namespace Divide
 
     bool Material::setTextureLocked( const TextureSlot textureUsageSlot, const Handle<Texture> texture, const SamplerDescriptor sampler, const TextureOperation op, const bool useInGeometryPasses )
     {
-        // Invalidate our descriptor sets
-        _descriptorSetMainPass._bindingCount = {0u};
-        _descriptorSetSecondaryPass._bindingCount = { 0u };
-        _descriptorSetPrePass._bindingCount = { 0u };
-        _descriptorSetShadow._bindingCount = { 0u };
+        invalidateDescriptorSets();
 
         const U32 slot = to_U32( textureUsageSlot );
 
@@ -434,15 +501,7 @@ namespace Divide
 
         setTextureOperation( textureUsageSlot, texture != INVALID_HANDLE<Texture> ? op : TextureOperation::NONE );
 
-        if ( texInfo._ptr != INVALID_HANDLE<Texture> )
-        {
-            // Skip adding same texture
-            if ( texture != INVALID_HANDLE<Texture> && texInfo._ptr == texture )
-            {
-                return true;
-            }
-        }
-
+        DestroyResource( texInfo._ptr );
         texInfo._srgb = texture != INVALID_HANDLE<Texture> ? Get(texture)->descriptor()._packing == GFXImagePacking::NORMALIZED_SRGB : false;
         texInfo._useInGeometryPasses = texture != INVALID_HANDLE<Texture> ? useInGeometryPasses : false;
         texInfo._ptr = texture;
@@ -455,7 +514,9 @@ namespace Divide
         if ( textureUsageSlot == TextureSlot::UNIT0 ||
              textureUsageSlot == TextureSlot::OPACITY )
         {
+            const TranslucencySource previousSource = properties().translucencySource();
             updateTransparency();
+            properties()._transparencyUpdated |= previousSource != properties().translucencySource();
         }
 
         properties()._needsNewShader = true;
@@ -492,27 +553,69 @@ namespace Divide
         {
             crtOp = op;
             properties()._needsNewShader = true;
+            if ( textureUsageSlot == TextureSlot::UNIT0 || textureUsageSlot == TextureSlot::OPACITY )
+            {
+                properties()._transparencyUpdated = true;
+            }
         }
     }
 
-    void Material::setShaderProgramInternal( ShaderProgramDescriptor shaderDescriptor, const RenderStagePass stagePass )
+    void Material::reportShaderFailure( ShaderProgramInfo& info, const RenderStagePass stagePass, const ResourceState state )
+    {
+        info._shaderCompStage = ShaderBuildStage::FAILED;
+        info._shaderKeyCache = I64_LOWEST;
+        info._readyNotificationPending = false;
+        Console::errorfn( LOCALE_STR( "MATERIAL_SHADER_LOAD_FAILED" ),
+                          resourceName().c_str(),
+                          TypeUtil::RenderStageToString( stagePass._stage ),
+                          TypeUtil::RenderPassTypeToString( stagePass._passType ),
+                          to_U32( to_base( stagePass._variant ) ),
+                          to_U32( to_base( state ) ),
+                          to_U32( info._shaderRef ) );
+    }
+
+    void Material::setShaderProgramInternal( const RenderStagePass stagePass )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
-        computeAndAppendShaderDefines( shaderDescriptor, stagePass );
-
         ShaderProgramInfo& info = shaderInfo( stagePass );
-        // if we already have a different shader assigned ...
+        ShaderComputeQueue& shaderQueue = _context->shaderComputeQueue();
+        if ( info._shaderQueued.load( std::memory_order_acquire ) )
+        {
+            shaderQueue.cancel( info );
+        }
+
+        ShaderProgram* previous = nullptr;
         if ( info._shaderRef != INVALID_HANDLE<ShaderProgram> )
         {
-            ResourcePtr<ShaderProgram> ptr = Get( info._shaderRef);
+            const ResourceSnapshot snapshot = ResourceCache::Inspect( info._shaderRef );
+            const ShaderResourceStatus status = ClassifyShaderResource( snapshot._state );
+            if ( status == ShaderResourceStatus::PENDING )
+            {
+                return;
+            }
+            if ( status == ShaderResourceStatus::FAILED )
+            {
+                reportShaderFailure( info, stagePass, snapshot._state );
+                return;
+            }
+            previous = Get( info._shaderRef );
+            if ( previous == nullptr )
+            {
+                reportShaderFailure( info, stagePass, ResourceState::RES_UNKNOWN );
+                return;
+            }
+        }
 
-            // We cannot replace a shader that is still loading in the background
-            WAIT_FOR_CONDITION( ptr->getState() == ResourceState::RES_LOADED );
-            if ( ptr->descriptor() != shaderDescriptor )
+        ShaderProgramDescriptor shaderDescriptor = _computeShaderCBK( this, stagePass );
+        computeAndAppendShaderDefines( shaderDescriptor, stagePass );
+
+        if ( previous != nullptr )
+        {
+            if ( previous->descriptor() != shaderDescriptor )
             {
                 Console::printfn( LOCALE_STR( "REPLACE_SHADER" ),
-                                  ptr->resourceName().c_str(),
+                                  previous->resourceName().c_str(),
                                   shaderDescriptor._name.c_str(),
                                   TypeUtil::RenderStageToString( stagePass._stage ),
                                   TypeUtil::RenderPassTypeToString( stagePass._passType ),
@@ -520,30 +623,26 @@ namespace Divide
             }
             else
             {
+                info._shaderCompStage = ShaderBuildStage::COMPUTED;
                 return;
             }
         }
 
-        ShaderComputeQueue::ShaderQueueElement shaderElement{ &info._shaderRef, shaderDescriptor };
+        ShaderComputeQueue::ShaderQueueElement shaderElement{ &info, shaderDescriptor };
         if ( updatePriorirty() == UpdatePriority::High )
         {
-            _context->shaderComputeQueue().process( shaderElement );
+            shaderQueue.process( shaderElement );
             info._shaderCompStage = ShaderBuildStage::COMPUTED;
-            DIVIDE_ASSERT( info._shaderRef != INVALID_HANDLE<ShaderProgram> );
-            if ( !WaitForReady( Get(info._shaderRef) ) )
-            {
-                info._shaderCompStage = ShaderBuildStage::FAILED;
-            }
         }
         else
         {
             if ( updatePriorirty() == UpdatePriority::Medium )
             {
-                _context->shaderComputeQueue().addToQueueFront( shaderElement );
+                shaderQueue.addToQueueFront( shaderElement );
             }
             else
             {
-                _context->shaderComputeQueue().addToQueueBack( shaderElement );
+                shaderQueue.addToQueueBack( shaderElement );
             }
             info._shaderCompStage = ShaderBuildStage::QUEUED;
         }
@@ -570,6 +669,7 @@ namespace Divide
 
                     stagePass._variant = static_cast<RenderStagePass::VariantType>(v);
                     shaderInfo._shaderCompStage = ShaderBuildStage::REQUESTED;
+                    shaderInfo._readyNotificationPending = false;
                 }
             }
         }
@@ -579,43 +679,46 @@ namespace Divide
 
     Handle<ShaderProgram> Material::computeAndGetProgramHandle( const RenderStagePass renderStagePass )
     {
-        constexpr U8 maxRetries = 250;
-
         bool justFinishedLoading = false;
-        for ( U8 i = 0; i < maxRetries; ++i )
+        if ( prepareShader( renderStagePass, justFinishedLoading, false ) )
         {
-            if ( !canDraw( renderStagePass, justFinishedLoading ) )
-            {
-                if ( !_context->shaderComputeQueue().stepQueue() )
-                {
-                    NOP();
-                }
-            }
-            else
-            {
-                return getProgramHandle( renderStagePass );
-            }
+            return getProgramHandle( renderStagePass );
         }
 
-        return _context->imShaders()->imWorldShaderNoTexture();
+        return INVALID_HANDLE<ShaderProgram>;
     }
 
     Handle<ShaderProgram> Material::getProgramHandle( const RenderStagePass renderStagePass ) const
     {
-
         const ShaderProgramInfo& info = shaderInfo( renderStagePass );
 
-        if ( info._shaderRef != INVALID_HANDLE<ShaderProgram> )
+        if ( info._shaderCompStage == ShaderBuildStage::READY && info._shaderRef != INVALID_HANDLE<ShaderProgram> )
         {
-            WAIT_FOR_CONDITION( Get(info._shaderRef)->getState() == ResourceState::RES_LOADED );
             return info._shaderRef;
         }
-        DIVIDE_UNEXPECTED_CALL();
 
-        return _context->imShaders()->imWorldShaderNoTexture();
+        Console::errorfn( LOCALE_STR( "MATERIAL_SHADER_NOT_READY" ),
+                          resourceName().c_str(),
+                          TypeUtil::RenderStageToString( renderStagePass._stage ),
+                          TypeUtil::RenderPassTypeToString( renderStagePass._passType ),
+                          to_U32( to_base( renderStagePass._variant ) ) );
+        return INVALID_HANDLE<ShaderProgram>;
     }
 
     bool Material::canDraw( const RenderStagePass renderStagePass, bool& shaderJustFinishedLoading )
+    {
+        shaderJustFinishedLoading = false;
+        if ( properties().needsNewShader() )
+        {
+            return false;
+        }
+
+        return prepareShader( renderStagePass, shaderJustFinishedLoading, true );
+    }
+
+    bool Material::prepareShader( const RenderStagePass renderStagePass,
+                                  bool& shaderJustFinishedLoading,
+                                  const bool consumeNotification )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -628,55 +731,54 @@ namespace Divide
 
         if ( info._shaderCompStage == ShaderBuildStage::REQUESTED )
         {
-            setShaderProgramInternal( _computeShaderCBK( this, renderStagePass ),
-                                      renderStagePass );
+            setShaderProgramInternal( renderStagePass );
         }
 
-        // If we have a shader queued (with a valid ref) ...
+        // A replacement may retain its previous shader until the queue processes it.
         if ( info._shaderCompStage == ShaderBuildStage::QUEUED )
         {
-            // ... we are now passed the "compute" stage. We just need to wait for it to load
+            if ( info._shaderQueued.load( std::memory_order_acquire ) )
+            {
+                return false;
+            }
+
             if ( info._shaderRef == INVALID_HANDLE<ShaderProgram> )
             {
-                // Shader is still in the queue
+                reportShaderFailure( info, renderStagePass, ResourceState::RES_UNKNOWN );
                 return false;
             }
             info._shaderCompStage = ShaderBuildStage::COMPUTED;
         }
 
-        // If the shader is computed ...
         if ( info._shaderCompStage == ShaderBuildStage::COMPUTED )
         {
-            assert( info._shaderRef != INVALID_HANDLE<ShaderProgram> );
-            // ... wait for the shader to finish loading
-            if ( !WaitForReady( Get(info._shaderRef) ) )
+            const ResourceSnapshot snapshot = ResourceCache::Inspect( info._shaderRef );
+            if ( info.updateReadiness( snapshot._state, snapshot._guid ) == ShaderResourceStatus::FAILED )
             {
-                info._shaderCompStage = ShaderBuildStage::FAILED;
+                reportShaderFailure( info, renderStagePass, snapshot._state );
             }
-            else
-            {
-                info._shaderCompStage = ShaderBuildStage::READY;
-                info._shaderKeyCache = Get(info._shaderRef)->getGUID();
-            }
-            // Once it has finished loading, it is ready for drawing
-            shaderJustFinishedLoading = true;
         }
 
-        // If the shader isn't ready it may have not passed through the computational stage yet (e.g. the first time this method is called)
         if ( info._shaderCompStage != ShaderBuildStage::READY )
         {
-            // This is usually the first step in generating a shader: No shader available but we need to render in this stagePass
             if ( info._shaderCompStage == ShaderBuildStage::COUNT )
             {
-                // So request a new shader
                 info._shaderCompStage = ShaderBuildStage::REQUESTED;
             }
-
             return false;
         }
 
-        // Shader should be in the ready state
+        if ( consumeNotification )
+        {
+            shaderJustFinishedLoading = info.takeReadyNotification();
+        }
         return true;
+    }
+
+    bool Material::shaderPending( const RenderStagePass renderStagePass ) const
+    {
+        const ShaderBuildStage stage = shaderInfo( renderStagePass )._shaderCompStage;
+        return properties().needsNewShader() || (stage != ShaderBuildStage::READY && stage != ShaderBuildStage::FAILED);
     }
 
     void Material::addShaderDefineInternal(const ShaderType type, const string& define, const bool addPrefix)
@@ -769,7 +871,7 @@ namespace Divide
             case ShadingMode::BLINN_PHONG: shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_BLINN_PHONG", true ); break;
             case ShadingMode::PBR_MR:      shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_PBR_MR", true );      break;
             case ShadingMode::PBR_SG:      shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_PBR_SG", true );      break;
-            default:                       DIVIDE_UNEXPECTED_CALL();                                                         break;
+            default:                       DIVIDE_UNEXPECTED_CALL();
         }
         // Display pre-pass caches normal maps in a GBuffer, so it's the only exception
         if ( (!isDepthPass || renderStagePass._stage == RenderStage::DISPLAY) &&
@@ -879,19 +981,74 @@ namespace Divide
             shaderDescriptor._globalDefines.emplace_back( "NEED_TEXTURE_DATA_ALL_STAGES", true );
         }
 
-        for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
-        {
-            if ( usesTextureInShader( static_cast<TextureSlot>(i), isPrePass, isShadowPass ) )
-            {
-                shaderDescriptor._globalDefines.emplace_back( Util::StringFormat( "USE_{}_TEXTURE", Names::textureSlot[i] ), true );
-            }
-        }
-
         for ( ShaderModuleDescriptor& module : shaderDescriptor._modules )
         {
             module._defines.insert( eastl::end( module._defines ), eastl::begin( moduleDefines[to_base( module._moduleType )] ), eastl::end( moduleDefines[to_base( module._moduleType )] ) );
             module._defines.insert( eastl::end( module._defines ), eastl::begin( _extraShaderDefines[to_base( module._moduleType )] ), eastl::end( _extraShaderDefines[to_base( module._moduleType )] ) );
             module._defines.emplace_back( "DEFINE_PLACEHOLDER", false );
+        }
+
+        appendTextureShaderDefines( shaderDescriptor, isPrePass, isShadowPass );
+    }
+
+    bool Material::UsesStandardMaterialStages( const ShaderProgramDescriptor& shaderDescriptor ) noexcept
+    {
+        if ( shaderDescriptor._modules.size() != 2u )
+        {
+            return false;
+        }
+
+        const ShaderModuleDescriptor* vertex = nullptr;
+        const ShaderModuleDescriptor* fragment = nullptr;
+        for ( const ShaderModuleDescriptor& module : shaderDescriptor._modules )
+        {
+            if ( module._moduleType == ShaderType::VERTEX )
+            {
+                vertex = &module;
+            }
+            else if ( module._moduleType == ShaderType::FRAGMENT )
+            {
+                fragment = &module;
+            }
+        }
+        if ( vertex == nullptr || fragment == nullptr )
+        {
+            return false;
+        }
+
+        const bool standardVertex = vertex->_sourceFile == "baseVertexShaders.glsl" ||
+                                    vertex->_sourceFile == "tree.glsl";
+        const bool standardColour = fragment->_sourceFile == "material.glsl" && fragment->_variant.empty();
+        const bool standardDepth = fragment->_sourceFile == "depthPass.glsl" &&
+                                   ( fragment->_variant == "PrePass" ||
+                                     fragment->_variant == "Shadow" ||
+                                     fragment->_variant == "Shadow.VSM" );
+        return standardVertex && ( standardColour || standardDepth );
+    }
+
+    bool Material::HasCommonMaterialInputs( const ShaderProgramDescriptor& shaderDescriptor ) noexcept
+    {
+        return UsesStandardMaterialStages( shaderDescriptor ) &&
+               !HasShaderDefine( shaderDescriptor, "NEED_TEXTURE_DATA_ALL_STAGES" ) &&
+               !HasRawShaderText( shaderDescriptor ) &&
+               HasDefine( shaderDescriptor._globalDefines, "USE_UNIT0_TEXTURE" ) &&
+               HasDefine( shaderDescriptor._globalDefines, "USE_OPACITY_TEXTURE" );
+    }
+
+    void Material::appendTextureShaderDefines( ShaderProgramDescriptor& shaderDescriptor, const bool isPrePass, const bool isShadowPass ) const
+    {
+        const bool commonInputs = properties().texturesInFragmentStageOnly() &&
+                                   UsesStandardMaterialStages( shaderDescriptor ) &&
+                                   !HasShaderDefine( shaderDescriptor, "NEED_TEXTURE_DATA_ALL_STAGES" ) &&
+                                   !HasRawShaderText( shaderDescriptor );
+        for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
+        {
+            const TextureSlot slot = static_cast<TextureSlot>(i);
+            if ( ( commonInputs && ( slot == TextureSlot::UNIT0 || slot == TextureSlot::OPACITY ) ) ||
+                 usesTextureInShader( slot, isPrePass, isShadowPass ) )
+            {
+                shaderDescriptor._globalDefines.emplace_back( Util::StringFormat( "USE_{}_TEXTURE", Names::textureSlot[i] ), true );
+            }
         }
     }
 
@@ -955,6 +1112,22 @@ namespace Divide
 
     bool Material::unload()
     {
+        ShaderComputeQueue& shaderQueue = _context->shaderComputeQueue();
+        for ( auto& stage : _shaderInfo )
+        {
+            for ( auto& pass : stage )
+            {
+                for ( ShaderProgramInfo& info : pass )
+                {
+                    if ( info._shaderQueued.load( std::memory_order_acquire ) )
+                    {
+                        shaderQueue.cancel( info );
+                    }
+                }
+            }
+        }
+        shaderQueue.waitForPendingLoads();
+
         for ( TextureInfo& tex : _textures )
         {
             DestroyResource(tex._ptr);
@@ -968,7 +1141,6 @@ namespace Divide
                 auto& shaders = passMapShaders[p];
                 for ( ShaderProgramInfo& info : shaders )
                 {
-                    DestroyResource(info._shaderRef);
                     info = {};
                 }
             }
@@ -976,21 +1148,23 @@ namespace Divide
 
         if ( _baseMaterial != INVALID_HANDLE<Material> )
         {
-            LockGuard<SharedMutex> w_lock( _instanceLock );
             Material* baseMat = Get(_baseMaterial);
             DIVIDE_ASSERT(baseMat != nullptr);
-
-            erase_if( baseMat->_instances,
-                      [guid = getGUID()]( Handle<Material> instance ) noexcept
-                      {
-                          if (instance != INVALID_HANDLE<Material>)
+            if ( baseMat != nullptr )
+            {
+                LockGuard<SharedMutex> w_lock( baseMat->_instanceLock );
+                erase_if( baseMat->_instances,
+                          [guid = getGUID()]( Handle<Material> instance ) noexcept
                           {
-                              return true;
-                          }
+                              if ( instance == INVALID_HANDLE<Material> )
+                              {
+                                  return true;
+                              }
 
-                          Material* mat = Get(instance);
-                          return mat == nullptr || mat->getGUID() == guid;
-                      } );
+                              Material* mat = Get(instance);
+                              return mat == nullptr || mat->getGUID() == guid;
+                          } );
+            }
         }
 
         LockGuard<SharedMutex> r_lock( _instanceLock );
@@ -1035,38 +1209,59 @@ namespace Divide
         }
     }
 
+    TranslucencySource Material::SelectTranslucencySource( const TransparencyInputs& inputs ) noexcept
+    {
+        TranslucencySource source = TranslucencySource::COUNT;
+        if ( inputs._enabled )
+        {
+            const bool useAlbedo = inputs._hasAlbedo && inputs._albedoOperation != TextureOperation::NONE;
+            if ( inputs._baseAlpha < 0.95f && ( !useAlbedo || inputs._albedoOperation != TextureOperation::REPLACE ) )
+            {
+                source = TranslucencySource::ALBEDO_COLOUR;
+            }
+            if ( useAlbedo && inputs._albedoHasTransparency && !inputs._ignoreAlbedoAlpha )
+            {
+                source = TranslucencySource::ALBEDO_TEX;
+            }
+            if ( inputs._hasOpacity && inputs._opacityOperation != TextureOperation::NONE )
+            {
+                source = inputs._opacityUsesAlpha ? TranslucencySource::OPACITY_MAP_A : TranslucencySource::OPACITY_MAP_R;
+            }
+        }
+        return source;
+    }
+
     void Material::updateTransparency()
     {
         const TranslucencySource oldSource = properties()._translucencySource;
-        properties()._translucencySource = TranslucencySource::COUNT;
-        if ( properties().overrides().transparencyEnabled() )
-        {
-            // In order of importance (less to more)!
-            // diffuse channel alpha
-            if ( properties().baseColour().a < 0.95f && _textures[to_base( TextureSlot::UNIT0 )]._operation != TextureOperation::REPLACE )
-            {
-                properties()._translucencySource = TranslucencySource::ALBEDO_COLOUR;
-            }
+        const TextureInfo& albedo = _textures[to_base( TextureSlot::UNIT0 )];
+        const TextureInfo& opacity = _textures[to_base( TextureSlot::OPACITY )];
+        const bool hasAlbedo = albedo._ptr != INVALID_HANDLE<Texture>;
+        const bool hasOpacity = opacity._ptr != INVALID_HANDLE<Texture>;
 
-            // base texture is translucent
-            const Handle<Texture> albedo = _textures[to_base( TextureSlot::UNIT0 )]._ptr;
-            if ( albedo != INVALID_HANDLE<Texture> && Get(albedo)->hasTransparency() && !properties().overrides().ignoreTexDiffuseAlpha() )
-            {
-                properties()._translucencySource = TranslucencySource::ALBEDO_TEX;
-            }
+        TransparencyInputs inputs{};
+        inputs._baseAlpha = properties().baseColour().a;
+        inputs._albedoOperation = albedo._operation;
+        inputs._opacityOperation = opacity._operation;
+        inputs._enabled = properties().overrides().transparencyEnabled();
+        inputs._ignoreAlbedoAlpha = properties().overrides().ignoreTexDiffuseAlpha();
+        inputs._hasAlbedo = hasAlbedo;
+        inputs._albedoHasTransparency = hasAlbedo && Get( albedo._ptr )->hasTransparency();
+        inputs._hasOpacity = hasOpacity;
+        inputs._opacityUsesAlpha = hasOpacity &&
+                                   NumChannels( Get( opacity._ptr )->descriptor()._baseFormat ) == 4u &&
+                                   Get( opacity._ptr )->hasTransparency();
 
-            // opacity map
-            const Handle<Texture> opacity = _textures[to_base( TextureSlot::OPACITY )]._ptr;
-            if ( opacity != INVALID_HANDLE<Texture>)
-            {
-                const U8 channelCount = NumChannels( Get(opacity)->descriptor()._baseFormat );
-                properties()._translucencySource = (channelCount == 4 && Get(opacity)->hasTransparency())
-                    ? TranslucencySource::OPACITY_MAP_A
-                    : TranslucencySource::OPACITY_MAP_R;
-            }
-        }
+        properties()._translucencySource = SelectTranslucencySource( inputs );
+        properties()._needsNewShader |= oldSource != properties().translucencySource();
+    }
 
-        properties()._needsNewShader = oldSource != properties().translucencySource();
+    void Material::invalidateDescriptorSets() noexcept
+    {
+        _descriptorSetMainPass._bindingCount = 0u;
+        _descriptorSetSecondaryPass._bindingCount = 0u;
+        _descriptorSetPrePass._bindingCount = 0u;
+        _descriptorSetShadow._bindingCount = 0u;
     }
 
     const RenderStateBlock& Material::getOrCreateRenderStateBlock( const RenderStagePass renderStagePass )
@@ -1087,7 +1282,6 @@ namespace Divide
                 if ( IsShadowPass( renderStagePass ) ) //SHADOW
                 {
                     ret._colourWrite.b[2] = ret._colourWrite.b[3] = false;
-                    ret._cullMode = CullMode::BACK;
                     //ret.setZBias(1.1f, 4.f);
                 }
                 else if ( IsZPrePass( renderStagePass ) ) //Z-PRE_PASS
@@ -1108,7 +1302,6 @@ namespace Divide
             {
                 DIVIDE_ASSERT( renderStagePass._passType == RenderPassType::OIT_PASS ||
                                renderStagePass._passType == RenderPassType::TRANSPARENCY_PASS );
-                // We use alpha-discard in the prepass for transparent/translucent objects, so depth values for translucent pixels will be invalid
                 ret._zFunc = ComparisonFunction::LEQUAL;
                 ret._depthWriteEnabled = false;
                 ret._cullMode = CullMode::NONE;
@@ -1241,14 +1434,19 @@ namespace Divide
                                                0u );
         dataOut._data.w = bestProbeID;
 
-        dataOut._textureOperations.x = Util::PACK_UNORM4x8( to_U8( _textures[to_base( TextureSlot::UNIT0 )]._operation ),
+        const TextureInfo& albedoTexture = _textures[to_base( TextureSlot::UNIT0 )];
+        const TextureInfo& opacityTexture = _textures[to_base( TextureSlot::OPACITY )];
+        const TextureOperation albedoOperation = albedoTexture._ptr != INVALID_HANDLE<Texture> ? albedoTexture._operation : TextureOperation::NONE;
+        const TextureOperation opacityOperation = opacityTexture._ptr != INVALID_HANDLE<Texture> ? opacityTexture._operation : TextureOperation::NONE;
+
+        dataOut._textureOperations.x = Util::PACK_UNORM4x8( to_U8( albedoOperation ),
                                                             to_U8( _textures[to_base( TextureSlot::UNIT1 )]._operation ),
                                                             to_U8( _textures[to_base( TextureSlot::SPECULAR )]._operation ),
                                                             to_U8( _textures[to_base( TextureSlot::EMISSIVE )]._operation ) );
         dataOut._textureOperations.y = Util::PACK_UNORM4x8( to_U8( _textures[to_base( TextureSlot::OCCLUSION )]._operation ),
                                                             to_U8( _textures[to_base( TextureSlot::METALNESS )]._operation ),
                                                             to_U8( _textures[to_base( TextureSlot::ROUGHNESS )]._operation ),
-                                                            to_U8( _textures[to_base( TextureSlot::OPACITY )]._operation ) );
+                                                            to_U8( opacityOperation ) );
         dataOut._textureOperations.z = Util::PACK_UNORM4x8( useAlbedoTexAlphachannel ? 1.f : 0.f,
                                                             useOpacityAlphaChannel ? 1.f : 0.f,
                                                             properties().specGloss().x,
@@ -1256,11 +1454,25 @@ namespace Divide
         dataOut._textureOperations.w = Util::PACK_UNORM4x8( properties().receivesShadows() ? 1.f : 0.f, 0.f, 0.f, 0.f );
     }
 
-    DescriptorSet& Material::getDescriptorSet( const RenderStagePass& renderStagePass )
+    void Material::AddMissingCommonMaterialBindings( DescriptorSet& descriptor, const ImageView& fallback, const SamplerDescriptor sampler )
+    {
+        for ( const TextureSlot slot : { TextureSlot::UNIT0, TextureSlot::OPACITY } )
+        {
+            if ( !HasBinding( descriptor, to_U8( slot ) ) )
+            {
+                DescriptorSetBinding& binding = AddBinding( descriptor, to_U8( slot ), ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, fallback, sampler );
+            }
+        }
+    }
+
+    bool Material::getDescriptorSet( const RenderStagePass& renderStagePass,
+                                     const ShaderProgramDescriptor& shaderDescriptor,
+                                     DescriptorSet& descriptorOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        ShaderStageVisibility texVisibility = properties().texturesInFragmentStageOnly() ? ShaderStageVisibility::FRAGMENT : ShaderStageVisibility::ALL_DRAW;
+        const ShaderStageVisibility texVisibility = properties().texturesInFragmentStageOnly() ? ShaderStageVisibility::FRAGMENT : ShaderStageVisibility::ALL_DRAW;
         const bool isPrePass = renderStagePass._passType == RenderPassType::PRE_PASS;
         const bool isShadowPass = renderStagePass._stage == RenderStage::SHADOW;
         auto& descriptor = isShadowPass
@@ -1271,10 +1483,18 @@ namespace Divide
                                                                 ? _descriptorSetMainPass
                                                                 : _descriptorSetSecondaryPass;
 
-        if ( descriptor._bindingCount == 0u )
+        descriptorOut._bindingCount = 0u;
+        {
+            SharedLock<SharedMutex> r_lock( _textureLock );
+            if ( descriptor._bindingCount != 0u )
+            {
+                descriptorOut = descriptor;
+            }
+        }
+
+        if ( descriptorOut._bindingCount == 0u )
         {
             ScopedLock<SharedMutex> w_lock( _textureLock );
-            // Check again
             if ( descriptor._bindingCount == 0u )
             {
                 for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
@@ -1286,9 +1506,27 @@ namespace Divide
                     }
                 }
             }
+            descriptorOut = descriptor;
         }
 
-        return descriptor;
+        for ( U8 i = 0u; i < descriptorOut._bindingCount; ++i )
+        {
+            descriptorOut._bindings[i]._shaderStageVisibility = to_U16( texVisibility );
+        }
+
+        if ( HasCommonMaterialInputs( shaderDescriptor ) &&
+             ( !HasBinding( descriptorOut, to_U8( TextureSlot::UNIT0 ) ) ||
+               !HasBinding( descriptorOut, to_U8( TextureSlot::OPACITY ) ) ) )
+        {
+            const Texture* fallback = Get( Texture::DefaultTexture2DArray() );
+            if ( fallback == nullptr )
+            {
+                Console::errorfn( LOCALE_STR( "MATERIAL_DEFAULT_TEXTURE_MISSING" ), resourceName().c_str() );
+                return false;
+            }
+            AddMissingCommonMaterialBindings( descriptorOut, fallback->getView(), Texture::DefaultSampler() );
+        }
+        return true;
     }
 
     void Material::rebuild()
@@ -1303,7 +1541,7 @@ namespace Divide
                 auto& shaders = _shaderInfo[s][p];
                 for ( const ShaderProgramInfo& info : shaders )
                 {
-                    if ( info._shaderRef != INVALID_HANDLE<ShaderProgram> && Get(info._shaderRef)->getState() == ResourceState::RES_LOADED )
+                    if ( ResourceCache::Inspect( info._shaderRef )._state == ResourceState::RES_LOADED )
                     {
                         Get(info._shaderRef)->recompile();
                     }

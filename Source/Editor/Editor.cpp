@@ -7,6 +7,7 @@
 #include "Core/Headers/Application.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "ECS/Components/Headers/TransformComponent.h"
@@ -329,6 +330,8 @@ namespace Divide
             return false;
         }
 
+        _simulationPaused = RenderSmokeTest::InitialSimulationPaused( RenderSmokeTest::Enabled(), _simulationPaused,
+                                                                      RenderSmokeTest::PausedEditorRequested() );
         DIVIDE_EXPECTED_CALL( createDirectory( Paths::g_saveLocation / Paths::Editor::g_saveLocation ) == FileError::NONE );
 
         _mainWindow = &_context.app().windowManager().getWindow( 0u );
@@ -463,6 +466,14 @@ namespace Divide
 
         ImGuiPlatformIO& platform_io = editorContext->PlatformIO;
         ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
+        if ( RenderSmokeTest::Enabled() )
+        {
+            if ( io.IniFilename != nullptr )
+            {
+                ImGui::LoadIniSettingsFromDisk( io.IniFilename );
+            }
+            io.IniFilename = nullptr;
+        }
         createFontTexture(io, mainMonitor.dpi / PlatformDefaultDPI());
         initBasicImGUIState( io, platform_io, true, _imguiStringBuffers[to_base(ImGuiContextType::Editor)] );
         editorContext->Viewports[0]->PlatformHandle = _mainWindow;
@@ -543,7 +554,7 @@ namespace Divide
                 }
                 else
                 {
-                    DIVIDE_UNEXPECTED_CALL_MSG( "Editor::Platform_CreateWindow failed!" );
+                    DIVIDE_ASSERT( false, "Editor::Platform_CreateWindow failed!" );
                     g_windowManager->destroyWindow( newWindow );
                 }
             }
@@ -590,7 +601,7 @@ namespace Divide
                 const int2 pos = data->_window->getPosition();
                 return ImVec2( (F32)pos.x, (F32)pos.y );
             }
-            DIVIDE_UNEXPECTED_CALL_MSG( "Editor::Platform_GetWindowPos failed!" );
+            DIVIDE_ASSERT( false, "Editor::Platform_GetWindowPos failed!" );
             return {};
         };
 
@@ -601,7 +612,7 @@ namespace Divide
                 const vec2<U16> dim = data->_window->getDimensions();
                 return ImVec2( (F32)dim.width, (F32)dim.height );
             }
-            DIVIDE_UNEXPECTED_CALL_MSG( "Editor::Platform_GetWindowSize failed!" );
+            DIVIDE_ASSERT( false, "Editor::Platform_GetWindowSize failed!" );
             return {};
         };
 
@@ -611,7 +622,7 @@ namespace Divide
             {
                 return data->_window->hasFocus();
             }
-            DIVIDE_UNEXPECTED_CALL_MSG( "Editor::Platform_GetWindowFocus failed!" );
+            DIVIDE_ASSERT( false, "Editor::Platform_GetWindowFocus failed!" );
             return false;
         };
 
@@ -754,6 +765,10 @@ namespace Divide
 
         ImGuiContext*& gizmoContext = _imguiContexts[to_base( ImGuiContextType::Gizmo )];
         gizmoContext = ImGui::CreateContext( io.Fonts );
+        if ( RenderSmokeTest::Enabled() )
+        {
+            gizmoContext->IO.IniFilename = nullptr;
+        }
         initBasicImGUIState( gizmoContext->IO, gizmoContext->PlatformIO, false, _imguiStringBuffers[to_base(ImGuiContextType::Gizmo)]);
         gizmoContext->Viewports[0]->PlatformHandle = _mainWindow;
 
@@ -799,7 +814,8 @@ namespace Divide
         descriptor.flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
         _dockedWindows[to_base( WindowType::NodePreview )] = std::make_unique<NodePreviewWindow>( *this, descriptor );
 
-        descriptor.name = "Scene View ##AnimatedTitlePlayState";
+        descriptor.name = SceneViewWindow::WINDOW_NAME;
+        descriptor.focusOnFirstDraw = true;
         _dockedWindows[to_base( WindowType::SceneView )] = std::make_unique<SceneViewWindow>( *this, descriptor );
 
         _editorSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
@@ -852,7 +868,7 @@ namespace Divide
     {
         processInput(false);
 
-        if ( saveToXML() )
+        if ( !RenderSmokeTest::Enabled() && saveToXML() )
         {
             _context.config().save();
         }
@@ -1086,6 +1102,12 @@ namespace Divide
 
         nodePreviewWindowVisible(false);
 
+        if ( _gizmoSelectionRefresh.pending() &&
+             _gizmoSelectionRefresh.consumeIfIdle( _gizmo->isUsing() ) )
+        {
+            Attorney::GizmoEditor::updateSelections( _gizmo.get() );
+        }
+
         Attorney::GizmoEditor::update( _gizmo.get(), deltaTimeUS );
 
         if ( running() )
@@ -1144,9 +1166,9 @@ namespace Divide
             }
             else
             {
+                playerState.overrideCamera( editorCamera() );
                 if ( nodePreviewWindowVisible() )
                 {
-                    playerState.overrideCamera( nodePreviewCamera() );
                     Attorney::ProjectManagerEditor::editorPreviewNode( sMgr.get(), _previewNode == nullptr ? 0 : _previewNode->getGUID() );
                     if ( !movedToNode && _previewNode != nullptr )
                     {
@@ -1161,7 +1183,6 @@ namespace Divide
                 }
                 else
                 {
-                    playerState.overrideCamera( editorCamera() );
                     Attorney::ProjectManagerEditor::editorPreviewNode( sMgr.get(), -1 );
                     nodePreviewCamera()->setTarget( nullptr );
                     movedToNode = false;
@@ -1894,7 +1915,7 @@ namespace Divide
         const SceneViewWindow* sceneView = static_cast<SceneViewWindow*>(_dockedWindows[to_base( WindowType::SceneView )].get());
         _windowFocusState._hoveredScenePreview = sceneView->hovered() && sceneView->sceneRect( true ).contains( mousePos.x, mousePos.y );
 
-        const NodePreviewWindow* nodeView = static_cast<SceneViewWindow*>(_dockedWindows[to_base( WindowType::NodePreview )].get());
+        const NodePreviewWindow* nodeView = static_cast<NodePreviewWindow*>(_dockedWindows[to_base( WindowType::NodePreview )].get());
         _windowFocusState._hoveredNodePreview = nodeView->hovered() && nodeView->sceneRect( true ).contains( mousePos.x, mousePos.y );
 
         _windowFocusState._globalMousePos = mousePos;
@@ -2311,11 +2332,7 @@ namespace Divide
 
     void Editor::onNodeSpatialChange([[maybe_unused]] const SceneGraphNode& node)
     {
-        // Don't update the gizmo if it the source of the spatial change
-        if (!_gizmo->isUsing())
-        {
-            Attorney::GizmoEditor::updateSelections(_gizmo.get());
-        }
+        _gizmoSelectionRefresh.request();
     }
 
     void Editor::onChangeScene( Scene* newScene )
@@ -2392,7 +2409,7 @@ namespace Divide
                         {
                             const ImageView texView = tex->getView( TextureType::TEXTURE_2D_ARRAY,
                                                                                     { 0u, tex->mipCount() },
-                                                                                    { 0u, to_U16( tex->depth() * 6u) });
+                                                                                    { 0u, ALL_LAYERS });
 
                             Set( binding._data, texView, defaultSampler );
                         }
@@ -2776,6 +2793,7 @@ namespace Divide
 
     void Editor::onRemoveComponent( const EditorComponent& comp ) const
     {
+        _undoManager->removeEntriesForOwner( comp.getGUID() );
         for ( auto& window : _dockedWindows )
         {
             window->onRemoveComponent( comp );

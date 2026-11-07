@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/glShaderBuffer.h"
 
@@ -48,9 +49,8 @@ namespace Divide
         return bufferImpl()->writeOrClearBytes( range._startOffset, range._length, data );
     }
 
-    void glShaderBuffer::readBytesInternal( BufferRange<> range, std::pair<bufferPtr, size_t> outData )
+    void glShaderBuffer::readBytesInternal( const BufferRange<> range, std::pair<bufferPtr, size_t> outData )
     {
-        range._length = std::min( std::min( range._length, outData.second ), _alignedBufferSize - range._startOffset );
         bufferImpl()->readBytes( range._startOffset, range._length, outData );
     }
 
@@ -93,6 +93,11 @@ namespace Divide
     LockableBuffer* glShaderBuffer::getBufferImpl()
     {
         return _bufferImpl.get();
+    }
+
+    bool glShaderBuffer::supportsPersistentWrites() const noexcept
+    {
+        return _bufferImpl != nullptr && _bufferImpl->hasPersistentMapping();
     }
 
 }  // namespace Divide
