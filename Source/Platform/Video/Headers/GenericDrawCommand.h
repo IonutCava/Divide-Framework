@@ -79,17 +79,15 @@ enum class CmdRenderOptions : U8
     COUNT = 3
 };
 
-#pragma pack(push, 1)
 struct GenericDrawCommand
 {
-    IndirectIndexedDrawCommand _cmd{};
     const PoolHandle* _sourceBuffers{nullptr};
+    IndirectIndexedDrawCommand _cmd{};
     U32 _commandOffset{ 0u };
     U32 _drawCount{ 1u };
     U16 _sourceBuffersCount{0u};
     U16 _renderOptions{ to_base(CmdRenderOptions::RENDER_GEOMETRY) };
 };
-#pragma pack(pop)
 
 using GenericDrawCommandContainer = fixed_vector<GenericDrawCommand, 1, true>;
 

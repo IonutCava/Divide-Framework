@@ -515,12 +515,12 @@ namespace Divide
 
             GenericDrawCommand drawCmd
             {
+                ._sourceBuffers = &dvd->_fontRenderingBuffer->_handle,
                 ._cmd = 
                 {
                     .vertexCount = to_U32(nverts),
                     .baseVertex = elementOffset
                 },
-                ._sourceBuffers = &dvd->_fontRenderingBuffer->_handle,
                 ._sourceBuffersCount = 1u
             };
             GFX::EnqueueCommand(*dvd->_commandBuffer, GFX::DrawCommand{MOV(drawCmd)});
