@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -79,7 +79,7 @@ namespace Names {
     };
 };
 
-static_assert(sizeof(Names::commandType) / sizeof(Names::commandType[0]) == to_size(CommandType::COUNT) + 1);
+static_assert(std::size(Names::commandType) == to_size(CommandType::COUNT) + 1);
 
 } //namespace GFX
 } //namespace Divide

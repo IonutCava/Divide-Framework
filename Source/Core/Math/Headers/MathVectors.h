@@ -1417,9 +1417,6 @@ namespace Divide
     };
 #pragma pack(pop)
 
-    static_assert(alignof(vec4<F32>) == alignof(SimdVector<F32>) && sizeof(vec4<F32>) == sizeof(SimdVector<F32>));
-    static_assert(alignof(vec4<U8>) == 1u && sizeof(vec4<U8>) == 4u);
-
     /// lerp between the 2 specified vectors by the specified amount
     template <typename T, ValidMathType U = T>
     [[nodiscard]] vec4<T> Lerp( const vec4<T>& u, const vec4<T>& v, U factor ) noexcept;

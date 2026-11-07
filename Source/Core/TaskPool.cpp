@@ -12,7 +12,7 @@ namespace Divide
     {
         std::atomic_uint g_taskIDCounter = 0u;
 
-        NO_DESTROY thread_local Task g_taskAllocator[Config::MAX_POOLED_TASKS];
+        thread_local std::unique_ptr<Task[]> g_taskAllocator;
         thread_local U32 g_allocatedTasks = 0u;
 
         void WaitForChildren( Mutex& mutex, std::condition_variable& finished, const Task& task )
@@ -332,6 +332,11 @@ namespace Divide
         if ( parentTask != nullptr )
         {
             parentTask->_unfinishedJobs.fetch_add( 1u );
+        }
+
+        if ( g_taskAllocator == nullptr )
+        {
+            g_taskAllocator = std::make_unique<Task[]>( Config::MAX_POOLED_TASKS );
         }
 
         U32 idx = 0u;

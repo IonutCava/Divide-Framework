@@ -40,6 +40,23 @@ namespace
         }
 
     }
+
+    NO_INLINE U32 TouchStackPages( volatile U8* stack, const size_t size ) noexcept
+    {
+        U32 checksum = 0u;
+        for ( size_t i = 0u; i < size; i += 4096u )
+        {
+            stack[i] = to_U8( i / 4096u + 1u );
+            checksum += stack[i];
+        }
+        return checksum;
+    }
+
+    NO_INLINE U32 TouchWorkerStack() noexcept
+    {
+        volatile U8 stack[64u * 1024u];
+        return TouchStackPages( stack, std::size( stack ) );
+    }
 };
 
 TEST_CASE( "Task Pool Construction Test", "[threading_tests]" )
@@ -73,6 +90,35 @@ TEST_CASE( "Task-pool idle checks never wait on a queue", "[threading_tests][tas
     CHECK_FALSE( DequeueMayBlock( true, TaskPriority::DONT_CARE ) );
     CHECK_FALSE( DequeueMayBlock( false, TaskPriority::HIGH ) );
     CHECK( DequeueMayBlock( false, TaskPriority::DONT_CARE ) );
+}
+
+TEST_CASE( "Task workers retain stack space and aligned task storage", "[threading_tests][task-pool]" )
+{
+    platformInitRunListener::PlatformInit();
+
+    TaskPool pool{ "TASK_STACK_TEST" };
+    REQUIRE( pool.init( 1u ) );
+    SCOPE_EXIT
+    {
+        pool.shutdown();
+    };
+
+    std::atomic_uint checksum{ 0u };
+    std::atomic_bool aligned{ false };
+    Task* parent = CreateTask( [&]( const Task& )
+    {
+        Task* child = CreateTask( [&]( const Task& )
+        {
+            checksum = TouchWorkerStack();
+        } );
+        aligned = reinterpret_cast<uintptr_t>( child ) % alignof(Task) == 0u;
+        pool.enqueue( *child, TaskPriority::REALTIME );
+    } );
+    pool.enqueue( *parent, TaskPriority::DONT_CARE_NO_IDLE );
+    pool.wait( *parent );
+
+    CHECK( aligned.load() );
+    CHECK( checksum.load() == 136u );
 }
 
 TEST_CASE( "Task-pool waits help eligible work without running worker-only tasks", "[threading_tests][task-pool]" )

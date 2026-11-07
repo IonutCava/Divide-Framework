@@ -402,6 +402,12 @@ surface.
 
 `RenderPassExecutor` compacts scene data into buffers for transforms, materials, indirection, and indirect draw commands. Relevant data structures include `NodeTransformData`, `NodeMaterialData`, and `NodeIndirectionData`.
 
+Node, camera (`GFXShaderData::CamData`), and shadow (`LightPool::ShadowProperties`)
+GPU records must keep their SIMD members naturally aligned, including when nested
+or stored in arrays. Do not pack their enclosing structs: this can make Clang
+emit aligned vector accesses to unaligned addresses. Renderer unit tests check
+their sizes and offsets against the existing shader-visible layouts.
+
 Instanced nodes set the `INDIRECT_DATA_IDX` loose uniform through the render
 package's `pushConstantsCmd()._uniformData`; preprocessing packs it into a
 per-draw uniform block, not the `PushData0`/`PushData1` fast constants. Ordinary

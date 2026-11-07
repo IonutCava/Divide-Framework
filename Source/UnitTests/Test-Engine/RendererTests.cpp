@@ -27,6 +27,7 @@
 #include "Platform/Video/Headers/CommandBufferPool.h"
 #include "Platform/Video/Headers/BlurPass.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/GFXShaderData.h"
 #include "Platform/Video/Headers/IMPrimitiveDrawSnapshots.h"
 #include "Platform/Video/Headers/OcclusionCullDispatch.h"
 #include "Platform/Video/Headers/RenderPackage.h"
@@ -45,8 +46,28 @@
 
 namespace Divide
 {
+    struct LightPoolTestAccess
+    {
+        using PointShadowProperties = LightPool::PointShadowProperties;
+        using SpotShadowProperties = LightPool::SpotShadowProperties;
+        using CSMShadowProperties = LightPool::CSMShadowProperties;
+        using ShadowProperties = LightPool::ShadowProperties;
+    };
+
     namespace
     {
+        template<typename T>
+        struct PrefixedGPURecords
+        {
+            U8 _prefix = 0u;
+            std::array<T, 2u> _records{};
+        };
+
+        [[nodiscard]] bool IsSimdAligned( const void* ptr )
+        {
+            return reinterpret_cast<uintptr_t>( ptr ) % alignof(float4) == 0u;
+        }
+
         void SetTestSampledImageFallback( DescriptorSetBindingData& data, const Reflection::ImageEntry& image )
         {
             ImageView view{};
@@ -58,6 +79,160 @@ namespace Divide
             }
             Set( data, view, sampler );
         }
+    }
+
+    TEST_CASE( "GPU records preserve SIMD alignment and shader layout", "[renderer][gpu_data][render_smoke]" )
+    {
+        STATIC_CHECK( alignof(TransformData) >= alignof(float4) );
+        STATIC_CHECK( alignof(NodeMaterialData) >= alignof(float4) );
+        STATIC_CHECK( alignof(NodeTransformData) >= alignof(float4) );
+        STATIC_CHECK( alignof(GFXShaderData::CamData) >= alignof(mat4<F32>) );
+        STATIC_CHECK( sizeof(TransformData) == 3u * sizeof(float4) );
+        STATIC_CHECK( sizeof(NodeMaterialData) == 5u * sizeof(float4) );
+        STATIC_CHECK( sizeof(NodeMaterialData) == 80u );
+        STATIC_CHECK( sizeof(NodeTransformData) == 2u * sizeof(mat4<F32>) );
+        STATIC_CHECK( sizeof(NodeTransformData) == 128u );
+        STATIC_CHECK( sizeof(NodeIndirectionData) == 4u * sizeof(U32) );
+        STATIC_CHECK( sizeof(NodeIndirectionData) == 16u );
+        STATIC_CHECK( sizeof(GFXShaderData::CamData) == 8u * sizeof(mat4<F32>) );
+        STATIC_CHECK( sizeof(GFXShaderData::CamData) == 512u );
+        STATIC_CHECK( offsetof(TransformData, _rotation) == 2u * sizeof(float4) );
+        STATIC_CHECK( offsetof(NodeTransformData, _prevTransform) == sizeof(TransformData) );
+        STATIC_CHECK( offsetof(NodeTransformData, _boundingSphere) == 2u * sizeof(TransformData) );
+        STATIC_CHECK( offsetof(NodeTransformData, _data) == 2u * sizeof(TransformData) + sizeof(float4) );
+        STATIC_CHECK( offsetof(NodeMaterialData, _emissiveAndParallax) == sizeof(float4) );
+        STATIC_CHECK( offsetof(NodeMaterialData, _colourData) == 2u * sizeof(float4) );
+        STATIC_CHECK( offsetof(NodeMaterialData, _data) == 3u * sizeof(float4) );
+        STATIC_CHECK( offsetof(NodeMaterialData, _textureOperations) == 4u * sizeof(float4) );
+        STATIC_CHECK( offsetof(NodeMaterialData, _textureOperations) == 64u );
+        STATIC_CHECK( offsetof(NodeTransformData, _boundingSphere) == 96u );
+        STATIC_CHECK( offsetof(GFXShaderData::CamData, dvd_ViewPort) == 6u * sizeof(mat4<F32>) );
+        STATIC_CHECK( offsetof(GFXShaderData::CamData, dvd_ViewPort) == 384u );
+        STATIC_CHECK( offsetof(GFXShaderData::CamData, dvd_clipPlanes) == 6u * sizeof(mat4<F32>) + 4u * sizeof(float4) );
+
+        SECTION( "Prefixed node records and their arrays" )
+        {
+            alignas(float4) PrefixedGPURecords<NodeMaterialData> materials{};
+            alignas(float4) PrefixedGPURecords<NodeTransformData> transforms{};
+            for ( size_t i = 0u; i < materials._records.size(); ++i )
+            {
+                NodeMaterialData& material = materials._records[i];
+                NodeTransformData& transform = transforms._records[i];
+                REQUIRE( IsSimdAligned( &material._albedo ) );
+                CHECK( IsSimdAligned( &material._emissiveAndParallax ) );
+                CHECK( IsSimdAligned( &material._colourData ) );
+                REQUIRE( IsSimdAligned( &transform._transform._position ) );
+                CHECK( IsSimdAligned( &transform._prevTransform._rotation ) );
+                CHECK( IsSimdAligned( &transform._boundingSphere ) );
+
+                material._albedo.set( 1.f, 2.f, 3.f, 4.f );
+                transform._transform._position.set( 5.f, 6.f, 7.f, 8.f );
+                CHECK( material._albedo.w == 4.f );
+                CHECK( transform._transform._position.w == 8.f );
+            }
+        }
+
+        SECTION( "Fixed-vector overflow retains record alignment" )
+        {
+            fixed_vector<NodeMaterialData, 1u, true> materials{};
+            fixed_vector<NodeTransformData, 1u, true> transforms{};
+            materials.resize( 1u );
+            transforms.resize( 1u );
+            CHECK( IsSimdAligned( &materials[0]._albedo ) );
+            CHECK( IsSimdAligned( &transforms[0]._transform._position ) );
+            materials.resize( 2u );
+            transforms.resize( 2u );
+            for ( size_t i = 0u; i < materials.size(); ++i )
+            {
+                REQUIRE( IsSimdAligned( &materials[i]._albedo ) );
+                REQUIRE( IsSimdAligned( &transforms[i]._transform._position ) );
+                materials[i]._albedo.set( 1.f, 2.f, 3.f, 4.f );
+                transforms[i]._transform._position.set( 5.f, 6.f, 7.f, 8.f );
+                CHECK( materials[i]._albedo.w == 4.f );
+                CHECK( transforms[i]._transform._position.w == 8.f );
+            }
+        }
+
+        SECTION( "Prefixed camera records and their arrays" )
+        {
+            alignas(float4) PrefixedGPURecords<GFXShaderData::CamData> cameras{};
+            for ( auto& camera : cameras._records )
+            {
+                CHECK( IsSimdAligned( &camera.dvd_ViewMatrix ) );
+                REQUIRE( IsSimdAligned( &camera.dvd_ViewPort ) );
+                CHECK( IsSimdAligned( &camera.dvd_clipPlanes[0] ) );
+                camera.dvd_ViewPort.set( 1.f, 2.f, 3.f, 4.f );
+                CHECK( camera.dvd_ViewPort.w == 4.f );
+            }
+        }
+    }
+
+    TEST_CASE( "Shadow GPU records preserve SIMD alignment and shader layout", "[renderer][gpu_data][shadows]" )
+    {
+        using Point = LightPoolTestAccess::PointShadowProperties;
+        using Spot = LightPoolTestAccess::SpotShadowProperties;
+        using CSM = LightPoolTestAccess::CSMShadowProperties;
+        using Shadow = LightPoolTestAccess::ShadowProperties;
+
+        STATIC_CHECK( sizeof(float4) == 16u );
+        STATIC_CHECK( sizeof(mat4<F32>) == 64u );
+        STATIC_CHECK( alignof(Point) >= alignof(float4) );
+        STATIC_CHECK( alignof(Spot) >= alignof(mat4<F32>) );
+        STATIC_CHECK( alignof(CSM) >= alignof(mat4<F32>) );
+        STATIC_CHECK( alignof(Shadow) >= alignof(mat4<F32>) );
+        STATIC_CHECK( sizeof(Point) == 2u * sizeof(float4) );
+        STATIC_CHECK( offsetof(Point, _position) == sizeof(float4) );
+        STATIC_CHECK( sizeof(Spot) == 2u * sizeof(float4) + sizeof(mat4<F32>) );
+        STATIC_CHECK( offsetof(Spot, _vpMatrix) == 2u * sizeof(float4) );
+        STATIC_CHECK( sizeof(CSM) == (1u + Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT) * sizeof(float4) +
+                                     Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT * sizeof(mat4<F32>) );
+        STATIC_CHECK( offsetof(CSM, _position) == sizeof(float4) );
+        STATIC_CHECK( offsetof(CSM, _vpMatrix) == (1u + Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT) * sizeof(float4) );
+        STATIC_CHECK( offsetof(Shadow, _cameraViewDepthRow) ==
+                      Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS * sizeof(Point) +
+                      Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS * sizeof(Spot) +
+                      Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * sizeof(CSM) );
+        STATIC_CHECK( offsetof(Shadow, _worldAOVPMatrix) == offsetof(Shadow, _cameraViewDepthRow) + sizeof(float4) );
+        STATIC_CHECK( sizeof(Shadow) == offsetof(Shadow, _worldAOVPMatrix) + sizeof(mat4<F32>) );
+
+        alignas(float4) PrefixedGPURecords<Shadow> shadows{};
+        for ( auto& shadow : shadows._records )
+        {
+            CHECK( IsSimdAligned( &shadow._cameraViewDepthRow ) );
+            CHECK( IsSimdAligned( &shadow._worldAOVPMatrix ) );
+            for ( auto& point : shadow._pointLights )
+            {
+                CHECK( IsSimdAligned( &point._details ) );
+                REQUIRE( IsSimdAligned( &point._position ) );
+                point._position.set( 1.f, 2.f, 3.f, 4.f );
+                CHECK( point._position.w == 4.f );
+            }
+            for ( const auto& spot : shadow._spotLights )
+            {
+                CHECK( IsSimdAligned( &spot._details ) );
+                CHECK( IsSimdAligned( &spot._position ) );
+                CHECK( IsSimdAligned( &spot._vpMatrix ) );
+            }
+            for ( const auto& csm : shadow._dirLights )
+            {
+                CHECK( IsSimdAligned( &csm._details ) );
+                for ( const auto& position : csm._position )
+                {
+                    CHECK( IsSimdAligned( &position ) );
+                }
+                for ( const auto& matrix : csm._vpMatrix )
+                {
+                    CHECK( IsSimdAligned( &matrix ) );
+                }
+            }
+        }
+    }
+
+    TEST_CASE( "Draw command record sizes match their expected layout", "[renderer][gpu_data]" )
+    {
+        STATIC_CHECK( sizeof(IndirectIndexedDrawCommand) == 20u );
+        STATIC_CHECK( sizeof(IndirectNonIndexedDrawCommand) == 16u );
+        STATIC_CHECK( sizeof(GenericDrawCommand) == 40u );
     }
 
     TEST_CASE( "Hi-Z dispatch covers indirect commands within device limits", "[renderer][occlusion][render_smoke]" )

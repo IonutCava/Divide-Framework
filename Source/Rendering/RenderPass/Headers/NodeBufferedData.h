@@ -52,9 +52,6 @@ namespace Divide {
         return instanced ? 0u : indirectionIndex + 1u;
     }
 
-    static_assert(sizeof(quatf) == sizeof(float4) && sizeof(float4) == 4 * sizeof(F32));
-
-#pragma pack(push, 1)
     struct TransformData
     {
         float4 _position; //(w - unused)
@@ -69,8 +66,6 @@ namespace Divide {
         float4        _boundingSphere;
         float4        _data; //x = animation frame, y = bone count, z = LoDLevel, w = 4x8u: occlusion cull flag, selection flag, unused, unused
     };
-
-    static_assert(sizeof(NodeTransformData) == sizeof(mat4<F32>) * 2, "Wrong Node Transform Data entry size!");
 
     struct NodeMaterialData
     {
@@ -103,8 +98,8 @@ namespace Divide {
         U32 _padding__0 = 0u;
         U32 _padding__1 = 0u;
     };
+
     [[nodiscard]] size_t HashMaterialData(const NodeMaterialData& dataIn);
-#pragma pack(pop)
 
     void SetNodeIndirectionIndex( RenderPackage& package, bool instanced, U32 indirectionIndex ) noexcept;
 
