@@ -29,6 +29,17 @@ validation-gating behavior. Use a recoverable assertion or explicit error
 return when a fallback is intended; changing the unexpected-call contract
 affects all its callers.
 
+## Math SIMD alignment
+
+`Source/Core/Math/Headers/MathVectors.h` declares `vec4` inside `#pragma pack(1)`.
+GCC/Clang cap member alignment under packing, which would drop `SimdVector<F32>`'s
+`alignas(16)`; Clang then emits aligned SSE moves through misaligned temporaries
+(for example quaternion products) and segfaults on x86. `vec4` therefore carries a
+class-level `alignas(Vec4Alignment<T>)`: 16 for SIMD-backed types, 1 otherwise, so
+non-SIMD vectors keep their packed layout. MSVC, clang-cl and ARM did not expose the
+fault. Keep the `static_assert`s and `MathVectorTests.cpp` alignment test when
+changing these types or their packing.
+
 ## Debugging routes
 
 - Both GL and Vulkan fail: start in shared `GFXDevice`, `ShaderProgram`, `RenderPassExecutor`, and descriptor setup.
