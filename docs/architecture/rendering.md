@@ -50,6 +50,11 @@ disable skeletal animation or implicitly classify objects by scene type.
 
 Systems record backend-neutral rendering commands, then `GFXDevice` translates them through the active backend wrapper at flush time.
 
+`GenericDrawCommand` is a CPU record, not a GPU wire layout. It uses natural
+alignment with its buffer pointer first to retain a 40-byte size on 64-bit targets
+without misaligned pointer members. Only its `_cmd` indirect record is uploaded;
+keep the indirect GPU layout unchanged when adjusting CPU command storage.
+
 - `GFXDevice::flushCommandBuffer()` appends buffers to the active window queue; it does not immediately execute GPU commands.
 - `GFXDevice::flushWindow()` executes queued buffers through `flushCommandBufferInternal()` before backend window flush.
 - `flushCommandBufferInternal()` walks commands, uploads descriptor state at submission boundaries, and dispatches backend operations.

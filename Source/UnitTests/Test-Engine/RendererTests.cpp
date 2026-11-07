@@ -3358,6 +3358,40 @@ namespace Divide
         }
     }
 
+    TEST_CASE( "Generic draw commands preserve natural member alignment", "[renderer][indirect_batch]" )
+    {
+        STATIC_CHECK( sizeof(GenericDrawCommand) == 40u );
+        STATIC_CHECK( alignof(GenericDrawCommand) >= alignof(const PoolHandle*) );
+        STATIC_CHECK( offsetof(GenericDrawCommand, _sourceBuffers) % alignof(const PoolHandle*) == 0u );
+        STATIC_CHECK( offsetof(GenericDrawCommand, _cmd) % alignof(IndirectIndexedDrawCommand) == 0u );
+
+        struct PrefixedCommands
+        {
+            U8 _prefix = 0u;
+            std::array<GenericDrawCommand, 2u> _commands{};
+        } prefixed;
+        std::array<PoolHandle, 1u> buffers{ PoolHandle{ 1u, 1u } };
+        const auto check = [&]( GenericDrawCommand& command )
+        {
+            REQUIRE( reinterpret_cast<uintptr_t>( &command._sourceBuffers ) % alignof(const PoolHandle*) == 0u );
+            command._sourceBuffers = buffers.data();
+            const PoolHandle* const& sourceBuffers = command._sourceBuffers;
+            CHECK( sourceBuffers == buffers.data() );
+        };
+        for ( auto& command : prefixed._commands )
+        {
+            check( command );
+        }
+        GenericDrawCommandContainer commands;
+        commands.resize( 1u );
+        check( commands[0] );
+        commands.resize( 2u );
+        for ( auto& command : commands )
+        {
+            check( command );
+        }
+    }
+
     TEST_CASE( "Indirect draw batches preserve adjacent submission state", "[renderer][indirect_batch]" )
     {
         std::array<UniformData, 3u> uniforms;
