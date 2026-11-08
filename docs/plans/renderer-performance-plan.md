@@ -248,6 +248,25 @@ Neither performance target has been met.
   DDS orientation, grass channels and shader rejection-before-lighting checks.
   The exact originating non-finite lighting operation was not captured.
 
+### Sponza interior normal-cache correction (2026-11-08)
+
+- [x] Inspect hanging foliage and arches from inside Sponza on both APIs.
+  Foliage is present with cut-out leaves, without the earlier black speckling.
+- [x] Correct cached normal-map encoding: BC3n stored X in alpha and Y in
+  green, while shaders decoded RGB. NVTT also normalized biased `[0,1]`
+  colours instead of signed normal vectors. Write RGB BC3, expand/normalize/
+  repack each level. Keep ordinary cache filenames and remove old local normal
+  caches rather than versioning them.
+- [x] Reproduce the wrong decoded direction in Catch2; verify cold and warm
+  loads. Windows instrumentation passes
+  376/376.
+- [x] Inspect corrected Vulkan normals and final Vulkan/OpenGL scene/editor
+  captures (`sponza-interior-normals-fixed`, `sponza-interior-vulkan-fixed`,
+  `sponza-interior-opengl-fixed`, attempt 01). The erroneous split on the
+  brick wall disappears, and arch/column lighting no longer has the previous
+  normal-map-induced discontinuities. Both full runs shut down normally.
+  Restore the original player camera after the interior diagnostics.
+
 One preceding Vulkan diagnostic exited during teardown with Windows heap
 corruption `0xc0000374`. The next, longer run shut down cleanly after restoring
 the growable node set, but the crash's root cause was not established. If it

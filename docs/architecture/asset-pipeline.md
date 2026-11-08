@@ -76,6 +76,12 @@ not a comma-separated list of directories.
   Placement maps must not sample the unflipped decoded buffer.
 - STB decodes standard formats; DevIL handles DDS compatibility.
 - NVTT can generate DDS cache files; conversion may run on the `HIGH_PRIORITY` task pool.
+  Normal-map caches use the ordinary `.dds` suffix; remove old locally generated
+  normal caches when changing their encoding. The DevIL-compatible path writes ordinary BC3 RGB normals,
+  not BC3n's alpha/green swizzle: material shaders decode RGB directly.
+  Before normalizing the base level or a generated mip, expand RGB from
+  `[0,1]` to `[-1,1]`, then repack the normalized vector to `[0,1]`.
+  Normalizing the biased colour directly changes the normal direction.
   `DDSCache::Write` serializes writers for each cache path, creates parent directories for
   nested source names, and publishes completed temporary files by rename. Existing entries
   are preserved; failed conversions or moves are reported and their temporary files removed.

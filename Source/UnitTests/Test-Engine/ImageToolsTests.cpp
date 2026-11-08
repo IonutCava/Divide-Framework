@@ -355,6 +355,38 @@ namespace Divide
                 }
             }
         }
+
+        SECTION( "Normal-map caches preserve RGB vectors on cold and warm loads" )
+        {
+            auto bytes = MakeBitmap( 32u, false, 16u );
+            const size_t pixelOffset = bytes.size() - 8u * 8u * 4u;
+            for ( size_t i = pixelOffset; i < bytes.size(); i += 4u )
+            {
+                const bool flat = (i - pixelOffset) / (8u * 4u) < 4u;
+                bytes[i] = flat ? 255u : 230u;
+                bytes[i + 1u] = 128u;
+                bytes[i + 2u] = flat ? 128u : 204u;
+                bytes[i + 3u] = 255u;
+            }
+            REQUIRE( WriteBitmap( directory / "normal.bmp", bytes ) );
+            options._waitForDDSConversion = true;
+            options._isNormalMap = true;
+            for ( U32 attempt = 0u; attempt < 2u; ++attempt )
+            {
+                ImageTools::ImageData cached;
+                REQUIRE( load( cached, options, "normal.bmp" ) );
+                CHECK( std::filesystem::is_regular_file( directory / "normal.bmp.dds" ) );
+                CHECK( cached.format() == GFXImageFormat::DXT5_RGBA );
+                CHECK( cached.mipCount() == 4u );
+                for ( const I32 y : { 0, 7 } )
+                {
+                    const UColour4 colour = cached.getColour( 0, y );
+                    const float3 actual = Normalized( float3{ to_F32( colour.r ), to_F32( colour.g ), to_F32( colour.b ) } * (2.f / 255.f) - float3{ 1.f } );
+                    const float3 expected = Normalized( y == 0 ? float3{ 1.f, 1.f, 255.f } : float3{ 153.f, 1.f, 205.f } );
+                    CHECK( actual.dot( expected ) > 0.995f );
+                }
+            }
+        }
     }
 #endif
 
