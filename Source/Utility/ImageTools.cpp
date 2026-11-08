@@ -120,7 +120,7 @@ namespace nvttHelpers
 
         if constexpr(g_KeepDevILDDSCompatibility)
         {
-            return isNormalMap ? nvtt::Format::Format_BC3n : hasAlpha ? nvtt::Format::Format_BC3 : nvtt::Format::Format_BC1;
+            return isNormalMap || hasAlpha ? nvtt::Format::Format_BC3 : nvtt::Format::Format_BC1;
         }
         else
         {
@@ -131,7 +131,7 @@ namespace nvttHelpers
                     case ImageOutputFormat::BC1:      return nvtt::Format::Format_BC1;
                     case ImageOutputFormat::BC1a:     return nvtt::Format::Format_BC1a;
                     case ImageOutputFormat::BC2:      return nvtt::Format::Format_BC2;
-                    case ImageOutputFormat::BC3:      return isNormalMap ? nvtt::Format::Format_BC3n : nvtt::Format::Format_BC3;
+                    case ImageOutputFormat::BC3:      return nvtt::Format::Format_BC3;
                     case ImageOutputFormat::BC4:      return nvtt::Format::Format_BC4;
                     case ImageOutputFormat::BC5:      return nvtt::Format::Format_BC5;
                     case ImageOutputFormat::BC6:      return nvtt::Format::Format_BC6;
@@ -809,7 +809,9 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                     F32 coverage = 0.f;
                     if (options._isNormalMap)
                     {
+                        image.expandNormals(2.f, -1.f);
                         image.normalizeNormalMap();
+                        image.packNormals();
                     }
                     else if (hasAlpha && options._alphaChannelTransparency)
                     {
@@ -831,7 +833,9 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         {
                             if (options._isNormalMap)
                             {
+                                image.expandNormals(2.f, -1.f);
                                 image.normalizeNormalMap();
+                                image.packNormals();
                             }
                             else if (hasAlpha && options._alphaChannelTransparency)
                             {
