@@ -205,13 +205,19 @@ namespace Divide
         return to_U16( (Config::MAX_FRAMES_IN_FLIGHT + 1u) * std::max( playerCount, U8_ONE ) );
     }
 
-    RenderPassExecutor::RenderPassExecutor( RenderPassManager& parent, GFXDevice& context, const RenderStage stage )
+    RenderPassExecutor::RenderPassExecutor( RenderPassManager& parent, GFXDevice& context, const RenderStage stage, const U8 lane, const U8 laneCount )
         : _parent( parent )
         , _context( context )
         , _stage( stage )
+        , _lane( lane )
+        , _laneCount( laneCount )
+        , _occlusionSnapshots( TotalPassCountForStage( stage ) * Config::MAX_LOCAL_PLAYER_COUNT )
     {
+        if ( laneCount == 0u || lane >= laneCount )
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG( "Invalid render executor lane" );
+        }
         _renderQueue = std::make_unique<RenderQueue>( parent.parent(), stage );
-        _commandBuffers[0]._pages.push_back( createCommandBuffer( 0u, 0u ) );
     }
 
     ShaderBuffer_uptr RenderPassExecutor::createCommandBuffer( const PlayerIndex index, const size_t pageIndex, const U32 overflowCapacity ) const
@@ -219,7 +225,8 @@ namespace Divide
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
         bufferDescriptor._usageType = BufferUsageType::COMMAND_BUFFER;
-        bufferDescriptor._elementCount = overflowCapacity > 0u ? overflowCapacity : Config::MAX_VISIBLE_NODES * TotalPassCountForStage( _stage );
+        const U32 passCount = (TotalPassCountForStage( _stage ) + _laneCount - 1u) / _laneCount;
+        bufferDescriptor._elementCount = overflowCapacity > 0u ? overflowCapacity : Config::MAX_VISIBLE_NODES * passCount;
         bufferDescriptor._elementSize = sizeof( IndirectIndexedDrawCommand );
         bufferDescriptor._ringBufferLength = IndirectCommandBufferTracker::QUEUE_LENGTH;
         if ( overflowCapacity > 0u )
@@ -236,6 +243,10 @@ namespace Divide
             Util::StringFormatTo( bufferDescriptor._name, "CMD_DATA_{}_PLAYER_{}_PAGE_{}",
                                   TypeUtil::RenderStageToString( _stage ), index, pageIndex );
         }
+        if ( _laneCount > 1u )
+        {
+            bufferDescriptor._name.append( Util::StringFormat( "_LANE_{}", _lane ).c_str() );
+        }
         ShaderBuffer_uptr buffer = _context.newShaderBuffer( bufferDescriptor );
         if ( buffer == nullptr )
         {
@@ -246,15 +257,12 @@ namespace Divide
 
     void RenderPassExecutor::prepareCommandBuffers( const PlayerIndex index )
     {
+        _lightDataBinding = {};
         if ( index >= _commandBuffers.size() )
         {
             DIVIDE_UNEXPECTED_CALL_MSG( "Invalid indirect command buffer player" );
         }
         PlayerCommandBuffers& buffers = _commandBuffers[index];
-        if ( buffers._pages.empty() )
-        {
-            buffers._pages.push_back( createCommandBuffer( index, 0u ) );
-        }
         buffers._tracker.beginFrame();
     }
 
@@ -732,7 +740,7 @@ namespace Divide
 
         constexpr bool doMainPass = true;
 
-        RenderPass::PassData passData = _parent.getPassForStage( _stage ).getPassData();
+        RenderPass::PassData passData = this->passData();
 
         for ( RenderBin::SortedQueue& sQueue : _sortedQueues )
         {
@@ -756,16 +764,7 @@ namespace Divide
         const D64 interpFactor = GFXDevice::FrameInterpolationFactor();
 
         TaskPool& pool = _context.context().taskPool( TaskPoolType::RENDERER );
-        // Lazily allocated: a pooled task that is never enqueued keeps its slot forever.
-        Task* updateTask = nullptr;
-        const auto getUpdateTask = [&updateTask]() -> Task*
-        {
-            if ( updateTask == nullptr )
-            {
-                updateTask = CreateTask( TASK_NOP );
-            }
-            return updateTask;
-        };
+        TaskGroup updateTasks( pool );
         {
             PROFILE_SCOPE( "buildDrawCommands - process nodes: Transforms", Profiler::Category::Scene );
 
@@ -777,14 +776,14 @@ namespace Divide
                 if ( queueSize > g_nodesPerPrepareDrawPartition )
                 {
                     const U32 midPoint = queueSize / 2;
-                    pool.enqueue( *CreateTask( getUpdateTask(), [this, index, interpFactor, &queue, midPoint]( const Task& )
+                    updateTasks.enqueue( [this, index, interpFactor, &queue, midPoint]( const Task& )
                                         {
                                             parseTransformRange( queue, 0u, midPoint, index, interpFactor );
-                                        } ) );
-                    pool.enqueue( *CreateTask( getUpdateTask(), [this, index, interpFactor, &queue, midPoint, queueSize]( const Task& )
+                                        } );
+                    updateTasks.enqueue( [this, index, interpFactor, &queue, midPoint, queueSize]( const Task& )
                                         {
                                             parseTransformRange(queue, midPoint, queueSize, index, interpFactor );
-                                        } ) );
+                                        } );
                 }
                 else
                 {
@@ -802,14 +801,14 @@ namespace Divide
                 if ( queueSize > g_nodesPerPrepareDrawPartition )
                 {
                     const U32 midPoint = queueSize / 2;
-                    pool.enqueue( *CreateTask( getUpdateTask(), [this, &queue, midPoint]( const Task& )
+                    updateTasks.enqueue( [this, &queue, midPoint]( const Task& )
                                         {
                                             parseMaterialRange( queue, 0u, midPoint );
-                                        } ) );
-                    pool.enqueue( *CreateTask( getUpdateTask(), [this, &queue, midPoint, queueSize]( const Task& )
+                                        } );
+                    updateTasks.enqueue( [this, &queue, midPoint, queueSize]( const Task& )
                                         {
                                             parseMaterialRange( queue, midPoint, queueSize );
-                                        } ) );
+                                        } );
                 }
                 else
                 {
@@ -817,19 +816,19 @@ namespace Divide
                 }
             }
         }
-        if ( updateTask != nullptr )
+        if ( !updateTasks.empty() )
         {
             PROFILE_SCOPE( "buildDrawCommands - process nodes: Waiting for tasks to finish", Profiler::Category::Scene );
-            pool.enqueue( *updateTask );
-            pool.wait( *updateTask );
+            updateTasks.wait();
         }
 
         RenderStagePass stagePass = params._stagePass;
-        const U16 stageIndex = IndexForStage( stagePass );
-        if ( stageIndex >= TotalPassCountForStage( _stage ) )
+        const U16 passIndex = IndexForStage( stagePass );
+        if ( passIndex >= TotalPassCountForStage( _stage ) || passIndex % _laneCount != _lane )
         {
             DIVIDE_UNEXPECTED_CALL_MSG( "Indirect command pass index exceeds its stage buffer" );
         }
+        const U16 stageIndex = passIndex / _laneCount;
         const auto retrieveCommands = [&]( const U32 startOffset )
         {
             for ( RenderBin::SortedQueue& queue : _sortedQueues )
@@ -1278,12 +1277,17 @@ namespace Divide
             AppendOcclusionCommands( { _preparedPackages.data(), _preparedPackages.size() }, bufferInOut, _computeBatchRanges );
         }
         // Run occlusion culling CS
-        _context.occlusionCull( _parent.getPassForStage( _stage ).getPassData(),
-                                hizTexture,
-                                hizSampler,
-                                cameraSnapshot,
-                                _stage == RenderStage::DISPLAY,
-                                bufferInOut );
+        RenderPass::PassData passData = this->passData();
+        _occlusionSnapshots.record( GFXDevice::FrameCount(), *passData._uniforms, [&]( UniformData& uniforms )
+        {
+            passData._uniforms = &uniforms;
+            _context.occlusionCull( passData,
+                                   hizTexture,
+                                   hizSampler,
+                                   cameraSnapshot,
+                                   _stage == RenderStage::DISPLAY,
+                                   bufferInOut );
+        } );
         // Occlusion recompaction of GPU-driven instance lists happened in AppendOcclusionCommands.
         patchInstanceCounts( commandBuffer, bufferInOut );
 
@@ -1521,15 +1525,23 @@ namespace Divide
 
     void RenderPassExecutor::doCustomPass( const PlayerIndex playerIdx, Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
-
-        assert( params._stagePass._stage == _stage );
-
-        if ( !camera->updateLookAt() )
-        {
-            NOP();
-        }
+        (void)camera->updateLookAt();
         const CameraSnapshot& camSnapshot = camera->snapshot();
+        if ( params._refreshLightData )
+        {
+            _lightDataBinding = Attorney::ProjectManagerRenderPass::prepareLightData( _parent.parent().projectManager().get(), _stage, camSnapshot, memCmdInOut );
+        }
+        doCustomPass( playerIdx, camSnapshot, camera->getFrustum(), params, _lightDataBinding, bufferInOut, memCmdInOut, false );
+    }
+
+    void RenderPassExecutor::doCustomPass( const PlayerIndex playerIdx, const CameraSnapshot& camSnapshot, const Frustum& frustum,
+                                          RenderPassParams params, const LightDataBinding lightData,
+                                          GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut,
+                                          const bool independentView )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+        assert( params._stagePass._stage == _stage );
+        _lightDataBinding = lightData;
         const CameraSnapshot& activeCameraSnapshot =
             _parent.parent().projectManager()->activeProject()->getActiveScene()->playerCamera( playerIdx )->snapshot();
 
@@ -1568,7 +1580,7 @@ namespace Divide
             cullParams._ignoredGUIDS = { &ignoreGUID, 1 };
             cullParams._cameraEyePos = camSnapshot._eye;
             cullParams._rangeCameraEyePos = _stage == RenderStage::NODE_PREVIEW ? camSnapshot._eye : activeCameraSnapshot._eye;
-            cullParams._frustum = &camera->getFrustum();
+            cullParams._frustum = &frustum;
             cullParams._maxLoD = params._maxLoD;
 
             U16 cullFlags = to_base( CullOptions::DEFAULT_CULL_OPTIONS );
@@ -1600,7 +1612,7 @@ namespace Divide
         }
         else
         {
-            Attorney::ProjectManagerRenderPass::findNode( _parent.parent().projectManager().get(), camera->snapshot()._eye, params._singleNodeRenderGUID, _visibleNodesCache );
+            Attorney::ProjectManagerRenderPass::findNode( _parent.parent().projectManager().get(), camSnapshot._eye, params._singleNodeRenderGUID, _visibleNodesCache );
         }
 
         const bool drawTranslucents = (params._drawMask & to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_TRANSLUCENT_NODES))) && _stage != RenderStage::SHADOW;
@@ -1655,11 +1667,6 @@ namespace Divide
         GFX::SetCameraCommand* camCmd = GFX::EnqueueCommand<GFX::SetCameraCommand>( bufferInOut );
         camCmd->_cameraSnapshot = camSnapshot;
 
-        if ( params._refreshLightData )
-        {
-            Attorney::ProjectManagerRenderPass::prepareLightData( _parent.parent().projectManager().get(), _stage, camSnapshot, memCmdInOut );
-        }
-
         GFX::EnqueueCommand<GFX::SetClipPlanesCommand>( bufferInOut )->_clippingPlanes =  params._clippingPlanes;
 
         // We prepare all nodes for the MAIN_PASS rendering. PRE_PASS and OIT_PASS are support passes only. Their order and sorting are less important.
@@ -1690,7 +1697,7 @@ namespace Divide
 #   pragma endregion
 
 #   pragma region LIGHT_PASS
-        _context.getRenderer().prepareLighting( _stage, { 0, 0, target->getWidth(), target->getHeight() }, camSnapshot, bufferInOut );
+        _context.getRenderer().prepareLighting( _stage, { 0, 0, target->getWidth(), target->getHeight() }, camSnapshot, _lightDataBinding, bufferInOut, independentView );
 #   pragma endregion
 
 #   pragma region MAIN_PASS

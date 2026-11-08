@@ -161,6 +161,18 @@ namespace
         }
     }
 
+    void CommandBuffer::insert( CommandBuffer&& other, const size_t position )
+    {
+        if ( this == &other || position > _commands.size() )
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG( "Invalid command-buffer insertion" );
+        }
+        _commands.insert( _commands.begin() + position, other._commands.begin(), other._commands.end() );
+        other._commands.clear();
+        _batched = false;
+        other._batched = false;
+    }
+
     void CommandBuffer::batch()
     {
         if ( _batched ) [[unlikely]]

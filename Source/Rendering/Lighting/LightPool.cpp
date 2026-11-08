@@ -10,6 +10,7 @@
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Graphs/Headers/SceneGraph.h"
 #include "Managers/Headers/ProjectManager.h"
+#include "Managers/Headers/RenderPassManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
@@ -28,8 +29,6 @@ namespace Divide
 {
     Handle<Texture>       LightPool::s_lightIconsTexture = INVALID_HANDLE<Texture>;
     Handle<ShaderProgram> LightPool::s_lightImpostorShader = INVALID_HANDLE<ShaderProgram>;
-    ShaderBuffer_uptr LightPool::s_lightBuffer = nullptr;
-    ShaderBuffer_uptr LightPool::s_sceneBuffer = nullptr;
     ShaderBuffer_uptr LightPool::s_shadowBuffer = nullptr;
     std::array<U8, to_base( ShadowType::COUNT )> LightPool::s_shadowLocation =
     {{
@@ -69,27 +68,12 @@ namespace Divide
         bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
 
         {
-            bufferDescriptor._name = "LIGHT_DATA";
-            bufferDescriptor._elementCount = Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME * (to_base( RenderStage::COUNT ) - 1); ///< no shadows
-            bufferDescriptor._elementSize = sizeof( LightProperties );
-            // Holds general info about the currently active lights: position, colour, etc.
-            s_lightBuffer = context.gfx().newShaderBuffer( bufferDescriptor );
-        }
-        {
             // Holds info about the currently active shadow casting lights:
             // ViewProjection Matrices, View Space Position, etc
             bufferDescriptor._name = "LIGHT_SHADOW";
             bufferDescriptor._elementCount = 1;
             bufferDescriptor._elementSize = sizeof( ShadowProperties );
             s_shadowBuffer = context.gfx().newShaderBuffer( bufferDescriptor );
-        }
-        {
-            bufferDescriptor._name = "LIGHT_SCENE";
-            bufferDescriptor._usageType = BufferUsageType::CONSTANT_BUFFER;
-            bufferDescriptor._elementCount = to_base( RenderStage::COUNT ) - 1; ///< no shadows
-            bufferDescriptor._elementSize = sizeof( SceneData );
-            // Holds general info about the currently active scene: light count, ambient colour, etc.
-            s_sceneBuffer = context.gfx().newShaderBuffer( bufferDescriptor );
         }
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;
@@ -131,9 +115,7 @@ namespace Divide
         DestroyResource( s_lightImpostorShader );
         DestroyResource( s_lightIconsTexture );
 
-        s_lightBuffer.reset();
         s_shadowBuffer.reset();
-        s_sceneBuffer.reset();
     }
 
     LightPool::LightPool( Scene& parentScene, PlatformContext& context )
@@ -146,6 +128,13 @@ namespace Divide
         {
             _activeLightCount[i].fill( 0 );
             _sortedLights[i].reserve( Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME );
+            ViewLightDataList& views = _viewLightData[i];
+            views.resize( TotalPassCountForStage( static_cast<RenderStage>( i ) ) );
+            for ( ViewLightData& view : views )
+            {
+                view._properties.reserve( 32u );
+                view._lights.reserve( 32u );
+            }
         }
 
         _lightTypeState.fill( true );
@@ -296,6 +285,16 @@ namespace Divide
             }
         }
 
+        struct ShadowRefresh
+        {
+            Light* _light = nullptr;
+            bool _pendingCasters = false;
+        };
+        std::array<ShadowRefresh, Config::Lighting::MAX_SHADOW_CASTING_LIGHTS> refreshes{};
+        size_t refreshCount = 0u;
+        RenderPassManager& passManager = *_context.kernel().renderPassManager();
+        passManager.beginViewBatch( RenderStage::SHADOW, _context.kernel().projectManager()->playerPass(), bufferInOut );
+
         for ( Light* light : sortedLights )
         {
             const LightType lType = light->getLightType();
@@ -330,8 +329,8 @@ namespace Divide
             const U8 layerCount = to_U8(ShadowMap::getLightLayerRequirements(*light));
             const U32 updateMask = ShadowLayerUpdateMask(layerCount, light->shadowLayersDirty(), cacheValid, cacheInvalidated);
             const bool reuseCached = updateMask == 0u;
-            bool pendingCasters = false;
-            if ( !reuseCached && !ShadowMap::generateShadowMaps( playerCamera, *light, pendingCasters, bufferInOut, memCmdInOut, updateMask ) )
+            ShadowRefresh& refresh = refreshes[refreshCount];
+            if ( !reuseCached && !ShadowMap::generateShadowMaps( playerCamera, *light, refresh._pendingCasters, bufferInOut, memCmdInOut, updateMask ) )
             {
                 continue;
             }
@@ -378,11 +377,8 @@ namespace Divide
 
             if ( !reuseCached )
             {
-                light->cleanShadowProperties();
-                if ( pendingCasters )
-                {
-                    light->dynamicShadowsDirty( true );
-                }
+                refresh._light = light;
+                ++refreshCount;
 
                 GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
                 computeMipMapsCommand._texture = ShadowMap::getShadowMap( lType )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
@@ -402,6 +398,16 @@ namespace Divide
             staticHeightRange.set( staticBounds._min.y, staticBounds._max.y );
         }
         _shadowBufferData._worldAOVPMatrix = ShadowMap::generateWorldAO( playerCamera, staticHeightRange, bufferInOut, memCmdInOut );
+        passManager.finishViewBatch( RenderStage::SHADOW, memCmdInOut );
+        for ( size_t i = 0u; i < refreshCount; ++i )
+        {
+            ShadowRefresh& refresh = refreshes[i];
+            refresh._light->cleanShadowProperties();
+            if ( refresh._pendingCasters )
+            {
+                refresh._light->dynamicShadowsDirty( true );
+            }
+        }
 
         _shadowBufferData._cameraViewDepthRow = camera._viewMatrix.getCol( 2 );
         memCmdInOut._bufferLocks.push_back( s_shadowBuffer->writeData( _shadowBufferData.data() ) );
@@ -472,13 +478,32 @@ namespace Divide
         _debugLight = light;
     }
 
-    U32 LightPool::uploadLightList( const RenderStage stage, const LightList& lights, const mat4<F32>& viewMatrix )
+    LightPool::ViewLightData& LightPool::AcquireViewLightData( ViewLightDataList& views, size_t& usedCount )
+    {
+        if ( usedCount >= views.size() )
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG( "View light snapshots exceed their configured stage capacity" );
+        }
+        return views[usedCount++];
+    }
+
+    U32 LightPool::LightBufferCapacity( const size_t lightCount ) noexcept
+    {
+        const U32 required = to_U32( std::min( lightCount, size_t{ Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME } ) );
+        return nextPOW2( std::max( 32u, required ) );
+    }
+
+    U32 LightPool::uploadLightList( const RenderStage stage, const LightList& lights, const mat4<F32>& viewMatrix, ViewLightData& view )
     {
         const U8 stageIndex = to_U8( stage );
         U32 ret = 0u;
 
         auto& lightCount = _activeLightCount[stageIndex];
-        LightData& crtData = _sortedLightProperties[stageIndex];
+        view._properties.clear();
+        view._lights.clear();
+        const size_t capacity = std::min( lights.size(), size_t{ Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME } );
+        view._properties.reserve( capacity );
+        view._lights.reserve( capacity );
 
         SpotLightComponent* spot = nullptr;
 
@@ -504,8 +529,8 @@ namespace Divide
                     spot = static_cast<SpotLightComponent*>(light);
                 }
 
-                LightProperties& temp = crtData[ret - 1];
-                _uploadedLights[stageIndex][ret - 1] = light;
+                LightProperties& temp = view._properties.emplace_back();
+                view._lights.push_back( light );
                 light->getDiffuseColour( tempColour );
                 temp._diffuse.set( tempColour * light->intensity(), isSpot ? std::cos( Angle::to_RADIANS( spot->outerConeCutoffAngle() ) ) : 0.f );
                 // Omni and spot lights have a position. Directional lights have this set to (0,0,0)
@@ -565,18 +590,48 @@ namespace Divide
 
     }
 
-    void LightPool::uploadLightData( const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
+    LightDataBinding LightPool::uploadLightData( const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const size_t stageIndex = to_size( stage );
         LightList& sortedLights = _sortedLights[stageIndex];
 
-        U32& totalLightCount = _sortedLightPropertiesCount[stageIndex];
-        totalLightCount = uploadLightList( stage, sortedLights, cameraSnapshot._viewMatrix );
-        _lightDataUploaded[stageIndex] = true;
+        ViewLightData& view = AcquireViewLightData( _viewLightData[stageIndex], _usedViewLightData[stageIndex] );
+        const U32 lightCapacity = LightBufferCapacity( sortedLights.size() );
+        if ( view._lightBuffer == nullptr || view._lightBuffer->getPrimitiveCount() < lightCapacity )
+        {
+            ShaderBufferDescriptor descriptor{};
+            descriptor._ringBufferLength = (Config::MAX_FRAMES_IN_FLIGHT + 1u) * Config::MAX_LOCAL_PLAYER_COUNT;
+            descriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
+            descriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
+            descriptor._elementCount = lightCapacity;
+            descriptor._elementSize = sizeof( LightProperties );
+            Util::StringFormatTo( descriptor._name, "LIGHT_DATA_{}_VIEW_{}", stageIndex, _usedViewLightData[stageIndex] - 1u );
+            view._lightBuffer = _context.gfx().newShaderBuffer( descriptor );
+            if ( view._lightBuffer == nullptr )
+            {
+                DIVIDE_UNEXPECTED_CALL_MSG( "Failed to allocate per-view light buffer" );
+            }
+        }
+        if ( view._sceneBuffer == nullptr )
+        {
+            ShaderBufferDescriptor descriptor{};
+            descriptor._ringBufferLength = (Config::MAX_FRAMES_IN_FLIGHT + 1u) * Config::MAX_LOCAL_PLAYER_COUNT;
+            descriptor._usageType = BufferUsageType::CONSTANT_BUFFER;
+            descriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
+            descriptor._elementCount = 1u;
+            descriptor._elementSize = sizeof( SceneData );
+            Util::StringFormatTo( descriptor._name, "LIGHT_SCENE_{}_VIEW_{}", stageIndex, _usedViewLightData[stageIndex] - 1u );
+            view._sceneBuffer = _context.gfx().newShaderBuffer( descriptor );
+            if ( view._sceneBuffer == nullptr )
+            {
+                DIVIDE_UNEXPECTED_CALL_MSG( "Failed to allocate per-view scene buffer" );
+            }
+        }
+        const U32 totalLightCount = uploadLightList( stage, sortedLights, cameraSnapshot._viewMatrix, view );
 
-        SceneData& crtData = _sortedSceneProperties[stageIndex];
+        SceneData& crtData = view._scene;
         crtData._globalData.set(
             _activeLightCount[stageIndex][to_base( LightType::DIRECTIONAL )],
             _activeLightCount[stageIndex][to_base( LightType::POINT )],
@@ -596,14 +651,15 @@ namespace Divide
             PROFILE_SCOPE( "LightPool::UploadLightDataToGPU", Profiler::Category::Graphics );
             if ( ShouldUploadLightData( totalLightCount ) )
             {
-                memCmdInOut._bufferLocks.push_back(s_lightBuffer->writeData( { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount }, &_sortedLightProperties[stageIndex] ) );
+                memCmdInOut._bufferLocks.push_back( view._lightBuffer->writeData( { 0u, totalLightCount }, view._properties.data() ) );
             }
         }
 
         {
             PROFILE_SCOPE( "LightPool::UploadSceneDataToGPU", Profiler::Category::Graphics );
-            memCmdInOut._bufferLocks.push_back(s_sceneBuffer->writeData( { stageIndex, 1 }, &crtData ) );
+            memCmdInOut._bufferLocks.push_back( view._sceneBuffer->writeData( { 0u, 1u }, &crtData ) );
         }
+        return { view._lightBuffer.get(), view._sceneBuffer.get() };
     }
 
     void LightPool::patchShadowIndices( GFX::MemoryBarrierCommand& memCmdInOut )
@@ -612,32 +668,14 @@ namespace Divide
 
         for ( size_t stageIndex = 0u; stageIndex < to_size( RenderStage::COUNT ); ++stageIndex )
         {
-            if ( !_lightDataUploaded[stageIndex] )
+            for ( size_t viewIndex = 0u; viewIndex < _usedViewLightData[stageIndex]; ++viewIndex )
             {
-                continue;
-            }
-            _lightDataUploaded[stageIndex] = false;
-
-            const U32 lightCount = _sortedLightPropertiesCount[stageIndex];
-            if ( !ShouldUploadLightData( lightCount ) )
-            {
-                continue;
-            }
-
-            LightData& crtData = _sortedLightProperties[stageIndex];
-            const UploadedLights& lights = _uploadedLights[stageIndex];
-            bool anyShadowCaster = false;
-            for ( U32 i = 0u; i < lightCount; ++i )
-            {
-                const Light* light = lights[i];
-                const I32 shadowIndex = light->castsShadows() ? light->shadowPropertyIndex() : -1;
-                crtData[i]._options.y = shadowIndex;
-                anyShadowCaster = anyShadowCaster || shadowIndex != -1;
-            }
-
-            if ( anyShadowCaster )
-            {
-                memCmdInOut._bufferLocks.push_back( s_lightBuffer->writeData( { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, lightCount }, &crtData ) );
+                ViewLightData& view = _viewLightData[stageIndex][viewIndex];
+                const U32 lightCount = to_U32( view._properties.size() );
+                if ( PatchLightShadowIndices( view._properties, view._lights ) )
+                {
+                    memCmdInOut._bufferLocks.push_back( view._lightBuffer->writeData( { 0u, lightCount }, view._properties.data() ) );
+                }
             }
         }
     }
@@ -730,8 +768,21 @@ namespace Divide
             _shadowBufferDirty = false;
         }
 
-        s_lightBuffer->incQueue();
-        s_sceneBuffer->incQueue();
+        _usedViewLightData.fill( 0u );
+        for ( ViewLightDataList& views : _viewLightData )
+        {
+            for ( ViewLightData& view : views )
+            {
+                if ( view._lightBuffer != nullptr )
+                {
+                    view._lightBuffer->incQueue();
+                }
+                if ( view._sceneBuffer != nullptr )
+                {
+                    view._sceneBuffer->incQueue();
+                }
+            }
+        }
     }
 
     void LightPool::drawLightImpostors( GFX::CommandBuffer& bufferInOut ) const
@@ -749,7 +800,9 @@ namespace Divide
             ._anisotropyLevel = 0u
         };
 
-        const U32 totalLightCount = _sortedLightPropertiesCount[to_U8( RenderStage::DISPLAY )];
+        const size_t viewCount = _usedViewLightData[to_base( RenderStage::DISPLAY )];
+        const U32 totalLightCount = viewCount == 0u ? 0u :
+            to_U32( _viewLightData[to_base( RenderStage::DISPLAY )][viewCount - 1u]._properties.size() );
         if ( totalLightCount > 0u )
         {
             PipelineDescriptor pipelineDescriptor{};

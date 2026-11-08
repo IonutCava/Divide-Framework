@@ -40,6 +40,7 @@
 #include "Core/Headers/KernelComponent.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 #include "Rendering/RenderPass/Headers/RenderPassCuller.h"
+#include "Rendering/Lighting/Headers/LightUploadState.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
 
@@ -314,7 +315,7 @@ namespace Divide
         void drawCustomUI( const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
         void postRender( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
         void debugDraw( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
-        void prepareLightData( RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut );
+        [[nodiscard]] LightDataBinding prepareLightData( RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut );
         [[nodiscard]] Camera* playerCamera( bool skipOverride = false ) const noexcept;
         [[nodiscard]] Camera* playerCamera( PlayerIndex idx, bool skipOverride = false ) const noexcept;
         void editorPreviewNode( const I64 editorPreviewNode ) noexcept;
@@ -532,9 +533,9 @@ namespace Divide
                 mgr->initDefaultCullValues( stage, cullParamsInOut );
             }
 
-            static void prepareLightData( Divide::ProjectManager* mgr, const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
+            [[nodiscard]] static LightDataBinding prepareLightData( Divide::ProjectManager* mgr, const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
             {
-                mgr->prepareLightData( stage, cameraSnapshot, memCmdInOut );
+                return mgr->prepareLightData( stage, cameraSnapshot, memCmdInOut );
             }
 
             static void debugDraw( Divide::ProjectManager* mgr, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )

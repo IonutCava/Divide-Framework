@@ -64,6 +64,22 @@ struct ParallelForDescriptor
 
 using PoolTask = DELEGATE_STD<bool, bool/*threadWaitingCall*/>;
 
+class TaskGroup final : private NonCopyable
+{
+  public:
+    explicit TaskGroup(TaskPool& pool) noexcept;
+    ~TaskGroup();
+
+    template<typename Predicate>
+    void enqueue(Predicate&& function);
+    void wait();
+    [[nodiscard]] bool empty() const noexcept { return _parent == nullptr; }
+
+  private:
+    TaskPool& _pool;
+    Task* _parent = nullptr;
+};
+
 namespace TaskPoolDetail
 {
     [[nodiscard]] static constexpr bool DequeueMayBlock( const bool isIdleCall, const TaskPriority priority ) noexcept

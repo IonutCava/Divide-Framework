@@ -9,6 +9,7 @@
   - No ASM or compiler-trick hacks. SIMD is fine and encouraged where hot.
   - No deep OOP: avoid virtual dispatch in hot paths, smart-pointer churn and per-object heap allocations.
 - Backend code (GL/VK translation, pools, allocators): go as low-level as needed while staying readable. Use flat arrays/SoA, handles instead of pointers, linear/frame allocators, and switch-based dispatch over virtuals.
+- Pre-size bounded view records as contiguous values and create lane executors at initialization, not during recording. Reuse existing memory pools/arenas for genuinely dynamic storage; pool growth and synchronization are not free. Use the existing `Attorney` pattern for private/protected access, including tests. See `AGENTS.md` and the rendering guide for allocation exceptions.
 - User-facing APIs (CommandBuffer, bindless handles, geometry pool): keep them as human-friendly as possible, with POD commands stored contiguously, predictable branches, `[[likely]]`/`[[unlikely]]` on hot branches and cache-coherent iteration.
 - Industry patterns to borrow, where they fit:
   - **Sort-key draw buckets** (Bitsquid/Stingray, "Order your graphics draw calls around"): a 64-bit key of pass, pipeline, material/bindless set, geometry pool and depth, followed by a radix sort.
@@ -63,7 +64,9 @@ checklist below. Later measurements and fixes supersede some of the conclusions.
 4. **Per-draw state cost**: ~6.2k–7.8k draws, ~6.8k push-descriptor updates, ~7.3k–8.9k `bindShaderResources`, ~10.2k `ShaderBuffer::writeBytes` + `LockManager::waitForLockedRange`, ~1.8k pipeline binds, ~1.27k VB/IB binds, ~1055 compute dispatches, 296 barrier calls. Indirect batching only merges consecutive draws with identical buffers/state/push constants.
 5. Shader stubbing had negligible effect → CPU/driver bound.
 6. Workers show large uninstrumented time inside `runTask`; the external parser only reports top exclusive scopes, so per-stage inclusive costs are invisible.
-7. Suspected `RenderQueue::sort` parent-task allocation leak (unconfirmed).
+7. `RenderQueue::sort` and draw-command preparation had an optional-parent task
+   allocation leak; fixed and subsequently covered by the shared `TaskGroup`
+   lifetime regressions. See Phase 1 status.
 8. EASTL already in vcpkg.json and partially used.
 
 ## Phases
@@ -134,12 +137,26 @@ checklist below. Later measurements and fixes supersede some of the conclusions.
 - [x] p0-gpu-timers (new) — Frame GPU time on both backends (VK timestamp pool per frame slot; GL fixed `RingBufferSeparateWrite` precedence bug and query ring writing ahead of the read slot). Per-command-buffer GPU timestamps (`writePassTimestamp`/`readPassTimestamps`, `GPUPassTimingTable`) logged as `[PerfMetrics] gpuPasses`. Pipeline-statistics queries are now opt-in (`queryPipelineStatistics`): on AMD GL they cost about 10x the frame time. Editor panel no longer overrides perf-mode stats.
 - [x] p1-taskpool-wakeups (new, found during baseline) — `TaskPool::runTask` woke waiters with `notify_one()` on a single CV shared by every waiter (main thread, stage tasks, nested `Parallel_For`), so the right waiter often slept the whole 2 ms timeout. Switched to `notify_all()`. Release VK 121→54 ms, Debug VK 217→131 ms; SHADOW record 62→10 ms (Release).
 - [x] p1-prototype — kept; it is now the ready-only recording schedule used by p1-ordered-slots.
-- [ ] p1-data-deps-audit — Partially audited: known shadow-index and reflection/refraction dependencies are handled. Verify the remaining shared stage state and the per-stage light-buffer overwrite described in "Ordered slots results".
+- [x] p1-data-deps-audit — Cross-stage audit follow-up implemented: per-view
+  immutable light/scene snapshots replace last-view-wins stage uploads, all
+  used snapshots receive shadow-slot patches after the stage wait, and cube/
+  paraboloid cameras are stage-owned. HiZ dispatches retain per-view uniform
+  snapshots instead of referencing one mutable stage uniform block.
+  Windows instrumented tests and Vulkan/OpenGL acceptance passed. Same-stage
+  recording uses the bounded ownership lanes described below.
 - [x] p1-ordered-slots — Stages now declare GPU submission dependencies (`RenderPass::dependencies`) separately from CPU recording dependencies (`recordingDependencies`, which must be a subset). Stage tasks only record. After `pool.wait`, the main thread flushes the stage command buffers in topological submission order (`RenderStageSchedule::topologicalOrder`), then calls `LightPool::patchShadowIndices`, then `FlushBuffersToGPU`. SHADOW is now a GPU-order-only dependency. Release: VK 41.3→31.4 ms, GL 43.6→33.5 ms. Debug VK: 133.8→112 ms. Catch2 test added.
 - [x] p1-node-update-bitset experiment — An atomic bitset measured 41.3 ms (within noise) but was reverted: indirection storage can grow beyond `MAX_VISIBLE_NODES`, so the fixed bitset could access out of bounds. The original growable set is retained.
 - [x] p1-render-workers-experiment (new) — Raising `RENDER_WORKERS` from 6 to 12 made frames slower. Reverted.
-- [ ] p1-split-shadows
-- [x] p1-sort-leak — Confirmed and fixed. `RenderQueue::sort` and `RenderPassExecutor::buildDrawCommands` allocated a parent task they only enqueued if a bin or queue was large. Pooled tasks that are never enqueued keep `_unfinishedJobs == 1`, so each such pass permanently leaked one of the 65,536 slots. `AllocateTask` then probes past more and more dead slots, and eventually spins forever. Both now allocate the parent lazily. No frame-time change in short runs (32.1 ms); this is a long-session stability fix.
+- [x] p1-split-shadows — Implemented and accepted on both backends. Controlled
+  serial/parallel Debug measurements are recorded below. Shadow lights/cascades/faces/world AO and
+  reflection/refraction probe/reflector views record into independent slots
+  through two reusable executor lanes, with one lane on the caller. Generator selection, budgets, light
+  uploads and constants stay serial; camera/frustum snapshots, executor scratch,
+  counters/uniforms, package LoD and lane-local indirect ranges isolate recording.
+  Completed command pointers merge into their original positions without
+  changing GPU scratch/barrier order. The smoke runner's `-SerialViewRecording`
+  enables a controlled comparison with the same snapshots and slots.
+- [x] p1-sort-leak — Confirmed and fixed. `RenderQueue::sort` and `RenderPassExecutor::buildDrawCommands` allocated a parent task they only enqueued if a bin or queue was large. Pooled tasks that are never enqueued keep `_unfinishedJobs == 1`, so each such pass permanently leaked one of the 65,536 slots. `AllocateTask` then probes past more and more dead slots, and eventually spins forever. Both now use `TaskGroup`, which creates the parent only for a queued child and always joins it. Regressions cover more than one ring's worth of empty groups, nested children, repeated waits, reuse and destruction. No frame-time change in the historical short runs (32.1 ms); this is a long-session stability fix, not a new measured speedup.
 - [x] p3-vk-sample-shading — Vulkan now matches OpenGL's per-pixel MSAA shading, as the user requested. It previously forced per-sample shading on every MSAA pipeline. VK GPU 31.3→21.8 ms (DISPLAY MainPass 7.2→3.4, W-OIT 7.2→4.5, PrePass 4.3→1.6); GL was 26.6 ms. No obvious reference-camera difference was observed; shader-dependent sample shading can still change. Vulkan Release is now CPU-bound (frame ~32–35 ms).
 - [x] p2-cmdbuf-assess — `batch`/`clean` cost about 4–5 ms inclusive in Release and 9 ms in Debug in the earlier capture; a wholesale rewrite is not justified by those measurements alone.
 - [ ] p2-cmdbuf-rewrite
@@ -180,6 +197,93 @@ checklist below. Later measurements and fixes supersede some of the conclusions.
   runs, but the performance goals and acceptance of future changes remain open.
 - [ ] p5-docs — Current implementation is documented; update the affected guides
   alongside any further changes.
+
+### Phase 1 ownership audit follow-up
+
+The coarse stage scheduler and GPU submission order are unchanged. The ownership
+audit repairs data lifetime, and the bounded view split extends CPU concurrency
+without changing generator policy or GPU execution order.
+
+| State / source | Current ownership and ordering |
+|---|---|
+| `LightPool::sortLightData`, `uploadLightData` | One recording worker owns each stage's sorted list. Every view acquires a separate reusable CPU/GPU snapshot; later views cannot overwrite earlier camera-space lighting. Buffers grow geometrically with the light count and reuse their high-water capacity. |
+| Shadow selection, `Light::shadowPropertyIndex`, shadow buffer | SHADOW selects lights/layers and assigns slots serially. Other stages initially upload `-1`; the main thread patches every used view after the stage wait, before translation. |
+| Cube/paraboloid utility cameras | `Camera::InitPool` creates separate mutable cameras per stage. Serial view selection captures snapshots and frusta before generator reuse; lane workers do not mutate these cameras. |
+| HiZ push-constant uniforms | `RenderPassExecutor` retains one `UniformDataSnapshots` entry per dispatch until translation. Entity counts and frusta cannot be overwritten by later views or players in the same frame. The helper is shared with immediate primitives. |
+| Shared executor node/material/transform buffers | `PrepareGPUBuffers` runs before stage launch; processed-node, free-list and dirty-range locks protect partitioned preparation. GPU upload follows the stage wait. Retain growable storage rather than the reverted fixed node bitset. |
+| Environment probes, reflector budgets and `s_Nodes` | Probe selection and reflection/refraction budgets remain serial within their owning stage; each stage's enumeration scratch is separate. Texture selections are published under the rendering-component package lock. DISPLAY/NODE_PREVIEW wait for their CPU producers. |
+| Executor queues/pages, pass counters/uniforms, component LoD/preparation, generator constants and lighting-grid caches | Two reusable executor lanes own recording scratch and lane-local indirect ranges. Full package identities own LoD/preparation state and retain lane affinity. Generators and light uploads remain serial; independent lighting commands rebuild their own grid inputs. Completed slots transfer into the original GPU order after the join. |
+| Scene/camera/resource lifetime | Scene updates and shared frame preparation precede stage launch; stage tasks finish before scene teardown or frame upload. GPU completion remains separate from task completion and recording order. |
+
+`RenderQueue::sort` and transform/material preparation now share `TaskGroup`:
+no parent allocation for an empty batch, and every allocated parent is submitted
+and joined. This hardens the existing leak fix; it is not a new speedup claim.
+Windows/MSVC Debug editor with Optick/function profiling passed 383/383 CTest
+cases, including seven new task, view-light, camera and HiZ regressions.
+Sequential supervised Vulkan and OpenGL WarScene runs both completed 301 scene
+presents, scene/editor captures and clean shutdown. Both image pairs were
+inspected: terrain, foreground grass, trees, water and Sponza remain present,
+without the earlier black transparency speckling. These are correctness runs;
+no before/after frame-time gain or Linux/macOS result is established here.
+
+The view split retains high-water storage and defers shadow dirty-flag updates
+until its pending-caster feedback is reduced. Catch2 covers lane affinity,
+same-lane order, nested-task progress, reuse, serial equivalence, command-slot
+ownership/order and package LoD isolation. The final Windows/MSVC instrumented
+build and suite pass 387/387, including caller participation, contiguous light
+snapshot reuse and uniform-address stability across chunk growth. Final
+Vulkan/OpenGL runs after the allocation cleanup each completed 301 scene
+presents, both captures and normal shutdown. All four images were inspected:
+the saved exterior/back-corner Sponza view, terrain, grass, trees and water
+remain present, without new black transparency speckling. Vulkan retained
+only the approved custom-border-color advisory. No Linux/macOS execution or
+new Release measurement was performed.
+
+### Phase 1 view-split measurements
+
+Debug instrumented editor, validation off, 600-present supervised runs, 64
+Optick CPU frames beginning after present 160. The serial diagnostic uses the
+same snapshots/slots and preserves original view order. The current saved
+camera looks at Sponza's exterior/back corner; these measurements are not
+directly comparable to the historical front/arches camera or Release results.
+
+| Backend / recording | CPU median ms | CPU p95 ms | SHADOW record ms | REFLECTION record ms | REFRACTION record ms |
+|---|---:|---:|---:|---:|---:|
+| Vulkan serial control, repeated | 123.42 | 130.23 | 31.66 | 16.70 | 17.59 |
+| Vulkan two lanes | 123.64 | 130.19 | 27.41 | 16.64 | 17.99 |
+| OpenGL serial control | 129.77 | 161.92 | 33.21 | 17.50 | 18.49 |
+| OpenGL two lanes | 129.70 | 149.50 | 29.42 | 17.90 | 18.47 |
+
+Shadow recording shortened by about 12-13%, but total CPU median frame time
+is effectively unchanged. The noisy OpenGL tail improvement is not an
+established speedup. Four queued lanes regressed Vulkan to 142.24 ms; caller
+participation reduced that to 126.35 ms, and limiting the batch to two lanes
+removed the remaining median regression. Keep the two-lane bound rather than
+assuming more worker tasks help an already partitioned renderer.
+
+At warmed frame 192 the compared runs retain stage draws/bin items:
+DISPLAY 1679/1063, REFLECTION 1356/904, REFRACTION 1670/1061,
+SHADOW 2899/817, with HiZ culled 1002, overflow 11, skipped 3.
+Vulkan API translation remains about 71 ms inclusive per frame, with about
+7090 resource binds and 6550 per-draw descriptor pushes. Shorter shadow work
+does not remove the reflection/refraction-plus-display critical path or serial
+translation. Phase 1 implementation is complete; the Debug <=33 ms and
+Release <16.6 ms goals are not met.
+
+These captures precede the final value-storage cleanup, not its performance
+baseline. That cleanup removes per-view heap owners, pre-sizes bounded view
+records, creates executor lanes at registration, retains barrier-list capacity,
+and replaces per-snapshot heap owners with stable-address values. GPU light
+buffers/indirect pages and unbounded immediate-draw payloads still have
+documented first-use/high-water growth; the whole renderer is not allocation-free.
+Final post-cleanup correctness runs passed as described above.
+
+During the validation/debugger-enabled correctness runs the user observed
+CPU/GPU below 10% and VRAM around one third on Vulkan, versus about 60% GPU
+and 9/16 GB VRAM on OpenGL. These are user-observed Task Manager readings,
+not synchronized performance captures. They motivate continued serialization/
+driver analysis, but do not establish core occupancy, GPU-engine utilization,
+memory-bandwidth pressure or a validation-free backend throughput comparison.
 
 ### Stabilization checkpoint
 
@@ -392,9 +496,9 @@ Recording timings (Release VK):
 - Translation: SHADOW 5.3, DISPLAY 3.4, REFRACTION 3.2, REFLECTION 3.1 ms.
 - The critical path is now max(SHADOW, REFL/REFR + DISPLAY) instead of the full chain sum.
 
-Pre-existing issues found (not fixed):
-- When a stage contains several passes (for example REFLECTION's water and probe passes), each pass calls `uploadLightData` into the same stage range. The last write wins, so earlier passes may light with the wrong view-space data.
-- Reflection and refraction callbacks update `_materialUpdateMask` while holding `_renderPackagesLock`. The rendering system also accesses the mask during update; verify the frame-phase boundary before claiming those accesses can overlap.
+Issues found at that historical checkpoint (subsequently addressed):
+- Several views uploaded into the same stage light range, so the last write won. The Phase 1 ownership follow-up now retains and binds separate view snapshots.
+- Reflection/refraction texture selections and descriptor-update flags now share the rendering-component package lock. Scene-system material updates run outside render-stage work; preserve that frame-phase boundary.
 
 Next CPU levers:
 - Early translation on Vulkan, while later stages are still recording (p2-parallel-translate).

@@ -1131,7 +1131,7 @@ namespace Divide
         }
     }
 
-    void ProjectManager::prepareLightData( const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
+    LightDataBinding ProjectManager::prepareLightData( const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -1139,8 +1139,9 @@ namespace Divide
         {
             LightPool* pool = activeProject()->getActiveScene()->lightPool().get();
             pool->sortLightData( stage, cameraSnapshot );
-            pool->uploadLightData( stage, cameraSnapshot, memCmdInOut );
+            return pool->uploadLightData( stage, cameraSnapshot, memCmdInOut );
         }
+        return {};
     }
 
     void ProjectManager::onChangeFocus( const bool hasFocus )

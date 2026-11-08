@@ -29,6 +29,21 @@
 
 namespace Divide {
 
+struct RenderPassManager::ViewRecording
+{
+    CameraSnapshot _camera;
+    Frustum _frustum;
+    RenderPassParams _params;
+    LightDataBinding _lightData;
+    GFX::CommandBuffer _commands;
+    GFX::MemoryBarrierCommand _memory;
+    size_t _position = 0u;
+    U32 _commandCount = 0u;
+    U32 _nodeCount = 0u;
+    bool _pendingShader = false;
+    bool* _pendingShaderOut = nullptr;
+};
+
 void SetDefaultDrawDescriptor( RenderPassParams& params )
 {
     params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
@@ -401,6 +416,17 @@ RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage, cons
     {
         _executors[to_base(renderStage)] = std::make_unique<RenderPassExecutor>(*this, _context, renderStage);
         _renderPassData[to_base(renderStage)]._pass = std::make_unique<RenderPass>( *this, _context, renderStage, dependencies );
+        if ( renderStage == RenderStage::SHADOW || renderStage == RenderStage::REFLECTION || renderStage == RenderStage::REFRACTION )
+        {
+            ViewBatch& batch = _viewBatches[to_base( renderStage )];
+            batch._viewCapacity = TotalPassCountForStage( renderStage );
+            batch._views = std::make_unique<ViewRecording[]>( batch._viewCapacity );
+            batch._schedule.reserve( batch._viewCapacity );
+            for ( size_t lane = 0u; lane < batch._lanes.size(); ++lane )
+            {
+                batch._lanes[lane] = std::make_unique<RenderPassExecutor>( *this, _context, renderStage, to_U8( lane ), to_U8( RenderViewSchedule::LANE_COUNT ) );
+            }
+        }
     }
 
     item = _renderPassData[to_base( renderStage )]._pass.get();
@@ -416,6 +442,7 @@ U32 RenderPassManager::getLastTotalBinSize(const RenderStage renderStage) const 
 
 void RenderPassManager::logPerfMetrics() const
 {
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
     const PerformanceMetrics& metrics = _context.getPerformanceMetrics();
 
     string stageCounts;
@@ -468,8 +495,110 @@ const RenderPass& RenderPassManager::getPassForStage(const RenderStage renderSta
 
 void RenderPassManager::doCustomPass(Camera* const camera, const RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut)
 {
+    const RenderStage stage = params._stagePass._stage;
+    ViewBatch& batch = _viewBatches[to_base( stage )];
+    if ( batch._destination != nullptr )
+    {
+        if ( batch._destination != &bufferInOut )
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG( "A deferred view must record into its batch destination" );
+        }
+        (void)camera->updateLookAt();
+        if ( batch._usedViews >= batch._viewCapacity )
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG( "Render view batch exceeds its configured stage capacity" );
+        }
+        ViewRecording& view = batch._views[batch._usedViews++];
+        view._camera = camera->snapshot();
+        view._frustum.set( camera->getFrustum() );
+        view._params = params;
+        view._position = bufferInOut.commands().size();
+        view._commands.clear();
+        view._memory._bufferLocks.clear();
+        view._memory._textureLayoutChanges.clear();
+        view._pendingShader = false;
+        view._pendingShaderOut = params._pendingShaderOut;
+        if ( params._pendingShaderOut != nullptr )
+        {
+            view._params._pendingShaderOut = &view._pendingShader;
+        }
+        view._lightData = params._refreshLightData
+            ? Attorney::ProjectManagerRenderPass::prepareLightData( _parent.projectManager().get(), stage, view._camera, memCmdInOut )
+            : LightDataBinding{};
+        batch._schedule.add( IndexForStage( params._stagePass ) );
+        return;
+    }
+
     const PlayerIndex playerPass = _parent.projectManager()->playerPass();
-    _executors[to_base(params._stagePass._stage)]->doCustomPass(playerPass, camera, params, bufferInOut, memCmdInOut);
+    RenderPassExecutor& executor = *_executors[to_base( stage )];
+    executor.doCustomPass(playerPass, camera, params, bufferInOut, memCmdInOut);
+    const auto source = executor.passData();
+    const auto destination = getPassForStage( stage ).getPassData();
+    *destination._lastCommandCount = *source._lastCommandCount;
+    *destination._lastNodeCount = *source._lastNodeCount;
+}
+
+void RenderPassManager::beginViewBatch( const RenderStage stage, const PlayerIndex player, GFX::CommandBuffer& destination )
+{
+    ViewBatch& batch = _viewBatches[to_base( stage )];
+    if ( batch._destination != nullptr || stage == RenderStage::DISPLAY || stage == RenderStage::NODE_PREVIEW )
+    {
+        DIVIDE_UNEXPECTED_CALL_MSG( "Invalid or nested render view batch" );
+    }
+    batch._destination = &destination;
+    batch._player = player;
+    batch._usedViews = 0u;
+    batch._schedule.reset();
+}
+
+void RenderPassManager::finishViewBatch( const RenderStage stage, GFX::MemoryBarrierCommand& memCmdInOut )
+{
+    PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+    ViewBatch& batch = _viewBatches[to_base( stage )];
+    if ( batch._destination == nullptr )
+    {
+        DIVIDE_UNEXPECTED_CALL_MSG( "Render view batch was not started" );
+    }
+    for ( size_t lane = 0u; lane < batch._lanes.size(); ++lane )
+    {
+        if ( batch._schedule.usesLane( lane ) )
+        {
+            batch._lanes[lane]->prepareCommandBuffers( batch._player );
+        }
+    }
+    batch._schedule.record( _parent.platformContext().taskPool( TaskPoolType::RENDERER ), [&]( const size_t lane, const size_t index )
+    {
+        ViewRecording& view = batch._views[index];
+        RenderPassExecutor& executor = *batch._lanes[lane];
+        executor.doCustomPass( batch._player, view._camera, view._frustum, view._params,
+                               view._lightData, view._commands, view._memory );
+        const auto counts = executor.passData();
+        view._commandCount = *counts._lastCommandCount;
+        view._nodeCount = *counts._lastNodeCount;
+    }, !RenderSmokeTest::SerialViewRecordingRequested() );
+    // Reverse insertion preserves original offsets, including consecutive empty slots.
+    for ( size_t i = batch._usedViews; i > 0u; --i )
+    {
+        ViewRecording& view = batch._views[i - 1u];
+        batch._destination->insert( MOV( view._commands ), view._position );
+    }
+    for ( size_t i = 0u; i < batch._usedViews; ++i )
+    {
+        ViewRecording& view = batch._views[i];
+        (void)GFX::Merge( &memCmdInOut, &view._memory );
+        if ( view._pendingShaderOut != nullptr )
+        {
+            *view._pendingShaderOut |= view._pendingShader;
+        }
+    }
+    if ( batch._usedViews > 0u )
+    {
+        const ViewRecording& last = batch._views[batch._usedViews - 1u];
+        const auto counts = getPassForStage( stage ).getPassData();
+        *counts._lastCommandCount = last._commandCount;
+        *counts._lastNodeCount = last._nodeCount;
+    }
+    batch._destination = nullptr;
 }
 
 }

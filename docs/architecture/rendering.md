@@ -130,6 +130,17 @@ only when the frame numbers and counts match. Immediate and transfer submits
 are not covered. Pipeline-statistics queries are opt-in
 (`queryPipelineStatistics`): on AMD OpenGL they cost about 10x the frame time.
 
+The `[PerfMetrics]` print path runs only with the explicit smoke/performance
+flag, not during ordinary editor rendering. It formats cached CPU counters and
+accumulated timing data; printing does not issue GPU queries or wait for the GPU.
+Timestamp collection itself still has nonzero driver/GPU overhead: Vulkan reads
+an already-fenced frame slot without `VK_QUERY_RESULT_WAIT_BIT`, and OpenGL
+checks the old ring slot's last timestamp for availability before reading its
+results. Unavailable results are skipped rather than waited for. The global GL
+frame-time query uses `GL_QUERY_RESULT_NO_WAIT`. Keep pipeline statistics and
+detailed scope timing opt-in, and use the `logPerfMetrics` CPU scope when
+checking logging overhead; nonblocking instrumentation is not zero-cost.
+
 `-GpuScopeTimings` (requires `-PerfMode`; engine flag `--smokeGpuScopeTimings`,
 `GFXDevice::queryGPUScopeTimings`) also writes timestamps at debug-scope
 boundaries inside each buffer. `gpuPasses` then reports exclusive time per
@@ -349,12 +360,87 @@ performs per-stage preparation and draw execution. Waiting workers help execute
 eligible ordinary renderer-pool tasks; see
 [Threading](threading.md#entry-points-and-task-pools).
 
-Known limitation: when one stage contains several passes, each pass calls
-`uploadLightData` into the same stage range of the light buffer, and the last
-upload wins.
+Each `uploadLightData` call acquires its own reusable `LightPool::ViewLightData`
+snapshot. `LightDataBinding` carries that view's light and scene buffers through
+`ProjectManager` and `RenderPassExecutor` to `Renderer::prepareLighting`.
+Later cube faces, probes and planar views cannot overwrite an earlier view's
+camera-space positions, directions, counts or ambient colour. Shadow indices
+are patched into every snapshot used by the current player after the stage wait.
+CPU view records are pre-sized contiguous values at light-pool construction,
+bounded by `TotalPassCountForStage`; acquiring a view cannot allocate or move
+earlier records. Light GPU buffers are created on first use and retained;
+their capacity grows geometrically from 32 lights up to
+`MAX_ACTIVE_LIGHTS_PER_FRAME`, rather than allocating the maximum for every view.
+Existing frame/player ring lengths and deferred GPU-resource retirement apply.
+Buffer bindings cover the allocated capacity; shader scene counts bound access
+to eligible uploaded lights, including a zero-light view.
+HiZ culling also records a separate `UniformDataSnapshots` entry for every
+view, including every local player in the same frame. `SendPushConstantsCommand`
+retains a pointer until translation, so reusing an executor's uniform block directly
+would make earlier dispatches use the final view's entity count and frustum.
+The same reusable snapshot storage backs immediate primitives; it resets only
+when the engine frame changes, not between views or players.
 Parallel reflection and refraction stages publish their texture selections under
 the rendering component's package lock; display preparation snapshots those
 selections after both producer stages complete.
+
+`GFXDevice::generateCubeMap` and `generateDualParaboloidMap` acquire utility
+cameras by render stage. These mutable cameras must not be shared between the
+concurrently recording shadow and reflection/refraction stages.
+
+Shadow, reflection and refraction select their views serially inside
+`RenderPassManager::beginViewBatch` / `finishViewBatch`. `doCustomPass` captures
+the camera snapshot, frustum, parameters and exact light binding before a
+generator reuses its camera. Generators still own deterministic light/layer
+selection, budgets, matrices, blur constants and shadow-property slots.
+`RenderViewSchedule` assigns each stage-pass identity to one of two reusable
+recording lanes. Each lane exclusively owns its executor queues, counters,
+uniforms and indirect pages; repeated identities stay ordered on the same lane.
+Indirect page ranges are lane-local, so the lanes divide rather than multiply
+the regular stage allocation. Pages are created on first use and retain their
+existing player/frame ring lifetime.
+
+Rendering-component packages retain their own LoD selection. Distinct full
+stage/pass/variant/index identities have separate preparation packages and
+uniforms. Independent lighting records always rebuild their own grid inputs;
+CPU completion order cannot determine which grid is needed in GPU order.
+The GPU grid buffers themselves remain shared and sequential.
+
+After all lane tasks join, completed view command pointers are transferred into
+their original positions, in reverse insertion order. Surrounding blits, blur,
+mipmap, probe-processing and vegetation barriers retain their exact GPU order;
+no API translation or GPU scratch execution is parallelized here. Pending
+shader feedback is collected per view and reduced serially. Shadow refresh
+records outlive the batch, and light dirty flags are finalized only after it
+joins. Callers must keep destination buffers and feedback targets alive through
+`finishViewBatch`; nested batches and different destinations are rejected.
+`-SerialViewRecording` on the smoke runner uses the same snapshots and slots
+but records views in their original order, for controlled CPU comparisons.
+
+Batch view records occupy one contiguous array allocated when `setRenderPass`
+registers the stage, and lane executors and schedule capacity are also created
+there, not lazily during recording. One lane executes on the calling worker;
+a single-lane batch dispatches no extra task. The two-lane limit avoids the
+measured contention from four lanes in the six-worker renderer pool.
+View barrier lists clear without releasing their high-water capacity.
+HiZ uniform snapshots use stable-address value storage pre-sized for the
+stage/local-player view bound; immediate primitives use the same storage with
+chunked growth for their unbounded draw counts, not one heap owner per snapshot.
+
+This is not a claim that the renderer is allocation-free. Command/payload
+storage and indirect pages retain workload-dependent high-water growth.
+Per-view GPU light buffers are first-use/growing resources so an unused view
+does not reserve a maximum-light, all-player ring; multiplying that maximum by
+every possible view would waste substantial memory. These remaining growth
+paths must be distinguished from recurring per-frame allocations. Follow
+`AGENTS.md` for render allocation policy and restricted `Attorney` access;
+the lighting regressions use `Attorney::LightPoolTestAccess`.
+Dynamic commands already use the thread-local C-11 `MemoryPool` through
+`GFX::CmdAllocator`; command buffers use `CommandBufferPool`, and GPU loose
+uniform uploads use `UniformUploadArena`. Reuse these facilities where their
+ownership/lifetime fits instead of adding another pool. CPU uniform snapshots
+use an EASTL deque of values for stable addresses and chunked growth; their
+retained payload capacity still needs to warm up for new uniform layouts.
 
 Frustum traversal uses each pass camera, while scene visibility ranges and LoD
 use the active player/editor camera. Node previews use their own camera.
@@ -475,7 +561,7 @@ Cluster conventions shared by the builder (`lightBuildClusteredAABBs.glsl`) and 
 - Each cluster has one `MAX_LIGHTS_PER_CLUSTER` budget shared by point and spot lights; indices are written points first, then spots.
 - `rendering.numLightsPerCluster` is normalized before shader and renderer startup: negative values select the engine maximum, zero warns and becomes one, and larger values are capped at the engine maximum. The effective value sizes both the shader array and the light-index buffer.
 - Spot lights are culled with the minimal sphere around their cone; the slant height travels as float bits in `_options.z` (`SpotConeSlantHeight`).
-- Each render stage uploads at most `MAX_ACTIVE_LIGHTS_PER_FRAME` eligible lights. A stage with no eligible lights skips the light-buffer write but still uploads scene data with zero light counts.
+- Each recorded view uploads at most `MAX_ACTIVE_LIGHTS_PER_FRAME` eligible lights. A view with no eligible lights skips the light-buffer write but still uploads its own scene data with zero light counts.
 
 `HiZConstruct.glsl` max-reduces each output texel's full source footprint; push data `isBaseLevel` enables the conservative one-texel dilation for the first level only.
 

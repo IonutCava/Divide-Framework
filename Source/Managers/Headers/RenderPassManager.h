@@ -36,6 +36,7 @@
 #include "Core/Headers/KernelComponent.h"
 
 #include "RenderStageSchedule.h"
+#include "RenderViewSchedule.h"
 #include "Rendering/RenderPass/Headers/RenderPass.h"
 #include "Rendering/RenderPass/Headers/RenderQueue.h"
 
@@ -135,6 +136,8 @@ namespace Divide
         }
 
         void doCustomPass( Camera* const camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
+        void beginViewBatch( RenderStage stage, PlayerIndex player, GFX::CommandBuffer& destination );
+        void finishViewBatch( RenderStage stage, GFX::MemoryBarrierCommand& memCmdInOut );
         void postInit();
 
         private:
@@ -162,6 +165,19 @@ namespace Divide
             GFX::MemoryBarrierCommand _memCmd{};
             Handle<GFX::CommandBuffer> _cmdBuffer{ INVALID_HANDLE<GFX::CommandBuffer> };
         };
+
+        struct ViewRecording;
+        struct ViewBatch
+        {
+            GFX::CommandBuffer* _destination = nullptr;
+            PlayerIndex _player = 0u;
+            size_t _usedViews = 0u;
+            size_t _viewCapacity = 0u;
+            std::unique_ptr<ViewRecording[]> _views;
+            RenderViewSchedule _schedule;
+            std::array<RenderPassExecutor_uptr, RenderViewSchedule::LANE_COUNT> _lanes;
+        };
+        std::array<ViewBatch, to_base( RenderStage::COUNT )> _viewBatches;
 
         std::array<RenderPassData, to_base(RenderStage::COUNT)> _renderPassData{};
         RenderStageSchedule _stageSchedule;
