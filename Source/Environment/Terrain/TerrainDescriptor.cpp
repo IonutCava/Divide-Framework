@@ -70,6 +70,16 @@ bool LoadFromXML( TerrainDescriptor& descriptor, const boost::property_tree::ptr
 
         AddVariable( descriptor, "vegetationTextureLocation", descTree.get<string>( "vegetation.vegetationTextureLocation", "" ) );
         AddVariable( descriptor, "grassMap", descTree.get<string>( "vegetation.grassMap" ) );
+        AddVariable( descriptor, "grassMapSecondary", descTree.get<string>( "vegetation.grassMapSecondary", "" ) );
+        const U32 grassMask = descTree.get<U32>( "vegetation.grassMap.<xmlattr>.channelMask", 15u );
+        const U32 secondaryGrassMask = descTree.get<U32>( "vegetation.grassMapSecondary.<xmlattr>.channelMask", 15u );
+        if ( grassMask > 15u || secondaryGrassMask > 15u )
+        {
+            Console::errorfn( "Grass channel masks must be RGBA bit masks (0-15) in terrain descriptor {}.", terrainDescriptorPath.string().c_str() );
+            return false;
+        }
+        AddVariableF( descriptor, "grassMapChannelMask", to_F32( grassMask ) );
+        AddVariableF( descriptor, "grassMapSecondaryChannelMask", to_F32( secondaryGrassMask ) );
         AddVariable( descriptor, "treeMap", descTree.get<string>( "vegetation.treeMap" ) );
 
         for ( I32 j = 1; j < 5; ++j )

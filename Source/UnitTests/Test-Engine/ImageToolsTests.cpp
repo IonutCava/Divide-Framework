@@ -326,6 +326,35 @@ namespace Divide
             CHECK( data.mipCount() == 1u );
             CHECK( ImageTools::HaveCompatibleMipChains( data.imageLayers() ) );
         }
+
+        SECTION( "DDS inspection pixels match source row orientation" )
+        {
+            SECTION( "Bottom-left origin" )
+            {
+                CHECK_FALSE( ImageTools::UseUpperLeftOrigin() );
+            }
+            SECTION( "Top-left origin" )
+            {
+                ImageTools::OnShutdown();
+                ImageTools::OnStartup( true );
+            }
+            options._waitForDDSConversion = true;
+            ImageTools::ImageData cached;
+            REQUIRE( load( cached, options, "first.bmp" ) );
+            REQUIRE( cached.format() == GFXImageFormat::DXT5_RGBA );
+            options._useDDSCache = false;
+            ImageTools::ImageData source;
+            REQUIRE( load( source, options, "first.bmp" ) );
+            for ( const I32 y : { 0, 7 } )
+            {
+                const UColour4 expected = source.getColour( 0, y );
+                const UColour4 actual = cached.getColour( 0, y );
+                for ( U8 channel = 0u; channel < 4u; ++channel )
+                {
+                    CHECK( to_I32( actual[channel] ) == Catch::Approx( to_I32( expected[channel] ) ).margin( 6 ) );
+                }
+            }
+        }
     }
 #endif
 

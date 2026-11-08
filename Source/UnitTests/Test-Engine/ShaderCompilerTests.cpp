@@ -1710,8 +1710,8 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                      ._tree = false, ._prePass = false, ._display = false, ._bufferSet = DescriptorSetUsage::PER_PASS, ._bufferSlot = 6u, ._occlusion = true },
             Variant{ ._stage = ShaderType::COMPUTE, ._file = "instanceCullVegetation.glsl", ._source = "instanceCullVegetation.Compute",
                      ._tree = true, ._prePass = false, ._display = false, ._bufferSet = DescriptorSetUsage::PER_PASS, ._bufferSlot = 5u, ._occlusion = true },
-            Variant{ ShaderType::VERTEX, "grass.glsl", "grass.Vertex", false, true, true, DescriptorSetUsage::PER_PASS, 6u },
-            Variant{ ShaderType::VERTEX, "grass.glsl", "grass.Vertex", false, true, false, DescriptorSetUsage::PER_PASS, 6u },
+            Variant{ ShaderType::VERTEX, "grass.glsl", "grass.Vertex", false, true, true, DescriptorSetUsage::PER_DRAW, 13u },
+            Variant{ ShaderType::VERTEX, "grass.glsl", "grass.Vertex", false, true, false, DescriptorSetUsage::PER_DRAW, 13u },
             Variant{ ShaderType::VERTEX, "tree.glsl", "tree.Vertex", true, true, false, DescriptorSetUsage::PER_DRAW, 13u },
             Variant{ ShaderType::VERTEX, "tree.glsl", "tree.Vertex", true, false, true, DescriptorSetUsage::PER_DRAW, 13u },
             Variant{ ShaderType::VERTEX, "tree.glsl", "tree.Vertex", true, false, false, DescriptorSetUsage::PER_DRAW, 13u, false, true },
@@ -1802,6 +1802,19 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 ShaderProgramTestAccess::Parse( api, defines, data, atoms );
                 REQUIRE_FALSE( data._sourceCodeGLSL.empty() );
                 const bool countPatch = std::string_view{ variant._file } == "instanceCountPatch.glsl";
+                if ( variant._stage == ShaderType::FRAGMENT && !variant._prePass && !variant._shadow &&
+                     (std::string_view{ variant._file } == "grass.glsl" ||
+                      (std::string_view{ variant._file } == "material.glsl" && !variant._alphaDiscard)) )
+                {
+                    CHECK( atoms.contains( _ID( "transparentCoverage.cmn" ) ) );
+                    const size_t entry = data._sourceCodeGLSL.find( "void main" );
+                    REQUIRE( entry != string::npos );
+                    const size_t rejection = data._sourceCodeGLSL.find( "discard", entry );
+                    const size_t normal = data._sourceCodeGLSL.find( "getNormalWV", entry );
+                    REQUIRE( rejection != string::npos );
+                    REQUIRE( normal != string::npos );
+                    CHECK( rejection < normal );
+                }
                 if ( variant._stage == ShaderType::COMPUTE && !countPatch )
                 {
                     CHECK( atoms.contains( _ID( "frustumCulling.cmn" ) ) );
@@ -1826,7 +1839,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 if ( std::string_view{ variant._file } == "grass.glsl" && variant._stage == ShaderType::VERTEX )
                 {
                     CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.INDIRECT_DATA_IDX" ) != string::npos );
-                    CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.dvd_terrainChunkOffset" ) != string::npos );
+                    CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.dvd_instanceDataIndex" ) != string::npos );
                 }
                 if ( variant._stage == ShaderType::FRAGMENT && variant._prePass )
                 {
@@ -1950,6 +1963,16 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                     {
                         return entry._bindingSet == to_base( variant._bufferSet ) && entry._bindingSlot == variant._bufferSlot;
                     } ) );
+                    if ( variant._stage == ShaderType::COMPUTE && !countPatch )
+                    {
+                        for ( const U8 slot : { U8{14u}, U8{15u} } )
+                        {
+                            CHECK( std::ranges::any_of( reflection._buffers, [slot]( const Reflection::BufferEntry& entry )
+                            {
+                                return entry._bindingSet == to_base(DescriptorSetUsage::PER_PASS) && entry._bindingSlot == slot;
+                            } ) );
+                        }
+                    }
                     if ( countPatch )
                     {
                         CHECK( std::ranges::any_of( reflection._buffers, []( const Reflection::BufferEntry& entry )

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
 <heightfield>heightfield.raw</heightfield>
 <heightfieldTex>heightfield.png</heightfieldTex>
 <!--
@@ -29,7 +30,9 @@ min and max basically remap what 0 and 1 respectively mean in the heightmap
 
 <vegetation>
     <vegetationTextureLocation>Assets/MiscImages</vegetationTextureLocation>
-    <grassMap>alpha_maps_Alpha1.png</grassMap>
+    <!-- RGBA masks: 1=red, 2=green, 4=blue, 8=alpha. Only grass materials generate grass. -->
+    <grassMap channelMask="3">alpha_maps_Alpha1.png</grassMap>
+    <grassMapSecondary channelMask="8">alpha_maps_Alpha2.png</grassMapSecondary>
     <grassBillboard1 scale="0.75">billboardgrass0001.png</grassBillboard1>
     <grassBillboard2 scale="0.5">grass_billboards1.png</grassBillboard2>
     <grassBillboard3 scale="1">grass_billboards2.png</grassBillboard3>

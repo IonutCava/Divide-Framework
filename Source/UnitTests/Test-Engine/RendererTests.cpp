@@ -38,14 +38,62 @@
 #include "Rendering/RenderPass/Headers/RenderPassExecutor.h"
 #include "Rendering/RenderPass/Headers/RenderQueue.h"
 #include "Rendering/RenderPass/Headers/RenderBin.h"
+#include "Environment/Vegetation/Headers/VegetationDescriptor.h"
 #include "../../../Assets/Shaders/GLSL/Common/ssaoResampling.cmn"
 #include "../../../Assets/Shaders/GLSL/Common/hizConservative.cmn"
 #include "../../../Assets/Shaders/GLSL/Common/hizDispatchIndex.cmn"
+#include "../../../Assets/Shaders/GLSL/Common/grassInstanceMetadata.cmn"
+#include "../../../Assets/Shaders/GLSL/Common/transparentCoverage.cmn"
 
 #include <bit>
 
 namespace Divide
 {
+    TEST_CASE( "Transparent coverage rejects invisible texels without clipping soft edges", "[renderer][vegetation][oit]" )
+    {
+        CHECK_FALSE( TRANSPARENT_HAS_COVERAGE( 0.f ) );
+        CHECK_FALSE( TRANSPARENT_HAS_COVERAGE( -0.f ) );
+        CHECK_FALSE( TRANSPARENT_HAS_COVERAGE( -0.1f ) );
+        for ( const F32 alpha : { 0.000001f, 0.01f, 0.05f, 0.5f, 1.f } )
+        {
+            CHECK( TRANSPARENT_HAS_COVERAGE( alpha ) );
+            CHECK( TRANSPARENT_HAS_COVERAGE( alpha * 0.05f ) );
+            CHECK_FALSE( TRANSPARENT_HAS_COVERAGE( alpha * 0.f ) );
+        }
+    }
+
+    TEST_CASE( "Grass placement uses selected terrain material channels", "[renderer][vegetation]" )
+    {
+        const UColour4 grass = GrassPlacementColour( UColour4{ 180u, 90u, 255u, 255u }, 3u,
+                                                     UColour4{ 255u, 255u, 255u, 120u }, 8u );
+        CHECK( grass.r == 180u );
+        CHECK( grass.g == 90u );
+        CHECK( grass.b == 0u );
+        CHECK( grass.a == 120u );
+        const UColour4 bare = GrassPlacementColour( UColour4{ 0u, 0u, 255u, 255u }, 3u,
+                                                    UColour4{ 255u, 255u, 255u, 0u }, 8u );
+        CHECK( bare == UColour4{ 0u, 0u, 0u, 0u } );
+        const UColour4 legacy{ 20u, 30u, 40u, 50u };
+        CHECK( GrassPlacementColour( legacy, 15u, UColour4{ 0u }, 0u ) == legacy );
+        CHECK( GrassPlacementColour( legacy, 0u, UColour4{ 0u, 0u, 0u, 200u }, 8u ).a == 200u );
+    }
+
+    TEST_CASE( "Compacted grass preserves LOD and original colour variation", "[renderer][vegetation]" )
+    {
+        for ( U32 index = 0u; index < 1000u; ++index )
+        {
+            for ( U32 lod = 0u; lod < 4u; ++lod )
+            {
+                const F32 packed = to_F32( GRASS_PACK_METADATA( lod, index ) );
+                const U32 metadata = to_U32( packed );
+                CHECK( GRASS_METADATA_LOD( metadata ) == lod );
+                const U32 tint = GRASS_METADATA_TINT( metadata );
+                CHECK( tint % 3u == index % 3u );
+                CHECK( tint % 4u == index % 4u );
+            }
+        }
+    }
+
     struct LightPoolTestAccess
     {
         using PointShadowProperties = LightPool::PointShadowProperties;

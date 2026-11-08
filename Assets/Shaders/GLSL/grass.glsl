@@ -5,12 +5,14 @@
 
 #define COMPUTE_TBN
 #include "vbInputData.vert"
+#define VEGETATION_GRASS_DRAW
 #include "vegetationData.cmn"
+#include "grassInstanceMetadata.cmn"
 #include "sceneData.cmn"
 #include "lightingDefaults.vert"
 
 VegetationData GrassData(in uint instanceID) {
-    return grassData[dvd_terrainChunkOffset * MAX_GRASS_INSTANCES + instanceID];
+    return grassData[dvd_instanceDataIndex + instanceID];
 }
 
 layout(location = ATTRIB_FREE_START + 0) flat out uint  _layer;
@@ -43,13 +45,13 @@ void main() {
 
     const NodeTransformData nodeData = fetchInputData();
     VAR._SelectionFlag = dvd_SelectionFlag(nodeData);
-    _instanceID = VEGETATION_INSTANCE_INDEX;
+    _instanceID = GRASS_METADATA_TINT(uint(data.data.y));
     float scale = data.positionAndScale.w * Saturate(data.data.z);
 
     _alphaFactor = Saturate(data.data.z);
 
     _layer = uint(data.data.x);
-    VAR._LoDLevel = uint(data.data.y);
+    VAR._LoDLevel = GRASS_METADATA_LOD(uint(data.data.y));
 
     const float timeGrass = dvd_windDetails.w * MSToSeconds(dvd_GameTimeMS) * 0.5f;
     const bool animate = VAR._LoDLevel < 2u && dvd_Vertex.y > 0.5f;
@@ -98,6 +100,7 @@ layout(early_fragment_tests) in;
 
 #include "BRDF.frag"
 #include "output.frag"
+#include "transparentCoverage.cmn"
 
 layout(location = ATTRIB_FREE_START + 0) flat in uint  _layer;
 layout(location = ATTRIB_FREE_START + 1) flat in uint  _instanceID;
@@ -109,6 +112,11 @@ void main (void){
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
 
     vec4 albedo = texture(texDiffuse0, vec3(VAR._texCoord, _layer));
+    albedo.a *= _alphaFactor;
+    if (!TRANSPARENT_HAS_COVERAGE(albedo.a))
+    {
+        discard;
+    }
 
     if (_instanceID % 3 == 0) {
         albedo.rgb = overlayVec(albedo.rgb, vec3(0.9f, 0.85f, 0.55f));
@@ -136,7 +144,6 @@ void main (void){
     const PBRMaterial material = initMaterialProperties(data, albedo.rgb, VAR._texCoord, normalWV, NdotV);
     const IBLGradients gradients = IBL_GRADIENTS(vec3(0.f), vec2(0.f));
 
-    albedo.a *= _alphaFactor;
     writeScreenColour(getPixelColour(albedo, data, normalWV, material, viewVec, gradients, positionDx, positionDy), vec3(0.f), normalWV);
 }
 

@@ -6,6 +6,7 @@ layout(early_fragment_tests) in;
 
 #include "output.frag"
 #include "BRDF.frag"
+#include "transparentCoverage.cmn"
 
 void main (void) {
     const vec4 positionDx = dFdx(VAR._vertexW);
@@ -15,6 +16,13 @@ void main (void) {
     const vec3 texCoord = vec3( VAR._texCoord, 0 );
 
     vec4 albedo = getAlbedo(data, texCoord);
+
+#if defined(OIT_PASS) || defined(TRANSPARENCY_PASS)
+    if (!TRANSPARENT_HAS_COVERAGE(albedo.a))
+    {
+        discard;
+    }
+#endif
 
     const vec3 normalWV = getNormalWV( data, texCoord );
     const vec3 viewVec = computeViewDirectionWV();

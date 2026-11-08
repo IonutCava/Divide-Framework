@@ -80,7 +80,8 @@ struct VegetationData
 {
     float4 _positionAndScale;
     float4 _orientationQuat;
-    // x - grass layer/tree species, y - grass LoD/tree cull radius, z - visibility/fade, w - camera distance
+    // x - grass layer/tree species, y - grass chunk ID (source) or packed LoD/tint (draw)/tree cull radius,
+    // z - visibility/fade, w - camera distance
     float4 _data = { 1.0f, 1.0f, 1.0f, 0.0f };
 };
 //RenderDoc: mat4 transform; vec4 posAndIndex; vec4 extentAndRender;
@@ -225,6 +226,8 @@ DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
     /// One visible-instance count per chunk and species (MAX_VEGETATION_TREE_MESHES per chunk).
     ShaderBuffer_uptr _treeVisibleCounts;
     ShaderBuffer_uptr _grassData;
+    ShaderBuffer_uptr _grassDrawData;
+    ShaderBuffer_uptr _grassVisibleCounts;
     vector<Handle<Mesh>> _treeMeshes;
     vector<std::pair<Handle<Material>, Handle<Material>>> _treeMaterials;
 

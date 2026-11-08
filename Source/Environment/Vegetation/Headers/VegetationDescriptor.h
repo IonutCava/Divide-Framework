@@ -46,7 +46,10 @@ template<>
 struct PropertyDescriptor<Vegetation>
 {
     std::shared_ptr<ImageTools::ImageData> grassMap;
+    std::shared_ptr<ImageTools::ImageData> grassMapSecondary;
     std::shared_ptr<ImageTools::ImageData> treeMap;
+    U8 grassMapChannelMask = 15u;
+    U8 grassMapSecondaryChannelMask = 15u;
     vector<Str<256>> treeMeshes;
     Str<256> name = "";
     string billboardTextureArray = "";
@@ -59,6 +62,18 @@ struct PropertyDescriptor<Vegetation>
 };
 
 using VegetationDescriptor = PropertyDescriptor<Vegetation>;
+
+[[nodiscard]] inline UColour4 GrassPlacementColour( const UColour4& primary, const U8 primaryMask,
+                                                   const UColour4& secondary, const U8 secondaryMask ) noexcept
+{
+    UColour4 colour{ 0u, 0u, 0u, 0u };
+    for ( U8 channel = 0u; channel < 4u; ++channel )
+    {
+        colour[channel] = std::max( (primaryMask & (1u << channel)) != 0u ? primary[channel] : U8{ 0u },
+                                    (secondaryMask & (1u << channel)) != 0u ? secondary[channel] : U8{ 0u } );
+    }
+    return colour;
+}
 
 template<>
 inline size_t GetHash( const VegetationDescriptor& descriptor ) noexcept;

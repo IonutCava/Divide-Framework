@@ -41,8 +41,8 @@ namespace Divide
 
     namespace
     {
-        constexpr U16 GRASS_CACHE_VERSION = 3u;
-        constexpr U16 TREE_CACHE_VERSION = 5u;
+        constexpr U16 GRASS_CACHE_VERSION = 4u;
+        constexpr U16 TREE_CACHE_VERSION = 6u;
 
         constexpr U32 WORK_GROUP_SIZE = 64;
         constexpr I16 g_maxRadiusSteps = 512;
@@ -153,6 +153,8 @@ namespace Divide
         _treeDrawData.reset();
         _treeVisibleCounts.reset();
         _grassData.reset();
+        _grassDrawData.reset();
+        _grassVisibleCounts.reset();
         _buffer.reset();
 
         Console::printfn( LOCALE_STR( "UNLOAD_VEGETATION_END" ) );
@@ -384,6 +386,18 @@ namespace Divide
             bufferDescriptor._elementCount = to_U32( _maxGrassInstances * chunks.size() );
             bufferDescriptor._name = "Grass_data";
             _grassData = context.gfx().newShaderBuffer( bufferDescriptor );
+            bufferDescriptor._name = "Grass_draw_data";
+            _grassDrawData = context.gfx().newShaderBuffer( bufferDescriptor );
+
+            ShaderBufferDescriptor countDescriptor = {};
+            countDescriptor._elementSize = sizeof( U32 );
+            countDescriptor._elementCount = to_U32( chunks.size() );
+            countDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
+            countDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
+            countDescriptor._name = "Grass_visible_counts";
+            vector<U32> zeroCounts( countDescriptor._elementCount, 0u );
+            countDescriptor._initialData = { zeroCounts.data(), zeroCounts.size() * sizeof( U32 ) };
+            _grassVisibleCounts = context.gfx().newShaderBuffer( countDescriptor );
         }
 
         std::atomic_uint loadTasks = 0u;
@@ -554,6 +568,12 @@ namespace Divide
     void Vegetation::postLoad( SceneGraphNode* sgn )
     {
         SceneNode::postLoad( sgn );
+        if ( _grassDrawData )
+        {
+            RenderingComponent* rComp = sgn->get<RenderingComponent>();
+            rComp->setInstanceShaderBuffer( _grassDrawData.get(), sgn->dataFlag() * _maxGrassInstances );
+            rComp->setInstanceCountSource( _grassVisibleCounts.get(), sgn->dataFlag() );
+        }
     }
 
     void Vegetation::finalizeInstance( SceneGraphNode* sgn, const SceneState& sceneState )
@@ -627,6 +647,14 @@ namespace Divide
                 ElementRange<>{ sgn->dataFlag() * _maxGrassInstances, instance->_drawState._grassInstanceCount },
                 instance->_grassCandidates.data() );
             DIVIDE_UNUSED( lock );
+            for ( VegetationData& entry : instance->_grassCandidates )
+            {
+                entry._data.z = -1.f;
+            }
+            const BufferLock drawLock = _grassDrawData->writeData(
+                ElementRange<>{ sgn->dataFlag() * _maxGrassInstances, instance->_drawState._grassInstanceCount },
+                instance->_grassCandidates.data() );
+            DIVIDE_UNUSED( drawLock );
         }
         if ( !instance->_treeCandidates.empty() )
         {
@@ -896,7 +924,13 @@ namespace Divide
                         {
                             ._range = VegetationBufferRange( sgn->dataFlag(), _maxGrassInstances, instance->_drawState._grassInstanceCount ),
                             ._type = usage,
-                            ._buffer = _grassData->getBufferImpl()
+                            ._buffer = _grassDrawData->getBufferImpl()
+                        } );
+                        command._bufferLocks.emplace_back( BufferLock
+                        {
+                            ._range = { to_size( sgn->dataFlag() ) * sizeof( U32 ), sizeof( U32 ) },
+                            ._type = usage,
+                            ._buffer = _grassVisibleCounts->getBufferImpl()
                         } );
                     }
                     if ( instance->_drawState._treeInstanceCount > 0u )
@@ -934,13 +968,20 @@ namespace Divide
                     GFX::DispatchShaderTaskCommand computeCmd = {};
                     if ( cullGrass )
                     {
-                        computeCmd._workGroupSize.set( (instance->_drawState._grassInstanceCount + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
+                        auto resources = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( commands );
+                        resources->_usage = DescriptorSetUsage::PER_PASS;
+                        Set( AddBinding( resources->_set, 14u, ShaderStageVisibility::COMPUTE )._data,
+                             _grassDrawData.get(), { 0u, _grassDrawData->getPrimitiveCount() } );
+                        Set( AddBinding( resources->_set, 15u, ShaderStageVisibility::COMPUTE )._data,
+                             _grassVisibleCounts.get(), { 0u, _grassVisibleCounts->getPrimitiveCount() } );
+                        computeCmd._workGroupSize.set( 1, 1, 1 );
                         GFX::EnqueueCommand<GFX::BindPipelineCommand>( commands )->_pipeline = occlusion ? _occlusionPipelineGrass : _cullPipelineGrass;
                         GFX::EnqueueCommand( commands, cullConstantsCmd );
                         GFX::EnqueueCommand( commands, computeCmd );
                     }
                     if ( instance->_drawState._treeInstanceCount > 0u )
                     {
+                        bindVegetationData( commands );
                         // One workgroup per species: each compacts its own range into the draw buffer.
                         computeCmd._workGroupSize.set( to_U32( MAX_VEGETATION_TREE_MESHES ), 1, 1 );
                         GFX::EnqueueCommand<GFX::BindPipelineCommand>( commands )->_pipeline = occlusion ? _occlusionPipelineTrees : _cullPipelineTrees;
@@ -1189,7 +1230,7 @@ namespace Divide
         const VegetationDescriptor& descriptor = parent->_descriptor;
         const string cacheFileName = treeData
             ? Util::StringFormat( "{}_{}_trees_{}_{:08x}_mix5_{:016x}.cache", _chunk->parent().resourceName().c_str(), parent->resourceName().c_str(), ID, waterHeightKey, TreePlacementHash( descriptor ) )
-            : Util::StringFormat( "{}_{}_grass_{}_{:08x}.cache", _chunk->parent().resourceName().c_str(), parent->resourceName().c_str(), ID, waterHeightKey );
+            : Util::StringFormat( "{}_{}_grass_{}_{:08x}_{:016x}.cache", _chunk->parent().resourceName().c_str(), parent->resourceName().c_str(), ID, waterHeightKey, GetHash( descriptor ) );
         Console::printfn( Locale::Get( treeData ? _ID( "CREATE_TREE_START" ) : _ID( "CREATE_GRASS_BEGIN" ) ), ID );
 
         const U16 cacheVersion = treeData ? TREE_CACHE_VERSION : GRASS_CACHE_VERSION;
@@ -1338,7 +1379,19 @@ namespace Divide
 
                 assert( vert._position != VECTOR3_ZERO );
 
-                const UColour4 colour = map->getColour( to_I32( x_fac * (mapWidth - 1u) ), to_I32( y_fac * (mapHeight - 1u) ) );
+                UColour4 colour = map->getColour( to_I32( x_fac * (mapWidth - 1u) ), to_I32( y_fac * (mapHeight - 1u) ) );
+                if ( !treeData )
+                {
+                    UColour4 secondary{ 0u, 0u, 0u, 0u };
+                    if ( descriptor.grassMapSecondary )
+                    {
+                        const auto dimensions = descriptor.grassMapSecondary->dimensions( 0u, 0u );
+                        secondary = descriptor.grassMapSecondary->getColour(
+                            to_I32( x_fac * (dimensions.width - 1u) ), to_I32( y_fac * (dimensions.height - 1u) ) );
+                    }
+                    colour = GrassPlacementColour( colour, descriptor.grassMapChannelMask,
+                                                    secondary, descriptor.grassMapSecondaryChannelMask );
+                }
                 const U8 index = BestIndex( colour );
                 const F32 colourVal = colour[index];
                 if ( colourVal <= EPSILON_F32 )
