@@ -1497,6 +1497,22 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
                         Console::errorfn( "Failed to decode DDS inspection data for '{}': {}.", fullPath, devilErrors );
                         return false;
                     }
+                    // Flipping the DXT payload does not flip DevIL's decoded pixel buffer.
+                    if ( !s_useUpperLeftOrigin )
+                    {
+                        const size_t rowSize = to_size( width ) * 4u;
+                        const size_t sliceSize = rowSize * height;
+                        for ( I32 slice = 0; slice < depth; ++slice )
+                        {
+                            U8* pixels = decoded.data() + to_size( slice ) * sliceSize;
+                            for ( I32 row = 0; row < height / 2; ++row )
+                            {
+                                U8* first = pixels + to_size( row ) * rowSize;
+                                U8* last = pixels + to_size( height - 1 - row ) * rowSize;
+                                eastl::swap_ranges( first, first + rowSize, last );
+                            }
+                        }
+                    }
                 }
             }
         }

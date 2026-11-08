@@ -840,12 +840,20 @@ void Terrain::createVegetation( PlatformContext& context )
     vegDetails.treeMap.reset( new ImageTools::ImageData );
 
     const auto grassMap = GetVariable( _descriptor, "grassMap" );
+    const auto grassMapSecondary = GetVariable( _descriptor, "grassMapSecondary" );
     const auto treeMap = GetVariable( _descriptor, "treeMap" );
+    vegDetails.grassMapChannelMask = to_U8( GetVariableF( _descriptor, "grassMapChannelMask" ) );
+    vegDetails.grassMapSecondaryChannelMask = to_U8( GetVariableF( _descriptor, "grassMapSecondaryChannelMask" ) );
 
     ImageTools::ImportOptions options{};
     options._alphaChannelTransparency = false;
     options._isNormalMap = false;
     DIVIDE_EXPECTED_CALL( vegDetails.grassMap->loadFromFile( context, false, 0, 0, terrainLocation, grassMap, options ) );
+    if ( !grassMapSecondary.empty() )
+    {
+        vegDetails.grassMapSecondary = std::make_shared<ImageTools::ImageData>();
+        DIVIDE_EXPECTED_CALL( vegDetails.grassMapSecondary->loadFromFile( context, false, 0, 0, terrainLocation, grassMapSecondary, options ) );
+    }
     DIVIDE_EXPECTED_CALL( vegDetails.treeMap->loadFromFile( context, false, 0, 0, terrainLocation, treeMap, options ) );
 
     ResourceDescriptor<Vegetation> descriptor{ vegDetails.name, vegDetails };

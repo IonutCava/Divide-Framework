@@ -162,7 +162,12 @@ checklist below. Later measurements and fixes supersede some of the conclusions.
 - [x] p0-gpu-scope-timings (new) - opt-in per-debug-scope GPU timestamps (`-GpuScopeTimings`); see 'GPU scope breakdown' in Findings.
 - [x] p3-woit-cost (new) - Resolved as a misattribution: W-OIT scopes are expensive because they contain the tree geometry, not because of OIT itself (see 'Feature costs' in Findings).
 - [x] p3-tree-instance-compaction (new) - Trees: the cull compacts visible instances per species into `PER_PASS` 14 and writes per-species counts to `PER_PASS` 15. A patch compute (`instanceCountPatch.glsl`) clamps indirect `instanceCount` before drawing. Release VK 53→41 ms (GPU ~33), GL 47.5→43.6 ms (GPU 49→33). See "Tree compaction results". Grass is split into p3-grass-compaction.
-- [ ] p3-grass-compaction (new) - Apply the same compaction/patch path to grass (~4 ms VK).
+- [x] p3-grass-compaction (2026-11-08) — Implementation and
+  engine/shader regressions are complete. Grass now uses immutable source data,
+  a compacted draw buffer, and a GPU-written visible count patched into indirect
+  draws on both APIs. Preserve distance fade and original colour variation.
+  Supervised Vulkan/OpenGL runs and scene/editor image inspection are complete.
+  Before/after performance measurement remains pending; no frame-time gain is claimed.
 - [ ] p3-tree-lod (new) - Distance LoD/impostors for instanced trees; reflection/refraction draw distance as a quality setting (default = current visuals).
 - [ ] p3-tree-shadow-cost (new) - Reduce tree cost in SHADOW (per-cascade compaction, distance cut-off for far cascades).
 - [x] p3-gl-hiz-bug (new) - Root cause: OpenGL buffer binding aliasing (see "Tree compaction results"). GL now culls 1002 items like VK. Uniform and storage bindings have separate namespaces, while storage bindings are unique across stages; the OpenGL flat-binding limit is not applied to Vulkan's per-stage limit.
@@ -204,6 +209,44 @@ captures retained the same reference geometry, vegetation, water and shadows.
 Vulkan reported the approved custom-border best-practice advisories; the logs
 also retain known `STUBBED` messages and shutdown networking disconnects.
 Neither performance target has been met.
+
+### Grass compaction implementation checkpoint (2026-11-08)
+
+- [x] Reuse the tree compaction loop for grass, one workgroup per chunk, with
+  separate source/draw/count buffers and existing descriptor slots 14/15.
+- [x] Recompact the visible prefix for Hi-Z and patch indirect instance counts
+  with the existing backend-neutral mechanism. Keep negative tail sentinels
+  so a dropped count patch still renders correctly.
+- [x] Preserve grass distance fade, LoD and original modulo-3/modulo-4 colour
+  variation after reordering; leave grass excluded from shadow passes.
+- [x] Add shared metadata arithmetic coverage and compile/reflection coverage
+  for both APIs; the Windows instrumented suite passes 374/374.
+- [x] Update rendering and shader-descriptor guides.
+- [x] Vulkan WarScene acceptance: 301 presents, normal shutdown, scene/editor
+  images inspected (`grass-compact-vulkan`, attempt 01). Existing grass remains
+  visible along the forest edge; the pre-existing bare foreground is unchanged.
+- [x] OpenGL WarScene acceptance: presentation/capture contract, normal shutdown
+  and scene/editor image inspection complete (`grass-compact-opengl`, attempt 01).
+  Grass coverage matches Vulkan in these captures; performance is not inferred
+  from the supervised runs.
+- [ ] Measure current-branch before/after frame and culling GPU times. The
+  historical ~4 ms grass filter cost is not a predicted compaction saving.
+- [x] Foreground grass coverage fix (2026-11-08): regression reproduced and
+  corrected DDS CPU inspection orientation. DevIL flips compressed upload data
+  but not its decoded pixels; cached placement sampled the opposite terrain
+  rows. Corrected decoded pixels and invalidated grass/tree placement caches.
+  Main terrain now selects grass-only material channels (Alpha1 red/green,
+  Alpha2 alpha), preserving slope/water limits. Targeted regressions pass.
+  Both APIs show corrected foreground coverage, also confirmed by the user.
+  Denser canopies exposed black transparency artifacts; rejecting zero-alpha
+  texels before lighting removed the speckling in the loaded OpenGL capture.
+  FP32 accumulation did not help and was reverted. Final Vulkan and OpenGL
+  scene/editor captures retain full vegetation (1063 render-bin items) without
+  the black speckling (`grass-coverage-fixed-vulkan` and
+  `grass-coverage-fixed-opengl`, attempt 01), with normal shutdown.
+  The instrumented Windows suite passes 376/376, including coverage arithmetic,
+  DDS orientation, grass channels and shader rejection-before-lighting checks.
+  The exact originating non-finite lighting operation was not captured.
 
 One preceding Vulkan diagnostic exited during teardown with Windows heap
 corruption `0xc0000374`. The next, longer run shut down cleanly after restoring

@@ -127,6 +127,19 @@ vegetation. Tree models load before graph insertion; each nonempty chunk owns
 its tree subtree and culling extents. Incompatible or malformed vegetation
 caches are regenerated.
 
+Grass placement samples `vegetation.grassMap` and an optional
+`vegetation.grassMapSecondary` from the terrain descriptor. Each map's
+`channelMask` attribute selects RGBA bits (1, 2, 4, 8); omitted masks default
+to all four channels for compatibility. Each channel uses the greater selected
+weight across both maps, preserving the existing billboard choice/scale rules.
+Main terrain selects Alpha1 red/green (dry/regular grass) and Alpha2 alpha
+(lush grass), not the rock/sand channels. Grass retains the 30-degree slope
+limit and above-water requirement; trees retain their separate map and
+10-degree slope limit. DDS CPU inspection follows the render texture's row
+orientation (see [Asset pipeline](asset-pipeline.md)). Grass caches include
+the descriptor hash; placement-cache versions reject the older inverted-mask
+grass and tree candidates.
+
 After scene updates and vegetation finalization, `SceneGraph` refreshes its
 static-geometry AABB only when static geometry changes. It derives that AABB
 from individual geometry bounds rather than the root's aggregate, which also

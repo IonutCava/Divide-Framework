@@ -50,6 +50,12 @@ inline size_t GetHash( const VegetationDescriptor& descriptor ) noexcept
         Util::Hash_combine( hash, descriptor.treeMap->fullPath());
     }
 
+    if ( descriptor.grassMapSecondary )
+    {
+        Util::Hash_combine( hash, descriptor.grassMapSecondary->fullPath() );
+    }
+    Util::Hash_combine( hash, descriptor.grassMapChannelMask, descriptor.grassMapSecondaryChannelMask );
+
     for ( U8 i = 0; i < descriptor.treeRotations.size(); ++i )
     {
         Util::Hash_combine( hash,

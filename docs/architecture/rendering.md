@@ -640,7 +640,20 @@ strips loose-uniform initializers.
 
 Materials that require instanced indirection must mark their rendering component instanced even for a single instance. Instanced draws upload `INDIRECT_DATA_IDX` and use base instance zero; ordinary draws encode the node indirection index plus one in the base instance. Grass and tree shaders use a draw-local instance index: OpenGL's `gl_InstanceID` is already local, while Vulkan's `gl_InstanceIndex` includes the base instance. Vegetation buffers accept CPU writes, and empty chunks do not issue zero-length uploads. A terrain can omit tree meshes when it only needs grass.
 
-Tree culling compacts visible instances. One workgroup per species writes visible entries into the species' range of `_treeDrawData` (`PER_PASS` 14, `COMPACTED_INSTANCE_DATA`) and the visible count to `_treeVisibleCounts` (`PER_PASS` 15, `VISIBLE_INSTANCE_COUNTS`, element `chunkID * MAX_VEGETATION_TREE_MESHES + speciesID`). Ranges come from the `dvd_treeRangeOffsets`/`dvd_treeRangeCounts` uniforms. Each tree `RenderingComponent` reads instances from the compacted buffer (`setInstanceShaderBuffer`) and names its count element with `setInstanceCountSource`. Grass still uses the `data.z` sentinel path.
+Tree culling compacts visible instances. One workgroup per species writes visible entries into the species' range of `_treeDrawData` (`PER_PASS` 14, `COMPACTED_INSTANCE_DATA`) and the visible count to `_treeVisibleCounts` (`PER_PASS` 15, `VISIBLE_INSTANCE_COUNTS`, element `chunkID * MAX_VEGETATION_TREE_MESHES + speciesID`). Ranges come from the `dvd_treeRangeOffsets`/`dvd_treeRangeCounts` uniforms. Each tree `RenderingComponent` reads instances from the compacted buffer (`setInstanceShaderBuffer`) and names its count element with `setInstanceCountSource`.
+
+Grass uses the same compaction loop, with one workgroup per chunk and separate
+`_grassDrawData`/`_grassVisibleCounts` buffers. Slots 14/15 are rebound before
+each grass or tree dispatch; draws read compacted data at `PER_DRAW` 13.
+Frustum/range culling always reads immutable source instances, while Hi-Z
+recompacts the current visible prefix in place. Each round finishes reading
+before overwriting that prefix. The unused tail retains negative `data.z`
+sentinels for the full-count fallback. Grass retains its distance fade and
+packs LOD plus the original instance index modulo 12 in `data.y`, preserving
+the modulo-3/modulo-4 colour variation despite compaction reordering. The
+shared expressions are in `grassInstanceMetadata.cmn`. Grass remains excluded
+from shadow passes. This adds one instance-sized draw buffer and one U32
+count per chunk; it does not reduce visible grass transparency overdraw.
 
 ### GPU instance-count patch
 
@@ -847,6 +860,11 @@ compute their own normal and roughness rather than sampling the opaque prepass.
 The weighted normal is still an approximation rather than a depth-correct
 transparent G-buffer. OIT modulation and composition preserve destination alpha;
 the modulation output alpha is initialized even though it does not contribute.
+Grass and general transparent material shaders discard zero-coverage texels
+before normal/BRDF evaluation. Zero alpha must not enter weighted accumulation:
+non-finite lighting multiplied by zero can still contaminate the target.
+Positive fractional coverage is retained, including grass distance fade and
+filtered canopy edges; this is not the opaque alpha-discard threshold.
 Passes use `BeginRenderPassCommand` with ordinary pipeline/resource binding commands.
 
 - Screen-space effects using existing inputs generally belong in PostFX/pre-render operators.

@@ -70,6 +70,10 @@ not a comma-separated list of directories.
   inspection. Component indexing uses the source element size and layer/slice;
   floating-point colours are clamped to the normalized range before conversion.
   Compressed mip inspection beyond the base level is not supported.
+  CPU inspection pixels have the same row orientation as the uploaded image.
+  DevIL's DXT-payload flip leaves its decoded buffer unchanged, so DDS loading
+  separately flips decoded RGBA rows (per slice) for bottom-left origin.
+  Placement maps must not sample the unflipped decoded buffer.
 - STB decodes standard formats; DevIL handles DDS compatibility.
 - NVTT can generate DDS cache files; conversion may run on the `HIGH_PRIORITY` task pool.
   `DDSCache::Write` serializes writers for each cache path, creates parent directories for

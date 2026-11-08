@@ -70,6 +70,11 @@ including file-watcher updates racing asset-loader cache reads.
 
 Changes must cover source parsing, generated declarations, cache invalidation, SPIR-V generation, reflection compatibility, and both backend consumers.
 
+Vegetation compute reuses `PER_PASS` 14/15 for either grass or tree compacted
+instances/counts, rebinding the appropriate buffers at each dispatch. Both draw
+shaders read their own compacted buffer through `PER_DRAW` 13 and
+`dvd_instanceDataIndex`; grass colour/LOD metadata survives instance reordering.
+
 ### GLSL authoring and preprocessing
 
 - Effect files are GLSW collections; `ShaderModuleDescriptor` selects a `file.Stage.variant` section, and module/global defines select material, pass, and debug variants.

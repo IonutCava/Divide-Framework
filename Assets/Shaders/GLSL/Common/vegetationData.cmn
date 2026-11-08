@@ -10,7 +10,7 @@
 #define VEGETATION_INSTANCE_INDEX uint(dvd_InstanceIndex)
 #endif
 
-#if defined(VEGETATION_TREE_DRAW)
+#if defined(VEGETATION_TREE_DRAW) || defined(VEGETATION_GRASS_DRAW)
 uniform uint dvd_instanceDataIndex = 0u;
 #else
 uniform uint dvd_terrainChunkOffset = 0u;
@@ -50,9 +50,22 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 15, std430) coherent buffer dvd_treeVis
 #endif //MAX_TREE_INSTANCES
 
 #if defined(MAX_GRASS_INSTANCES)
+#if defined(VEGETATION_GRASS_DRAW)
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 13, std430) coherent COMP_ONLY_RW buffer dvd_grassTransformBlock {
+#else
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 6, std430) coherent COMP_ONLY_RW buffer dvd_grassTransformBlock {
+#endif
     VegetationData grassData[];
 };
+
+#if defined(COMPUTE_SHADER) && !defined(CULL_TREES)
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 14, std430) coherent buffer dvd_grassDrawBlock {
+    VegetationData grassDrawData[];
+};
+DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_PASS, 15, std430) coherent buffer dvd_grassVisibleCountBlock {
+    uint grassVisibleCounts[];
+};
+#endif
 
 #endif //MAX_GRASS_INSTANCES
 
