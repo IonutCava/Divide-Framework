@@ -445,6 +445,7 @@ namespace Divide
 
         bool hasCommands = false;
         bool needsNewShader = false;
+        U8 lodLevel = 0u;
 
         if ( refreshData )
         {
@@ -508,14 +509,14 @@ namespace Divide
                 const SceneNodeRenderState& renderState = _parentSGN->getNode<>().renderState();
                 if ( renderState.lod0OnCollision() && bComp->getBoundingBox().containsPoint( cameraEye ) )
                 {
-                    _lodLevels[to_base( renderStagePass._stage )] = 0u;
+                    lodLevel = 0u;
                 }
                 else
                 {
                     const BoundingBox& aabb = bComp->getBoundingBox();
                     const float3 LoDtarget = renderState.useBoundsCenterForLoD() ? aabb.getCenter() : aabb.nearestPoint( cameraEye );
                     const F32 distanceSQToCenter = LoDtarget.distanceSquared( cameraEye );
-                    _lodLevels[to_base( renderStagePass._stage )] = getLoDLevelInternal( distanceSQToCenter, renderStagePass._stage, sceneRenderState.lodThresholds( renderStagePass._stage ) );
+                    lodLevel = getLoDLevelInternal( distanceSQToCenter, renderStagePass._stage, sceneRenderState.lodThresholds( renderStagePass._stage ) );
                 }
             }
         }
@@ -530,6 +531,14 @@ namespace Divide
         if ( hasCommands && !needsNewShader )
         {
             RenderPackage& pkg = getDrawPackage( renderStagePass );
+            if ( refreshData )
+            {
+                pkg.lodLevel( lodLevel );
+                if ( renderStagePass._stage == RenderStage::DISPLAY || renderStagePass._stage == RenderStage::NODE_PREVIEW )
+                {
+                    _lodLevels[to_base( renderStagePass._stage )] = lodLevel;
+                }
+            }
 
             if ( pkg.pipelineCmd()._pipeline == nullptr )
             {
@@ -720,13 +729,14 @@ namespace Divide
             RenderStagePass preparedPass = stagePass;
             preparedPass._passType = RenderPassType::MAIN_PASS;
             pkg.drawCommandsOverride(getDrawPackage(preparedPass).drawCommandsOverride());
+            pkg.lodLevel( getDrawPackage( preparedPass ).lodLevel() );
         }
         SetNodeIndirectionIndex( pkg, isInstanced(), _indirectionBufferEntry );
         pkg.stagePassBaseIndex( BaseIndex( stagePass ) );
 
         pkg.drawCmdOffset( cmdOffset + to_U32( cmdsInOut.size() ) );
 
-        const auto& [offset, count] = _lodIndexOffsets[std::min( _lodLevels[to_U8( stagePass._stage )], to_U8( _lodIndexOffsets.size() - 1 ) )];
+        const auto& [offset, count] = _lodIndexOffsets[std::min( pkg.lodLevel(), to_U8( _lodIndexOffsets.size() - 1 ) )];
         const bool autoIndex = offset != 0u || count != 0u;
 
         SharedLock<SharedMutex> r_lock2( _drawCommands._dataLock );

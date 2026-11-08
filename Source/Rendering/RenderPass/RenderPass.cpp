@@ -213,6 +213,7 @@ namespace Divide
                 ProjectManager* mgr = _parent.parent().projectManager().get();
                 Camera* camera = Attorney::ProjectManagerCameraAccessor::playerCamera( mgr );
 
+                _parent.beginViewBatch( _stageFlag, idx, bufferInOut );
                 GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Reflection Pass";
                 {
                     PROFILE_SCOPE( "RenderPass - Probes", Profiler::Category::Scene );
@@ -270,6 +271,7 @@ namespace Divide
                         }
                     }
                 }
+                _parent.finishViewBatch( _stageFlag, memCmdInOut );
                 GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
             } break;
@@ -278,6 +280,7 @@ namespace Divide
             {
                 static VisibleNodeList<> s_Nodes;
 
+                _parent.beginViewBatch( _stageFlag, idx, bufferInOut );
                 GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Refraction Pass";
 
                 PROFILE_SCOPE( "RenderPass - Refraction", Profiler::Category::Scene );
@@ -318,6 +321,7 @@ namespace Divide
                     }
                 }
 
+                _parent.finishViewBatch( _stageFlag, memCmdInOut );
                 GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
             } break;

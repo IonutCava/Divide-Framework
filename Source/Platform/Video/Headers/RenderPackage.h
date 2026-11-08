@@ -58,6 +58,7 @@ struct RenderPackage
 
     PROPERTY_RW(U32, drawCmdOffset, INVALID_CMD_OFFSET);
     PROPERTY_RW(U8,  stagePassBaseIndex, INVALID_STAGE_INDEX);
+    PROPERTY_RW(U8, lodLevel, 0u);
     PROPERTY_RW(const GenericDrawCommandContainer*, drawCommandsOverride, nullptr);
     // Opt in only when the boundary barriers cover all writes and other packages are independent.
     PROPERTY_RW(bool, independentCompute, false);

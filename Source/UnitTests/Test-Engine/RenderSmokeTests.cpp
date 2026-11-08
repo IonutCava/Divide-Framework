@@ -279,6 +279,19 @@ namespace Divide
                                    std::string_view{ "--smokePerfMode" } };
         REQUIRE( ParseOptions( perfMode, options, error ) == ParseResult::ENABLED );
         CHECK( options._perfMode );
+        CHECK_FALSE( options._serialViewRecording );
+        const std::array serialViews{ std::string_view{ "--vulkanSmokeTest" },
+                                      std::string_view{ "--smokeOutput=C:\\smoke" },
+                                      std::string_view{ "--smokeRun=attempt-01" },
+                                      std::string_view{ "--smokeSerialViewRecording" } };
+        REQUIRE( ParseOptions( serialViews, options, error ) == ParseResult::ENABLED );
+        CHECK( options._serialViewRecording );
+        const std::array serialWithoutMode{ std::string_view{ "--smokeSerialViewRecording" } };
+        CHECK( ParseOptions( serialWithoutMode, options, error ) == ParseResult::ERROR );
+        const std::array duplicateSerial{ std::string_view{ "--vulkanSmokeTest" },
+                                          std::string_view{ "--smokeSerialViewRecording" },
+                                          std::string_view{ "--smokeSerialViewRecording" } };
+        CHECK( ParseOptions( duplicateSerial, options, error ) == ParseResult::ERROR );
         const std::array perfWithoutMode{ std::string_view{ "--smokePerfMode" } };
         CHECK( ParseOptions( perfWithoutMode, options, error ) == ParseResult::ERROR );
         const std::array duplicatePerf{ std::string_view{ "--vulkanSmokeTest" },

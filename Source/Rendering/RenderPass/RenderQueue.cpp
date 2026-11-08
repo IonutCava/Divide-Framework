@@ -154,8 +154,7 @@ namespace Divide
         else
         {
             TaskPool& pool = parent().platformContext().taskPool( TaskPoolType::RENDERER );
-            // Only allocate the parent when needed: a pooled task that is never enqueued keeps its slot forever.
-            Task* sortTask = nullptr;
+            TaskGroup sortTasks( pool );
             for (U8 i = 0u; i < to_base( RenderBinType::COUNT ); ++i)
             {
                 RenderBin& renderBin = _renderBins[i];
@@ -163,23 +162,12 @@ namespace Divide
 
                 if ( renderBin.getBinSize() > k_threadBias )
                 {
-                    if ( sortTask == nullptr )
-                    {
-                        sortTask = CreateTask( TASK_NOP );
-                    }
-
                     const RenderingOrder sortOrder = renderOrder == RenderingOrder::COUNT ? getSortOrder( stagePass, rbType ) : renderOrder;
-                    pool.enqueue( *CreateTask( sortTask,
-                                        [&renderBin, rbType, sortOrder]( const Task& )
-                                        {
-                                            renderBin.sort( rbType, sortOrder );
-                                        } ) );
+                    sortTasks.enqueue( [&renderBin, rbType, sortOrder]( const Task& )
+                    {
+                        renderBin.sort( rbType, sortOrder );
+                    } );
                 }
-            }
-
-            if ( sortTask != nullptr )
-            {
-                pool.enqueue( *sortTask );
             }
 
             for ( U8 i = 0u; i < to_base( RenderBinType::COUNT ); ++i )
@@ -193,10 +181,7 @@ namespace Divide
                 }
             }
 
-            if ( sortTask != nullptr )
-            {
-                pool.wait( *sortTask );
-            }
+            sortTasks.wait();
         }
     }
 

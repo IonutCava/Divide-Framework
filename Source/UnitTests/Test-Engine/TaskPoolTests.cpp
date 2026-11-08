@@ -8,12 +8,141 @@
 #include "Core/Headers/TaskPool.h"
 #include "Core/Headers/ThreadPoolSizing.h"
 #include "Managers/Headers/RenderStageSchedule.h"
+#include "Managers/Headers/RenderViewSchedule.h"
 #include "Platform/Headers/ConditionalWait.h"
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Utility/Headers/XMLParser.h"
 
 namespace Divide
 {
+    TEST_CASE( "A single recording lane stays on its caller without dispatching tasks", "[threading][render_stage][render_smoke]" )
+    {
+        TaskPool pool{ "Inline recording" };
+        RenderViewSchedule schedule;
+        schedule.add( 3u );
+        schedule.add( 7u );
+        schedule.add( 3u );
+        const auto caller = std::this_thread::get_id();
+        size_t visits = 0u;
+        schedule.record( pool, [&]( const size_t lane, const size_t view )
+        {
+            CHECK( std::this_thread::get_id() == caller );
+            CHECK( lane == 3u % RenderViewSchedule::LANE_COUNT );
+            CHECK( view == visits++ );
+        } );
+        CHECK( visits == 3u );
+    }
+
+    TEST_CASE( "View recording lanes retain package affinity and deterministic reuse", "[threading][render_stage][render_smoke]" )
+    {
+        platformInitRunListener::PlatformInit();
+        Application app;
+        PlatformContext context{ app };
+        TaskPool& pool = context.taskPool( TaskPoolType::RENDERER );
+        REQUIRE( pool.init( 4u ) );
+        SCOPE_EXIT { pool.shutdown(); };
+        InitConditionalWait( context );
+
+        RenderViewSchedule schedule;
+        bool called = false;
+        schedule.record( pool, [&]( size_t, size_t ) { called = true; } );
+        CHECK_FALSE( called );
+
+        constexpr std::array<U16, 12u> keys{{ 3u, 0u, 7u, 1u, 2u, 3u, 1u, 6u, 0u, 7u, 2u, 3u }};
+        schedule.reserve( keys.size() );
+        for ( U32 frame = 0u; frame < 32u; ++frame )
+        {
+            schedule.reset();
+            for ( const U16 key : keys )
+            {
+                schedule.add( key );
+            }
+            std::array<size_t, keys.size()> recordedLanes{};
+            std::array<U32, keys.size()> visits{};
+            std::array<size_t, RenderViewSchedule::LANE_COUNT> previous{};
+            std::array<bool, RenderViewSchedule::LANE_COUNT> ordered{};
+            ordered.fill( true );
+            schedule.record( pool, [&]( const size_t lane, const size_t view )
+            {
+                ordered[lane] = ordered[lane] && (previous[lane] == 0u || previous[lane] < view + 1u);
+                previous[lane] = view + 1u;
+                recordedLanes[view] = lane;
+                ++visits[view];
+                TaskGroup nested{ pool };
+                nested.enqueue( []( const Task& ) {} );
+            } );
+            for ( size_t view = 0u; view < keys.size(); ++view )
+            {
+                CHECK( visits[view] == 1u );
+                CHECK( recordedLanes[view] == keys[view] % RenderViewSchedule::LANE_COUNT );
+            }
+            for ( const bool value : ordered )
+            {
+                CHECK( value );
+            }
+            size_t serialCount = 0u;
+            schedule.record( pool, [&]( const size_t lane, const size_t view )
+            {
+                CHECK( view == serialCount++ );
+                CHECK( lane == recordedLanes[view] );
+            }, false );
+            CHECK( serialCount == keys.size() );
+        }
+        schedule.reset();
+        for ( size_t lane = 0u; lane < RenderViewSchedule::LANE_COUNT; ++lane )
+        {
+            CHECK_FALSE( schedule.usesLane( lane ) );
+        }
+    }
+
+    TEST_CASE( "Empty render task groups never reserve pooled parent slots", "[threading][render_stage][render_smoke]" )
+    {
+        TaskPool pool{ "Empty groups" };
+        bool allEmpty = true;
+        for ( U32 i = 0u; i < Config::MAX_POOLED_TASKS + 1u; ++i )
+        {
+            TaskGroup group{ pool };
+            allEmpty = allEmpty && group.empty();
+            group.wait();
+            allEmpty = allEmpty && group.empty();
+        }
+        CHECK( allEmpty );
+    }
+
+    TEST_CASE( "Render task groups join children and can be reused after waiting", "[threading][render_stage][render_smoke]" )
+    {
+        platformInitRunListener::PlatformInit();
+        Application app;
+        PlatformContext context{ app };
+        TaskPool& pool = context.taskPool( TaskPoolType::RENDERER );
+        REQUIRE( pool.init( 2u ) );
+        SCOPE_EXIT { pool.shutdown(); };
+        InitConditionalWait( context );
+
+        std::atomic_uint completed{ 0u };
+        TaskGroup group{ pool };
+        for ( U32 iteration = 0u; iteration < 128u; ++iteration )
+        {
+            CHECK( group.empty() );
+            group.enqueue( [&]( const Task& ) { completed.fetch_add( 1u ); } );
+            group.enqueue( [&]( const Task& )
+            {
+                TaskGroup nested{ pool };
+                nested.enqueue( [&]( const Task& ) { completed.fetch_add( 1u ); } );
+            } );
+            CHECK_FALSE( group.empty() );
+            group.wait();
+            CHECK( completed.load() == 2u * (iteration + 1u) );
+            CHECK( group.empty() );
+            group.wait();
+        }
+        {
+            TaskGroup joinedOnExit{ pool };
+            joinedOnExit.enqueue( [&]( const Task& ) { completed.fetch_add( 1u ); } );
+        }
+        CHECK( completed.load() == 257u );
+    }
+
     TEST_CASE( "Startup warmup keeps just one frame behind the splash", "[startup]" )
     {
         CHECK( Kernel::STARTUP_WARMUP_FRAME_COUNT == 1u );

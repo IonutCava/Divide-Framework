@@ -18,6 +18,13 @@ Each thread lazily allocates its fixed-capacity, aligned task ring once and reus
 it until thread exit. This keeps the ring out of static TLS, which otherwise
 can exhaust Linux worker stacks. Tasks allocated by a thread must finish before
 that thread exits, and their pointers must not be used afterward.
+Use `TaskGroup` for optional batches of child tasks. It allocates a parent only
+when the first child is queued, submits and joins that parent on `wait()`, and
+joins any outstanding children on destruction. Empty groups allocate no task
+slots; a group can be reused after waiting. The sorting and transform/material
+preparation paths use this shared lifetime rule instead of independently
+managing optional parent tasks. As with other task waits, the pool and all
+captured data must outlive the group.
 `ThreadPoolSizing::Calculate` assigns four to eight asset-loader workers from
 the configured `runtime.maxWorkerThreads` budget, reserving the existing render,
 low-priority and at least four high-priority workers. The historical minimum
@@ -130,10 +137,32 @@ uniform snapshots for every draw until window flush. Display and node-preview
 passes can record the same editor axis and grid concurrently; their matrices
 and pending buffer barriers must not overwrite each other. Snapshot storage
 reuses its high-water capacity after the frame changes.
+`UniformDataSnapshots` also retains each HiZ dispatch's camera-dependent
+uniforms until translation. Views and local players recorded in the same frame
+must acquire different entries rather than reset the snapshot cursor.
 The rendering component's package lock also protects reflection/refraction
 texture selections and descriptor-update flags. Callbacks publish selections
 after recording their views; dependent stages wait for those producers before
 building packages. Scene-system material updates run outside render-stage work.
+Cube and dual-paraboloid generation use stage-owned utility cameras initialized
+in `Camera::InitPool`. A camera cannot be mutated by shadow, reflection and
+refraction workers concurrently. Batched view selection snapshots these cameras
+and their frusta before reuse; lane workers never mutate the generator cameras.
+`RenderViewSchedule` records through at most two reusable executors per stage.
+Package identities retain lane affinity, while per-package LoD and executor-local
+counters, queues, uniforms and indirect pages isolate same-stage preparation.
+Selection and light uploads remain serial; view commands merge only after the
+join, preserving the original GPU scratch/barrier order. See
+[Rendering](rendering.md#stage-dependencies) for the batch lifetime contract.
+Executors and bounded contiguous view storage are prepared at stage registration,
+not allocated by lane tasks. One lane runs inline so a one-lane stage does not
+add a redundant fork/join. Stable-address uniform value storage is pre-sized
+for HiZ views; only unbounded immediate-draw growth requires extra chunks.
+Light uploads retain a separate CPU snapshot and ring-buffer pair for every
+recorded view. Stage workers exclusively own their stage's reusable view list.
+After all stage workers finish, shadow indices are patched into every used
+snapshot, not just the final view. Frame preparation advances the rings and
+resets usage counts before launching the next player's stages.
 The draw-command lock serializes instancing discovery with material shader
 readiness and pending checks; shader invalidation remains in the next scene
 update, outside render-stage workers.

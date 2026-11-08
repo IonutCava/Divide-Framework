@@ -134,6 +134,8 @@ class CommandBuffer : private NonCopyable
     void add(const CommandBuffer& other);
     void add(const CommandBuffer& other, size_t first, size_t count);
     void add(Handle<CommandBuffer> other);
+    /// Inserts a completed recording slot without changing the order of its surrounding commands.
+    void insert(CommandBuffer&& other, size_t position);
 
     void batch();
     void clear();

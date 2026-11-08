@@ -37,7 +37,7 @@
 #include "DescriptorSetsFwd.h"
 #include "Pipeline.h"
 #include "PushConstants.h"
-#include "IMPrimitiveDrawSnapshots.h"
+#include "UniformDataSnapshots.h"
 #include "Platform/Video/GLIM/glim.h"
 #include "Platform/Video/Headers/Commands.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
@@ -140,7 +140,7 @@ class IMPrimitive final {
    private:
     GFXDevice& _context;
     UniformData _additionalUniforms;
-    IMPrimitiveDrawSnapshots _drawSnapshots;
+    UniformDataSnapshots _drawSnapshots;
     PushConstantsStruct _fastData;
     NS_GLIM::GLIM_BATCH_uptr _imInterface;
     PipelineDescriptor _basePipelineDescriptor{};

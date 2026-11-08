@@ -55,6 +55,7 @@ namespace Divide::RenderSmokeTest
         bool _perfMode{ false };
         // Perf mode only: splits per-pass GPU timings by debug scope (adds GPU timestamps per scope).
         bool _gpuScopeTimings{ false };
+        bool _serialViewRecording{ false };
     };
 
     struct PipelineTraceStage
@@ -239,6 +240,7 @@ namespace Divide::RenderSmokeTest
     [[nodiscard]] bool PipelineTraceRequested() noexcept;
     [[nodiscard]] bool PerfModeRequested() noexcept;
     [[nodiscard]] bool GPUScopeTimingsRequested() noexcept;
+    [[nodiscard]] bool SerialViewRecordingRequested() noexcept;
     [[nodiscard]] const std::string& OutputDirectory() noexcept;
     [[nodiscard]] const std::string& ExpectedGPU() noexcept;
     [[nodiscard]] const std::string& Project() noexcept;

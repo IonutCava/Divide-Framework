@@ -1902,7 +1902,7 @@ namespace Divide
 
         auto& passMgr = context().kernel().renderPassManager();
 
-        Camera* camera = Camera::GetUtilityCamera( Camera::UtilityCamera::CUBE );
+        Camera* camera = Camera::GetUtilityCamera( Camera::UtilityCamera::CUBE, params._stagePass._stage );
 
         // For each of the environment's faces (TOP, DOWN, NORTH, SOUTH, EAST, WEST)
         for ( U8 i = 0u; i < 6u; ++i )
@@ -1980,7 +1980,7 @@ namespace Divide
         const D64 aspect = to_D64( targetResolution.width ) / targetResolution.height;
         auto& passMgr = context().kernel().renderPassManager();
 
-        Camera* camera = Camera::GetUtilityCamera( Camera::UtilityCamera::DUAL_PARABOLOID );
+        Camera* camera = Camera::GetUtilityCamera( Camera::UtilityCamera::DUAL_PARABOLOID, params._stagePass._stage );
 
         for ( U8 i = 0u; i < 2u; ++i )
         {

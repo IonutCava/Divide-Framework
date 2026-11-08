@@ -39,7 +39,9 @@
 #include "Core/Headers/RingBuffer.h"
 #include "ECS/Components/Headers/RenderingComponent.h"
 #include "Platform/Video/Headers/RenderPackage.h"
+#include "Platform/Video/Headers/UniformDataSnapshots.h"
 #include "Rendering/RenderPass/Headers/RenderPassCuller.h"
+#include "Rendering/Lighting/Headers/LightUploadState.h"
 
 namespace Divide {
 struct PerPassData;
@@ -262,9 +264,16 @@ public:
         }
     }
 
-    explicit RenderPassExecutor(RenderPassManager& parent, GFXDevice& context, RenderStage stage);
+    explicit RenderPassExecutor(RenderPassManager& parent, GFXDevice& context, RenderStage stage, U8 lane = 0u, U8 laneCount = 1u);
 
     void doCustomPass(PlayerIndex idx, Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
+    void doCustomPass(PlayerIndex idx, const CameraSnapshot& camera, const Frustum& frustum, RenderPassParams params,
+                      LightDataBinding lightData, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut,
+                      bool independentView = true);
+    [[nodiscard]] RenderPass::PassData passData() noexcept
+    {
+        return { &_lastCommandCount, &_lastNodeCount, &_uniforms };
+    }
     static void PostInit(GFXDevice& context,
                          const OITCompositionShaders& OITShaders,
                          Handle<ShaderProgram> ResolveGBufferShaderMS);
@@ -370,10 +379,17 @@ private:
     RenderPassManager& _parent;
     GFXDevice& _context;
     const RenderStage _stage;
+    const U8 _lane;
+    const U8 _laneCount;
 
     bool _lightsUploaded = false;
+    U32 _lastCommandCount = 0u;
+    U32 _lastNodeCount = 0u;
+    UniformData _uniforms;
 
     RenderQueue_uptr _renderQueue{nullptr};
+    LightDataBinding _lightDataBinding{};
+    UniformDataSnapshots _occlusionSnapshots;
     RenderBin::SortedQueues _sortedQueues{};
     DrawCommandContainer _drawCommands{};
     RenderQueuePackages _renderQueuePackages{};

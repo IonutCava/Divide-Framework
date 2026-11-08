@@ -28,11 +28,12 @@
 #include "Platform/Video/Headers/BlurPass.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXShaderData.h"
-#include "Platform/Video/Headers/IMPrimitiveDrawSnapshots.h"
+#include "Platform/Video/Headers/UniformDataSnapshots.h"
 #include "Platform/Video/Headers/OcclusionCullDispatch.h"
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Platform/Video/Headers/fontstash.h"
 #include "Rendering/PostFX/CustomOperators/Headers/SSAOState.h"
+#include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
 #include "Rendering/RenderPass/Headers/RenderPassExecutor.h"
@@ -49,6 +50,39 @@
 
 namespace Divide
 {
+    TEST_CASE( "Cube and paraboloid recording cameras are isolated across render stages", "[renderer][camera][render_smoke]" )
+    {
+        platformInitRunListener::PlatformInit();
+        const platformInitRunListener::LocalizationScope localization{};
+        Camera::InitPool();
+        SCOPE_EXIT { Camera::DestroyPool(); };
+
+        for ( const Camera::UtilityCamera type : { Camera::UtilityCamera::CUBE, Camera::UtilityCamera::DUAL_PARABOLOID } )
+        {
+            std::array<Camera*, to_base( RenderStage::COUNT )> cameras{};
+            for ( size_t stage = 0u; stage < cameras.size(); ++stage )
+            {
+                cameras[stage] = Camera::GetUtilityCamera( type, static_cast<RenderStage>(stage) );
+                REQUIRE( cameras[stage] != nullptr );
+                CHECK( cameras[stage] != Camera::GetUtilityCamera( type ) );
+                for ( size_t other = 0u; other < stage; ++other )
+                {
+                    CHECK( cameras[stage] != cameras[other] );
+                }
+                const float3 eye{ to_F32( stage ) * 10.f, 2.f, 3.f };
+                cameras[stage]->setProjection( 1.f, Angle::DEGREES_F( 90.f ), float2{ 0.1f, 100.f + to_F32( stage ) } );
+                cameras[stage]->lookAt( eye, eye + WORLD_Z_NEG_AXIS );
+                (void)cameras[stage]->updateLookAt();
+            }
+            for ( size_t stage = 0u; stage < cameras.size(); ++stage )
+            {
+                CHECK( cameras[stage]->snapshot()._eye == float3{ to_F32( stage ) * 10.f, 2.f, 3.f } );
+                CHECK( cameras[stage]->snapshot()._zPlanes.max == Catch::Approx( 100.f + to_F32( stage ) ) );
+                CHECK( Camera::GetUtilityCamera( type, static_cast<RenderStage>(stage) ) == cameras[stage] );
+            }
+        }
+    }
+
     TEST_CASE( "Transparent coverage rejects invisible texels without clipping soft edges", "[renderer][vegetation][oit]" )
     {
         CHECK_FALSE( TRANSPARENT_HAS_COVERAGE( 0.f ) );
@@ -94,13 +128,126 @@ namespace Divide
         }
     }
 
-    struct LightPoolTestAccess
+    namespace Attorney
     {
-        using PointShadowProperties = LightPool::PointShadowProperties;
-        using SpotShadowProperties = LightPool::SpotShadowProperties;
-        using CSMShadowProperties = LightPool::CSMShadowProperties;
-        using ShadowProperties = LightPool::ShadowProperties;
-    };
+        struct LightPoolTestAccess
+        {
+            using PointShadowProperties = LightPool::PointShadowProperties;
+            using SpotShadowProperties = LightPool::SpotShadowProperties;
+            using CSMShadowProperties = LightPool::CSMShadowProperties;
+            using ShadowProperties = LightPool::ShadowProperties;
+            using ViewLightDataList = LightPool::ViewLightDataList;
+
+            static auto& AcquireViewLightData( ViewLightDataList& views, size_t& usedCount )
+            {
+                return LightPool::AcquireViewLightData( views, usedCount );
+            }
+
+            static U32 LightBufferCapacity( const size_t count )
+            {
+                return LightPool::LightBufferCapacity( count );
+            }
+        };
+    }
+
+    using Attorney::LightPoolTestAccess;
+
+    TEST_CASE( "View light buffer capacity grows geometrically within the upload limit", "[renderer][lighting][render_smoke]" )
+    {
+        constexpr U32 limit = Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME;
+        CHECK( LightPoolTestAccess::LightBufferCapacity( 0u ) == 32u );
+        CHECK( LightPoolTestAccess::LightBufferCapacity( 32u ) == 32u );
+        CHECK( LightPoolTestAccess::LightBufferCapacity( 33u ) == 64u );
+        for ( size_t count = 0u; count <= limit + 1u; ++count )
+        {
+            const U32 capacity = LightPoolTestAccess::LightBufferCapacity( count );
+            CHECK( capacity >= std::min( count, size_t{ limit } ) );
+            CHECK( capacity <= limit );
+            CHECK( (capacity & (capacity - 1u)) == 0u );
+        }
+    }
+
+    TEST_CASE( "Light uploads retain every view in preallocated contiguous storage", "[renderer][lighting][render_smoke]" )
+    {
+        LightPoolTestAccess::ViewLightDataList views;
+        views.resize( 66u );
+        const auto* storage = views.data();
+        const size_t capacity = views.capacity();
+        size_t usedCount = 0u;
+        auto& first = LightPoolTestAccess::AcquireViewLightData( views, usedCount );
+        first._properties.emplace_back()._position = float4{ 1.f, 2.f, 3.f, 4.f };
+        first._lights.push_back( nullptr );
+        first._scene._globalData = uint4{ 0u, 1u, 0u, 0u };
+        auto& second = LightPoolTestAccess::AcquireViewLightData( views, usedCount );
+        second._properties.emplace_back()._position = float4{ -3.f, -2.f, -1.f, 4.f };
+        second._lights.push_back( nullptr );
+        second._scene._globalData = uint4{ 1u, 0u, 0u, 0u };
+        CHECK( &first != &second );
+        CHECK( usedCount == 2u );
+        CHECK( &second == &first + 1u );
+
+        for ( size_t i = 0u; i < 64u; ++i )
+        {
+            auto& empty = LightPoolTestAccess::AcquireViewLightData( views, usedCount );
+            CHECK( empty._properties.empty() );
+            CHECK( empty._scene._globalData == uint4{ 0u } );
+        }
+        CHECK( first._properties.front()._position == float4{ 1.f, 2.f, 3.f, 4.f } );
+        CHECK( second._properties.front()._position == float4{ -3.f, -2.f, -1.f, 4.f } );
+        CHECK( first._scene._globalData == uint4{ 0u, 1u, 0u, 0u } );
+        CHECK( second._scene._globalData == uint4{ 1u, 0u, 0u, 0u } );
+        CHECK( views.data() == storage );
+        CHECK( views.capacity() == capacity );
+
+        const size_t highWater = views.size();
+        const size_t firstCapacity = first._properties.capacity();
+        usedCount = 0u;
+        auto& reused = LightPoolTestAccess::AcquireViewLightData( views, usedCount );
+        CHECK( &reused == &first );
+        reused._properties.clear();
+        reused._lights.clear();
+        reused._scene._globalData = uint4{ 0u };
+        CHECK( reused._properties.capacity() == firstCapacity );
+        CHECK( views.size() == highWater );
+        CHECK( usedCount == 1u );
+        CHECK( second._properties.size() == 1u );
+    }
+
+    TEST_CASE( "Shadow indices are patched independently for every view light order", "[renderer][lighting][render_smoke]" )
+    {
+        struct TestLight
+        {
+            bool _castsShadows;
+            I32 _index;
+            [[nodiscard]] bool castsShadows() const noexcept { return _castsShadows; }
+            [[nodiscard]] I32 shadowPropertyIndex() const noexcept { return _index; }
+        };
+        LightPoolTestAccess::ViewLightDataList views;
+        views.resize( 2u );
+        size_t usedCount = 0u;
+        auto& first = LightPoolTestAccess::AcquireViewLightData( views, usedCount );
+        auto& second = LightPoolTestAccess::AcquireViewLightData( views, usedCount );
+        first._properties.resize( 2u );
+        second._properties.resize( 2u );
+        TestLight caster{ true, -1 };
+        TestLight unshadowed{ false, 9 };
+        const std::array firstLights{ &caster, &unshadowed };
+        const std::array secondLights{ &unshadowed, &caster };
+        caster._index = 3;
+        CHECK( PatchLightShadowIndices( first._properties, firstLights ) );
+        CHECK( PatchLightShadowIndices( second._properties, secondLights ) );
+        CHECK( first._properties[0]._options.y == 3 );
+        CHECK( first._properties[1]._options.y == -1 );
+        CHECK( second._properties[0]._options.y == -1 );
+        CHECK( second._properties[1]._options.y == 3 );
+        caster._index = -1;
+        CHECK_FALSE( PatchLightShadowIndices( first._properties, firstLights ) );
+        CHECK( first._properties[0]._options.y == -1 );
+        CHECK( second._properties[1]._options.y == 3 );
+        const std::array<TestLight*, 0u> noLights{};
+        first._properties.clear();
+        CHECK_FALSE( PatchLightShadowIndices( first._properties, noLights ) );
+    }
 
     namespace
     {
@@ -1578,12 +1725,12 @@ namespace Divide
 
     TEST_CASE( "Immediate draws retain independent uniforms until their frame is flushed", "[render_smoke][uniforms][editor]" )
     {
-        IMPrimitiveDrawSnapshots snapshots;
+        UniformDataSnapshots snapshots{ 2u };
         UniformData defaults;
         GFX::CommandBuffer commands;
         constexpr U64 customBinding = _ID( "customImmediateValue" );
         constexpr U64 matrixBinding = _ID( "dvd_WorldMatrix" );
-        constexpr U32 drawCount = 8u;
+        constexpr U32 drawCount = 24u;
         std::array<mat4<F32>, drawCount> expectedMatrices;
         std::array<const UniformData*, drawCount> expectedAddresses{};
 
@@ -1632,7 +1779,7 @@ namespace Divide
 
     TEST_CASE( "Immediate draws isolate concurrent view uniforms", "[render_smoke][uniforms][editor][threading]" )
     {
-        IMPrimitiveDrawSnapshots snapshots;
+        UniformDataSnapshots snapshots{ 2u };
         const UniformData defaults;
         constexpr size_t viewCount = 8u;
         constexpr U64 viewBinding = _ID( "viewIndex" );
@@ -1668,6 +1815,42 @@ namespace Divide
                 CHECK( recorded[i] != recorded[j] );
             }
         }
+    }
+
+    TEST_CASE( "HiZ view uniforms retain their entity counts and frusta until translation", "[renderer][hiz][uniforms][render_smoke]" )
+    {
+        UniformDataSnapshots snapshots;
+        const UniformData defaults;
+        GFX::CommandBuffer commands;
+        constexpr U64 countBinding = _ID( "dvd_numEntities" );
+        constexpr U64 planesBinding = _ID( "dvd_frustumPlanes" );
+        constexpr size_t viewCount = 8u;
+        std::array<std::array<float4, 6u>, viewCount> planes{};
+        for ( size_t view = 0u; view < viewCount; ++view )
+        {
+            planes[view].fill( float4{ to_F32( view ), 2.f, 3.f, 4.f } );
+            snapshots.record( 17u, defaults, [&]( UniformData& uniforms )
+            {
+                uniforms.set( countBinding, PushConstantType::UINT, to_U32( view + 1u ) );
+                uniforms.set( planesBinding, PushConstantType::VEC4, planes[view] );
+                GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( commands )->_uniformData = &uniforms;
+            } );
+        }
+        REQUIRE( commands.commands().size() == viewCount );
+        for ( size_t view = 0u; view < viewCount; ++view )
+        {
+            const auto* command = commands.commands()[view]->As<GFX::SendPushConstantsCommand>();
+            const auto& entries = command->_uniformData->entries();
+            REQUIRE( entries.size() == 2u );
+            REQUIRE( entries[0]._bindingHash == countBinding );
+            REQUIRE( entries[1]._bindingHash == planesBinding );
+            U32 count = 0u;
+            std::memcpy( &count, command->_uniformData->data( entries[0]._range._startOffset ), sizeof(count) );
+            CHECK( count == view + 1u );
+            CHECK( std::memcmp( command->_uniformData->data( entries[1]._range._startOffset ),
+                                planes[view].data(), sizeof(planes[view]) ) == 0 );
+        }
+        CHECK( defaults.entries().empty() );
     }
 
     TEST_CASE( "Additional render commands retain their package's uniform storage", "[render_smoke][uniforms]" )
@@ -1834,6 +2017,53 @@ namespace Divide
 
         Clear( first );
         CHECK_FALSE( first.independentCompute() );
+    }
+
+    TEST_CASE( "Completed view slots transfer commands in original GPU order", "[render_smoke][renderer][render_stage]" )
+    {
+        GFX::CommandBuffer destination;
+        std::array<GFX::CommandBuffer, 5u> slots;
+        const auto append = []( GFX::CommandBuffer& commands, const U32 value )
+        {
+            GFX::EnqueueCommand<GFX::SetViewportCommand>( commands )->_viewport = Rect<I32>{ to_I32( value ), 0, 100, 100 };
+        };
+        append( destination, 10u );
+        append( destination, 20u );
+        append( destination, 30u );
+        append( slots[0], 1u );
+        append( slots[1], 2u );
+        append( slots[3], 3u );
+        append( slots[4], 4u );
+        const auto* transferred = slots[0].commands().front();
+        constexpr std::array<size_t, 5u> positions{{ 0u, 1u, 1u, 1u, 3u }};
+        for ( size_t i = slots.size(); i > 0u; --i )
+        {
+            destination.insert( MOV( slots[i - 1u] ), positions[i - 1u] );
+            CHECK( slots[i - 1u].commands().empty() );
+        }
+        REQUIRE( destination.commands().size() == 7u );
+        CHECK( destination.commands().front() == transferred );
+        constexpr std::array<U32, 7u> expected{{ 1u, 10u, 2u, 3u, 20u, 30u, 4u }};
+        destination.batch();
+        REQUIRE( destination.commands().size() == expected.size() );
+        for ( size_t i = 0u; i < expected.size(); ++i )
+        {
+            CHECK( destination.commands()[i]->As<GFX::SetViewportCommand>()->_viewport.x == to_I32( expected[i] ) );
+        }
+        append( slots[0], 5u );
+        destination.insert( MOV( slots[0] ), destination.commands().size() );
+        CHECK( destination.commands().back()->As<GFX::SetViewportCommand>()->_viewport.x == 5 );
+    }
+
+    TEST_CASE( "View packages own independent LoD selections", "[render_smoke][renderer][render_stage]" )
+    {
+        RenderPackage first;
+        RenderPackage second;
+        CHECK( first.lodLevel() == 0u );
+        first.lodLevel( 2u );
+        second.lodLevel( 3u );
+        CHECK( first.lodLevel() == 2u );
+        CHECK( second.lodLevel() == 3u );
     }
 
     TEST_CASE( "Command-buffer range copies participate in batching", "[render_smoke][vegetation][compute_batch]" )

@@ -34,6 +34,7 @@
 #define DVD_LIGHT_POOL_H_
 
 #include "Light.h"
+#include "LightUploadState.h"
 #include "ShadowPassState.h"
 
 #include "Scenes/Headers/SceneComponent.h"
@@ -41,6 +42,11 @@
 #include "Managers/Headers/FrameListenerManager.h"
 
 namespace Divide {
+
+namespace Attorney
+{
+    struct LightPoolTestAccess;
+}
 
 namespace Time {
     class ProfileTimer;
@@ -59,7 +65,7 @@ class LightPool final : public FrameListener,
                         public SceneComponent,
                         public PlatformContextComponent {
 #if defined(ENABLE_UNIT_TESTING)
-    friend struct LightPoolTestAccess;
+    friend struct Attorney::LightPoolTestAccess;
 #endif
 
   protected:
@@ -154,7 +160,7 @@ class LightPool final : public FrameListener,
     }
 
     void sortLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot);
-    void uploadLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut);
+    [[nodiscard]] LightDataBinding uploadLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut);
     /// Main thread, after every stage finished recording: writes this frame's shadow slot indices into the
     /// light lists uploaded by uploadLightData (stages record in parallel with the shadow pass that assigns them).
     void patchShadowIndices(GFX::MemoryBarrierCommand& memCmdInOut);
@@ -207,17 +213,8 @@ class LightPool final : public FrameListener,
     friend class ShadowMap;
     static ShaderBuffer* ShadowBuffer() { return s_shadowBuffer.get(); }
 
-    friend class Renderer;
-    [[nodiscard]] static ShaderBuffer* LightBuffer() { return s_lightBuffer.get(); }
-    [[nodiscard]] static ShaderBuffer* SceneBuffer() { return s_sceneBuffer.get(); }
-
-    [[nodiscard]] U32           sortedLightCount(const RenderStage stage) const { return _sortedLightPropertiesCount[to_base(stage)]; }
-
   private:
       void setDebugLightLocked(Light* light);
-      U32 uploadLightList(RenderStage stage,
-                          const LightList& lights,
-                          const mat4<F32>& viewMatrix);
 
   private:
      struct SceneData {
@@ -228,18 +225,26 @@ class LightPool final : public FrameListener,
          mat4<F32> _padding0[3]; float4 _padding1[2];
      };
 
-    using LightData = std::array<LightProperties, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME>;
-    using UploadedLights = std::array<Light*, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME>;
-
     using LightCountPerType = std::array<U32, to_base(LightType::COUNT)>;
+
+    struct ViewLightData
+    {
+        vector<LightProperties> _properties;
+        vector<Light*> _lights;
+        SceneData _scene;
+        ShaderBuffer_uptr _lightBuffer;
+        ShaderBuffer_uptr _sceneBuffer;
+    };
+    using ViewLightDataList = vector<ViewLightData>;
+
+    [[nodiscard]] static ViewLightData& AcquireViewLightData(ViewLightDataList& views, size_t& usedCount);
+    [[nodiscard]] static U32 LightBufferCapacity(size_t lightCount) noexcept;
+    U32 uploadLightList(RenderStage stage, const LightList& lights, const mat4<F32>& viewMatrix, ViewLightData& view);
 
     std::array<LightCountPerType, to_base(RenderStage::COUNT)> _activeLightCount{};
     std::array<LightList,         to_base(RenderStage::COUNT)> _sortedLights{};
-    std::array<LightData,         to_base(RenderStage::COUNT)> _sortedLightProperties{};
-    std::array<UploadedLights,    to_base(RenderStage::COUNT)> _uploadedLights{};
-    std::array<U32,               to_base(RenderStage::COUNT)> _sortedLightPropertiesCount{};
-    std::array<bool,              to_base(RenderStage::COUNT)> _lightDataUploaded{};
-    std::array<SceneData,         to_base(RenderStage::COUNT)> _sortedSceneProperties{};
+    std::array<ViewLightDataList, to_base(RenderStage::COUNT)> _viewLightData{};
+    std::array<size_t,            to_base(RenderStage::COUNT)> _usedViewLightData{};
 
     std::array<LightList,         to_base(LightType::COUNT)>   _lights{};
     std::array<bool,              to_base(LightType::COUNT)>   _lightTypeState{};
@@ -259,8 +264,6 @@ class LightPool final : public FrameListener,
     static std::array<U8, to_base(ShadowType::COUNT)> s_shadowLocation;
     static Handle<Texture>       s_lightIconsTexture;
     static Handle<ShaderProgram> s_lightImpostorShader;
-    static ShaderBuffer_uptr s_lightBuffer;
-    static ShaderBuffer_uptr s_sceneBuffer;
     static ShaderBuffer_uptr s_shadowBuffer;
 };
 

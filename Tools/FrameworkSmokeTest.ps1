@@ -33,6 +33,7 @@ param(
     [switch] $TracePipelines,
     [switch] $PerfMode,
     [switch] $GpuScopeTimings,
+    [switch] $SerialViewRecording,
     [ValidateSet('Debug', 'Release')]
     [string] $Configuration = 'Debug',
     [ValidateRange(0, 2147483647)]
@@ -2041,6 +2042,7 @@ int main(int argc, char** argv)
         diagnosticOnly = $DiagnosticPresents -gt 0
         materialDebugView = if ($MaterialDebugView) { $MaterialDebugView } else { $null }
         editorPaused = [bool]$EditorPaused
+        serialViewRecording = [bool]$SerialViewRecording
         approvedStalledNonDeviceLoss = $approvedStalledNonDevice
         renderTimeoutSeconds = $RenderTimeoutSeconds
         maxAttempts = $MaxAttempts
@@ -2086,6 +2088,7 @@ int main(int argc, char** argv)
     if ($TracePipelines) { $arguments += '--smokePipelineTrace' }
     if ($PerfMode) { $arguments += '--smokePerfMode' }
     if ($GpuScopeTimings) { $arguments += '--smokeGpuScopeTimings' }
+    if ($SerialViewRecording) { $arguments += '--smokeSerialViewRecording' }
     $program = $engine.Executable
     if ($debugger)
     {

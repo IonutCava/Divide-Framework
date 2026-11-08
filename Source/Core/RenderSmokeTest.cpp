@@ -359,6 +359,16 @@ namespace Divide::RenderSmokeTest
                 }
                 options._gpuScopeTimings = true;
             }
+            else if ( argument == "--smokeSerialViewRecording" )
+            {
+                sawOption = true;
+                if ( options._serialViewRecording )
+                {
+                    errorOut = "Duplicate --smokeSerialViewRecording option";
+                    return ParseResult::ERROR;
+                }
+                options._serialViewRecording = true;
+            }
             else if ( argument == "--disableRenderAPIDebugging" || argument == "--disableEditor" )
             {
                 incompatible = true;
@@ -682,6 +692,11 @@ namespace Divide::RenderSmokeTest
     bool GPUScopeTimingsRequested() noexcept
     {
         return PerfModeRequested() && State()._options._gpuScopeTimings;
+    }
+
+    bool SerialViewRecordingRequested() noexcept
+    {
+        return Enabled() && State()._options._serialViewRecording;
     }
 
     const std::string& OutputDirectory() noexcept
