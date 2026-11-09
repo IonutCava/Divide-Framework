@@ -250,6 +250,9 @@ class LightPool final : public FrameListener,
     std::array<bool,              to_base(LightType::COUNT)>   _lightTypeState{};
     ShadowProperties _shadowBufferData;
     ShadowCameraState<mat4<F32>> _directionalShadowCamera;
+    U32 _shadowRenderMask = 0u;
+    std::array<F32, 2> _shadowVisibilityDistances{};
+    std::array<U8, 3> _shadowSampleCounts{};
 
     mutable SharedMutex _movedSceneVolumesLock;
     fixed_vector<MovingVolume, Config::MAX_VISIBLE_NODES, true> _movedSceneVolumes;

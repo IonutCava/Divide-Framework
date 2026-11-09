@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -73,6 +73,8 @@ struct RTBlitEntry
     BlitEntry _output{};
     U16 _layerCount{1u};
     U16 _mipCount{1u};
+    // Copy the render images exactly, including individual MSAA samples.
+    bool _copySamples{false};
 };
 
 using RTBlitParams = fixed_vector<RTBlitEntry, MAX_BLIT_ENTRIES>;

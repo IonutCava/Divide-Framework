@@ -35,6 +35,11 @@ void RenderingComponent::setDrawStateOverride(const RenderStagePass stagePass, c
     if (revision != _drawStateOverrides.coverageRevision())
     {
         _parentSGN->sceneGraph()->invalidateWorldAO();
+        if (const BoundsComponent* bounds = _parentSGN->get<BoundsComponent>(); bounds != nullptr)
+        {
+            _parentSGN->sceneGraph()->invalidateShadowBounds(*_parentSGN, bounds->getBoundingSphere(),
+                _parentSGN->usageContext() == NodeUsageContext::NODE_STATIC);
+        }
     }
 }
 
@@ -45,6 +50,11 @@ void RenderingComponent::clearDrawStateOverride(const RenderStagePass stagePass)
     if (revision != _drawStateOverrides.coverageRevision())
     {
         _parentSGN->sceneGraph()->invalidateWorldAO();
+        if (const BoundsComponent* bounds = _parentSGN->get<BoundsComponent>(); bounds != nullptr)
+        {
+            _parentSGN->sceneGraph()->invalidateShadowBounds(*_parentSGN, bounds->getBoundingSphere(),
+                _parentSGN->usageContext() == NodeUsageContext::NODE_STATIC);
+        }
     }
 }
 

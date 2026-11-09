@@ -240,6 +240,16 @@ images as other textures; being a resolve image does not imply its current layou
 Blits of retained depth and colour attachments transition to transfer layouts
 and back; the return barriers include attachment reads as well as writes so a
 later pass can load the retained contents.
+`GFX::BlitRenderTargetCommand` supports exact render-image copies through
+`RTBlitEntry::_copySamples`. This mode requires matching dimensions, texture
+type, format and sample count at mip zero and uses independent source/destination
+layer offsets. It selects raw attachments rather than resolve images; Vulkan
+records `vkCmdCopyImage2` with separate depth/stencil aspects, while OpenGL uses
+`glCopyImageSubData`. Engine callers must enqueue the GFX command, never bypass
+it with backend calls. Ordinary blits keep their existing resolved/scaled behavior.
+Internal attachment sample counts come from the render-target descriptor even
+when the attachment disables automatic resolve; this allows raw-only MSAA caches
+without allocating unused resolve images.
 The previous-screen blit relies on render-target transitions instead of a
 separate one-time barrier that bypasses the attachment tracker.
 Cubemap render-target selections identify a cube and one face when their layer

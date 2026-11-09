@@ -35,6 +35,7 @@
 
 #include "ShadowMap.h"
 #include "Rendering/Lighting/Headers/ShadowPassState.h"
+#include "Rendering/Lighting/Headers/ShadowCasterBounds.h"
 #include "Platform/Video/Headers/Commands.h"
 
 namespace Divide {
@@ -58,7 +59,7 @@ class CascadedShadowMapsGenerator final : public ShadowMapGenerator {
     explicit CascadedShadowMapsGenerator(GFXDevice& context);
     ~CascadedShadowMapsGenerator() override;
 
-    void render(const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, U32 layerMask) override;
+    void render(const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, const ShadowRefreshPlan& refreshPlan) override;
     [[nodiscard]] mat4<F32> generateWorldAO( const WorldAOCacheKey& key, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
    protected:
@@ -69,8 +70,21 @@ class CascadedShadowMapsGenerator final : public ShadowMapGenerator {
     void applyFrustumSplits(DirectionalLightComponent& light, const Camera& shadowCamera, U8 numSplits, U32 layerMask) const;
 
     void updateMSAASampleCount(U8 sampleCount) override;
+    void finishRender() override;
 
   protected:
+    struct StaticCacheLayer
+    {
+        CSMStaticCacheState _state{};
+        CSMStaticCacheKey _pendingKey{};
+        ShadowCasterBounds _staticBounds{};
+        ShadowCasterBounds* _combinedBounds = nullptr;
+        bool* _pendingOut = nullptr;
+        bool _pendingCasters = false;
+        bool _rebuilt = false;
+    };
+    std::array<StaticCacheLayer, ShadowMap::WORLD_AO_LAYER_INDEX> _staticLayers{};
+
     void blurTarget(U16 layerOffset, U16 layerCount, GFX::CommandBuffer& bufferInOut, U8 firstLayer = 0u);
 
   protected:

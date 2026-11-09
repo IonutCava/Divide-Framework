@@ -702,6 +702,53 @@ blocks even when they render fewer splits, so mixed split counts cannot fragment
 the configured budget. The last CSM texture layer belongs to world AO and is
 never allocated to a light. The CSM resource remains available for world AO
 when directional shadows are disabled but other shadow types are enabled.
+
+Static/dynamic shadow caching is being introduced in stages. **Refresh
+contract:** `BuildShadowRefreshPlan` preserves separate static-refresh and
+dynamic-composition masks through `LightPool`, `ShadowMap` and all three light
+generators. Cache misses rebuild both; static changes also require dynamic
+recomposition; animation-only changes leave the static mask empty. Explicit
+layer invalidations conservatively refresh both (a static-usage caster can
+still deform). Perf-mode `ShadowMetrics` appends `staticMask` and `dynamicMask`.
+Spot and point generators still render the union using the full-render path.
+World AO retains its separate existing cache.
+
+**Implemented CSM static base:** `rendering.shadowMapping.csm.staticCaching`
+defaults to true; false retains the full-render fallback. The CSM cache array
+owns raw depth and unfiltered RG32F moments for the bounded directional-light
+layer budget, excluding world AO. Static-only passes rebuild dirty layers;
+`GFX::BlitRenderTargetCommand` with `RTBlitEntry::_copySamples` restores both
+attachments to the scratch target before dynamic-only drawing without clears.
+The existing resolve, final-layer blit, blur and mip generation follow composition.
+Neither sample count nor refresh rate is reduced. The cache attachments disable
+automatic resolve at allocation: no unused single-sample cache images are created.
+At 2048-square, two samples and the eight-layer budget, raw cache storage is
+approximately 768 MiB before allocator/driver overhead (480 MiB more than the old
+nine-layer colour-only cache).
+
+Per-layer `CSMStaticCacheState` checks the stable light GUID, exact matrix
+elements, coverage revision, render mask, visibility distances, resolution,
+sample count and split count. Camera/light changes and explicit static-layer
+invalidations rebuild as before; wind still invalidates the deforming cascade.
+Material/source coverage revisions, draw-state overrides, shader readiness,
+loading and activation changes publish shadow invalidations. Render-filter,
+visibility-distance and sample-count changes dirty final shadow maps as well.
+The `CAST_SHADOWS` hard gate and previous/current movement bounds remain authoritative.
+
+Static and dynamic passes share their cascade identity and therefore record on
+the same serial lane. `RenderPassManager` reserves an extra directional-layer
+budget of view records without changing GPU/pass indices. Shader-pending flags
+and cached static caster bounds live in generator-owned contiguous records;
+`ShadowMap::finishShadowMaps` runs after the view batch joins, merges static
+bounds into dynamic scene-fit feedback, and forwards pending static shaders to
+the light's retry state. Never replace these records with stack-local outputs
+in the deferred recording path. Static shaders that remain pending prevent
+cache validity. CPU/command storage may grow to its recording high-water mark;
+this is not an allocation-free cold path.
+
+**Planned stages:** extend static depth/moment caching to spot and point lights,
+then address finer-grained deformation invalidation if measurements justify it.
+
 If a visible shadow caster's material shader is still pending, its shadow map
 stays dirty and is regenerated until the shader is ready. Hidden nodes and
 permanently failed shader variants do not force repeated shadow rendering.

@@ -217,6 +217,23 @@ namespace Divide
                         };
 
                         desc._name = isCSM ? "CSM_ShadowMap_StaticCache" : "Single_ShadowMap_StaticCache";
+                        if (isCSM)
+                        {
+                            shadowMapCacheDescriptor._layerCount = WORLD_AO_LAYER_INDEX;
+                            TextureDescriptor depthDescriptor{};
+                            depthDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
+                            depthDescriptor._dataType = GFXDataFormat::UNSIGNED_INT;
+                            depthDescriptor._baseFormat = GFXImageFormat::RED;
+                            depthDescriptor._packing = GFXImagePacking::DEPTH;
+                            depthDescriptor._layerCount = WORLD_AO_LAYER_INDEX;
+                            depthDescriptor._mipMappingState = MipMappingState::OFF;
+                            desc._attachments =
+                            {
+                                InternalRTAttachmentDescriptor{shadowMapCacheDescriptor, shadowMapSamplerCache, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0, false},
+                                InternalRTAttachmentDescriptor{depthDescriptor, shadowMapSamplerCache, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false}
+                            };
+                            desc._msaaSamples = settings.csm.MSAASamples;
+                        }
                         s_shadowMapCaches[i] = context.renderTargetPool().allocateRT( desc );
                     }
                     if ( isCSM )
@@ -494,7 +511,7 @@ namespace Divide
         return true;
     }
 
-    bool ShadowMap::generateShadowMaps( const Camera& playerCamera, Light& light, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, const U32 layerMask )
+    bool ShadowMap::generateShadowMaps( const Camera& playerCamera, Light& light, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, const ShadowRefreshPlan& refreshPlan )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -507,11 +524,22 @@ namespace Divide
 
         if ( markShadowMapsUsed( light ) ) [[likely]]
         {
-            s_shadowMapGenerators[shadowTypeIdx]->render( playerCamera, light, s_shadowPassIndex[shadowTypeIdx]++, pendingCastersOut, bufferInOut, memCmdInOut, layerMask );
+            s_shadowMapGenerators[shadowTypeIdx]->render( playerCamera, light, s_shadowPassIndex[shadowTypeIdx]++, pendingCastersOut, bufferInOut, memCmdInOut, refreshPlan );
             return true;
         }
 
         return false;
+    }
+
+    void ShadowMap::finishShadowMaps()
+    {
+        for (auto& generator : s_shadowMapGenerators)
+        {
+            if (generator != nullptr)
+            {
+                generator->finishRender();
+            }
+        }
     }
 
     mat4<F32> ShadowMap::generateWorldAO( const WorldAOCacheKey& key, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )

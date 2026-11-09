@@ -236,6 +236,7 @@ struct Configuration final : XML::IXMLSerializable {
             bool enabled = true;
             struct CSMSettings : public ShadowSettings
             {
+                bool staticCaching = true;
                 F32 splitLambda = 0.95f;
                 U8  splitCount = 3u;
             } csm;
