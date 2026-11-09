@@ -31,6 +31,7 @@
 #include "Platform/Video/Headers/UniformDataSnapshots.h"
 #include "Platform/Video/Headers/OcclusionCullDispatch.h"
 #include "Platform/Video/Headers/RenderPackage.h"
+#include "Platform/Video/Headers/ResolvedBindingCache.h"
 #include "Platform/Video/Headers/fontstash.h"
 #include "Rendering/PostFX/CustomOperators/Headers/SSAOState.h"
 #include "Rendering/Camera/Headers/Camera.h"
@@ -50,6 +51,163 @@
 
 namespace Divide
 {
+    TEST_CASE( "Resolved binding cache validates exact keys after direct-map collisions", "[renderer][bindings]" )
+    {
+        ResolvedBindingCache<U32, 4u> cache;
+        U32 value = 0u;
+        CHECK_FALSE( cache.Find( 0u, 0u, value ) );
+
+        U64 firstRevision = 1u;
+        U64 secondRevision = 2u;
+        while ( ResolvedBindingCache<U32, 4u>::IndexFor( firstRevision, 3u ) !=
+                ResolvedBindingCache<U32, 4u>::IndexFor( secondRevision, 3u ) )
+        {
+            ++secondRevision;
+        }
+
+        cache.Store( firstRevision, 3u, 17u );
+        REQUIRE( cache.Find( firstRevision, 3u, value ) );
+        CHECK( value == 17u );
+        cache.Store( secondRevision, 3u, 29u );
+        REQUIRE( cache.Find( secondRevision, 3u, value ) );
+        CHECK( value == 29u );
+        CHECK_FALSE( cache.Find( firstRevision, 3u, value ) );
+
+        cache.Store( firstRevision, 4u, 41u );
+        REQUIRE( cache.Find( firstRevision, 4u, value ) );
+        CHECK( value == 41u );
+        CHECK( cache.StorageBytes() >= sizeof( U32 ) * 4u );
+        cache.Clear();
+        CHECK_FALSE( cache.Find( firstRevision, 4u, value ) );
+    }
+
+    TEST_CASE( "Immutable resource commands compose overrides without mutating their base", "[renderer][bindings][render_smoke]" )
+    {
+        DescriptorSet base{};
+        ImageView image{};
+        image._targetType = TextureType::TEXTURE_2D_ARRAY;
+        Set( AddBinding( base, 0u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
+        GFX::BindShaderResourcesCommand first{};
+        first._usage = DescriptorSetUsage::PER_DRAW;
+        first._resources = CreateResourceBindings( base, {} );
+        REQUIRE( first._resources != nullptr );
+        GFX::BindShaderResourcesCommand second = first;
+        image._subRange._mipLevels._offset = 2u;
+        Set( AddBinding( second._set, 0u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
+        Set( AddBinding( second._set, 10u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
+        const DescriptorSet composed = second.effectiveBindings();
+        CHECK( composed._bindingCount == 2u );
+        CHECK( composed._bindings[0]._data._sampledImage._image == image );
+        CHECK( first.effectiveBindings()._bindingCount == 1u );
+        CHECK( first._resources->_bindings._bindings[0]._data._sampledImage._image._subRange._mipLevels._offset == 0u );
+        CHECK_FALSE( first.sameBindings( second ) );
+        GFX::BindShaderResourcesCommand raw{};
+        raw._usage = DescriptorSetUsage::PER_DRAW;
+        raw._set = composed;
+        CHECK( raw.sameBindings( second ) );
+        raw._usage = DescriptorSetUsage::PER_PASS;
+        CHECK_FALSE( raw.sameBindings( second ) );
+    }
+
+    TEST_CASE( "Merged resource slots retain their own immutable revision", "[renderer][bindings][render_smoke]" )
+    {
+        DescriptorSet bindings{};
+        ImageView image{};
+        image._targetType = TextureType::TEXTURE_2D_ARRAY;
+        Set( AddBinding( bindings, 0u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
+        GFXDevice::GFXDescriptorSet merged{};
+        std::weak_ptr<const ResourceBindingSet> old;
+        {
+            GFX::BindShaderResourcesCommand command{};
+            command._usage = DescriptorSetUsage::PER_DRAW;
+            command._resources = CreateResourceBindings( bindings, {} );
+            old = command._resources;
+            const U64 materialRevision = command._resources->_revision;
+            merged.update( command );
+            GFX::BindShaderResourcesCommand partial{};
+            partial._usage = DescriptorSetUsage::PER_DRAW;
+            image._subRange._mipLevels._offset = 1u;
+            Set( AddBinding( partial._set, 10u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
+            merged.update( partial );
+            CHECK( merged.impl()._bindingCount == 2u );
+            CHECK( merged.stableBindingRevisions()[0] == materialRevision );
+            CHECK( merged.stableBindingRevisions()[10] == 0u );
+            CHECK_FALSE( old.expired() );
+        }
+        CHECK_FALSE( old.expired() );
+        merged.clear();
+        CHECK( old.expired() );
+    }
+
+    TEST_CASE( "Command pools release immutable bindings while retaining reusable buffers", "[renderer][bindings][render_smoke]" )
+    {
+        std::weak_ptr<const ResourceBindingSet> revision;
+        {
+            GFX::CommandBufferPool pool{ 1u };
+            const auto populate = [&]
+            {
+                auto handle = pool.allocateBuffer( "Retained bindings", 32u );
+                auto* command = pool.get( handle )->add<GFX::BindShaderResourcesCommand>();
+                command->_resources = CreateResourceBindings( DescriptorSet{}, {} );
+                revision = command->_resources;
+                return handle;
+            };
+            auto handle = populate();
+            auto* buffer = pool.get( handle );
+            pool.deallocateBuffer( handle );
+            CHECK( revision.expired() );
+            handle = populate();
+            CHECK( pool.get( handle ) == buffer );
+            pool.reset();
+            CHECK( revision.expired() );
+            handle = populate();
+            CHECK( pool.get( handle ) == buffer );
+            CHECK_FALSE( revision.expired() );
+        }
+        CHECK( revision.expired() );
+    }
+
+    TEST_CASE( "Binding diagnostics canonicalize effective tuples and stay bounded", "[renderer][bindings][render_smoke]" )
+    {
+        ResourceBindingMetrics metrics;
+        DescriptorSet first{}, reordered{};
+        ImageView image{};
+        image._targetType = TextureType::TEXTURE_2D_ARRAY;
+        for ( const U8 slot : { U8{ 0u }, U8{ 1u } } )
+        {
+            Set( AddBinding( first, slot, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
+        }
+        reordered._bindingCount = 2u;
+        reordered._bindings[0] = first._bindings[1];
+        reordered._bindings[1] = first._bindings[0];
+        metrics.beginFrame( false );
+        metrics.observe( 1, 1u, first );
+        CHECK( metrics.current()._drawSets == 0u );
+        metrics.beginFrame( true );
+        metrics.observe( 1, 1u, first );
+        metrics.observe( 1, 1u, reordered );
+        CHECK( metrics.current()._uniqueEffectiveSets == 1u );
+        CHECK( metrics.current()._uniqueMaterialLayouts == 1u );
+        metrics.observe( 2, 1u, first );
+        CHECK( metrics.current()._uniqueEffectiveSets == 2u );
+        CHECK( metrics.current()._uniqueMaterialLayouts == 2u );
+        DescriptorSet collision = first;
+        collision._bindings[0]._data._sampledImage._image._subRange._mipLevels._offset = 3u;
+        metrics.observe( 1, 1u, collision );
+        CHECK( metrics.current()._uniqueEffectiveSets == 3u );
+        metrics.endFrame();
+        metrics.beginFrame( true );
+        CHECK( metrics.current()._storageGrowths == 0u );
+        CHECK( metrics.previous()._drawSets == 4u );
+        for ( size_t i = 0u; i < ResourceBindingMetrics::CAPACITY + 1u; ++i )
+        {
+            metrics.observe( to_I64( i ), 1u, first );
+        }
+        CHECK( metrics.current()._uniqueEffectiveSets == ResourceBindingMetrics::CAPACITY );
+        CHECK( metrics.current()._effectiveOverflow == 1u );
+        CHECK( metrics.current()._storageGrowths == 0u );
+    }
+
     TEST_CASE( "Cube and paraboloid recording cameras are isolated across render stages", "[renderer][camera][render_smoke]" )
     {
         platformInitRunListener::PlatformInit();

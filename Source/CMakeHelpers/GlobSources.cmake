@@ -582,7 +582,9 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/Headers/HardwareQuery.h
                              Platform/Video/Headers/IMPrimitive.h
                              Platform/Video/Headers/IMPrimitiveDescriptors.h
-                             Platform/Video/Headers/IMPrimitiveDrawSnapshots.h
+                             Platform/Video/Headers/UniformDataSnapshots.h
+                             Platform/Video/Headers/ResourceBindingMetrics.h
+                             Platform/Video/Headers/ResolvedBindingCache.h
                              Platform/Video/Headers/GPUCompletionGuard.h
                              Platform/Video/Headers/LockManager.h
                              Platform/Video/Headers/Pipeline.h

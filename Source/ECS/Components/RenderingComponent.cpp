@@ -569,10 +569,6 @@ namespace Divide
                     pipelineDescriptor._primitiveTopology = mat->topology();
                     pipelineDescriptor._vertexFormat = mat->shaderAttributes();
                     pkg.descriptorSetCmd()._usage = DescriptorSetUsage::PER_DRAW;
-                    if ( !mat->getDescriptorSet( renderStagePass, program->descriptor(), pkg.descriptorSetCmd()._set ) )
-                    {
-                        return false;
-                    }
                 }
                 else
                 {
@@ -620,6 +616,21 @@ namespace Divide
 
                 pipelineDescriptor._stateBlock._primitiveRestartEnabled = primitiveRestartRequired();
                 pkg.pipelineCmd()._pipeline = _gfxContext.newPipeline( pipelineDescriptor );
+            }
+
+            if ( _materialInstance != INVALID_HANDLE<Material> )
+            {
+                const ShaderProgram* program = Get( pkg.pipelineCmd()._pipeline->descriptor()._shaderProgramHandle );
+                if ( program == nullptr )
+                {
+                    Console::errorfn( "Material binding preparation failed: package shader is unavailable." );
+                    return false;
+                }
+                pkg.descriptorSetCmd()._resources = Get( _materialInstance )->getResourceBindings( renderStagePass, program->descriptor() );
+                if ( pkg.descriptorSetCmd()._resources == nullptr )
+                {
+                    return false;
+                }
             }
 
             if ( !IsDepthPass( renderStagePass ) )

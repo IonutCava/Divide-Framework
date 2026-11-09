@@ -773,6 +773,7 @@ namespace Divide
     {
         discardBufferReadbacks();
         glShaderProgram::DestroyStaticData();
+        _stableSampledBindingCache.Clear();
 
         if ( _dummyVAO != GL_NULL_HANDLE )
         {
@@ -2177,8 +2178,25 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics );
 
-        const bool uniformBindingsChanged = s_stateTracker._activeShaderProgram != nullptr &&
-            s_stateTracker._activeShaderProgram->commitUniformData( _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl() );
+        auto& bindingMetrics = _context.resourceBindingMetrics();
+        const bool measureBindings = bindingMetrics.enabled();
+        const bool useCompiledBindings = !RenderSmokeTest::BindingCacheDisabledRequested();
+        auto& bindingCounters = bindingMetrics.current();
+        if ( measureBindings )
+        {
+            bindingCounters._compiledBindingCacheBytes = _stableSampledBindingCache.StorageBytes();
+        }
+        const bool uniformBindingsChanged = [&]()
+        {
+            PROFILE_SCOPE( "Commit binding uniforms", Profiler::Category::Graphics );
+            return s_stateTracker._activeShaderProgram != nullptr &&
+                   s_stateTracker._activeShaderProgram->commitUniformData( _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl() );
+        }();
+        if ( measureBindings )
+        {
+            ++bindingCounters._uniformCommits;
+            bindingCounters._uniformChanges += uniformBindingsChanged ? 1u : 0u;
+        }
         if ( _context.uniformUploadFailed() )
         {
             return false;
@@ -2188,14 +2206,40 @@ namespace Divide
         for ( DescriptorSetEntry entry : descriptorSetEntries )
         {
             SampledImageResolutionCache& cache = resolvedSets[to_base(entry._usage)];
-            const bool hasFallback = s_stateTracker._activeShaderProgram != nullptr &&
-                                     s_stateTracker._activeShaderProgram->resolveSampledImages( entry, cache._resolvedSet );
+            const bool hasFallback = [&]()
+            {
+                PROFILE_SCOPE( "Resolve binding fallbacks", Profiler::Category::Graphics );
+                return s_stateTracker._activeShaderProgram != nullptr &&
+                       s_stateTracker._activeShaderProgram->resolveSampledImages( entry, cache._resolvedSet );
+            }();
+            if ( measureBindings )
+            {
+                ++bindingCounters._fallbackChecks;
+                bindingCounters._fallbackSets += hasFallback ? 1u : 0u;
+            }
             const GLDescriptorUpdateScope updateScope = SelectGLDescriptorUpdateScope(
                 entry._isDirty, cache.update( hasFallback, entry._isDirty ),
                 entry._usage == DescriptorSetUsage::PER_DRAW, uniformBindingsChanged );
             if ( hasFallback )
             {
                 entry._set = &cache._resolvedSet;
+            }
+            if ( measureBindings && entry._usage == DescriptorSetUsage::PER_DRAW && s_stateTracker._activeShaderProgram != nullptr )
+            {
+                PROFILE_SCOPE( "Measure effective bindings", Profiler::Category::Graphics );
+                const auto* program = s_stateTracker._activeShaderProgram;
+                U32 mask = 0u;
+                for ( U8 slot = 0u; slot < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slot )
+                {
+                    if ( program->perDrawDescriptorSetLayout()[slot]._type != DescriptorSetBindingType::COUNT )
+                    {
+                        mask |= 1u << slot;
+                    }
+                }
+                if ( mask != 0u )
+                {
+                    bindingMetrics.observe( program->getGUID(), _context.descriptorSet( entry._usage ).materialRevision(), *entry._set, mask );
+                }
             }
             if ( updateScope == GLDescriptorUpdateScope::NONE )
             {
@@ -2210,7 +2254,15 @@ namespace Divide
                 {
                     continue;
                 }
-                const gl46core::GLubyte glBindingSlot = ShaderProgram::GetGLBindingForDescriptorSlot( entry._usage, srcBinding._slot );
+                gl46core::GLubyte glBindingSlot = INVALID_TEXTURE_BINDING;
+                const auto getGLBindingSlot = [&]() noexcept
+                {
+                    if ( glBindingSlot == INVALID_TEXTURE_BINDING )
+                    {
+                        glBindingSlot = ShaderProgram::GetGLBindingForDescriptorSlot( entry._usage, srcBinding._slot );
+                    }
+                    return glBindingSlot;
+                };
 
                 switch ( srcBinding._data._type )
                 {
@@ -2219,6 +2271,12 @@ namespace Divide
                     case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC:
                     case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC:
                     {
+                        PROFILE_SCOPE( "Resolve descriptor buffer", Profiler::Category::Graphics );
+                        if ( measureBindings )
+                        {
+                            ++bindingCounters._bufferResolutions;
+                            ++bindingCounters._glBufferVisits;
+                        }
                         const ShaderBufferEntry& bufferEntry = srcBinding._data._buffer;
                         if ( bufferEntry._buffer == nullptr || 
                              bufferEntry._range._length == 0u ) [[unlikely]]
@@ -2231,7 +2289,7 @@ namespace Divide
                         glShaderBuffer* glBuffer = static_cast<glShaderBuffer*>(bufferEntry._buffer);
 
                         if ( !glBuffer->bindByteRange(
-                            glBindingSlot,
+                            getGLBindingSlot(),
                             {
                                 bufferEntry._range._startOffset * glBuffer->getPrimitiveSize(),
                                 bufferEntry._range._length      * glBuffer->getPrimitiveSize(),
@@ -2258,17 +2316,79 @@ namespace Divide
                     } break;
                     case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
                     {
+                        PROFILE_SCOPE( "Resolve descriptor sampled image", Profiler::Category::Graphics );
                         if ( srcBinding._slot == INVALID_TEXTURE_BINDING ) [[unlikely]]
                         {
                             continue;
                         }
 
                         const DescriptorCombinedImageSampler& imageSampler = srcBinding._data._sampledImage;
-                        DIVIDE_EXPECTED_CALL( makeTextureViewResident( glBindingSlot, imageSampler._image, imageSampler._imageHash, imageSampler._sampler, imageSampler._samplerHash ) );
+                        if ( srcBinding._slot >= MAX_BINDINGS_PER_DESCRIPTOR_SET )
+                        {
+                            DIVIDE_UNEXPECTED_CALL_MSG( "OpenGL sampled image binding slot is out of range." );
+                            continue;
+                        }
+                        if ( measureBindings )
+                        {
+                            ++bindingCounters._glTextureVisits;
+                        }
+                        const U64 stableRevision = useCompiledBindings &&
+                                                            imageSampler._image._srcTexture != nullptr &&
+                                                           !hasFallback &&
+                                                           entry._stableBindingRevisions != nullptr
+                                                       ? (*entry._stableBindingRevisions)[srcBinding._slot]
+                                                       : 0u;
+                        const U8 cacheSlot = to_U8( to_base( entry._usage ) * MAX_BINDINGS_PER_DESCRIPTOR_SET +
+                                                    srcBinding._slot );
+                        StableSampledBinding compiled{};
+                        if ( _stableSampledBindingCache.Find( stableRevision, cacheSlot, compiled ) )
+                        {
+                            if ( measureBindings )
+                            {
+                                ++bindingCounters._compiledBindingHits;
+                            }
+                            DIVIDE_EXPECTED_CALL( queueTextureViewResident( compiled._bindingSlot, compiled._sampler,
+                                                                            imageSampler._image, imageSampler._imageHash ) );
+                        }
+                        else if ( stableRevision != 0u )
+                        {
+                            if ( measureBindings )
+                            {
+                                ++bindingCounters._compiledBindingMisses;
+                                ++bindingCounters._imageResolutions;
+                            }
+                            compiled._bindingSlot = getGLBindingSlot();
+                            if ( queueTextureViewResident( compiled._bindingSlot, compiled._sampler,
+                                                           imageSampler._image, imageSampler._imageHash,
+                                                           &imageSampler._sampler, imageSampler._samplerHash ) )
+                            {
+                                _stableSampledBindingCache.Store( stableRevision, cacheSlot, compiled );
+                            }
+                            else
+                            {
+                                DIVIDE_UNEXPECTED_CALL();
+                            }
+                        }
+                        else
+                        {
+                            if ( measureBindings )
+                            {
+                                ++bindingCounters._imageResolutions;
+                            }
+                            DIVIDE_EXPECTED_CALL( makeTextureViewResident( getGLBindingSlot(), imageSampler._image,
+                                                                           imageSampler._imageHash, imageSampler._sampler,
+                                                                           imageSampler._samplerHash ) );
+                        }
 
                     } break;
                     case DescriptorSetBindingType::IMAGE:
                     {
+                        PROFILE_SCOPE( "Resolve descriptor storage image", Profiler::Category::Graphics );
+                        if ( measureBindings )
+                        {
+                            ++bindingCounters._imageResolutions;
+                            ++bindingCounters._glTextureVisits;
+                        }
                         const DescriptorImageView& imageView = srcBinding._data._imageView;
                         DIVIDE_GPU_ASSERT( TargetType( imageView._image ) != TextureType::COUNT );
                         DIVIDE_GPU_ASSERT( imageView._image._subRange._layerRange._count != ALL_LAYERS );
@@ -2298,7 +2418,7 @@ namespace Divide
 
                         const gl46core::GLuint handle = static_cast<const glTexture*>(imageView._image._srcTexture)->textureHandle();
                         if ( handle != GL_NULL_HANDLE &&
-                             GL_API::s_stateTracker.bindTextureImage( glBindingSlot,
+                             GL_API::s_stateTracker.bindTextureImage( getGLBindingSlot(),
                                                                       handle,
                                                                       imageView._image._subRange._mipLevels._offset,
                                                                       imageView._image._subRange._layerRange._count != ALL_LAYERS,
@@ -2322,6 +2442,19 @@ namespace Divide
     }
 
     bool GL_API::makeTextureViewResident( const gl46core::GLubyte bindingSlot, const ImageView& imageView, const size_t imageViewHash, const SamplerDescriptor sampler, const size_t samplerHash ) const
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        gl46core::GLuint samplerHandle = GL_NULL_HANDLE;
+        return queueTextureViewResident( bindingSlot, samplerHandle, imageView, imageViewHash, &sampler, samplerHash );
+    }
+
+    bool GL_API::queueTextureViewResident( const gl46core::GLubyte bindingSlot,
+                                           gl46core::GLuint& sampler,
+                                           const ImageView& imageView,
+                                           const size_t imageViewHash,
+                                           const SamplerDescriptor* samplerToResolve,
+                                           const size_t samplerHash ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -2350,8 +2483,12 @@ namespace Divide
             return false;
         }
 
-        size_t tempSampler = samplerHash;
-        entry._sampler = GetSamplerHandle( sampler, tempSampler );
+        if ( samplerToResolve != nullptr )
+        {
+            size_t tempSamplerHash = samplerHash;
+            sampler = GetSamplerHandle( *samplerToResolve, tempSamplerHash );
+        }
+        entry._sampler = sampler;
 
         for ( TexBindEntry& it : s_TexBindQueue )
         {

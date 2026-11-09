@@ -164,6 +164,10 @@ checklist below. Later measurements and fixes supersede some of the conclusions.
 - [ ] p2-submit-batching
 - [ ] p3-buffer-writes — The uniform upload arena reuses immutable snapshots
   for unchanged data; broader bulk-write work and its measured benefit remain open.
+- [x] p3-uniform-lookup-slice — Construction-time member indexing and a validated
+  descriptor index hint are implemented and correctness-checked. The first
+  Release before/after captures do not establish a performance improvement;
+  see the uniform preparation checkpoint below.
 - [ ] p3-per-draw-uniforms — About 10k `writeBytes` calls/frame originate in uniform-block commits. A fast push-constant experiment made instanced terrain/vegetation disappear on both backends and was reverted; its root cause remains unconfirmed. Keep the existing per-draw uniforms until an alternative passes both image and performance checks.
 - [ ] p3-bindless
 - [ ] p3-geometry-pool
@@ -265,7 +269,8 @@ At warmed frame 192 the compared runs retain stage draws/bin items:
 DISPLAY 1679/1063, REFLECTION 1356/904, REFRACTION 1670/1061,
 SHADOW 2899/817, with HiZ culled 1002, overflow 11, skipped 3.
 Vulkan API translation remains about 71 ms inclusive per frame, with about
-7090 resource binds and 6550 per-draw descriptor pushes. Shorter shadow work
+7090 resource binds and 6550 per-draw descriptor scope entries, not necessarily
+actual Vulkan push calls. Shorter shadow work
 does not remove the reflection/refraction-plus-display critical path or serial
 translation. Phase 1 implementation is complete; the Debug <=33 ms and
 Release <16.6 ms goals are not met.
@@ -284,6 +289,269 @@ and 9/16 GB VRAM on OpenGL. These are user-observed Task Manager readings,
 not synchronized performance captures. They motivate continued serialization/
 driver analysis, but do not establish core occupancy, GPU-engine utilization,
 memory-bandwidth pressure or a validation-free backend throughput comparison.
+
+### Reusable bindings: instrumentation, ownership and compiled operations
+
+The first three binding-proposal steps are implemented without changing the
+native descriptor model. Materials publish immutable, retained texture/sampler
+revisions by pass category, common-input requirement and visibility. Render
+packages keep reflection/refraction and object-buffer overrides separate.
+Queued commands retain old revisions through edits; replay retains owners per
+merged slot, including slots omitted by later partial commands. Publication
+uses the existing memory pool and allocator-backed shared control blocks;
+steady command copies do not allocate new records. First use and edits can.
+See [binding ownership](../architecture/shader-descriptors.md#immutable-material-binding-revisions).
+
+Step 3 adds bounded direct-mapped caches for stable sampled-image operations.
+Vulkan reuses resolved combined-image-sampler values but preserves per-slot
+comparison, push writes, layout invalidation and command-buffer/bind-point
+tracking. OpenGL reuses the flat usage/slot mapping and sampler handle, while
+still touching each texture view and queuing every bind through the state
+tracker. Fallback and mutable override slots remain uncached. Cache entries
+hold no resource ownership and are cleared at backend teardown; cache
+collisions are misses. Hit/miss and fixed-storage counters are included in
+opt-in binding diagnostics.
+
+Opt-in diagnostics distinguish logical commands, material/program pairs, full
+effective tuples, uniform changes, fallback work, backend resolutions and
+actual Vulkan push calls/writes. OpenGL visit counts are not native API call
+counts. The collision-checked tuple collector is bounded and reports overflow,
+storage growth and its own CPU scope; it is not free measurement overhead.
+Record publication/live counts diagnose binding churn, not all engine allocations.
+
+Runtime acceptance exposed previously retained commands in reusable command
+buffers: pool deallocation/reset only invalidated handles, and pool destruction
+did not destroy constructed buffers. Retained binding owners made this leave
+textures alive at Vulkan allocator teardown. Clearing commands at release/reset
+and destroying pool objects fixes that lifetime boundary without discarding
+reusable buffer capacity. Unit coverage includes these release boundaries,
+material invalidation/no-op reuse, actual texture lifetime/stale generations,
+partial-slot ownership, command semantics and bounded diagnostic collisions.
+The instrumented Windows suite passed 393/393. Sequential validated Vulkan and
+OpenGL Games/WarScene attempts then completed 301 scene presents, scene/editor
+captures and normal shutdown; all four images were inspected.
+
+#### Binding measurements
+
+Separate 600-present Debug instrumented perf runs completed on the same RX
+9070 XT, Games/WarScene and saved exterior camera. Validation was off; each
+Optick CPU capture spans 64 warmed frames after present 160. The table contains
+median CPU wall times per frame. Binding subscopes are nested, not additive.
+These runs include the new instrumentation and tuple collector; they do not
+establish a speedup or a like-for-like regression against the earlier captures.
+
+| CPU scope, ms/frame | Vulkan | OpenGL |
+|---|---:|---:|
+| Whole frame median / p95 | 134.22 / 141.28 | 137.82 / 147.51 |
+| API translation, inclusive | 77.65 | 83.58 |
+| Backend binding path, inclusive | 45.92 | 47.47 |
+| Logical binding command merge | 2.64 | 2.60 |
+| Uniform commit | 12.95 | 16.77 |
+| Fallback resolution | 4.50 | 6.11 |
+| Sampled-image resolution | 5.47 | 2.73 |
+| Buffer resolution/binding | 2.90 | 14.21 |
+| Effective-tuple measurement itself | 2.85 | 3.45 |
+| Actual Vulkan push emission | 1.09 | N/A |
+
+The snapshot logged at frame 192 describes the previous completed CPU frame:
+
+| Binding counter | Vulkan | OpenGL |
+|---|---:|---:|
+| Logical commands / material references | 2447 / 1397 | 2434 / 1384 |
+| Uniform commits / changed | 7097 / 6115 | 8686 / 6115 |
+| Active per-draw tuple observations | 6574 | 7690 |
+| Unique effective tuples | 6291 | 6291 |
+| Unique material-revision/program pairs | 569 | 569 |
+| Actual push calls / descriptor writes | 6550 / 12143 | N/A |
+| Image / buffer resolution visits | 11846 / 21541 | 8832 / 20517 |
+| Tuple / material-table overflow | 0 / 0 | 0 / 0 |
+
+The first 4096-tuple probe overflowed, so the diagnostic bound was raised to
+8192. Its retained storage is 13,074,432 bytes (12.47 MiB), only allocated for
+explicit perf sampling; both final runs report zero warmed storage growth.
+Published/live records stay at 1907 from the frame-64 through frame-576
+snapshots on both APIs, with 3,096,968 live payload bytes (2.95 MiB), excluding
+pool slack/control blocks. This demonstrates stable binding publication for
+this workload, not allocation freedom throughout the engine.
+
+The measurements favor caching stable material resource resolution separately
+from dynamic uniform/view data, not caching whole effective sets as though
+material identity made them reusable. Vulkan writes 10,220 buffer descriptors
+out of 12,143 total at that snapshot, and actual push emission costs only about
+1.09 ms/frame. Eliminating native push calls alone cannot recover the inclusive
+binding-path time. Uniform preparation, fallback/resource resolution and the
+remaining serial translation still need targeted work; these three steps are a
+measured ownership foundation, not achievement of the frame-time targets.
+
+#### Compiled-cache runtime check
+
+After Step 3, validation-free Debug `-PerfMode` diagnostics completed 601
+presents each on the same RX 9070 XT and Games/WarScene. The nine samples below
+are per-frame snapshots logged at frames 64 through 576. Stage draw/bin counts
+matched between APIs; backend draw counts did not. Cache hit rates are
+`hits / (hits + misses)` averaged across those nine snapshots.
+
+| Counter / observation | Vulkan | OpenGL |
+|---|---:|---:|
+| Compiled sampled-image cache hits / misses per sampled frame | 9,756 / 320 | 5,299 / 568 |
+| Hit rate | 96.83% | 90.33% |
+| Fixed compiled-cache storage | 192 KiB | 96 KiB |
+| Image resolutions per sampled frame | 2,091 | 3,585 |
+| Backend binding counters per sampled frame | 6,550 push calls / 12,132 writes | 8,884 texture visits / 20,539 buffer visits |
+| Backend draw counter per sampled frame | 6,074 | 7,726 |
+| GPU frame time, sample mean (range) | 33.26 ms (32.75–33.91) | 61.15 ms (60.30–62.59) |
+
+OpenGL texture visits include the required texture-view touch on every cached
+use; they are not native API call counts. These single-run timings characterize
+this workload, not a before/after comparison. No frame-time improvement is
+attributed to Step 3 from these samples alone; see the matched comparison below.
+
+#### Warmed CPU profile
+
+Fresh CPU-only Optick captures were collected during matching validation-free
+Debug `-PerfMode` WarScene runs on the same RX 9070 XT. Each captured 64 frames
+after present 160; both diagnostics completed 600 presents with clean shutdown,
+and the internal suite passed (164 cases, 28,214 assertions). Times are
+per-frame medians except the p95 row; nested scopes are not additive.
+
+| CPU scope, ms/frame | Vulkan | OpenGL |
+|---|---:|---:|
+| Whole-frame wall time, median / p95 | 127.54 / 134.69 | 137.59 / 184.34 |
+| `GFXDevice::flushCommandBufferInternal`, inclusive | 73.83 | 81.85 |
+| `bindShaderResources`, inclusive | 42.51 | 46.51 |
+| `Commit binding uniforms`, inclusive | 12.51 | 16.53 |
+| Main-thread `TaskPool::wait`, self time | 28.53 | 30.37 |
+
+These are single captures with profiling and binding diagnostics enabled, not
+a matched cache-disabled baseline. The `TaskPool::wait` scope is substantial,
+so wall-frame time should not be read as CPU work time; repeat captures and
+worker/task-wait analysis are needed before attributing a change to the cache.
+
+#### Matched cache-on/off comparison (2026-11-09)
+
+Three paired runs per backend now compare the compiled sampled-image cache
+against `-DisableBindingCache`. All 12 retained diagnostics used the same
+instrumented Windows/MSVC Debug executable (SHA-256 recorded in the local
+protocol and each attempt), RX 9070 XT, Games/WarScene, saved exterior camera,
+settings and diagnostics. Each completed 600 presents and clean shutdown.
+CPU-only captures contain 64 frames, requested after present 160 (actual client
+connection at 160-164). Pair order alternated on/off, off/on, on/off.
+An initial Vulkan pair was excluded and rerun in full because CTest overlapped
+its first capture. The 394-test instrumented suite passed before the retained
+captures; no tests/builds/summary processing ran concurrently with them.
+
+The table gives the median of the three per-run CPU medians, in ms/frame.
+Nested scopes are not additive. Ranges describe the three run medians, not
+individual frames or confidence intervals.
+
+| CPU scope | Vulkan off | Vulkan on | OpenGL off | OpenGL on |
+|---|---:|---:|---:|---:|
+| Whole frame | 129.69 | 126.76 | 134.86 | 133.89 |
+| Whole-frame range | 129.54-130.03 | 126.52-127.15 | 134.50-135.69 | 133.39-133.99 |
+| API translation, inclusive | 76.36 | 73.51 | 81.27 | 80.59 |
+| Backend binding path, inclusive | 45.28 | 42.22 | 46.76 | 45.80 |
+| Sampled-image resolution, inclusive | 5.41 | 2.57 | 3.30 | 2.17 |
+
+Within-pair whole-frame reductions were 2.54/3.02/3.27 ms for Vulkan and
+1.47/1.70/0.61 ms for OpenGL. The median paired sampled-image-scope reduction
+was 2.84 ms and 1.12 ms respectively. All three pairs favor the cache on each
+backend, but the OpenGL whole-frame effect is small and variable. Comparing
+the aggregate medians gives about 2.3% Vulkan and 0.7% OpenGL wall-frame
+reduction in this instrumented workload, not a Release or general engine
+speedup. The binding path and remaining serial translation are still expensive.
+
+The nine warmed counter snapshots per run retain identical stage draws/bin
+items: DISPLAY 1679/1063, REFLECTION 1356/904, REFRACTION 1670/1061,
+SHADOW 2902/817 and NODE_PREVIEW 0/0. HiZ is 1002 culled, 11 overflow and
+3 skipped. Disabled runs report zero compiled hits/misses; image-resolution
+visits fall from 11,846 to about 2,090 on Vulkan and 8,881 to about 3,570 on
+OpenGL when enabled (medians of per-run snapshot means). Tuple-table overflows
+and warmed diagnostic-storage growth are zero. Representative on/off scene
+images from both APIs were inspected and retain the same camera and geometry.
+GPU snapshot means remain about 34 ms Vulkan and 62 ms OpenGL; no GPU
+improvement is established by this CPU-side cache.
+
+Raw captures, run metadata, logs, summaries and `comparison.json` are retained
+outside the checkout at `H:\RendererBindingAB20261109`. This measurement
+isolates Step 3's compiled cache, not the combined effect of Steps 1-3.
+
+#### Capture-completion freeze
+
+The multi-second pause near frame/present 231 is an Optick export stall, not
+a periodic binding-cache stall. Across the 12 retained runs, the supervisor
+observes roughly 19-22 seconds without new presents near 232-240, in both
+cache modes and APIs. The 64-frame captures are about 1.5-1.85 GiB.
+`Application::step` calls `PROFILE_FRAME`; Optick's frame macro calls
+`Update`, whose state transition invokes `Core::DumpFrames` synchronously.
+Thread-event serialization and capture transmission therefore block the main
+loop after recording stops. The capture helper also retains the received
+payload until writing the file; that is profiling-tool memory, not cache memory.
+
+Two same-binary Vulkan controls confirm the attribution: without a capture
+client, the largest supervisor present-report interval was 0.55 seconds.
+Moving the capture request from present 160 to 80 moved the 18.54-second
+stall to presents 154-155. Both controls completed 601 presents and clean
+shutdown. This is not a fixed engine FrameIndex trigger. The export pause
+occurs outside the recorded CPU frames and is not included in the comparison
+table; it must not be interpreted as measured steady-frame rendering cost.
+No asynchronous Optick exporter or third-party profiler change was introduced.
+
+Ordinary Vulkan set 3/dynamic offsets, shader set changes and bindless resources
+remain outside these three steps. Step 3 does not eliminate Vulkan push
+descriptor calls or OpenGL state-tracker binds. The measured improvement is
+limited to the matched validation-free Debug workload above; hit rates alone
+would not establish it. No Release, Linux or macOS result is established by
+this slice.
+
+### Uniform preparation checkpoint (2026-11-09)
+
+This narrow follow-up leaves shader layouts, per-draw uniform commands, arena
+snapshots, retirement and native descriptor emission unchanged.
+`UniformBlockUploader` stable-sorts its existing reflected-member vector once
+at construction, replacing a full member scan per uniform with lower-bound
+lookup plus all equal hashes. A one-byte binding-index hint avoids rescanning
+an unchanged descriptor set, but validates the current count and target slot
+before use and retains the complete effective-binding comparison. Neither
+lookup allocates in the render loop. Tests access the private CPU helpers
+through the existing attorney pattern.
+
+Release diagnostics before and after the change each completed 601 presents
+on the same GPU, Games/WarScene and reference camera, with validation off.
+Each CPU sample is one warmed 64-frame Optick capture requested after present
+160; attachment occurred at 177 in the Vulkan baseline and at 162-166 in the
+other runs. Artifacts are under `H:\RendererUniformSlice20261109`, in
+`baseline-vulkan`, `baseline-opengl`, `after-vulkan` and `after-opengl`.
+
+| CPU scope, median ms/frame | Vulkan before | Vulkan after | OpenGL before | OpenGL after |
+|---|---:|---:|---:|---:|
+| Whole frame | 45.35 | 41.72 | 48.99 | 48.88 |
+| API translation, inclusive | 21.736 | 19.551 | 22.166 | 22.249 |
+| Binding path, inclusive | 11.182 | 10.251 | 11.830 | 11.900 |
+| `ShaderProgram::uploadUniformData` | 1.677 | 1.421 | 1.367 | 1.448 |
+| Uniform commit, inclusive | 3.878 | 3.462 | 4.417 | 4.448 |
+| Main `TaskPool::wait`, self | 16.772 | 15.937 | 14.984 | 15.069 |
+
+These are exploratory observations, **not an established speedup**. There is
+only one before/after sample per API. OpenGL is essentially unchanged and its
+uniform scopes are slightly higher. Vulkan's capture has fewer writes/binds
+(about 9814/7094 before versus 9765/7062 after), and time-dependent shadow
+refresh changes the sampled workload: at present 192, SHADOW was 819/817
+before versus 2902/817 after; both reached 2902/817 at 256. Other stage
+draw/bin counts matched: DISPLAY 1679/1063, REFLECTION 1356/904, REFRACTION
+1670/1061; Hi-Z was 1002 culled / 11 overflow / 3 skipped. Do not attribute
+the whole-frame Vulkan reduction to lookup changes or extrapolate it to
+Debug. Repeated matched comparisons are needed before crediting this slice
+with a performance gain or expanding it; larger dynamic-uniform preparation
+and native binding costs remain open.
+
+Windows/MSVC Debug and Release engine/test builds completed. Focused uniform
+tests passed 26/26, including partial/array writes, duplicate and absent hashes,
+unchanged bytes, and descriptor replacement/reordering. Full Debug instrumented
+CTest passed 396/396. Separate validation-on Debug acceptance runs for Vulkan
+and OpenGL each completed 301 presents and normal shutdown; the scene and
+editor captures were inspected with terrain, building, trees, grass and water
+present. These checks do not establish other-platform behavior or a frame-time
+target.
 
 ### Stabilization checkpoint
 

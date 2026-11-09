@@ -107,6 +107,15 @@ directly after requesting device idle. Other deletes may use the device queue.
 Do not assume every Vulkan resource follows the transient timer or treat it as
 a substitute for establishing completion for new resource pools.
 
+The fixed-capacity Vulkan sampled-image binding cache stores non-owning
+`VkDescriptorImageInfo` values for immutable resource revisions. Revision
+ownership remains with retained binding records/merged descriptor slots; the
+cache does not extend texture or image-view lifetime. Its entries are only
+reused for the exact revision and descriptor slot and are cleared before device
+teardown. OpenGL's compiled sampled-image cache likewise does not own native
+objects: sampler names remain owned by the backend sampler map, and every use
+still touches the texture-view cache before queuing the bind.
+
 - `vkBufferImpl` generally prefers device-local memory. Frequently updated buffers request persistent mapping; initial uploads temporarily map host-visible allocations when host access was requested. Initial and post-creation writes flush non-coherent mapped ranges before GPU use.
 - Non-mappable buffers and initial allocations without VMA host-access flags use staging allocations and explicit transfer commands. Initial and later staged writes flush the staging range before the transfer. Inspect mapping assumptions, staging lifetime, copies, and synchronization separately.
 - `vkTexture` derives image usage flags from engine `ImageUsage`, requests device-preferred VMA allocations without forcing dedicated memory, flushes mapped staging writes before uploads, explicitly transitions layouts, and can generate mipmaps on the GPU. VMA may suballocate small images or choose dedicated memory when appropriate or required.

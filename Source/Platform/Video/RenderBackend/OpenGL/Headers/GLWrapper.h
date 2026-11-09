@@ -38,6 +38,7 @@
 
 #include "Platform/Video/Headers/Commands.h"
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
+#include "Platform/Video/Headers/ResolvedBindingCache.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h"
 
 struct FONScontext;
@@ -203,6 +204,12 @@ private:
         gl46core::GLubyte _slot{ INVALID_TEXTURE_BINDING };
     };
 
+    struct StableSampledBinding
+    {
+        gl46core::GLubyte _bindingSlot{ INVALID_TEXTURE_BINDING };
+        gl46core::GLuint _sampler{ GL_NULL_HANDLE };
+    };
+
     struct PendingBufferReadback
     {
         gl46core::GLsync _sync{ nullptr };
@@ -211,6 +218,10 @@ private:
 
     void pollBufferReadbacks( I64 windowGUID );
     void discardBufferReadbacks();
+    [[nodiscard]] bool queueTextureViewResident( gl46core::GLubyte bindingSlot, gl46core::GLuint& sampler,
+                                                 const ImageView& imageView, size_t imageViewHash,
+                                                 const SamplerDescriptor* samplerToResolve = nullptr,
+                                                 size_t samplerHash = 0u ) const;
 
     static fixed_vector<TexBindEntry, 32> s_TexBindQueue;
 
@@ -230,6 +241,7 @@ private:
         gl46core::GLuint _glHandle = GL_NULL_HANDLE;
     };
     using SamplerObjectMap = fixed_vector<CachedSamplerEntry, InitialSamplerMapSize, true>;
+    ResolvedBindingCache<StableSampledBinding, 4096u> _stableSampledBindingCache;
 
 private:
     GFXDevice& _context;

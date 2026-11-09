@@ -43,6 +43,7 @@
 #include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
 
 #include "vkDescriptors.h"
+#include "Platform/Video/Headers/ResolvedBindingCache.h"
 
 namespace Divide
 {
@@ -174,6 +175,12 @@ private:
 
     std::array<DynamicBindings, to_base( DescriptorSetUsage::COUNT )> _descriptorDynamicBindings;
     std::array<VkDescriptorSetLayout, to_base( DescriptorSetUsage::COUNT )> _descriptorSetLayouts;
+    struct StableImageBinding
+    {
+        VkDescriptorType _type{ VK_DESCRIPTOR_TYPE_MAX_ENUM };
+        VkDescriptorImageInfo _imageInfo{};
+    };
+    ResolvedBindingCache<StableImageBinding, 4096u> _stableImageBindingCache;
 
     PushConstantsStruct _lastPushConstants{};
     bool _hasLastPushConstants{ false };

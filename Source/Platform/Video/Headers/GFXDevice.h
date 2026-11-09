@@ -42,6 +42,7 @@
 #include "RenderAPIWrapper.h"
 #include "RenderStagePass.h"
 #include "IMPrimitiveDescriptors.h"
+#include "ResourceBindingMetrics.h"
 
 #include "Core/Math/Headers/Line.h"
 #include "Core/Headers/FrameListener.h"
@@ -307,10 +308,20 @@ public:
     {
         PROPERTY_RW(DescriptorSet, impl);
         PROPERTY_RW(bool, dirty, true);
+        PROPERTY_R( U64, materialRevision, 0u );
+        [[nodiscard]] const std::array<U64, MAX_BINDINGS_PER_DESCRIPTOR_SET>& stableBindingRevisions() const noexcept
+        {
+            return _stableBindingRevisions;
+        }
 
         void clear();
         void update(DescriptorSetUsage usage, const DescriptorSet& newBindingData);
         void update(DescriptorSetUsage usage, const DescriptorSetBinding& newBindingData);
+        void update( const GFX::BindShaderResourcesCommand& command );
+
+    private:
+        std::array<ResourceBindingHandle, MAX_BINDINGS_PER_DESCRIPTOR_SET> _bindingOwners{};
+        std::array<U64, MAX_BINDINGS_PER_DESCRIPTOR_SET> _stableBindingRevisions{};
     };
 
     using GFXDescriptorSets = std::array<GFXDescriptorSet, to_base(DescriptorSetUsage::COUNT)>;
@@ -407,6 +418,7 @@ public:  // Accessors and Mutators
     [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept;
     /// GPU time per command buffer name, accumulated while queryPerformanceStats() is enabled. Callers reset it after consuming.
     [[nodiscard]] GPUPassTimingTable& gpuPassTimings() noexcept { return _gpuPassTimings; }
+    [[nodiscard]] ResourceBindingMetrics& resourceBindingMetrics() noexcept { return _resourceBindingMetrics; }
 
     void onThreadCreated(const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread) const;
 
@@ -644,6 +656,7 @@ private:
     std::array<GPUPassNameFrame, GPU_PASS_NAME_HISTORY> _gpuPassNames{};
     std::array<F32, GPU_PASS_TIMESTAMP_CAPACITY> _gpuPassTimestampScratch{};
     GPUPassTimingTable _gpuPassTimings{};
+    ResourceBindingMetrics _resourceBindingMetrics{};
 
     /// Debug scope timing state, only valid while flushWindow() translates main-window command buffers with scope timing enabled.
     static constexpr U8 GPU_SCOPE_MAX_DEPTH = 16u;

@@ -114,6 +114,25 @@ the harness `-PerfMode` switch for validation-free timings. Repeat
 `--callers <substring>` to report immediate parent scopes and per-frame call
 counts for matching events.
 
+CPU-only capture completion can itself freeze the main loop: `PROFILE_FRAME`
+in `Application::step` invokes Optick's update, which synchronously serializes
+and transmits the stopped capture in `Core::DumpFrames`. Large function-profiled
+captures can pause presents for many seconds outside the recorded frame range.
+The Python capture helper also buffers the received payload before saving.
+Distinguish this export interval from steady-frame rendering: compare a
+no-client run or move the requested capture window and correlate the pause.
+Do not disable the smoke watchdog or treat every similar pause as harmless.
+
+For matched compiled sampled-image cache comparisons, use
+`-DisableBindingCache` (engine `--smokeDisableBindingCache`), restricted to
+`-PerfMode`. This bypasses both backend compiled caches, not shader/pipeline
+caches, immutable binding ownership or native state tracking. The same binary,
+diagnostics and fixed cache storage are retained; disabled runs report zero
+compiled-cache hits/misses and more image resolutions. The selection is recorded
+in the attempt's `environment.json`. Alternate cache-on/off order across repeated
+runs with identical warmup and capture lengths; compare per-run results rather
+than treating captured frames as independent experiments.
+
 Perf mode enables `GFXDevice::queryPerformanceStats()` every frame, and
 `RenderPassManager::logPerfMetrics` logs two `[PerfMetrics]` lines every 64
 frames. The first gives the frame GPU time, backend draws, HiZ counters
@@ -164,6 +183,39 @@ synchronization behavior remains unverified. CPU-only captures are a
 diagnostic workaround, not a GPU-profiler fix; do not suppress validation to
 make a capture succeed. Recheck this limitation when the dependency or its
 integration changes.
+
+## Resource binding diagnostics
+
+Explicit `-PerfMode` runs also emit `[BindingMetrics]` snapshots of the previous
+completed CPU frame at the existing metrics cadence. Ordinary runs do not
+collect tuple samples or print these diagnostics. Counters separate logical
+commands, immutable-material references, override slots, loose-uniform changes,
+fallback resolution, backend resource resolution, actual Vulkan push calls and
+descriptor writes. GL texture/buffer visits count binding-path visits, not
+necessarily driver calls (the GL state tracker can skip them).
+
+`ResourceBindingMetrics` bounds full effective tuple samples to 8192 per frame
+with explicit overflow, retained capacity and collision-checked equality.
+Tuples are canonicalized by slot and filtered to reflected active `PER_DRAW`
+slots after uniform commit/fallback resolution. Buffer ring indices/ranges are
+part of the tuple. Identity includes the program GUID, conservatively separating
+different programs even when native layouts could be compatible. Material/program
+pairs are counted separately from full tuples; full-set reuse must not be
+inferred from material identity alone. Counts include compute/utility work.
+Sampler-write groups 0-9 and 10-11 identify slot ranges, not exclusively material
+and reflection work. Overflow reports unrecorded observations, not an exact
+count of additional unique tuples.
+
+CPU profiler scopes separate uniform commit, fallback and native resource
+resolution, effective-tuple measurement and actual push emission. Tuple
+collection itself has a CPU/memory cost and is inside translation time; do not
+compare diagnostic timings directly to older captures without this collector.
+Counters issue no GPU queries/waits. Diagnostic storage allocates once on first
+perf-frame use and reuses capacity. `growths` counts only that diagnostic vector,
+not all engine allocations. Published/live binding record counts expose revision
+churn; payload bytes exclude pool slack and ownership control blocks. A stable
+published count after warmup establishes no new binding publications, not
+general allocation freedom.
 
 ## Framework smoke diagnosis
 

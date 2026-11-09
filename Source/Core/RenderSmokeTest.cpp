@@ -369,6 +369,16 @@ namespace Divide::RenderSmokeTest
                 }
                 options._serialViewRecording = true;
             }
+            else if ( argument == "--smokeDisableBindingCache" )
+            {
+                sawOption = true;
+                if ( options._disableBindingCache )
+                {
+                    errorOut = "Duplicate --smokeDisableBindingCache option";
+                    return ParseResult::ERROR;
+                }
+                options._disableBindingCache = true;
+            }
             else if ( argument == "--disableRenderAPIDebugging" || argument == "--disableEditor" )
             {
                 incompatible = true;
@@ -412,6 +422,12 @@ namespace Divide::RenderSmokeTest
         if ( options._gpuScopeTimings && !options._perfMode )
         {
             errorOut = "--smokeGpuScopeTimings requires --smokePerfMode";
+            return ParseResult::ERROR;
+        }
+
+        if ( options._disableBindingCache && !options._perfMode )
+        {
+            errorOut = "--smokeDisableBindingCache requires --smokePerfMode";
             return ParseResult::ERROR;
         }
 
@@ -697,6 +713,11 @@ namespace Divide::RenderSmokeTest
     bool SerialViewRecordingRequested() noexcept
     {
         return Enabled() && State()._options._serialViewRecording;
+    }
+
+    bool BindingCacheDisabledRequested() noexcept
+    {
+        return PerfModeRequested() && State()._options._disableBindingCache;
     }
 
     const std::string& OutputDirectory() noexcept

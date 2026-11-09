@@ -123,6 +123,18 @@ shaders read their own compacted buffer through `PER_DRAW` 13 and
   retained to their high-water mark, independent of shader lifetime; see
   [GPU resources](gpu-resources.md) and [threading](threading.md) before
   changing their synchronization or teardown.
+- Reflected loose-uniform members, including array aliases, are stable-sorted
+  by name hash once during uploader construction. `ApplyUniformData` uses a
+  lower-bound lookup and updates every equal hash in its original relative
+  order; partial writes and identical-byte snapshot reuse retain their existing
+  semantics. The sorted order is a precondition of this private helper.
+  `FindBinding` retains only an index hint, validating both the current binding
+  count and target slot before reuse. Replaced or reordered descriptor sets
+  fall back to a scan. The complete buffer/range/queue-index/type/visibility
+  comparison still determines whether preparation changed the binding; no
+  native binding or GPU lifetime check is bypassed. These lookup paths add no
+  render-loop allocation. CPU-only regression access uses the
+  `UniformBlockUploaderTestAccess` attorney.
 - Cached SPIR-V must contain whole, nonempty words; incomplete binary reads are regenerated rather than passed to a backend.
 - SPIR-V reflection records vertex input locations, including matrix columns and array elements, and the reflection cache persists them. Built-in inputs are excluded; unsupported input types or locations fail reflection. Vulkan uses the reflected locations to omit unused vertex attributes from pipeline descriptions without inventing missing attributes. Shader reloads clear and rebuild this mask.
 - `SpirvHelper::UsesDrawIndex` scans each actual Vulkan shader module for
@@ -192,6 +204,63 @@ shaders read their own compacted buffer through `PER_DRAW` 13 and
 The local-array, flag-aware cache, and push-descriptor limit notes were checked against commit `1508b95` during this reorganization; see `VK_API::createLayoutFromBindings`, pipeline layout creation, and the descriptor layout cache.
 
 ## Binding and cache lifetime
+
+### Immutable material binding revisions
+
+`Material::getResourceBindings` publishes an immutable `ResourceBindingSet`
+for a pass category, common-material-input requirement and texture visibility.
+Packages and deferred `BindShaderResourcesCommand`s share a retained handle;
+`_set` now contains only package/view overrides when `_resources` is present.
+Legacy/raw commands still use `_set` alone. Replay merges the base first and
+overrides second, preserving omitted-slot retention rather than treating a
+material record as a complete shader descriptor set. Shader-specific fallback
+resolution and loose-uniform commits still happen in the backend.
+
+The handle is reference counted, not a recycled raw index. Each publication
+has a monotonically increasing revision, and retains the generation-checked
+texture handles used by its sampled-image bindings. Sampler/texture/operation
+edits invalidate material caches; unchanged sampler edits and numeric material
+data do not publish a new texture revision. Shader layout reload does not
+cache native bindings in these records: completion for common material inputs
+uses the ready program, and native layout/fallback resolution remains per
+program. Resource replacement publishes a new record while old commands retain
+the previous one.
+
+`GFXDevice::GFXDescriptorSet` retains an owner per merged slot, including slots
+omitted by later partial commands. Frame clear and GPU-idle renderer teardown
+release those owners. Dynamic object buffers and reflection/refraction
+overrides retain their existing package/scene ownership contracts. No native
+descriptor sets are retained by this feature. Backend compiled sampled-image
+operations are held in fixed-capacity, non-owning caches keyed by immutable
+revision and slot (OpenGL also includes descriptor usage). Cache collisions
+replace entries and cause misses, never false hits. Vulkan caches only the
+resolved combined-image-sampler type and image info; it still compares each
+per-draw slot and emits required push updates. OpenGL caches the flat binding
+slot and sampler handle, but resolves/touches the texture view and queues the
+binding on every use so view retirement and state-tracker restoration remain
+unchanged. Fallback-resolved and raw/override bindings bypass the cache.
+Both backend caches are cleared before their native device/context resources
+are torn down. Metrics report compiled-cache hits, misses and fixed storage. deletion still
+uses the existing backend retirement path.
+
+Command-buffer pool deallocation and bulk reset clear recorded commands while
+retaining buffer capacity. Pool destruction destroys every constructed buffer,
+not just its backing memory. These boundaries must release retained revisions
+before backend teardown; marking buffers reusable without clearing their command
+owners leaves textures alive after their scene/material owners disappear.
+
+Records use the existing `MemoryPool`, serialized only on publication/final
+release. A revision also allocates a shared ownership control block through
+`dvd_allocator`. First use of a material/pass variant and later edits can
+allocate; ordinary recording/command copies do not allocate binding records or
+control blocks. Pool blocks retain their high-water capacity. This is not a
+claim that the entire renderer is allocation-free. Global content interning
+across different materials and backend-ready binding caches are not implemented.
+
+Command validation, printing and duplicate-command cleanup use effective
+base-plus-override bindings. Duplicate comparison includes descriptor usage
+and ignores inactive array capacity. Animation/instance slot 13 remains a
+package override, never shared material data.
 
 `VK_API::bindShaderResources` caches resolved shared-set contents. New descriptor sets are allocated/written when resources change; otherwise only dynamic offsets change.
 Bound sets/offsets are tracked per bind point (graphics/compute) and command buffer.

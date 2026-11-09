@@ -280,6 +280,37 @@ namespace Divide
         REQUIRE( ParseOptions( perfMode, options, error ) == ParseResult::ENABLED );
         CHECK( options._perfMode );
         CHECK_FALSE( options._serialViewRecording );
+        CHECK_FALSE( options._disableBindingCache );
+        for ( const std::string_view backend : { "--vulkanSmokeTest", "--openGLSmokeTest" } )
+        {
+            const std::array cacheDisabled{ backend,
+                                           std::string_view{ "--smokeOutput=C:\\smoke" },
+                                           std::string_view{ "--smokeRun=attempt-01" },
+                                           std::string_view{ "--smokePerfMode" },
+                                           std::string_view{ "--smokeDisableBindingCache" } };
+            const std::array glCacheDisabled{ cacheDisabled[0], cacheDisabled[1], cacheDisabled[2],
+                                             cacheDisabled[3], cacheDisabled[4],
+                                             std::string_view{ "--smokeExpectedGPU=00000000030000000000000000000000" } };
+            const std::span<const std::string_view> arguments = backend == "--openGLSmokeTest"
+                                                                  ? std::span<const std::string_view>{ glCacheDisabled }
+                                                                  : std::span<const std::string_view>{ cacheDisabled };
+            REQUIRE( ParseOptions( arguments, options, error ) == ParseResult::ENABLED );
+            CHECK( options._disableBindingCache );
+        }
+        REQUIRE( ParseOptions( perfMode, options, error ) == ParseResult::ENABLED );
+        CHECK_FALSE( options._disableBindingCache );
+        const std::array cacheWithoutPerf{ std::string_view{ "--vulkanSmokeTest" },
+                                          std::string_view{ "--smokeOutput=C:\\smoke" },
+                                          std::string_view{ "--smokeRun=attempt-01" },
+                                          std::string_view{ "--smokeDisableBindingCache" } };
+        CHECK( ParseOptions( cacheWithoutPerf, options, error ) == ParseResult::ERROR );
+        const std::array cacheWithoutMode{ std::string_view{ "--smokeDisableBindingCache" } };
+        CHECK( ParseOptions( cacheWithoutMode, options, error ) == ParseResult::ERROR );
+        const std::array duplicateCache{ std::string_view{ "--vulkanSmokeTest" },
+                                        std::string_view{ "--smokePerfMode" },
+                                        std::string_view{ "--smokeDisableBindingCache" },
+                                        std::string_view{ "--smokeDisableBindingCache" } };
+        CHECK( ParseOptions( duplicateCache, options, error ) == ParseResult::ERROR );
         const std::array serialViews{ std::string_view{ "--vulkanSmokeTest" },
                                       std::string_view{ "--smokeOutput=C:\\smoke" },
                                       std::string_view{ "--smokeRun=attempt-01" },

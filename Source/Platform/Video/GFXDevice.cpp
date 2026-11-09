@@ -322,7 +322,29 @@ namespace Divide
     void GFXDevice::GFXDescriptorSet::clear()
     {
         _impl._bindingCount = { 0u };
+        _bindingOwners = {};
+        _stableBindingRevisions = {};
+        _materialRevision = 0u;
         dirty( true );
+    }
+
+    void GFXDevice::GFXDescriptorSet::update( const GFX::BindShaderResourcesCommand& command )
+    {
+        _materialRevision = command._resources != nullptr ? command._resources->_revision : 0u;
+        if ( command._resources != nullptr )
+        {
+            for ( U8 i = 0u; i < command._resources->_bindings._bindingCount; ++i )
+            {
+                const auto& binding = command._resources->_bindings._bindings[i];
+                update( command._usage, binding );
+                if ( _bindingOwners[binding._slot] != command._resources )
+                {
+                    _bindingOwners[binding._slot] = command._resources;
+                }
+                _stableBindingRevisions[binding._slot] = command._resources->_revision;
+            }
+        }
+        update( command._usage, command._set );
     }
 
     void GFXDevice::GFXDescriptorSet::update( const DescriptorSetUsage usage, const DescriptorSet& newBindingData )
@@ -348,6 +370,8 @@ namespace Divide
 
                 if ( bindingEntry != newBindingData )
                 {
+                    _bindingOwners[newBindingData._slot].reset();
+                    _stableBindingRevisions[newBindingData._slot] = 0u;
                     bindingEntry = newBindingData;
                     dirty( true );
                 }
@@ -355,7 +379,9 @@ namespace Divide
             }
         }
 
-        DIVIDE_ASSERT( _impl._bindingCount < MAX_BINDINGS_PER_DESCRIPTOR_SET - 1u);
+        DIVIDE_ASSERT( _impl._bindingCount < MAX_BINDINGS_PER_DESCRIPTOR_SET );
+        _bindingOwners[newBindingData._slot].reset();
+        _stableBindingRevisions[newBindingData._slot] = 0u;
         _impl._bindings[_impl._bindingCount++] = newBindingData;
         dirty( true );
     }
@@ -1520,6 +1546,10 @@ namespace Divide
 
     void GFXDevice::releaseRenderingResources()
     {
+        for ( auto& set : _descriptorSets )
+        {
+            set.clear();
+        }
         _debugLines.reset();
         _debugBoxes.reset();
         _debugOBBs.reset();
@@ -1715,6 +1745,7 @@ namespace Divide
 
     bool GFXDevice::frameStarted( [[maybe_unused]] const FrameEvent& evt )
     {
+        _resourceBindingMetrics.beginFrame( RenderSmokeTest::PerfModeRequested() );
         if ( _uniformUploadFailed )
         {
             return false;
@@ -1818,6 +1849,7 @@ namespace Divide
         }*/
 
         frameDrawCallsPrev( frameDrawCalls() );
+        _resourceBindingMetrics.endFrame();
         frameDrawCalls( 0u );
 
         if ( _gfxBuffers._needsResizeCam )
@@ -2504,6 +2536,7 @@ namespace Divide
             entry._set = &set.impl();
             entry._usage = usage;
             entry._isDirty = set.dirty();
+            entry._stableBindingRevisions = &set.stableBindingRevisions();
             set.dirty( false );
         }
 
@@ -2706,7 +2739,14 @@ namespace Divide
                     PROFILE_SCOPE( "BIND_SHADER_RESOURCES", Profiler::Category::Graphics );
 
                     const auto resCmd = cmd->As<GFX::BindShaderResourcesCommand>();
-                    descriptorSet( resCmd->_usage ).update( resCmd->_usage, resCmd->_set );
+                    if ( _resourceBindingMetrics.enabled() )
+                    {
+                        auto& counters = _resourceBindingMetrics.current();
+                        ++counters._commands;
+                        counters._materialCommands += resCmd->_resources != nullptr ? 1u : 0u;
+                        counters._overrideSlots += resCmd->_set._bindingCount;
+                    }
+                    descriptorSet( resCmd->_usage ).update( *resCmd );
 
                 } break;
                 case GFX::CommandType::DRAW_COMMANDS:

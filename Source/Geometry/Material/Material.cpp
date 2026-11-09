@@ -479,7 +479,13 @@ namespace Divide
 
     bool Material::setSampler( const TextureSlot textureUsageSlot, const SamplerDescriptor sampler )
     {
-        _textures[to_U32( textureUsageSlot )]._sampler = sampler;
+        LockGuard<SharedMutex> lock( _textureLock );
+        auto& current = _textures[to_U32( textureUsageSlot )]._sampler;
+        if ( current != sampler )
+        {
+            invalidateDescriptorSets();
+            current = sampler;
+        }
 
         return true;
     }
@@ -497,9 +503,9 @@ namespace Divide
 
         TextureInfo& texInfo = _textures[slot];
 
-        setSampler( textureUsageSlot, sampler );
+        texInfo._sampler = sampler;
 
-        setTextureOperation( textureUsageSlot, texture != INVALID_HANDLE<Texture> ? op : TextureOperation::NONE );
+        setTextureOperationLocked( textureUsageSlot, texture != INVALID_HANDLE<Texture> ? op : TextureOperation::NONE );
 
         DestroyResource( texInfo._ptr );
         texInfo._srgb = texture != INVALID_HANDLE<Texture> ? Get(texture)->descriptor()._packing == GFXImagePacking::NORMALIZED_SRGB : false;
@@ -546,11 +552,17 @@ namespace Divide
 
     void Material::setTextureOperation( const TextureSlot textureUsageSlot, const TextureOperation op )
     {
+        LockGuard<SharedMutex> lock( _textureLock );
+        setTextureOperationLocked( textureUsageSlot, op );
+    }
 
+    void Material::setTextureOperationLocked( const TextureSlot textureUsageSlot, const TextureOperation op )
+    {
         TextureOperation& crtOp = _textures[to_base( textureUsageSlot )]._operation;
 
         if ( crtOp != op )
         {
+            invalidateDescriptorSets();
             crtOp = op;
             properties()._needsNewShader = true;
             if ( textureUsageSlot == TextureSlot::UNIT0 || textureUsageSlot == TextureSlot::OPACITY )
@@ -1128,6 +1140,10 @@ namespace Divide
         }
         shaderQueue.waitForPendingLoads();
 
+        {
+            LockGuard<SharedMutex> lock( _textureLock );
+            invalidateDescriptorSets();
+        }
         for ( TextureInfo& tex : _textures )
         {
             DestroyResource(tex._ptr);
@@ -1258,6 +1274,7 @@ namespace Divide
 
     void Material::invalidateDescriptorSets() noexcept
     {
+        _resourceBindings = {};
         _descriptorSetMainPass._bindingCount = 0u;
         _descriptorSetSecondaryPass._bindingCount = 0u;
         _descriptorSetPrePass._bindingCount = 0u;
@@ -1470,6 +1487,64 @@ namespace Divide
                                      const ShaderProgramDescriptor& shaderDescriptor,
                                      DescriptorSet& descriptorOut )
     {
+        LockGuard<SharedMutex> lock( _textureLock );
+        return getDescriptorSetLocked( renderStagePass, shaderDescriptor, descriptorOut );
+    }
+
+    ResourceBindingHandle Material::getResourceBindings( const RenderStagePass& renderStagePass,
+                                                        const ShaderProgramDescriptor& shaderDescriptor )
+    {
+        const bool commonInputs = HasCommonMaterialInputs( shaderDescriptor );
+        const size_t passIndex = renderStagePass._stage == RenderStage::SHADOW ? 0u
+                               : renderStagePass._passType == RenderPassType::PRE_PASS ? 1u
+                               : renderStagePass._stage == RenderStage::DISPLAY ? 2u : 3u;
+        const size_t visibilityIndex = properties().texturesInFragmentStageOnly() ? 0u : 1u;
+        {
+            SharedLock<SharedMutex> lock( _textureLock );
+            const auto& cached = _resourceBindings[passIndex][commonInputs ? 1u : 0u][visibilityIndex];
+            if ( cached != nullptr )
+            {
+                return cached;
+            }
+        }
+        LockGuard<SharedMutex> lock( _textureLock );
+        auto& cached = _resourceBindings[passIndex][commonInputs ? 1u : 0u][visibilityIndex];
+        if ( cached == nullptr )
+        {
+            DescriptorSet bindings{};
+            if ( !getDescriptorSetLocked( renderStagePass, shaderDescriptor, bindings ) )
+            {
+                return {};
+            }
+            fixed_vector<Handle<Texture>, MAX_BINDINGS_PER_DESCRIPTOR_SET> textures;
+            const auto usesTexture = [&]( const Handle<Texture> texture )
+            {
+                return texture != INVALID_HANDLE<Texture> &&
+                       std::ranges::any_of( std::span{ bindings._bindings.data(), bindings._bindingCount }, [&]( const DescriptorSetBinding& binding )
+                       {
+                           return binding._data._sampledImage._image._srcTexture == Get( texture );
+                       } );
+            };
+            for ( const TextureInfo& texture : _textures )
+            {
+                if ( usesTexture( texture._ptr ) )
+                {
+                    textures.push_back( texture._ptr );
+                }
+            }
+            if ( commonInputs && usesTexture( Texture::DefaultTexture2DArray() ) )
+            {
+                textures.push_back( Texture::DefaultTexture2DArray() );
+            }
+            cached = CreateResourceBindings( bindings, { textures.data(), textures.size() } );
+        }
+        return cached;
+    }
+
+    bool Material::getDescriptorSetLocked( const RenderStagePass& renderStagePass,
+                                           const ShaderProgramDescriptor& shaderDescriptor,
+                                           DescriptorSet& descriptorOut )
+    {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         const ShaderStageVisibility texVisibility = properties().texturesInFragmentStageOnly() ? ShaderStageVisibility::FRAGMENT : ShaderStageVisibility::ALL_DRAW;
@@ -1484,30 +1559,18 @@ namespace Divide
                                                                 : _descriptorSetSecondaryPass;
 
         descriptorOut._bindingCount = 0u;
+        if ( descriptor._bindingCount == 0u )
         {
-            SharedLock<SharedMutex> r_lock( _textureLock );
-            if ( descriptor._bindingCount != 0u )
+            for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
             {
-                descriptorOut = descriptor;
-            }
-        }
-
-        if ( descriptorOut._bindingCount == 0u )
-        {
-            ScopedLock<SharedMutex> w_lock( _textureLock );
-            if ( descriptor._bindingCount == 0u )
-            {
-                for ( U8 i = 0u; i < to_U8( TextureSlot::COUNT ); ++i )
+                if ( usesTextureInShader( static_cast<TextureSlot>(i), isPrePass, isShadowPass ) )
                 {
-                    if ( usesTextureInShader( static_cast<TextureSlot>(i), isPrePass, isShadowPass ) )
-                    {
-                        DescriptorSetBinding& binding = AddBinding( descriptor, i, texVisibility );
-                        Set( binding._data, _textures[i]._ptr, _textures[i]._sampler );
-                    }
+                    DescriptorSetBinding& binding = AddBinding( descriptor, i, texVisibility );
+                    Set( binding._data, _textures[i]._ptr, _textures[i]._sampler );
                 }
             }
-            descriptorOut = descriptor;
         }
+        descriptorOut = descriptor;
 
         for ( U8 i = 0u; i < descriptorOut._bindingCount; ++i )
         {
@@ -1730,7 +1793,8 @@ namespace Divide
                         previousSamplers[index] = sampler;
                     }
 
-                    setSampler( usage, sampler );
+                    invalidateDescriptorSets();
+                    _textures[to_base( usage )]._sampler = sampler;
 
                     TextureOperation& op = _textures[to_base( usage )]._operation;
                     bool& srgb = _textures[to_base(usage)]._srgb;
