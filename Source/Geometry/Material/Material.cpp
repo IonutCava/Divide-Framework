@@ -324,7 +324,7 @@ namespace Divide
         return CachedResource::load( context );
     }
 
-    bool Material::Clone(Handle<Material> src, Handle<Material>& dst, const std::string_view nameSuffix)
+    bool Material::Clone(Handle<Material> src, Handle<Material>& dst, const std::string_view nameSuffix, const bool allowXMLOverrides)
     {
         DIVIDE_ASSERT( !nameSuffix.empty(), "Material error: clone called without a valid name suffix!" );
         DIVIDE_ASSERT(src != INVALID_HANDLE<Material>, "Material error: clone called on an invalid source material!");
@@ -349,7 +349,7 @@ namespace Divide
         cloneMat->_shaderAttributes = srcMat->_shaderAttributes;
         cloneMat->_shaderAttributesHash = srcMat->_shaderAttributesHash;
 
-        cloneMat->ignoreXMLData(srcMat->ignoreXMLData() );
+        cloneMat->ignoreXMLData( !allowXMLOverrides && srcMat->ignoreXMLData() );
         cloneMat->updatePriorirty(srcMat->updatePriorirty() );
 
         for ( U8 i = 0u; i < to_U8(srcMat->_textures.size() ); ++i )

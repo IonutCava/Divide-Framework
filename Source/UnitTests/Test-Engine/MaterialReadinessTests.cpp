@@ -8,6 +8,7 @@
 #include "Core/Headers/TaskPool.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Geometry/Material/Headers/Material.h"
+#include "Geometry/Material/Headers/ShaderComputeQueue.h"
 #include "Managers/Headers/ProjectManager.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Platform/Headers/ConditionalWait.h"
@@ -44,6 +45,15 @@ namespace Divide
 
     namespace Attorney
     {
+    class GFXDeviceTestAccess
+    {
+    public:
+        static void InitializeShaderQueue( GFXDevice& device )
+        {
+            device._shaderComputeQueue = std::make_unique<ShaderComputeQueue>();
+        }
+    };
+
     struct KernelTestAccess
     {
         static void ReleaseUninitializedManagers( Kernel& kernel )
@@ -425,6 +435,72 @@ namespace Divide
         CHECK( ResourceCache::Inspect( original )._state == ResourceState::RES_UNKNOWN );
         const std::array stale{ original };
         CHECK( CreateResourceBindings( bindings, stale ) == nullptr );
+    }
+
+    TEST_CASE( "Fresh imported material instances accept scene overrides without changing the template", "[mesh_import][materials][render_smoke]" )
+    {
+        platformInitRunListener::PlatformInit();
+        const platformInitRunListener::LocalizationScope localization{};
+        const auto suffix = std::chrono::steady_clock::now().time_since_epoch().count();
+        const auto directory = std::filesystem::temp_directory_path() / ("divide-material-fixture-" + std::to_string( suffix ));
+        const auto editorDirectory = directory / "Editor";
+        REQUIRE( std::filesystem::create_directories( editorDirectory ) );
+        const ResourcePath previousXML = Paths::g_xmlDataLocation;
+        Paths::g_xmlDataLocation = ResourcePath{ directory.string() };
+        SCOPE_EXIT
+        {
+            Paths::g_xmlDataLocation = previousXML;
+            std::error_code error;
+            std::filesystem::remove( editorDirectory / "Editor.xml", error );
+            std::filesystem::remove( editorDirectory / "Editor.xml.bak", error );
+            std::filesystem::remove( editorDirectory, error );
+            std::filesystem::remove( directory, error );
+        };
+        Application app;
+        Kernel kernel{ 0, nullptr, app };
+        PlatformContext& context = kernel.platformContext();
+        SCOPE_EXIT
+        {
+            Attorney::KernelTestAccess::ReleaseUninitializedManagers( kernel );
+            context.terminate();
+        };
+        Attorney::GFXDeviceTestAccess::InitializeShaderQueue( context.gfx() );
+        TaskPool& loader = context.taskPool( TaskPoolType::ASSET_LOADER );
+        REQUIRE( loader.init( 1u ) );
+        SCOPE_EXIT { loader.shutdown(); };
+        InitConditionalWait( context );
+        ResourceCache::Init( RenderAPI::None, context );
+        SCOPE_EXIT { ResourceCache::Stop(); };
+
+        Handle<Material> source = CreateResource( ResourceDescriptor<Material>{ "fresh-import-template-test" } );
+        Handle<Material> instance = INVALID_HANDLE<Material>;
+        SCOPE_EXIT
+        {
+            DestroyResource( instance );
+            DestroyResource( source );
+        };
+        REQUIRE( source != INVALID_HANDLE<Material> );
+        Material* sourceMaterial = Get( source );
+        sourceMaterial->ignoreXMLData( true );
+        sourceMaterial->properties().specular( {1.f, 1.f, 1.f} );
+        sourceMaterial->properties().doubleSided( false );
+        const bool allowXMLOverrides = GENERATE( false, true );
+        REQUIRE( Material::Clone( source, instance, "_scene-instance", allowXMLOverrides ) );
+        Material* instanceMaterial = Get( instance );
+        REQUIRE( instanceMaterial->ignoreXMLData() == !allowXMLOverrides );
+
+        boost::property_tree::ptree overrides;
+        overrides.put( "Material.version", 1u );
+        overrides.put( "Material.specular.<xmlattr>.r", 0.f );
+        overrides.put( "Material.specular.<xmlattr>.g", 0.f );
+        overrides.put( "Material.specular.<xmlattr>.b", 0.f );
+        overrides.put( "Material.doubleSided", true );
+        instanceMaterial->loadFromXML( "Material", overrides );
+        CHECK( instanceMaterial->properties().specular() == float3{allowXMLOverrides ? 0.f : 1.f} );
+        CHECK( instanceMaterial->properties().doubleSided() == allowXMLOverrides );
+        CHECK( sourceMaterial->ignoreXMLData() );
+        CHECK( sourceMaterial->properties().specular() == float3{1.f} );
+        CHECK_FALSE( sourceMaterial->properties().doubleSided() );
     }
 
     TEST_CASE( "Material alpha selection honours active texture operations", "[materials][transparency][render_smoke]" )

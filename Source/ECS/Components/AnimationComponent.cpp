@@ -59,6 +59,7 @@ AnimationComponent::AnimationComponent(SceneGraphNode* parentSGN, PlatformContex
     animationFrameIndexInfoField._type = EditorComponentFieldType::PUSH_TYPE;
     animationFrameIndexInfoField._basicType = PushConstantType::IVEC4;
     animationFrameIndexInfoField._readOnly = true;
+    animationFrameIndexInfoField._serialise = false;
     _editorComponent.registerField(MOV(animationFrameIndexInfoField));
 
     EditorComponentField resyncTimersField = {};
@@ -230,6 +231,10 @@ ShaderBuffer* AnimationComponent::getBoneBuffer() const
 
 I32 AnimationComponent::frameCount(const U32 animationID) const
 {
+    if ( animationID == U32_MAX )
+    {
+        return 0;
+    }
     assert(_animator != nullptr);
 
     return _animator->frameCount(animationID);

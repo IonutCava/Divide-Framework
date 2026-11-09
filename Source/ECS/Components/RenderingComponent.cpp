@@ -194,7 +194,8 @@ namespace Divide
         }
 
         Handle<Material> newInstance = INVALID_HANDLE<Material>;
-        if ( Material::Clone(material, newInstance, (_parentSGN->name() + "_instance").c_str()) &&
+        const bool allowXMLOverrides = _parentSGN->getNode().type() == SceneNodeType::TYPE_SUBMESH;
+        if ( Material::Clone(material, newInstance, (_parentSGN->name() + "_instance").c_str(), allowXMLOverrides) &&
              newInstance != INVALID_HANDLE<Material> )
         {
             DestroyResource( _materialInstance );

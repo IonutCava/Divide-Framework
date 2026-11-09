@@ -104,9 +104,11 @@ SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* rootMeshNode, SceneGraphNod
         subMeshDescriptor._componentMask |= skinnedMask;
     }
 
-    Util::StringFormatTo( subMeshDescriptor._name, "{}_{}", parentNode->name().c_str(), meshIndex );
+    Util::StringFormatTo( subMeshDescriptor._name, "{}_{}", rootMeshNode->name().c_str(), meshIndex );
 
-    return parentNode->addChildNode(subMeshDescriptor);
+    SceneGraphNode* subMeshNode = parentNode->addChildNode(subMeshDescriptor);
+    subMeshNode->get<TransformComponent>()->setTransforms( MAT4_IDENTITY );
+    return subMeshNode;
 }
 
 void Mesh::processNode(SceneGraphNode* rootMeshNode, SceneGraphNode* parentNode, const MeshNodeData& node)

@@ -79,7 +79,9 @@ namespace Divide
         SceneAnimator animator{ false };
         AnimationComponent component{ nullptr, context };
         AnimationSystem system{ engine, context };
+        CHECK( component.frameCount() == 0 );
         component.setAnimator(&animator);
+        CHECK( component.frameCount() == 0 );
         component.resetTimers(100.0);
         AnimationSystemTestAccess::SetCurrentTimeStamp(component, 100.0);
         AnimationSystemTestAccess::SetComponents(system, { &component });
