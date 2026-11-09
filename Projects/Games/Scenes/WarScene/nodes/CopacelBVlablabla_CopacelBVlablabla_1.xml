@@ -5,7 +5,7 @@
 <SUBMESH/>
 <TRANSFORM>
     <Transform>
-        <position x="16.5239487" y="231.88504" z="20.3752975"/>
+        <position x="0" y="0" z="0"/>
         <orientation x="0" y="-0" z="0"/>
         <scale x="1" y="1" z="1"/>
     </Transform>
