@@ -4,9 +4,33 @@
 #include "Graphs/Headers/SceneNodeEventQueue.h"
 #include "Graphs/Headers/SceneNodeRemovalQueue.h"
 #include "Graphs/Headers/SGNRelationshipCache.h"
+#include "Graphs/Headers/SceneNodeFwd.h"
 
 namespace Divide
 {
+    TEST_CASE( "Only shadow-casting geometry invalidates cached shadows", "[scene_graph][shadows][render_smoke]" )
+    {
+        for (const SceneNodeType type : {SceneNodeType::TYPE_SPHERE_3D, SceneNodeType::TYPE_BOX_3D,
+                                        SceneNodeType::TYPE_QUAD_3D, SceneNodeType::TYPE_SUBMESH,
+                                        SceneNodeType::TYPE_TERRAIN, SceneNodeType::TYPE_VEGETATION,
+                                        SceneNodeType::TYPE_PARTICLE_EMITTER})
+        {
+            CAPTURE(to_base(type));
+            CHECK(IsShadowCaster(type, true));
+            CHECK_FALSE(IsShadowCaster(type, false));
+        }
+
+        // Light nodes and aggregate mesh/root bounds are not rendered geometry.
+        for (const SceneNodeType type : {SceneNodeType::TYPE_TRANSFORM, SceneNodeType::TYPE_MESH,
+                                        SceneNodeType::TYPE_SKY, SceneNodeType::TYPE_WATER,
+                                        SceneNodeType::TYPE_INFINITEPLANE, SceneNodeType::COUNT})
+        {
+            CAPTURE(to_base(type));
+            CHECK_FALSE(IsShadowCaster(type, true));
+            CHECK_FALSE(IsShadowCaster(type, false));
+        }
+    }
+
     namespace
     {
         ECS::CustomEvent MakeEvent(const U32 id)

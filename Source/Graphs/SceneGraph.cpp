@@ -34,6 +34,14 @@ namespace Divide
         constexpr U32 g_nodesPerPartition = 32u;
         thread_local const SceneGraph* g_processingEventGraph = nullptr;
 
+        [[nodiscard]] bool IsShadowCaster( const SceneGraphNode& node, const bool previouslyCastShadows = false ) noexcept
+        {
+            const RenderingComponent* rendering = node.get<RenderingComponent>();
+            return rendering != nullptr &&
+                   Divide::IsShadowCaster(node.getNode().type(), previouslyCastShadows ||
+                       rendering->renderOptionEnabled(RenderingComponent::RenderOptions::CAST_SHADOWS));
+        }
+
         [[nodiscard]] bool IsStaticGeometry( const SceneGraphNode& node ) noexcept
         {
             const SceneNodeType type = node.getNode().type();
@@ -157,11 +165,11 @@ namespace Divide
     }
 
     void SceneGraph::invalidateShadowBounds( const SceneGraphNode& node, const BoundingSphere& previous,
-                                             const bool previousStatic )
+                                             const bool previousStatic, const bool previouslyCastShadows )
     {
         invalidateWorldAO(node);
         const BoundsComponent* bounds = node.get<BoundsComponent>();
-        if ( bounds != nullptr )
+        if ( bounds != nullptr && IsShadowCaster(node, previouslyCastShadows) )
         {
             LightPool* pool = Attorney::SceneGraph::getLightPool( &parentScene() );
             pool->onVolumeChanged( previous, previousStatic, bounds->getBoundingSphere(),
@@ -289,8 +297,11 @@ namespace Divide
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-            LightPool* pool = Attorney::SceneGraph::getLightPool( &parentScene() );
-            pool->onVolumeMoved( bComp->getBoundingSphere(), node.usageContext() == NodeUsageContext::NODE_STATIC );
+            if ( IsShadowCaster(node) )
+            {
+                LightPool* pool = Attorney::SceneGraph::getLightPool( &parentScene() );
+                pool->onVolumeMoved( bComp->getBoundingSphere(), node.usageContext() == NodeUsageContext::NODE_STATIC );
+            }
 
             if ( bComp->collisionsEnabled() )
             {
@@ -329,7 +340,7 @@ namespace Divide
             if ( !_unloading )
             {
                 const BoundsComponent* bounds = oldNode->get<BoundsComponent>();
-                if ( bounds != nullptr )
+                if ( bounds != nullptr && IsShadowCaster(*oldNode) )
                 {
                     LightPool* pool = Attorney::SceneGraph::getLightPool( &parentScene() );
                     pool->onVolumeMoved( bounds->getBoundingSphere(),

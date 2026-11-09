@@ -41,6 +41,18 @@ Missing cache content or ordinary camera/light/geometry invalidation overrides
 the mask with a complete refresh. CSM rendering updates only selected matrices
 and layers, and blur/mipmap commands use contiguous selected-layer ranges.
 
+Scene-graph movement, bounds changes and removal enqueue shadow invalidations
+only for renderable shadow-casting geometry (`IsShadowCaster`). Transform-only
+light nodes and aggregate mesh/root bounds must not dirty caster caches; their
+renderable children report their own changes. Light movement still invalidates
+that light's own maps through the light component. Shadow-casting and visibility
+option changes invalidate existing coverage, including when casting is disabled.
+Movement remains conservative for temporarily hidden/unready casters; shader
+readiness and camera culling must not suppress geometry invalidation.
+`CAST_SHADOWS` is a hard gate for directional, point, spot and world-AO draws,
+including cached-queue readiness checks. World-AO Include and other draw-state
+overrides cannot re-enable a non-caster.
+
 `RenderPassParams::_enableDeformation` supplies `dvd_enableDeformation` to
 shaders opting into optional procedural deformation. It defaults to enabled;
 CSM enables it only for cascade 0, and world AO disables it. This does not

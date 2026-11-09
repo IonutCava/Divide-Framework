@@ -913,24 +913,6 @@ bool SceneGraphNode::canDraw(const RenderStagePass& stagePass) const
 
 namespace
 {
-    [[nodiscard]] inline bool castsShadows(const SceneGraphNode* const node)
-    {
-        const SceneNodeType nodeType = node->getNode().type();
-
-        if (nodeType == SceneNodeType::TYPE_SKY ||
-            nodeType == SceneNodeType::TYPE_WATER ||
-            nodeType == SceneNodeType::TYPE_INFINITEPLANE)
-        {
-            return false;
-        }
-
-        const RenderingComponent* rComp = node->get<RenderingComponent>();
-        return rComp != nullptr &&  rComp->renderOptionEnabled(RenderingComponent::RenderOptions::CAST_SHADOWS);
-    }
-};
-
-namespace
-{
     [[nodiscard]] bool FilterCheck(const U32 renderFilter, const SceneNode& node) noexcept
     {
         if ( renderFilter == 0u )
@@ -1042,6 +1024,13 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
     }
 
     const RenderingComponent* rendering = get<RenderingComponent>();
+    if (params._stagePass._stage == RenderStage::SHADOW &&
+        (rendering == nullptr || !IsShadowCaster(_node->type(),
+            rendering->renderOptionEnabled(RenderingComponent::RenderOptions::CAST_SHADOWS))))
+    {
+        return FrustumCollision::FRUSTUM_OUT;
+    }
+
     const bool translucent = (cullFlags & to_base(CullOptions::CULL_TRANSLUCENT_NODES)) != 0u &&
                              rendering != nullptr && rendering->hasTransparency();
     const bool defaultDrawState = !RenderPassCuller::CullGeometryCategory( cullFlags,
@@ -1079,12 +1068,6 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
         {
             return FrustumCollision::FRUSTUM_OUT;
         }
-    }
-
-    // This one should be obvious. Should we really exclude them from the top-down world AO too? Yes for now, but needs actually testing in-game
-    if (params._stagePass._stage == RenderStage::SHADOW && !castsShadows(this))
-    {
-        return FrustumCollision::FRUSTUM_OUT;
     }
 
     if ((cullFlags & to_base(CullOptions::CULL_AGAINST_LOD)) && !hasFlag(Flags::IS_CONTAINER))
