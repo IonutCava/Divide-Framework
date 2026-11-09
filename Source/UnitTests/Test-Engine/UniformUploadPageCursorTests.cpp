@@ -3,12 +3,105 @@
 #include "UnitTests/unitTestCommon.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/BufferLocks.h"
 #include "Platform/Video/Headers/GPUCompletionGuard.h"
+#include "Platform/Video/Headers/DescriptorSets.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glUniformFences.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkSwapChain.h"
 #include "Platform/Video/Shaders/Headers/ShaderDataUploader.h"
 
 namespace Divide
 {
+    namespace Attorney
+    {
+        struct UniformBlockUploaderTestAccess
+        {
+            static void Apply( const UniformData& uniforms, const std::span<const UniformBlockUploader::BlockMember> members,
+                               const std::span<Byte> destination, UniformUploadSnapshotState& snapshot )
+            {
+                UniformBlockUploader::ApplyUniformData( uniforms, members, destination, snapshot );
+            }
+
+            static DescriptorSetBinding* FindBinding( DescriptorSet& set, const U8 slot, U8& hint )
+            {
+                return UniformBlockUploader::FindBinding( set, slot, hint );
+            }
+        };
+    }
+
+    TEST_CASE( "Uniform member lookup preserves partial writes and all equal hashes", "[renderer][uniform-upload]" )
+    {
+        using BlockMember = UniformBlockUploader::BlockMember;
+        std::array<BlockMember, 5u> members{};
+        for ( size_t i = 0u; i < members.size(); ++i )
+        {
+            members[i]._nameHash = i == 3u ? 30u : ( i + 1u ) * 10u;
+            members[i]._offset = i * 8u;
+            members[i]._size = 8u;
+        }
+        std::array<Byte, 40u> bytes{};
+        UniformUploadSnapshotState snapshot;
+        snapshot.markUploaded();
+
+        UniformData data;
+        const U32 value = 123456u;
+        data.set( 30u, PushConstantType::UINT, value );
+        data.set( 5u, PushConstantType::UINT, value );
+        data.set( 60u, PushConstantType::UINT, value );
+        Attorney::UniformBlockUploaderTestAccess::Apply( data, members, bytes, snapshot );
+        CHECK( snapshot.needsUpload() );
+        std::array<Byte, 40u> expected{};
+        std::memcpy( expected.data() + 16u, &value, sizeof( value ) );
+        std::memcpy( expected.data() + 24u, &value, sizeof( value ) );
+        CHECK( bytes == expected );
+        snapshot.markUploaded();
+        Attorney::UniformBlockUploaderTestAccess::Apply( data, members, bytes, snapshot );
+        CHECK_FALSE( snapshot.needsUpload() );
+
+        UniformData arrayData;
+        const std::array<U32, 2u> values{ 7u, 9u };
+        arrayData.set( 10u, PushConstantType::UINT, values.data(), values.size() );
+        arrayData.set( 50u, PushConstantType::UINT, value );
+        arrayData.set( 20u, PushConstantType::COUNT, value );
+        arrayData.set( 0u, PushConstantType::UINT, value );
+        Attorney::UniformBlockUploaderTestAccess::Apply( arrayData, members, bytes, snapshot );
+        std::memcpy( expected.data(), values.data(), sizeof( values ) );
+        std::memcpy( expected.data() + 32u, &value, sizeof( value ) );
+        CHECK( bytes == expected );
+        snapshot.markUploaded();
+        Attorney::UniformBlockUploaderTestAccess::Apply( data, {}, bytes, snapshot );
+        CHECK_FALSE( snapshot.needsUpload() );
+    }
+
+    TEST_CASE( "Uniform binding index hints recover after descriptor replacement and reordering", "[renderer][uniform-upload]" )
+    {
+        DescriptorSet set{};
+        U8 hint = U8_MAX;
+        using Access = Attorney::UniformBlockUploaderTestAccess;
+        CHECK( Access::FindBinding( set, 12u, hint ) == nullptr );
+        CHECK( hint == U8_MAX );
+        set._bindingCount = 3u;
+        set._bindings[0]._slot = 2u;
+        set._bindings[1]._slot = 12u;
+        set._bindings[2]._slot = 13u;
+        CHECK( Access::FindBinding( set, 12u, hint ) == &set._bindings[1] );
+        CHECK( hint == 1u );
+        CHECK( Access::FindBinding( set, 12u, hint ) == &set._bindings[1] );
+        eastl::swap( set._bindings[0], set._bindings[1] );
+        CHECK( Access::FindBinding( set, 12u, hint ) == &set._bindings[0] );
+        CHECK( hint == 0u );
+        CHECK( Access::FindBinding( set, 13u, hint ) == &set._bindings[2] );
+        CHECK( hint == 2u );
+        set = {};
+        CHECK( Access::FindBinding( set, 12u, hint ) == nullptr );
+        CHECK( hint == U8_MAX );
+        set._bindingCount = MAX_BINDINGS_PER_DESCRIPTOR_SET;
+        for ( U8 slot = 0u; slot < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slot )
+        {
+            set._bindings[slot]._slot = slot;
+        }
+        CHECK( Access::FindBinding( set, 15u, hint ) == &set._bindings[15] );
+        CHECK( hint == 15u );
+    }
+
     namespace
     {
         class TestRangeLockManager final : public LockManager

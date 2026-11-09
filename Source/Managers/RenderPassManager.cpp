@@ -458,6 +458,18 @@ void RenderPassManager::logPerfMetrics() const
                       GFXDevice::FrameCount(), metrics._gpuTimeInMS, _context.frameDrawCallsPrev(), cullCount.x, cullCount.y, cullCount.w, stageCounts );
 
     GPUPassTimingTable& passTimings = _context.gpuPassTimings();
+    const auto& bindings = _context.resourceBindingMetrics().previous();
+    Console::printfn( "[BindingMetrics] commands={} material={} overlaySlots={} uniformCommits/changed={}/{} fallbackChecks/sets={}/{} resolveImages/buffers={}/{}",
+                      bindings._commands, bindings._materialCommands, bindings._overrideSlots, bindings._uniformCommits, bindings._uniformChanges,
+                      bindings._fallbackChecks, bindings._fallbackSets, bindings._imageResolutions, bindings._bufferResolutions );
+    Console::printfn( "[BindingMetrics] compiledHits/misses={} / {} compiledCacheBytes={} pushes/writes={}/{} samplers0to9/10to11/bufferWrites={}/{}/{} glTexture/bufferVisits={}/{} drawSets={} uniqueEffective={} overflow={} uniqueMaterialLayouts={} overflow={} diagnosticBytes={} growths={}",
+                      bindings._compiledBindingHits, bindings._compiledBindingMisses, bindings._compiledBindingCacheBytes,
+                      bindings._pushCalls, bindings._pushWrites, bindings._materialWrites, bindings._viewWrites, bindings._bufferWrites,
+                      bindings._glTextureVisits, bindings._glBufferVisits, bindings._drawSets, bindings._uniqueEffectiveSets, bindings._effectiveOverflow,
+                      bindings._uniqueMaterialLayouts, bindings._materialOverflow, _context.resourceBindingMetrics().storageBytes(), bindings._storageGrowths );
+    const auto bindingStorage = GetResourceBindingStorageStats();
+    Console::printfn( "[BindingMetrics] recordsPublished={} liveRecords={} liveRecordBytes={}",
+                      bindingStorage._published, bindingStorage._live, bindingStorage._live * sizeof( ResourceBindingSet ) );
     if ( passTimings._frameCount > 0u )
     {
         std::array<size_t, GPU_PASS_TIMESTAMP_CAPACITY> order{};

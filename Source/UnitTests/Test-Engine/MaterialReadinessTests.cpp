@@ -3,15 +3,30 @@
 #include "UnitTests/unitTestCommon.h"
 
 #include "Core/Headers/Application.h"
+#include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/TaskPool.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Geometry/Material/Headers/Material.h"
+#include "Managers/Headers/ProjectManager.h"
+#include "Managers/Headers/RenderPassManager.h"
 #include "Platform/Headers/ConditionalWait.h"
+#include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 
 namespace Divide
 {
+    namespace Attorney
+    {
+    struct KernelTestAccess
+    {
+        static void ReleaseUninitializedManagers( Kernel& kernel )
+        {
+            kernel._projectManager.reset();
+            kernel._renderPassManager.reset();
+        }
+    };
+
     struct MaterialTestAccess
     {
         using TransparencyInputs = Material::TransparencyInputs;
@@ -53,6 +68,9 @@ namespace Divide
             return material._descriptorSetMainPass;
         }
     };
+    }
+
+    using Attorney::MaterialTestAccess;
 
     namespace
     {
@@ -299,6 +317,88 @@ namespace Divide
         material.properties().baseColour( FColour4( 1.f, 1.f, 1.f, 0.5f ) );
         static_cast<void>( material.update( 0u ) );
         CHECK( cached._bindingCount == 0u );
+    }
+
+    TEST_CASE( "Material binding revisions are shared and survive invalidation", "[materials][bindings][render_smoke]" )
+    {
+        Material material{ ResourceDescriptor<Material>{ "binding-revision-test" } };
+        const RenderStagePass pass{ RenderStage::DISPLAY, RenderPassType::MAIN_PASS };
+        const ShaderProgramDescriptor custom{};
+        const auto initial = material.getResourceBindings( pass, custom );
+        REQUIRE( initial != nullptr );
+        CHECK( initial == material.getResourceBindings( pass, custom ) );
+        CHECK( initial->_bindings._bindingCount == 0u );
+        material.properties().roughness( 0.3f );
+        CHECK( initial == material.getResourceBindings( pass, custom ) );
+        SamplerDescriptor sampler{};
+        sampler._lod._bias = 0.5f;
+        CHECK( material.setSampler( TextureSlot::UNIT0, sampler ) );
+        const auto changed = material.getResourceBindings( pass, custom );
+        REQUIRE( changed != nullptr );
+        CHECK( changed != initial );
+        CHECK( changed->_revision != initial->_revision );
+        CHECK( material.setSampler( TextureSlot::UNIT0, sampler ) );
+        CHECK( changed == material.getResourceBindings( pass, custom ) );
+        CHECK( initial->_bindings._bindingCount == 0u );
+        material.properties().texturesInFragmentStageOnly( false );
+        CHECK( changed != material.getResourceBindings( pass, custom ) );
+        material.setTextureOperation( TextureSlot::UNIT0, TextureOperation::REPLACE );
+        CHECK( changed != material.getResourceBindings( pass, custom ) );
+    }
+
+    TEST_CASE( "Immutable bindings retain generation-checked texture resources", "[materials][bindings][resources][render_smoke]" )
+    {
+        platformInitRunListener::PlatformInit();
+        const platformInitRunListener::LocalizationScope localization{};
+        const auto suffix = std::chrono::steady_clock::now().time_since_epoch().count();
+        const auto directory = std::filesystem::temp_directory_path() / ("divide-binding-fixture-" + std::to_string( suffix ));
+        const auto editorDirectory = directory / "Editor";
+        REQUIRE( std::filesystem::create_directories( editorDirectory ) );
+        const ResourcePath previousXML = Paths::g_xmlDataLocation;
+        Paths::g_xmlDataLocation = ResourcePath{ directory.string() };
+        SCOPE_EXIT
+        {
+            Paths::g_xmlDataLocation = previousXML;
+            std::error_code error;
+            std::filesystem::remove( editorDirectory / "Editor.xml", error );
+            std::filesystem::remove( editorDirectory / "Editor.xml.bak", error );
+            std::filesystem::remove( editorDirectory, error );
+            std::filesystem::remove( directory, error );
+        };
+        Application app;
+        Kernel kernel{ 0, nullptr, app };
+        PlatformContext& context = kernel.platformContext();
+        SCOPE_EXIT
+        {
+            Attorney::KernelTestAccess::ReleaseUninitializedManagers( kernel );
+            context.terminate();
+        };
+        TaskPool& loader = context.taskPool( TaskPoolType::ASSET_LOADER );
+        REQUIRE( loader.init( 1u ) );
+        SCOPE_EXIT { loader.shutdown(); };
+        InitConditionalWait( context );
+        ResourceCache::Init( RenderAPI::None, context );
+        SCOPE_EXIT { ResourceCache::Stop(); };
+        ResourceDescriptor<Texture> descriptor{ "retained-binding-texture" };
+        descriptor.waitForReady( true );
+        Handle<Texture> texture = CreateResource( descriptor );
+        SCOPE_EXIT { DestroyResource( texture ); };
+        REQUIRE( texture != INVALID_HANDLE<Texture> );
+        const Handle<Texture> original = texture;
+        REQUIRE( ResourceCache::Inspect( original )._state == ResourceState::RES_LOADED );
+        DescriptorSet bindings{};
+        Set( AddBinding( bindings, 0u, ShaderStageVisibility::FRAGMENT )._data, texture, SamplerDescriptor{} );
+        const std::array retained{ texture };
+        ResourceBindingHandle record = CreateResourceBindings( bindings, retained );
+        REQUIRE( record != nullptr );
+        DestroyResource( texture );
+        ResourceCache::OnFrameStart();
+        CHECK( ResourceCache::Inspect( original )._state == ResourceState::RES_LOADED );
+        record.reset();
+        ResourceCache::OnFrameStart();
+        CHECK( ResourceCache::Inspect( original )._state == ResourceState::RES_UNKNOWN );
+        const std::array stale{ original };
+        CHECK( CreateResourceBindings( bindings, stale ) == nullptr );
     }
 
     TEST_CASE( "Material alpha selection honours active texture operations", "[materials][transparency][render_smoke]" )

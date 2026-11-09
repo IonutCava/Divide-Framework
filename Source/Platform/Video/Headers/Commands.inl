@@ -1,6 +1,6 @@
 /*
 Copyright (c) 2018-2026 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -172,8 +172,17 @@ DEFINE_COMMAND_BEGIN(SetClipPlanesCommand, CommandType::SET_CLIP_PLANES);
 DEFINE_COMMAND_END(SetClipPlanesCommand);
 
 DEFINE_COMMAND_BEGIN(BindShaderResourcesCommand, CommandType::BIND_SHADER_RESOURCES);
-    DescriptorSet _set;
+    ResourceBindingHandle _resources{};
+    DescriptorSet _set{};
     DescriptorSetUsage _usage{ DescriptorSetUsage::COUNT };
+    [[nodiscard]] DescriptorSet effectiveBindings() const { return ComposeResourceBindings( _resources, _set ); }
+    [[nodiscard]] bool sameBindings( const BindShaderResourcesCommand& other ) const
+    {
+        return _usage == other._usage &&
+               (_resources == other._resources
+                   ? EqualActiveBindings( _set, other._set )
+                   : EqualActiveBindings( effectiveBindings(), other.effectiveBindings() ));
+    }
 DEFINE_COMMAND_END(BindShaderResourcesCommand);
 
 DEFINE_COMMAND_BEGIN(BeginDebugScopeCommand, CommandType::BEGIN_DEBUG_SCOPE);

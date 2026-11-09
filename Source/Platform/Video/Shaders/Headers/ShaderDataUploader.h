@@ -39,6 +39,11 @@
 
 namespace Divide
 {
+    namespace Attorney
+    {
+        struct UniformBlockUploaderTestAccess;
+    }
+
     class GFXDevice;
     FWD_DECLARE_MANAGED_CLASS( ShaderBuffer );
     namespace GFX
@@ -252,6 +257,11 @@ public:
     PROPERTY_R_IW( Reflection::BufferEntry, uniformBlock );
 
 private:
+    friend struct Attorney::UniformBlockUploaderTestAccess;
+
+    static void ApplyUniformData( const UniformData& uniforms, std::span<const BlockMember> members,
+                                  std::span<Byte> destination, UniformUploadSnapshotState& snapshot ) noexcept;
+    [[nodiscard]] static DescriptorSetBinding* FindBinding( DescriptorSet& set, U8 targetSlot, U8& indexHint ) noexcept;
     [[nodiscard]] bool prepare( DescriptorSet& set );
 
 private:
@@ -263,6 +273,7 @@ private:
     eastl::string _parentShaderName;
     UniformUploadArena::Allocation _allocation{};
     UniformUploadSnapshotState _snapshot;
+    U8 _bindingIndexHint{ U8_MAX };
 };
 
 }; // namespace Divide

@@ -129,6 +129,12 @@ shadow-pass snapshot cannot split a movement or usage-context change.
 Material descriptor caches are built, invalidated, and copied under the texture
 lock. Render preparation receives a snapshot, never a reference to a cache
 that another worker may still be populating or invalidating.
+Immutable material binding revisions are published under the same lock.
+Commands retain shared revisions without mutating them; each package owns its
+view/object overrides. The binding-record pool lock protects allocation/final
+release only, not recording or backend translation. Public sampler and texture
+operation setters acquire the texture lock; callers already holding it use the
+private locked paths instead. See [binding lifetime](shader-descriptors.md#immutable-material-binding-revisions).
 Debug-view registration, removal, selection and rendering use their respective
 locks. A removed view is retained until the main-window queue is flushed, so
 recorded push-constant commands cannot reference freed view data.

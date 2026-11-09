@@ -1974,6 +1974,7 @@ namespace Divide
     void VK_API::closeRenderingAPI()
     {
         vkShaderProgram::DestroyStaticData();
+        _stableImageBindingCache.Clear();
         {
             LockGuard<Mutex> lock( s_reloadedShadersLock );
             s_reloadedShaders.clear();
@@ -2235,7 +2236,24 @@ namespace Divide
             return false;
         }
         auto& program = pipeline._program;
-        const bool uniformBindingsChanged = program->commitUniformData( _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl() );
+        auto& bindingMetrics = _context.resourceBindingMetrics();
+        const bool measureBindings = bindingMetrics.enabled();
+        const bool useCompiledBindings = !RenderSmokeTest::BindingCacheDisabledRequested();
+        auto& bindingCounters = bindingMetrics.current();
+        if ( measureBindings )
+        {
+            bindingCounters._compiledBindingCacheBytes = _stableImageBindingCache.StorageBytes();
+        }
+        const bool uniformBindingsChanged = [&]()
+        {
+            PROFILE_SCOPE( "Commit binding uniforms", Profiler::Category::Graphics );
+            return program->commitUniformData( _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl() );
+        }();
+        if ( measureBindings )
+        {
+            ++bindingCounters._uniformCommits;
+            bindingCounters._uniformChanges += uniformBindingsChanged ? 1u : 0u;
+        }
         if ( _context.uniformUploadFailed() )
         {
             return false;
@@ -2281,8 +2299,14 @@ namespace Divide
         };
 
         // Resolves a single binding into a VK descriptor. Returns false if nothing should be written for this slot.
-        const auto resolveSlot = [&]( const DescriptorSetBinding& srcBinding, const DescriptorSetBindingType layoutBindingType, VKDescriptorSlotState& slotOut, U32& dynamicOffsetOut ) -> bool
+        const auto resolveSlot = [&]( const DescriptorSetBinding& srcBinding,
+                                      const DescriptorSetUsage usage,
+                                      const DescriptorSetBindingType layoutBindingType,
+                                      VKDescriptorSlotState& slotOut,
+                                      U32& dynamicOffsetOut,
+                                      const U64 bindingRevision ) -> bool
         {
+            const U64 stableRevision = useCompiledBindings ? bindingRevision : 0u;
             switch ( srcBinding._data._type )
             {
                 case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC:
@@ -2290,6 +2314,11 @@ namespace Divide
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC:
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC:
                 {
+                    PROFILE_SCOPE( "Resolve descriptor buffer", Profiler::Category::Graphics );
+                    if ( measureBindings )
+                    {
+                        ++bindingCounters._bufferResolutions;
+                    }
                     const ShaderBufferEntry& bufferEntry = srcBinding._data._buffer;
                     DIVIDE_GPU_ASSERT( bufferEntry._buffer != nullptr && bufferEntry._range._length > 0u );
 
@@ -2306,6 +2335,7 @@ namespace Divide
                 }
                 case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
                 {
+                    PROFILE_SCOPE( "Resolve descriptor sampled image", Profiler::Category::Graphics );
                     if ( srcBinding._slot == INVALID_TEXTURE_BINDING )
                     {
                         return false;
@@ -2318,6 +2348,29 @@ namespace Divide
                     }
 
                     DIVIDE_GPU_ASSERT( TargetType( imageSampler._image ) != TextureType::COUNT );
+
+                    StableImageBinding cached{};
+                    const U8 cacheSlot = to_U8( to_base( usage ) * MAX_BINDINGS_PER_DESCRIPTOR_SET +
+                                                srcBinding._slot );
+                    if ( _stableImageBindingCache.Find( stableRevision, cacheSlot, cached ) )
+                    {
+                        if ( measureBindings )
+                        {
+                            ++bindingCounters._compiledBindingHits;
+                        }
+                        slotOut._type = cached._type;
+                        slotOut._imageInfo = cached._imageInfo;
+                        return true;
+                    }
+                    if ( stableRevision != 0u && measureBindings )
+                    {
+                        ++bindingCounters._compiledBindingMisses;
+                        ++bindingCounters._imageResolutions;
+                    }
+                    else if ( measureBindings )
+                    {
+                        ++bindingCounters._imageResolutions;
+                    }
 
                     const vkTexture* vkTex = static_cast<const vkTexture*>(imageSampler._image._srcTexture);
 
@@ -2332,10 +2385,20 @@ namespace Divide
                     slotOut._imageInfo = vk::descriptorImageInfo( GetSamplerHandle( imageSampler._sampler, samplerHash ),
                                                                   vkTex->getImageView( descriptor ),
                                                                   VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL );
+                    if ( stableRevision != 0u )
+                    {
+                        _stableImageBindingCache.Store( stableRevision, cacheSlot,
+                                                        { slotOut._type, slotOut._imageInfo } );
+                    }
                     return true;
                 }
                 case DescriptorSetBindingType::IMAGE:
                 {
+                    PROFILE_SCOPE( "Resolve descriptor storage image", Profiler::Category::Graphics );
+                    if ( measureBindings )
+                    {
+                        ++bindingCounters._imageResolutions;
+                    }
                     const DescriptorImageView& imageView = srcBinding._data._imageView;
                     if ( imageView._image._srcTexture == nullptr )
                     {
@@ -2380,7 +2443,16 @@ namespace Divide
         for ( DescriptorSetEntry entry : descriptorSetEntries )
         {
             SampledImageResolutionCache& resolutionCache = resolvedSets[to_base(entry._usage)];
-            const bool hasFallback = program->resolveSampledImages( entry, resolutionCache._resolvedSet );
+            const bool hasFallback = [&]()
+            {
+                PROFILE_SCOPE( "Resolve binding fallbacks", Profiler::Category::Graphics );
+                return program->resolveSampledImages( entry, resolutionCache._resolvedSet );
+            }();
+            if ( measureBindings )
+            {
+                ++bindingCounters._fallbackChecks;
+                bindingCounters._fallbackSets += hasFallback ? 1u : 0u;
+            }
             const bool alreadyDirty = entry._isDirty ||
                                       (entry._usage == DescriptorSetUsage::PER_DRAW && uniformBindingsChanged);
             entry._isDirty = resolutionCache.update( hasFallback, alreadyDirty ) || alreadyDirty;
@@ -2410,6 +2482,19 @@ namespace Divide
 
             if ( entry._usage == DescriptorSetUsage::PER_DRAW )
             {
+                if ( measureBindings && setUsageData[usageIdx] )
+                {
+                    PROFILE_SCOPE( "Measure effective bindings", Profiler::Category::Graphics );
+                    U32 mask = 0u;
+                    for ( U8 slot = 0u; slot < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slot )
+                    {
+                        if ( drawDescriptor[slot]._type != DescriptorSetBindingType::COUNT )
+                        {
+                            mask |= 1u << slot;
+                        }
+                    }
+                    bindingMetrics.observe( program->getGUID(), _context.descriptorSet( entry._usage ).materialRevision(), *entry._set, mask );
+                }
                 if ( entry._isDirty )
                 {
                     ++s_perDrawDescriptorVersion;
@@ -2441,11 +2526,22 @@ namespace Divide
 
                     VKDescriptorSlotState& slot = perDrawSlots[srcBinding._slot];
                     U32 dynamicOffset = 0u;
-                    if ( resolveSlot( srcBinding, layoutBindingType, slot, dynamicOffset ) )
+                    const U64 stableRevision = !hasFallback &&
+                                                       entry._stableBindingRevisions != nullptr &&
+                                                       srcBinding._slot < MAX_BINDINGS_PER_DESCRIPTOR_SET
+                                                   ? (*entry._stableBindingRevisions)[srcBinding._slot]
+                                                   : 0u;
+                    if ( resolveSlot( srcBinding, entry._usage, layoutBindingType, slot, dynamicOffset, stableRevision ) )
                     {
                         DIVIDE_GPU_ASSERT( !IsDescriptorSetBindingTypeDynamic( layoutBindingType ) );
                         if ( boundState._perDraw.updateSlot( srcBinding._slot, slot ) )
                         {
+                            if ( measureBindings )
+                            {
+                                bindingCounters._materialWrites += slot.isImage() && srcBinding._slot < 10u ? 1u : 0u;
+                                bindingCounters._viewWrites += slot.isImage() && (srcBinding._slot == 10u || srcBinding._slot == 11u) ? 1u : 0u;
+                                bindingCounters._bufferWrites += !slot.isImage() ? 1u : 0u;
+                            }
                             descriptorWrites.push_back( slot.isImage()
                                                             ? vk::writeDescriptorSet( slot._type, srcBinding._slot, &slot._imageInfo, 1u )
                                                             : vk::writeDescriptorSet( slot._type, srcBinding._slot, &slot._bufferInfo, 1u ) );
@@ -2455,6 +2551,12 @@ namespace Divide
 
                 if ( !descriptorWrites.empty() )
                 {
+                    PROFILE_SCOPE( "Emit push descriptors", Profiler::Category::Graphics );
+                    if ( measureBindings )
+                    {
+                        ++bindingCounters._pushCalls;
+                        bindingCounters._pushWrites += descriptorWrites.size();
+                    }
                     VK_PROFILE( vkCmdPushDescriptorSetKHR, cmdBuffer,
                                                            pipeline._bindPoint,
                                                            pipeline._vkPipelineLayout,
@@ -2494,7 +2596,12 @@ namespace Divide
                 DIVIDE_GPU_ASSERT( areCompatibleBindingTypes( layoutBindingType, srcBinding._data._type ) );
 
                 U32 dynamicOffset = 0u;
-                if ( resolveSlot( srcBinding, layoutBindingType, desiredSlots[srcBinding._slot], dynamicOffset ) &&
+                const U64 stableRevision = !hasFallback &&
+                                                   entry._stableBindingRevisions != nullptr &&
+                                                   srcBinding._slot < MAX_BINDINGS_PER_DESCRIPTOR_SET
+                                               ? (*entry._stableBindingRevisions)[srcBinding._slot]
+                                               : 0u;
+                if ( resolveSlot( srcBinding, entry._usage, layoutBindingType, desiredSlots[srcBinding._slot], dynamicOffset, stableRevision ) &&
                      IsDescriptorSetBindingTypeDynamic( layoutBindingType ) )
                 {
                     bool foundDynamicBinding = false;

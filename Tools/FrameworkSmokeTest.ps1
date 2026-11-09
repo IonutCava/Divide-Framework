@@ -34,6 +34,7 @@ param(
     [switch] $PerfMode,
     [switch] $GpuScopeTimings,
     [switch] $SerialViewRecording,
+    [switch] $DisableBindingCache,
     [ValidateSet('Debug', 'Release')]
     [string] $Configuration = 'Debug',
     [ValidateRange(0, 2147483647)]
@@ -76,6 +77,10 @@ if ($PerfMode -and ($DiagnosticPresents -eq 0 -or $TracePipelines -or $RenderDoc
 if ($GpuScopeTimings -and -not $PerfMode)
 {
     throw '-GpuScopeTimings requires -PerfMode.'
+}
+if ($DisableBindingCache -and -not $PerfMode)
+{
+    throw '-DisableBindingCache requires -PerfMode.'
 }
 if ($Configuration -ne 'Debug' -and -not $PerfMode)
 {
@@ -2043,6 +2048,7 @@ int main(int argc, char** argv)
         materialDebugView = if ($MaterialDebugView) { $MaterialDebugView } else { $null }
         editorPaused = [bool]$EditorPaused
         serialViewRecording = [bool]$SerialViewRecording
+        disableBindingCache = [bool]$DisableBindingCache
         approvedStalledNonDeviceLoss = $approvedStalledNonDevice
         renderTimeoutSeconds = $RenderTimeoutSeconds
         maxAttempts = $MaxAttempts
@@ -2089,6 +2095,7 @@ int main(int argc, char** argv)
     if ($PerfMode) { $arguments += '--smokePerfMode' }
     if ($GpuScopeTimings) { $arguments += '--smokeGpuScopeTimings' }
     if ($SerialViewRecording) { $arguments += '--smokeSerialViewRecording' }
+    if ($DisableBindingCache) { $arguments += '--smokeDisableBindingCache' }
     $program = $engine.Executable
     if ($debugger)
     {

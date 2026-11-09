@@ -30,11 +30,22 @@ CommandBufferPool::CommandBufferPool(const size_t poolSizeFactor)
 
 CommandBufferPool::~CommandBufferPool()
 {
+    for ( CommandBuffer* buffer : _pool )
+    {
+        _memPool.deleteElement( buffer );
+    }
 }
 
 void CommandBufferPool::reset() noexcept
 {
     LockGuard<SharedMutex> lock( _mutex );
+    for ( CommandBuffer* buffer : _pool )
+    {
+        if ( buffer != nullptr )
+        {
+            buffer->clear();
+        }
+    }
     for (auto& it : _freeList )
     {
         it.first = true; // is available = true
@@ -95,6 +106,7 @@ void CommandBufferPool::deallocateBuffer( Handle<CommandBuffer>& handle )
         auto& it = _freeList[handle._index];
         if (it.second == handle._generation)
         {
+            _pool[handle._index]->clear();
             it.first = true;
             ++it.second;
         }

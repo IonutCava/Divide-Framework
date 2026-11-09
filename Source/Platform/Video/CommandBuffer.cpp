@@ -313,7 +313,7 @@ namespace
         const Pipeline* prevPipeline = nullptr;
         const Rect<I32>* prevScissorRect = nullptr;
         const Rect<I32>* prevViewportRect = nullptr;
-        const DescriptorSet* prevDescriptorSet = nullptr;
+        const BindShaderResourcesCommand* prevDescriptorSet = nullptr;
 
         bool ret = false;
 
@@ -370,9 +370,9 @@ namespace
                     PROFILE_SCOPE( "Clean Descriptor Sets", Profiler::Category::Graphics );
 
                     auto bindCmd = cmd->As<BindShaderResourcesCommand>();
-                    if ( bindCmd->_usage != DescriptorSetUsage::COUNT && (prevDescriptorSet == nullptr || *prevDescriptorSet != bindCmd->_set) )
+                    if ( bindCmd->_usage != DescriptorSetUsage::COUNT && (prevDescriptorSet == nullptr || !prevDescriptorSet->sameBindings( *bindCmd )) )
                     {
-                        prevDescriptorSet = &bindCmd->_set;
+                        prevDescriptorSet = bindCmd;
                     }
                     else
                     {
@@ -635,9 +635,10 @@ namespace
                     {
                         return { ErrorType::INVALID_DESCRIPTOR_SET, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                     }
-                    for ( U8 i = 0u; i < resCmd->_set._bindingCount; ++i )
+                    const DescriptorSet bindings = resCmd->effectiveBindings();
+                    for ( U8 i = 0u; i < bindings._bindingCount; ++i )
                     {
-                        const DescriptorSetBinding& binding = resCmd->_set._bindings[i];
+                        const DescriptorSetBinding& binding = bindings._bindings[i];
                         if ( binding._shaderStageVisibility == to_base( ShaderStageVisibility::COUNT ) )
                         {
                             return { ErrorType::INVALID_DESCRIPTOR_SET, cmdIndex, Names::commandType[to_base(cmd->_type)] };

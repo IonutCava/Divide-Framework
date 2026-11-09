@@ -617,6 +617,11 @@ namespace Divide
         {
             _blockMembers.insert( end( _blockMembers ), begin( arrayMembers ), end( arrayMembers ) );
         }
+        eastl::stable_sort( begin( _blockMembers ), end( _blockMembers ),
+                            []( const BlockMember& lhs, const BlockMember& rhs )
+                            {
+                                return lhs._nameHash < rhs._nameHash;
+                            } );
     }
 
     UniformBlockUploader::UniformBlockUploader( UniformBlockUploader&& other ) noexcept
@@ -646,28 +651,54 @@ namespace Divide
     {
         if ( _uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && !_localDataCopy.empty() )
         {
-            for ( const UniformData::Entry& uniform : uniforms.entries() )
+            ApplyUniformData( uniforms, _blockMembers, _localDataCopy, _snapshot );
+        }
+    }
+
+    void UniformBlockUploader::ApplyUniformData( const UniformData& uniforms, const std::span<const BlockMember> members,
+                                                const std::span<Byte> destination, UniformUploadSnapshotState& snapshot ) noexcept
+    {
+        if ( members.empty() )
+        {
+            return;
+        }
+        const BlockMember* last = members.data() + members.size();
+        for ( const UniformData::Entry& uniform : uniforms.entries() )
+        {
+            if ( uniform._type == PushConstantType::COUNT || uniform._bindingHash == 0u )
             {
-                if ( uniform._type == PushConstantType::COUNT || uniform._bindingHash == 0u )
-                {
-                    continue;
-                }
+                continue;
+            }
 
-                for ( BlockMember& member : _blockMembers )
-                {
-                    if ( member._nameHash == uniform._bindingHash )
-                    {
-                        DIVIDE_GPU_ASSERT( uniform._range._length <= member._size );
+            auto member = eastl::lower_bound( members.data(), last, uniform._bindingHash,
+                                               []( const BlockMember& entry, const U64 hash )
+                                               {
+                                                   return entry._nameHash < hash;
+                                               } );
+            for ( ; member != last && member->_nameHash == uniform._bindingHash; ++member )
+            {
+                DIVIDE_GPU_ASSERT( uniform._range._length <= member->_size );
+                snapshot.updateBytes( destination.data() + member->_offset,
+                                      uniforms.data( uniform._range._startOffset ), uniform._range._length );
+            }
+        }
+    }
 
-                        Byte* dst = &_localDataCopy.data()[member._offset];
-                        const Byte* src = uniforms.data(uniform._range._startOffset);
-                        const size_t numBytes = uniform._range._length;
-                        _snapshot.updateBytes( dst, src, numBytes );
-                        continue;
-                    }
+    DescriptorSetBinding* UniformBlockUploader::FindBinding( DescriptorSet& set, const U8 targetSlot, U8& indexHint ) noexcept
+    {
+        if ( indexHint >= set._bindingCount || set._bindings[indexHint]._slot != targetSlot )
+        {
+            indexHint = U8_MAX;
+            for ( U8 i = 0u; i < set._bindingCount; ++i )
+            {
+                if ( set._bindings[i]._slot == targetSlot )
+                {
+                    indexHint = i;
+                    break;
                 }
             }
         }
+        return indexHint < set._bindingCount ? &set._bindings[indexHint] : nullptr;
     }
 
     bool UniformBlockUploader::commit( DescriptorSet& set )
@@ -707,32 +738,30 @@ namespace Divide
         if ( _uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _allocation._buffer != nullptr )
         {
             const U8 targetBlock = to_U8( _uniformBlock._bindingSlot );
-            for ( U8 i = 0u; i < set._bindingCount; ++i )
+            if ( DescriptorSetBinding* binding = FindBinding( set, targetBlock, _bindingIndexHint ) )
             {
-                DescriptorSetBinding& it = set._bindings[i];
-                if ( it._slot == targetBlock )
+                DescriptorSetBinding& it = *binding;
+                DIVIDE_GPU_ASSERT(it._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC);
+
+                if ( it._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC &&
+                     it._shaderStageVisibility == _shaderStageVisibilityMask &&
+                     it._data._buffer._buffer == _allocation._buffer &&
+                     it._data._buffer._range._startOffset == 0u &&
+                     it._data._buffer._range._length == _localDataCopy.size() &&
+                     it._data._buffer._queueReadIndex == _allocation._slot )
                 {
-                    DIVIDE_GPU_ASSERT(it._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC);
-
-                    if ( it._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC &&
-                         it._shaderStageVisibility == _shaderStageVisibilityMask &&
-                         it._data._buffer._buffer == _allocation._buffer &&
-                         it._data._buffer._range._startOffset == 0u &&
-                         it._data._buffer._range._length == _localDataCopy.size() &&
-                         it._data._buffer._queueReadIndex == _allocation._slot )
-                    {
-                        return false;
-                    }
-
-                    it._shaderStageVisibility = _shaderStageVisibilityMask;
-                    Set( it._data, _allocation._buffer );
-                    it._data._buffer._range = { 0u, _localDataCopy.size() };
-                    it._data._buffer._queueReadIndex = _allocation._slot;
-                    return true;
+                    return false;
                 }
+
+                it._shaderStageVisibility = _shaderStageVisibilityMask;
+                Set( it._data, _allocation._buffer );
+                it._data._buffer._range = { 0u, _localDataCopy.size() };
+                it._data._buffer._queueReadIndex = _allocation._slot;
+                return true;
             }
 
             DescriptorSetBinding& binding = AddBinding( set, targetBlock, _shaderStageVisibilityMask );
+            _bindingIndexHint = set._bindingCount - 1u;
             Set( binding._data, _allocation._buffer );
             binding._data._buffer._range = { 0u, _localDataCopy.size() };
             binding._data._buffer._queueReadIndex = _allocation._slot;

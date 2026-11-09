@@ -54,6 +54,7 @@ namespace Divide {
 
 namespace Attorney {
     class MaterialRenderBin;
+    struct MaterialTestAccess;
 }
 
 class RenderBin;
@@ -134,7 +135,7 @@ namespace TypeUtil {
 
 class Material final : public CachedResource {
     friend class Attorney::MaterialRenderBin;
-    friend struct MaterialTestAccess;
+    friend struct Attorney::MaterialTestAccess;
 
   public:
     static constexpr F32 MAX_SHININESS = 255.f;
@@ -310,6 +311,8 @@ class Material final : public CachedResource {
     [[nodiscard]] bool getDescriptorSet(const RenderStagePass& renderStagePass,
                                         const ShaderProgramDescriptor& shaderDescriptor,
                                         DescriptorSet& descriptorOut);
+    [[nodiscard]] ResourceBindingHandle getResourceBindings( const RenderStagePass& renderStagePass,
+                                                            const ShaderProgramDescriptor& shaderDescriptor );
     [[nodiscard]] Handle<ShaderProgram> getProgramHandle(RenderStagePass renderStagePass) const;
     [[nodiscard]] Handle<ShaderProgram> computeAndGetProgramHandle(RenderStagePass renderStagePass);
     [[nodiscard]] bool hasTransparency() const noexcept;
@@ -360,6 +363,10 @@ class Material final : public CachedResource {
     [[nodiscard]] static TranslucencySource SelectTranslucencySource(const TransparencyInputs& inputs) noexcept;
     void updateTransparency();
     void invalidateDescriptorSets() noexcept;
+    void setTextureOperationLocked( TextureSlot slot, TextureOperation operation );
+    [[nodiscard]] bool getDescriptorSetLocked( const RenderStagePass& renderStagePass,
+                                               const ShaderProgramDescriptor& shaderDescriptor,
+                                               DescriptorSet& descriptorOut );
 
     void recomputeShaders();
 
@@ -416,6 +423,7 @@ class Material final : public CachedResource {
     vector<Handle<Material>> _instances{};
 
     std::array<TextureInfo, to_base(TextureSlot::COUNT)> _textures;
+    std::array<std::array<std::array<ResourceBindingHandle, 2u>, 2u>, 4u> _resourceBindings{};
 
     size_t _shaderAttributesHash{ 0u };
 

@@ -68,6 +68,7 @@ namespace Attorney {
     class KernelApplication;
     class KernelWindowManager;
     class KernelDebugInterface;
+    struct KernelTestAccess;
 };
 
 namespace Time {
@@ -81,6 +82,7 @@ class Kernel final : public Input::InputAggregatorInterface,
     friend class Attorney::KernelApplication;
     friend class Attorney::KernelWindowManager;
     friend class Attorney::KernelDebugInterface;
+    friend struct Attorney::KernelTestAccess;
 
     public:
         /// Order is very important! This is the order in which input will be checked against
