@@ -263,6 +263,27 @@ namespace Divide
         const Frustum& camFrustum = playerCamera.getFrustum();
         const CameraSnapshot& camera = playerCamera.snapshot();
         const auto& shadowSettings = _context.config().rendering.shadowMapping;
+        const auto& filter = _context.config().debug.renderFilter;
+        const auto& renderState = parentScene().state()->renderState();
+        const U32 renderMask = (filter.primitives ? toBit(0) : 0u) |
+                               (filter.meshes ? toBit(1) : 0u) |
+                               (filter.terrain ? toBit(2) : 0u) |
+                               (renderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY) ? toBit(3) : 0u) |
+                               (renderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME) ? toBit(4) : 0u) |
+                               (filter.vegetation ? toBit(5) : 0u) |
+                               (filter.water ? toBit(6) : 0u) |
+                               (filter.sky ? toBit(7) : 0u) |
+                               (filter.particles ? toBit(8) : 0u) |
+                               (filter.grassInstances ? toBit(9) : 0u) |
+                               (filter.treeInstances ? toBit(10) : 0u);
+        const std::array<F32, 2> visibilityDistances{renderState.generalVisibility(), renderState.treeVisibility()};
+        const std::array<U8, 3> sampleCounts{shadowSettings.csm.MSAASamples, shadowSettings.point.MSAASamples,
+                                           shadowSettings.spot.MSAASamples};
+        const bool renderPolicyChanged = _shadowRenderMask != renderMask || _shadowVisibilityDistances != visibilityDistances ||
+                                         _shadowSampleCounts != sampleCounts;
+        _shadowRenderMask = renderMask;
+        _shadowVisibilityDistances = visibilityDistances;
+        _shadowSampleCounts = sampleCounts;
         const bool cameraChanged = _directionalShadowCamera.update(
             camera._viewMatrix, camera._projectionMatrix, camera._zPlanes.x, camera._zPlanes.y );
 
@@ -278,7 +299,7 @@ namespace Divide
         for ( Light* light : sortedLights )
         {
             light->shadowPropertyIndex( -1 );
-            if ( movementSnapshot._invalidateAll ||
+            if ( movementSnapshot._invalidateAll || renderPolicyChanged ||
                  ( cameraChanged && light->getLightType() == LightType::DIRECTIONAL ) )
             {
                 light->staticShadowsDirty( true );
@@ -328,17 +349,19 @@ namespace Divide
 
             const bool cacheValid = ShadowMap::tryReuseShadowMaps( *light );
             const U8 layerCount = to_U8(ShadowMap::getLightLayerRequirements(*light));
-            const U32 updateMask = ShadowLayerUpdateMask(layerCount, light->shadowLayersDirty(), cacheValid, cacheInvalidated);
+            const ShadowRefreshPlan refreshPlan = BuildShadowRefreshPlan(
+                layerCount, light->shadowLayersDirty(), cacheValid, light->staticShadowsDirty(), light->dynamicShadowsDirty());
+            const U32 updateMask = refreshPlan.updateMask();
             const bool reuseCached = updateMask == 0u;
             if ( RenderSmokeTest::PerfModeRequested() && GFXDevice::FrameCount() % 64u == 0u )
             {
-                Console::printfn( "[ShadowMetrics] frame={} type={} light={} name={} layers={} mask={} cacheValid={} fullInvalidation={} cameraChanged={} movedVolumes={}",
+                Console::printfn( "[ShadowMetrics] frame={} type={} light={} name={} layers={} mask={} cacheValid={} fullInvalidation={} cameraChanged={} movedVolumes={} staticMask={} dynamicMask={}",
                                   GFXDevice::FrameCount(), TypeUtil::LightTypeToString( lType ), light->getShadowArrayOffset(),
                                   light->sgn()->name().c_str(), layerCount, updateMask, cacheValid, cacheInvalidated,
-                                  cameraChanged, movementSnapshot._count );
+                                  cameraChanged, movementSnapshot._count, refreshPlan._staticMask, refreshPlan._dynamicMask );
             }
             ShadowRefresh& refresh = refreshes[refreshCount];
-            if ( !reuseCached && !ShadowMap::generateShadowMaps( playerCamera, *light, refresh._pendingCasters, bufferInOut, memCmdInOut, updateMask ) )
+            if ( !reuseCached && !ShadowMap::generateShadowMaps( playerCamera, *light, refresh._pendingCasters, bufferInOut, memCmdInOut, refreshPlan ) )
             {
                 continue;
             }
@@ -405,19 +428,6 @@ namespace Divide
         {
             staticHeightRange.set( staticBounds._min.y, staticBounds._max.y );
         }
-        const auto& filter = _context.config().debug.renderFilter;
-        const auto& renderState = parentScene().state()->renderState();
-        const U32 renderMask = (filter.primitives ? toBit(0) : 0u) |
-                               (filter.meshes ? toBit(1) : 0u) |
-                               (filter.terrain ? toBit(2) : 0u) |
-                               (renderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY) ? toBit(3) : 0u) |
-                               (renderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME) ? toBit(4) : 0u) |
-                               (filter.vegetation ? toBit(5) : 0u) |
-                               (filter.water ? toBit(6) : 0u) |
-                               (filter.sky ? toBit(7) : 0u) |
-                               (filter.particles ? toBit(8) : 0u) |
-                               (filter.grassInstances ? toBit(9) : 0u) |
-                               (filter.treeInstances ? toBit(10) : 0u);
         const WorldAOCacheKey worldAOKey
         {
             ._sceneGUID = parentScene().getGUID(),
@@ -428,6 +438,7 @@ namespace Divide
         };
         _shadowBufferData._worldAOVPMatrix = ShadowMap::generateWorldAO( worldAOKey, bufferInOut, memCmdInOut );
         passManager.finishViewBatch( RenderStage::SHADOW, memCmdInOut );
+        ShadowMap::finishShadowMaps();
         for ( size_t i = 0u; i < refreshCount; ++i )
         {
             ShadowRefresh& refresh = refreshes[i];

@@ -420,6 +420,11 @@ RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage, cons
         {
             ViewBatch& batch = _viewBatches[to_base( renderStage )];
             batch._viewCapacity = TotalPassCountForStage( renderStage );
+            if (renderStage == RenderStage::SHADOW)
+            {
+                batch._viewCapacity += Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS *
+                                       Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT;
+            }
             batch._views = std::make_unique<ViewRecording[]>( batch._viewCapacity );
             batch._schedule.reserve( batch._viewCapacity );
             for ( size_t lane = 0u; lane < batch._lanes.size(); ++lane )

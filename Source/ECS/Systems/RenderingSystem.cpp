@@ -5,6 +5,7 @@
 #include "Graphs/Headers/SceneNode.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Graphs/Headers/SceneGraph.h"
+#include "ECS/Components/Headers/BoundsComponent.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
@@ -46,6 +47,15 @@ namespace Divide
             SceneGraph& graph = *comp->parentSGN()->sceneGraph();
             const bool coverageChanged = materialRevision != comp->_materialCoverageRevision ||
                                          nodeRevision != comp->_nodeCoverageRevision;
+            if (coverageChanged)
+            {
+                const BoundsComponent* bounds = comp->parentSGN()->get<BoundsComponent>();
+                if (bounds != nullptr)
+                {
+                    graph.invalidateShadowBounds(*comp->parentSGN(), bounds->getBoundingSphere(),
+                        comp->parentSGN()->usageContext() == NodeUsageContext::NODE_STATIC);
+                }
+            }
             if (coverageChanged || graph.worldAORevision() != comp->_worldAOPolicyRevision)
             {
                 const bool participates = comp->worldAOContributor();

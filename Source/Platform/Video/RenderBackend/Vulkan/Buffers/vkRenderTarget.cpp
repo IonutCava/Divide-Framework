@@ -166,8 +166,18 @@ namespace Divide
             const RTAttachment_uptr& inAtt = input->_attachments[entry._input._index];
             const RTAttachment_uptr& outAtt = output->_attachments[entry._output._index];
 
-            vkTexture* vkTexIn  = static_cast<vkTexture*>(Get(inAtt->texture()));
-            vkTexture* vkTexOut = static_cast<vkTexture*>(Get(outAtt->texture()));
+            vkTexture* vkTexIn  = static_cast<vkTexture*>(Get(entry._copySamples ? inAtt->renderTexture() : inAtt->texture()));
+            vkTexture* vkTexOut = static_cast<vkTexture*>(Get(entry._copySamples ? outAtt->renderTexture() : outAtt->texture()));
+
+            if (entry._copySamples &&
+                (inputDim != outputDim || input->getSampleCount() != output->getSampleCount() ||
+                 vkTexIn->vkFormat() != vkTexOut->vkFormat() ||
+                 vkTexIn->descriptor()._texType != vkTexOut->descriptor()._texType ||
+                 vkTexIn->depth() != vkTexOut->depth() || entry._layerCount == ALL_LAYERS || entry._mipCount != 1u ||
+                 entry._input._mipOffset != 0u || entry._output._mipOffset != 0u))
+            {
+                DIVIDE_UNEXPECTED_CALL_MSG("Exact render-target copies require matching dimensions, format and samples at mip zero");
+            }
 
             const bool isDepthIn = IsDepthTexture( vkTexIn->descriptor()._packing );
             const bool isDepthOut = IsDepthTexture( vkTexOut->descriptor()._packing );
@@ -282,19 +292,51 @@ namespace Divide
 
             if ( blitRegionCount > 0u )
             {
-                const VkBlitImageInfo2 blitInfo
+                if (entry._copySamples)
                 {
-                    .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
-                    .srcImage = vkTexIn->image()->_image,
-                    .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    .dstImage = vkTexOut->image()->_image,
-                    .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    .regionCount = blitRegionCount,
-                    .pRegions = blitRegions,
-                    .filter = VK_FILTER_NEAREST,
-                };
+                    std::array<VkImageCopy2, 3> regions{};
+                    U32 regionCount = 0u;
+                    for (const VkImageAspectFlagBits aspect : {VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_ASPECT_STENCIL_BIT})
+                    {
+                        if ((subResourceIn.aspectMask & aspect) != 0u)
+                        {
+                            VkImageCopy2& region = regions[regionCount++];
+                            region.sType = VK_STRUCTURE_TYPE_IMAGE_COPY_2;
+                            region.srcSubresource = blitRegions[0].srcSubresource;
+                            region.dstSubresource = blitRegions[0].dstSubresource;
+                            region.srcSubresource.aspectMask = aspect;
+                            region.dstSubresource.aspectMask = aspect;
+                            region.extent = {vkTexIn->width(), vkTexIn->height(), srcDepth};
+                        }
+                    }
+                    const VkCopyImageInfo2 copyInfo
+                    {
+                        .sType = VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2,
+                        .srcImage = vkTexIn->image()->_image,
+                        .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        .dstImage = vkTexOut->image()->_image,
+                        .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        .regionCount = regionCount,
+                        .pRegions = regions.data()
+                    };
+                    VK_PROFILE(vkCmdCopyImage2, cmdBuffer, &copyInfo);
+                }
+                else
+                {
+                    const VkBlitImageInfo2 blitInfo
+                    {
+                        .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+                        .srcImage = vkTexIn->image()->_image,
+                        .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        .dstImage = vkTexOut->image()->_image,
+                        .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        .regionCount = blitRegionCount,
+                        .pRegions = blitRegions,
+                        .filter = VK_FILTER_NEAREST,
+                    };
 
-                VK_PROFILE( vkCmdBlitImage2, cmdBuffer, &blitInfo );
+                    VK_PROFILE( vkCmdBlitImage2, cmdBuffer, &blitInfo );
+                }
             }
 
             // Source back to shader-read (we sampled it after the blit)
@@ -350,7 +392,7 @@ namespace Divide
             }
 
             const RTAttachment_uptr& outAtt = output->_attachments[entry._output._index];
-            vkTexture* vkTexOut = static_cast<vkTexture*>(Get(outAtt->texture()));
+            vkTexture* vkTexOut = static_cast<vkTexture*>(Get(entry._copySamples ? outAtt->renderTexture() : outAtt->texture()));
             const bool outIsResolve = HasUsageFlagSet(vkTexOut->descriptor(), ImageUsage::RT_RESOLVE_TARGET);
 
             RTUsageTracker& outUsage = outIsResolve ? outAtt->_resolveUsage : outAtt->_renderUsage;

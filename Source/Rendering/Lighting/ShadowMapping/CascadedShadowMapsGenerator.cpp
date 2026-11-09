@@ -5,6 +5,8 @@
 
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/ShadowPassState.h"
+#include "Graphs/Headers/SceneGraph.h"
+#include "Scenes/Headers/SceneState.h"
 
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
 
@@ -377,12 +379,13 @@ namespace Divide
         }
     }
 
-    void CascadedShadowMapsGenerator::render( const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, const U32 layerMask )
+    void CascadedShadowMapsGenerator::render( const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, const ShadowRefreshPlan& refreshPlan )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         auto& dirLight = static_cast<DirectionalLightComponent&>(light);
 
+        const U32 layerMask = refreshPlan.updateMask();
         const U8 numSplits = dirLight.csmSplitCount();
         dirLight.cascadeBoundsFeedback().resize( numSplits );
         applyFrustumSplits( dirLight, playerCamera, numSplits, layerMask );
@@ -408,6 +411,20 @@ namespace Divide
         RenderPassManager* rpm = _context.context().kernel().renderPassManager().get();
         const U16 layerOffset = dirLight.getShadowArrayOffset();
         const RenderTargetHandle& rtHandle = ShadowMap::getShadowMap( _type );
+        const RenderTargetHandle& staticTarget = ShadowMap::getShadowMapCache(_type);
+        const auto& config = _context.context().config();
+        const auto& filter = config.debug.renderFilter;
+        const auto& scene = *light.sgn()->sceneGraph()->parentScene().state();
+        const U32 renderMask = (filter.primitives ? toBit(0) : 0u) |
+                               (filter.meshes ? toBit(1) : 0u) |
+                               (filter.terrain ? toBit(2) : 0u) |
+                               (filter.vegetation ? toBit(3) : 0u) |
+                               (filter.treeInstances ? toBit(4) : 0u) |
+                               (filter.particles ? toBit(5) : 0u) |
+                               (scene.renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY) ? toBit(6) : 0u) |
+                               (scene.renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME) ? toBit(7) : 0u);
+        U32 staticRebuildMask = 0u;
+        U32 staticReuseMask = 0u;
 
         for ( I8 i = numSplits - 1; i >= 0 && i < numSplits; i-- )
         {
@@ -426,11 +443,84 @@ namespace Divide
                 STUBBED( "CascadedShadowMapsGenerator::render: Validate AABBFit for first cascade!" );
             }
 
-            rpm->doCustomPass( ShadowMap::shadowCameras( ShadowType::CSM )[i], params, bufferInOut, memCmdInOut );
+            const U16 cacheIndex = to_U16(layerOffset + i);
+            StaticCacheLayer& cache = _staticLayers[cacheIndex];
+            if (config.rendering.shadowMapping.csm.staticCaching)
+            {
+                CSMStaticCacheKey key
+                {
+                    ._owner = light.getGUID(),
+                    ._coverageRevision = light.sgn()->sceneGraph()->worldAORevision(),
+                    ._renderMask = renderMask,
+                    ._resolution = {_drawBufferDepth._rt->getWidth(), _drawBufferDepth._rt->getHeight()},
+                    ._visibilityDistances = {scene.renderState().generalVisibility(), scene.renderState().treeVisibility()},
+                    ._samples = _drawBufferDepth._rt->getSampleCount(),
+                    ._splitCount = numSplits
+                };
+                const auto& viewProjection = ShadowMap::shadowCameras(ShadowType::CSM)[i]->viewProjectionMatrix();
+                std::copy_n(viewProjection.mat, key._viewProjection.size(), key._viewProjection.begin());
+                const bool rebuild = cache._state.needsRefresh(
+                    key, ShadowLayerSelected(refreshPlan._staticMask, to_U8(i)));
+                cache._combinedBounds = params._shadowBoundsFeedback;
+                if (rebuild)
+                {
+                    cache._pendingKey = key;
+                    cache._rebuilt = true;
+                    cache._pendingCasters = false;
+                    cache._pendingOut = &pendingCastersOut;
+                    cache._staticBounds.reset();
+                    RenderPassParams staticParams = params;
+                    staticParams._target = staticTarget._targetID;
+                    staticParams._pendingShaderOut = &cache._pendingCasters;
+                    staticParams._shadowBoundsFeedback = &cache._staticBounds;
+                    staticParams._drawMask = to_U8(1u << to_base(RenderPassParams::Flags::DRAW_STATIC_NODES));
+                    staticParams._targetDescriptorMainPass._autoResolveMSAA = false;
+                    staticParams._targetDescriptorMainPass._keepMSAADataAfterResolve = true;
+                    staticParams._targetDescriptorMainPass._writeLayers[0]._layer = {cacheIndex, 1u};
+                    staticParams._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = {cacheIndex, 1u};
+                    Util::StringFormatTo(staticParams._passName, "CSM_STATIC_{}", i);
+                    rpm->doCustomPass(ShadowMap::shadowCameras(ShadowType::CSM)[i], staticParams, bufferInOut, memCmdInOut);
+                    staticRebuildMask |= 1u << i;
+                }
+                else
+                {
+                    staticReuseMask |= 1u << i;
+                }
+
+                auto* copy = GFX::EnqueueCommand<GFX::BlitRenderTargetCommand>(bufferInOut);
+                copy->_source = staticTarget._targetID;
+                copy->_destination = _drawBufferDepth._targetID;
+                for (const U8 attachment : {U8{0u}, to_U8(RT_DEPTH_ATTACHMENT_IDX)})
+                {
+                    copy->_params.push_back(
+                    {
+                        ._input = {._layerOffset = cacheIndex, ._index = attachment},
+                        ._output = {._layerOffset = 0u, ._index = attachment},
+                        ._copySamples = true
+                    });
+                }
+                RenderPassParams dynamicParams = params;
+                dynamicParams._drawMask = to_U8(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
+                dynamicParams._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX]._enabled = false;
+                dynamicParams._clearDescriptorMainPass[0]._enabled = false;
+                rpm->doCustomPass(ShadowMap::shadowCameras(ShadowType::CSM)[i], dynamicParams, bufferInOut, memCmdInOut);
+            }
+            else
+            {
+                cache._state._valid = false;
+                rpm->doCustomPass( ShadowMap::shadowCameras( ShadowType::CSM )[i], params, bufferInOut, memCmdInOut );
+            }
             GFX::BlitRenderTargetCommand* blitRenderTargetCommand = GFX::EnqueueCommand<GFX::BlitRenderTargetCommand>( bufferInOut );
             blitRenderTargetCommand->_source = _drawBufferDepth._targetID;
             blitRenderTargetCommand->_destination = rtHandle._targetID;
             blitRenderTargetCommand->_params.emplace_back( ShadowMap::ScratchBlit( to_U16( layerOffset + i ) ) );
+        }
+
+        if (RenderSmokeTest::PerfModeRequested() && GFXDevice::FrameCount() % 64u == 0u)
+        {
+            Console::printfn("[CSMCacheMetrics] frame={} light={} rebuilt={} reused={} samples={}",
+                GFXDevice::FrameCount(), light.getGUID(), staticRebuildMask, staticReuseMask,
+                _drawBufferDepth._rt->getSampleCount());
         }
 
         // Now we can either blur our target or just skip to mipmap computation
@@ -593,12 +683,36 @@ namespace Divide
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
     }
 
+    void CascadedShadowMapsGenerator::finishRender()
+    {
+        for (auto& cache : _staticLayers)
+        {
+            if (cache._rebuilt)
+            {
+                cache._state.complete(cache._pendingKey, cache._pendingCasters);
+                *cache._pendingOut |= cache._pendingCasters;
+                cache._pendingOut = nullptr;
+                cache._rebuilt = false;
+            }
+            if (cache._combinedBounds != nullptr)
+            {
+                cache._combinedBounds->add(cache._staticBounds);
+            }
+            cache._combinedBounds = nullptr;
+        }
+    }
+
     void CascadedShadowMapsGenerator::updateMSAASampleCount( const U8 sampleCount )
     {
         if ( _context.context().config().rendering.shadowMapping.csm.MSAASamples != sampleCount )
         {
             _context.context().config().rendering.shadowMapping.csm.MSAASamples = sampleCount;
             _drawBufferDepth._rt->updateSampleCount( sampleCount );
+            ShadowMap::getShadowMapCache(_type)._rt->updateSampleCount(sampleCount);
+            for (auto& cache : _staticLayers)
+            {
+                cache._state._valid = false;
+            }
             _worldAOCache._valid = false;
         }
     }

@@ -26,6 +26,14 @@ namespace Divide
             }
         }
 
+        void add(const ShadowCasterBounds& other) noexcept
+        {
+            if (other._valid)
+            {
+                add(other._bounds);
+            }
+        }
+
         BoundingBox _bounds{};
         bool _valid = false;
     };

@@ -71,6 +71,57 @@ namespace Divide
         return !cacheValid || fullInvalidation ? allLayers : dirtyLayers & allLayers;
     }
 
+    struct ShadowRefreshPlan
+    {
+        U32 _staticMask = 0u;
+        U32 _dynamicMask = 0u;
+
+        [[nodiscard]] constexpr U32 updateMask() const noexcept
+        {
+            return _staticMask | _dynamicMask;
+        }
+    };
+
+    struct CSMStaticCacheKey
+    {
+        I64 _owner = -1;
+        std::array<F32, 16> _viewProjection{};
+        U64 _coverageRevision = 0u;
+        U32 _renderMask = 0u;
+        std::array<U16, 2> _resolution{};
+        std::array<F32, 2> _visibilityDistances{};
+        U8 _samples = 0u;
+        U8 _splitCount = 0u;
+
+        bool operator==(const CSMStaticCacheKey&) const = default;
+    };
+
+    struct CSMStaticCacheState
+    {
+        [[nodiscard]] bool needsRefresh(const CSMStaticCacheKey& key, const bool staticDirty) const noexcept
+        {
+            return !_valid || staticDirty || _key != key;
+        }
+
+        void complete(const CSMStaticCacheKey& key, const bool pendingCasters) noexcept
+        {
+            _key = key;
+            _valid = !pendingCasters;
+        }
+
+        CSMStaticCacheKey _key{};
+        bool _valid = false;
+    };
+
+    [[nodiscard]] constexpr ShadowRefreshPlan BuildShadowRefreshPlan(const U8 layerCount, const U32 dirtyLayers,
+                                                                       const bool cacheValid, const bool staticDirty,
+                                                                       const bool dynamicDirty) noexcept
+    {
+        const U32 staticMask = ShadowLayerUpdateMask(layerCount, dirtyLayers, cacheValid, staticDirty);
+        // A rebuilt static base must have dynamic casters composited again too.
+        return {staticMask, staticMask | ShadowLayerUpdateMask(layerCount, dirtyLayers, cacheValid, dynamicDirty)};
+    }
+
     [[nodiscard]] constexpr F32 ShadowBlurTexelScale(const U8 firstLayer) noexcept
     {
         assert(firstLayer < 32u);

@@ -786,6 +786,7 @@ void SceneGraphNode::processEvents()
                           static_cast<Flags>(evt._flag) == Flags::LOADING )
                 {
                     sceneGraph()->invalidateWorldAO();
+                    Attorney::SceneGraphSGN::onNodeSpatialChange(sceneGraph(), *this);
                 }
                 if (static_cast<Flags>(evt._flag) == Flags::SELECTED)
                 {
@@ -808,6 +809,7 @@ void SceneGraphNode::processEvents()
             {
                 PROFILE_SCOPE("NewShaderReady", Profiler::Category::Scene );
                 Attorney::SceneGraphSGN::onNodeShaderReady(sceneGraph(), *this);
+                Attorney::SceneGraphSGN::onNodeSpatialChange(sceneGraph(), *this);
             } break;
             case ECS::CustomEvent::Type::TransformUpdated:
             {

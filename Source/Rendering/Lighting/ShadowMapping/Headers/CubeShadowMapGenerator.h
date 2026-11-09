@@ -41,7 +41,7 @@ class CubeShadowMapGenerator final : public ShadowMapGenerator {
    public:
     explicit CubeShadowMapGenerator(GFXDevice& context);
 
-    void render(const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, U32 layerMask) override;
+    void render(const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, const ShadowRefreshPlan& refreshPlan) override;
 
     void updateMSAASampleCount(U8 sampleCount) noexcept override;
 };

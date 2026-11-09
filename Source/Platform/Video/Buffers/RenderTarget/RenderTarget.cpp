@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/RenderTarget.h"
 
@@ -103,18 +103,18 @@ bool RenderTarget::create()
                                                                                  : ImageUsage::RT_DEPTH_ATTACHMENT);
 
         const bool needsMSAAResolve = autoResolveAttachment(att);
+        attDesc._texDescriptor._msaaSamples = _descriptor._msaaSamples;
 
         Handle<Texture> renderTexture = INVALID_HANDLE<Texture>;
         Handle<Texture> resolveTexture = INVALID_HANDLE<Texture>;
         const MipMappingState mipMapState = attDesc._texDescriptor._mipMappingState;
         
-        if ( needsMSAAResolve )
+        if ( _descriptor._msaaSamples > 0u )
         {
             RemoveImageUsageFlag(attDesc._texDescriptor, ImageUsage::SHADER_READ );
             attDesc._texDescriptor._mipMappingState = MipMappingState::OFF;
-            attDesc._texDescriptor._msaaSamples = _descriptor._msaaSamples;
         }
-        else
+        if ( !needsMSAAResolve )
         {
             RemoveImageUsageFlag(attDesc._texDescriptor, ImageUsage::RT_RESOLVE_TARGET);
         }

@@ -26,7 +26,7 @@ CubeShadowMapGenerator::CubeShadowMapGenerator(GFXDevice& context)
     g_shadowSettings = context.context().config().rendering.shadowMapping;
 }
 
-void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, [[maybe_unused]] const U32 layerMask) {
+void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, [[maybe_unused]] const ShadowRefreshPlan& refreshPlan) {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     const float3 lightPos = light.sgn()->get<TransformComponent>()->getWorldPosition();
