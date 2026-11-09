@@ -168,6 +168,9 @@ namespace Divide {
             vector<std::unique_ptr<AnimEvaluator>> _animations;
             size_t _animationCount{0u};
             bool _useDualQuatAnimation{true};
+            float3 _importRotationDegrees{0.f};
+            F32 _importScale{1.f};
+            string _cacheName;
         };
     };
 

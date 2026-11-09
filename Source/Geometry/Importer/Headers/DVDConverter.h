@@ -95,6 +95,7 @@ namespace DVDConverter {
 
     [[nodiscard]] U32 PopulateNodeData(aiNode* node, MeshNodeData& target, const aiMatrix4x4& axisCorrectionBasis);
     [[nodiscard]] bool Load(PlatformContext& context, Import::ImportData& target);
+    [[nodiscard]] bool NormalizeScene(const aiScene& scene, const float3& rotationDegrees, F32 scale);
 
     namespace detail{
         enum class BoneBindingStatus : U8

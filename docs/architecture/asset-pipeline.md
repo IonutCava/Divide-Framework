@@ -23,6 +23,28 @@ Assimp's global-scale processing applies source-unit conversion before cached
 geometry is written; vegetation descriptor scales apply to those converted
 vertices, not the original authoring units.
 
+An optional `<model filename>.import.xml` next to the source selects a model-wide
+basis conversion, independent of scene placement:
+
+```xml
+<import version="1">
+    <rotation x="90" y="180" z="0"/>
+    <scale>0.65</scale>
+</import>
+```
+
+`DVDConverter::NormalizeScene` accepts finite right-angle rotations and a finite,
+positive uniform scale. It converts positions, directions, authored node matrices,
+inverse binds and animation keys together; signed scale keys are permuted rather
+than decomposed. Invalid settings fail import. Conversion order is X, Y, Z, then
+uniform scale. Geometry cache version 2 preserves authored transforms; the
+Assimp axis correction is applied once at the root, not at every descendant.
+Sidecar settings select a paired geometry/animation `normalized-v2` cache identity
+containing their exact floating-point values. Changing settings cannot reuse an
+old normalized pair; removing the sidecar restores the ordinary cache identity.
+Scene rotation/scale remain independent and can otherwise apply a second
+correction. WarScene clears those old placement corrections for its characters.
+
 Animated submeshes share a skeleton and one inverse-bind matrix per bone. Repeated
 bone bindings reuse the same index when their matrices agree within the import
 tolerance; conflicting offsets or more than `MAX_BONE_COUNT_PER_NODE` weighted
@@ -46,12 +68,22 @@ may use sRGB, while normal, opacity, and other data maps remain linear.
 Vegetation keeps the imported tree submesh materials intact and creates
 per-vegetation material variants with the tree instancing shader and chunk
 capacity. Material cloning preserves the source's base shader selection.
+Fresh imports may ignore stale material-template XML, but `RenderingComponent`
+opts imported submesh clones into their own scene overrides through
+`Material::Clone`'s `allowXMLOverrides` argument. Inheriting the template's
+`ignoreXMLData` flag there would make fresh and cached imports render differently.
+Other clones retain that policy by default, including procedural terrain
+materials whose layer bindings are generated rather than restored from XML.
 
 `VertexBuffer` owns a GPU vertex buffer and index buffer. `commitData()` compacts the CPU layout to present attributes.
 Full layout changes call `setBuffer(...)`; incremental changes call `updateBuffer(...)`.
 Indices may use 16-bit packing when vertex count permits. CPU copies can be discarded when dynamic updates are unnecessary.
 
 Before changing geometry upload, check cache compatibility, attribute-presence tracking, compact layout, index width, LoD/partition correctness, and parent/submesh ownership.
+Procedural primitives must populate attribute-presence flags before publishing
+their initial material layout. `Sphere3D::load` rebuilds geometry first; publishing
+a position-only layout before adding normals/UVs gives material instances the
+wrong compact vertex stride and visibly corrupts the sphere.
 
 ## Texture flow
 

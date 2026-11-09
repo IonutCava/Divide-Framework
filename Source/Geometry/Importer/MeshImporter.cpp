@@ -12,15 +12,18 @@
 #include "Geometry/Shapes/Headers/Mesh.h"
 #include "Geometry/Shapes/Headers/SubMesh.h"
 #include "Utility/Headers/Localization.h"
+#include "Utility/Headers/XMLParser.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
 
+#include <bit>
+
 namespace Divide {
 
 namespace {
-    constexpr U16 BYTE_BUFFER_VERSION = 1u;
+    constexpr U16 BYTE_BUFFER_VERSION = 2u;
     const char* g_parsedAssetGeometryExt = "DVDGeom";
     const char* g_parsedAssetAnimationExt = "DVDAnim";
 };
@@ -302,19 +305,56 @@ namespace Import
 };
     bool MeshImporter::loadMeshDataFromFile( PlatformContext& context, Import::ImportData& dataOut )
     {
+        const ResourcePath settingsPath = dataOut.modelPath() / Util::StringFormat( "{}.import.xml", dataOut.modelName() );
+        if ( fileExists( settingsPath ) )
+        {
+            XML::detail::LoadSave settingsFile;
+            const string settingsName = Util::StringFormat( "{}.import.xml", dataOut.modelName() );
+            if ( !settingsFile.read( dataOut.modelPath(), settingsName.c_str(), "import" ) )
+            {
+                return false;
+            }
+            const auto& settings = settingsFile.XmlTree;
+            try
+            {
+                dataOut._importRotationDegrees = {
+                    settings.get<F32>( "import.rotation.<xmlattr>.x", 0.f ),
+                    settings.get<F32>( "import.rotation.<xmlattr>.y", 0.f ),
+                    settings.get<F32>( "import.rotation.<xmlattr>.z", 0.f )
+                };
+                dataOut._importScale = settings.get<F32>( "import.scale", 1.f );
+                if ( settings.get<U32>( "import.<xmlattr>.version" ) != 1u )
+                {
+                    Console::errorfn( "Unsupported mesh import settings version: {}", settingsPath );
+                    return false;
+                }
+            }
+            catch ( const boost::property_tree::ptree_error& error )
+            {
+                Console::errorfn( "Failed to read mesh import settings '{}': {}", settingsPath, error.what() );
+                return false;
+            }
+            dataOut._cacheName = Util::StringFormat( "{}.normalized-v2-{:08x}-{:08x}-{:08x}-{:08x}",
+                dataOut.modelName(), std::bit_cast<U32>( dataOut._importRotationDegrees.x ),
+                std::bit_cast<U32>( dataOut._importRotationDegrees.y ),
+                std::bit_cast<U32>( dataOut._importRotationDegrees.z ),
+                std::bit_cast<U32>( dataOut._importScale ) );
+        }
+        const std::string_view cacheName = dataOut._cacheName.empty() ? std::string_view{dataOut.modelName().c_str()}
+                                                                    : std::string_view{dataOut._cacheName.c_str()};
         Time::ProfileTimer importTimer = {};
         importTimer.start();
 
         bool success = false;
         if (!context.config().debug.cache.enabled ||
             !context.config().debug.cache.geometry ||
-            !dataOut.loadFromFile( context, Paths::g_geometryCacheLocation, dataOut.modelName() ) )
+            !dataOut.loadFromFile( context, Paths::g_geometryCacheLocation, cacheName ) )
         {
             Console::printfn(LOCALE_STR("MESH_NOT_LOADED_FROM_FILE"), dataOut.modelName());
 
             if (DVDConverter::Load(context, dataOut))
             {
-                if (dataOut.saveToFile(context, Paths::g_geometryCacheLocation, dataOut.modelName()))
+                if (dataOut.saveToFile(context, Paths::g_geometryCacheLocation, cacheName))
                 {
                     Console::printfn(LOCALE_STR("MESH_SAVED_TO_FILE"), dataOut.modelName());
                 }
@@ -416,7 +456,8 @@ namespace Import
             // Animation versioning is handled internally.
             ByteBuffer tempBuffer;
 
-            const string saveFileName = Util::StringFormat( "{}.{}", tempMeshData.modelName(), g_parsedAssetAnimationExt );
+            const string saveFileName = Util::StringFormat( "{}.{}", tempMeshData._cacheName.empty()
+                ? tempMeshData.modelName().c_str() : tempMeshData._cacheName.c_str(), g_parsedAssetAnimationExt );
             if (context.config().debug.cache.enabled  &&
                 context.config().debug.cache.geometry &&
                 tempBuffer.loadFromFile(Paths::g_geometryCacheLocation, saveFileName ))

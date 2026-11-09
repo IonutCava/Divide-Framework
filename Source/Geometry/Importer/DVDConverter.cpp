@@ -68,6 +68,116 @@ namespace {
 
 namespace DVDConverter
 {
+bool NormalizeScene( const aiScene& scene, const float3& rotationDegrees, const F32 scale )
+{
+    if ( !std::isfinite( scale ) || scale <= 0.f )
+    {
+        Console::errorfn( "Mesh import normalization requires a finite positive scale." );
+        return false;
+    }
+    for ( U8 axis = 0u; axis < 3u; ++axis )
+    {
+        if ( !std::isfinite( rotationDegrees[axis] ) ||
+             std::abs( std::remainder( rotationDegrees[axis], 90.f ) ) > 0.0001f )
+        {
+            Console::errorfn( "Mesh import axis corrections must be finite multiples of 90 degrees." );
+            return false;
+        }
+    }
+
+    aiMatrix4x4 rx, ry, rz;
+    aiMatrix4x4::RotationX( Angle::to_RADIANS( Angle::DEGREES_F{rotationDegrees.x} ), rx );
+    aiMatrix4x4::RotationY( Angle::to_RADIANS( Angle::DEGREES_F{rotationDegrees.y} ), ry );
+    aiMatrix4x4::RotationZ( Angle::to_RADIANS( Angle::DEGREES_F{rotationDegrees.z} ), rz );
+    const aiMatrix3x3 rotation{ rz * ry * rx };
+    const aiQuaternion orientation{ rotation };
+    aiQuaternion inverseOrientation = orientation;
+    inverseOrientation.Conjugate();
+    aiMatrix4x4 basis{ rotation };
+    basis.a1 *= scale; basis.a2 *= scale; basis.a3 *= scale;
+    basis.b1 *= scale; basis.b2 *= scale; basis.b3 *= scale;
+    basis.c1 *= scale; basis.c2 *= scale; basis.c3 *= scale;
+    aiMatrix4x4 inverseBasis = basis;
+    inverseBasis.Inverse();
+
+    const auto normalizeNodes = [&]( const auto& self, aiNode* node ) -> void
+    {
+        if ( node == nullptr )
+        {
+            return;
+        }
+        node->mTransformation = basis * node->mTransformation * inverseBasis;
+        for ( U32 i = 0u; i < node->mNumChildren; ++i )
+        {
+            self( self, node->mChildren[i] );
+        }
+    };
+    normalizeNodes( normalizeNodes, scene.mRootNode );
+    const auto normalizeVertices = [&]( auto& mesh )
+    {
+        for ( U32 v = 0u; v < mesh.mNumVertices; ++v )
+        {
+            if ( mesh.mVertices != nullptr ) mesh.mVertices[v] = basis * mesh.mVertices[v];
+            if ( mesh.mNormals != nullptr ) mesh.mNormals[v] = rotation * mesh.mNormals[v];
+            if ( mesh.mTangents != nullptr ) mesh.mTangents[v] = rotation * mesh.mTangents[v];
+            if ( mesh.mBitangents != nullptr ) mesh.mBitangents[v] = rotation * mesh.mBitangents[v];
+        }
+    };
+    for ( U32 i = 0u; i < scene.mNumMeshes; ++i )
+    {
+        aiMesh& mesh = *scene.mMeshes[i];
+        normalizeVertices( mesh );
+        for ( U32 j = 0u; j < mesh.mNumAnimMeshes; ++j )
+        {
+            normalizeVertices( *mesh.mAnimMeshes[j] );
+        }
+        for ( U32 j = 0u; j < mesh.mNumBones; ++j )
+        {
+            auto& offset = mesh.mBones[j]->mOffsetMatrix;
+            offset = basis * offset * inverseBasis;
+        }
+        if ( mesh.mNumVertices > 0u )
+        {
+            mesh.mAABB.mMin = mesh.mAABB.mMax = mesh.mVertices[0u];
+            for ( U32 v = 1u; v < mesh.mNumVertices; ++v )
+            {
+                for ( U8 axis = 0u; axis < 3u; ++axis )
+                {
+                    mesh.mAABB.mMin[axis] = std::min( mesh.mAABB.mMin[axis], mesh.mVertices[v][axis] );
+                    mesh.mAABB.mMax[axis] = std::max( mesh.mAABB.mMax[axis], mesh.mVertices[v][axis] );
+                }
+            }
+        }
+    }
+    for ( U32 i = 0u; i < scene.mNumAnimations; ++i )
+    {
+        aiAnimation& animation = *scene.mAnimations[i];
+        for ( U32 j = 0u; j < animation.mNumChannels; ++j )
+        {
+            aiNodeAnim& channel = *animation.mChannels[j];
+            for ( U32 k = 0u; k < channel.mNumPositionKeys; ++k )
+            {
+                channel.mPositionKeys[k].mValue = basis * channel.mPositionKeys[k].mValue;
+            }
+            for ( U32 k = 0u; k < channel.mNumRotationKeys; ++k )
+            {
+                auto& value = channel.mRotationKeys[k].mValue;
+                value = orientation * value * inverseOrientation;
+                value.Normalize();
+            }
+            for ( U32 k = 0u; k < channel.mNumScalingKeys; ++k )
+            {
+                auto& value = channel.mScalingKeys[k].mValue;
+                // Axis permutations preserve diagonal scale, unlike arbitrary rotations.
+                value = { std::abs( rotation.a1 ) * value.x + std::abs( rotation.a2 ) * value.y + std::abs( rotation.a3 ) * value.z,
+                          std::abs( rotation.b1 ) * value.x + std::abs( rotation.b2 ) * value.y + std::abs( rotation.b3 ) * value.z,
+                          std::abs( rotation.c1 ) * value.x + std::abs( rotation.c2 ) * value.y + std::abs( rotation.c3 ) * value.z };
+            }
+        }
+    }
+    return true;
+}
+
 namespace detail
 {
     static hashMap<U32, TextureWrap> fillTextureWrapMap()
@@ -156,24 +266,6 @@ U32 PopulateNodeData(aiNode* node, MeshNodeData& target, const aiMatrix4x4& axis
 
     AnimUtils::TransformMatrix(axisCorrectionBasis * node->mTransformation, target._transform);
 
-    if (!COMPARE(target._transform.m[0][0], target._transform.m[1][1]) && 
-        !COMPARE(target._transform.m[1][1], target._transform.m[2][2]))
-    {
-        // We have either:
-        // - Non-uniform scale
-        // - Different transform axis (e.g. Z-up)
-        // Need to determine which is which.
-        aiVector3D pScaling, pPosition;
-        aiQuaternion pRotation;
-        (axisCorrectionBasis * node->mTransformation).Decompose(pScaling, pRotation, pPosition);
-        target._transform = mat4<F32>
-        {
-            float3(pPosition.x, pPosition.y, pPosition.y),
-            float3(pScaling.x, pScaling.y, pScaling.y),
-            quatf{ pRotation.x, pRotation.y, pRotation.z, pRotation.w }
-        };
-    }
-
     target._name = node->mName.C_Str();
     target._meshIndices.resize(node->mNumMeshes);
     for (U32 i = 0u; i < node->mNumMeshes; ++i)
@@ -185,7 +277,7 @@ U32 PopulateNodeData(aiNode* node, MeshNodeData& target, const aiMatrix4x4& axis
     target._children.resize(node->mNumChildren);
     for (U32 i = 0u; i < node->mNumChildren; ++i)
     {
-        numChildren += PopulateNodeData(node->mChildren[i], target._children[i], axisCorrectionBasis);
+        numChildren += PopulateNodeData(node->mChildren[i], target._children[i], aiMatrix4x4{} );
     }
 
     return numChildren + node->mNumChildren;
@@ -232,6 +324,12 @@ bool Load(PlatformContext& context, Import::ImportData& target)
     if (!aiScenePointer)
     {
         Console::errorfn(LOCALE_STR("ERROR_IMPORTER_FILE"), fileName, importer.GetErrorString());
+        return false;
+    }
+
+    if ( !target._cacheName.empty() &&
+         !NormalizeScene( *aiScenePointer, target._importRotationDegrees, target._importScale ) )
+    {
         return false;
     }
 

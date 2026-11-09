@@ -106,6 +106,7 @@ namespace Attorney
     class GFXDeviceProjectManager;
     class GFXDeviceShaderProgram;
     class GFXDeviceWindowManager;
+    class GFXDeviceTestAccess;
     class KernelApplication;
 };
 
@@ -292,6 +293,7 @@ class GFXDevice final : public PlatformContextComponent, public FrameListener
     friend class Attorney::GFXDeviceShaderProgram;
     friend class Attorney::GFXDeviceWindowManager;
     friend class Attorney::GFXDeviceProjectManager;
+    friend class Attorney::GFXDeviceTestAccess;
 
 public:
     struct ScreenTargets

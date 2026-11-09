@@ -587,14 +587,7 @@ namespace Divide
                     // SubMesh (change component properties, as the meshes should already be loaded)
                     case _ID( "SUBMESH" ):
                     {
-                        while ( parent->getNode().getState() != ResourceState::RES_LOADED )
-                        {
-                            if ( parentTask != nullptr && !idle() )
-                            {
-                                NOP();
-                            }
-                        }
-                        SceneGraphNode* subMesh = parent->findChild( _ID( sceneNode.name.c_str() ), false, false );
+                        SceneGraphNode* subMesh = parent->findChild( _ID( sceneNode.name.c_str() ), false, true );
                         if ( subMesh != nullptr )
                         {
                             subMesh->loadFromXML( nodeTree );
@@ -622,9 +615,23 @@ namespace Divide
         }
 
         const U32 childCount = to_U32( sceneNode.children.size() );
-        if ( childCount == 1u )
+        if ( childCount > 0u && crtNode->getNode().type() == SceneNodeType::TYPE_MESH )
         {
-            loadAsset( parentTask, sceneNode.children.front(), crtNode );
+            // Wait before dispatching siblings: waiting submesh tasks must not recursively steal each other.
+            WAIT_FOR_CONDITION( crtNode->getNode().getState() == ResourceState::RES_LOADED ||
+                                crtNode->getNode().getState() == ResourceState::RES_LOAD_FAILED );
+            DIVIDE_ASSERT( crtNode->getNode().getState() == ResourceState::RES_LOADED,
+                           "Cannot restore submeshes of a failed mesh resource!" );
+        }
+        if ( childCount == 1u ||
+             (childCount > 1u && eastl::any_of( sceneNode.children.begin(), sceneNode.children.end(),
+                 []( const XML::SceneNode& node ) { return node.typeHash == _ID( "SUBMESH" ); } )) )
+        {
+            // Synchronous material loads can contend on shared textures; do not enqueue sibling waiters.
+            for ( const XML::SceneNode& child : sceneNode.children )
+            {
+                loadAsset( parentTask, child, crtNode );
+            }
         }
         else if ( childCount > 1u )
         {

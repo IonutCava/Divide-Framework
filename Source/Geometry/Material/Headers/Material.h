@@ -253,7 +253,7 @@ class Material final : public CachedResource {
     static void RecomputeShaders();
     static void Update(U64 deltaTimeUS);
     [[nodiscard]] U64 coverageRevision() const noexcept { return _coverageRevision.load(std::memory_order_relaxed); }
-    static bool Clone(Handle<Material> src, Handle<Material>& dst, const std::string_view nameSuffix);
+    static bool Clone(Handle<Material> src, Handle<Material>& dst, std::string_view nameSuffix, bool allowXMLOverrides = false);
 
     /// Return a new instance of this material with the name composed of the base material's name and the give name suffix (clone calls CreateResource internally!).
     [[nodiscard]] bool load(PlatformContext& context) override;

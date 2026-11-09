@@ -55,6 +55,12 @@ not identify a paused editor view.
    creation (mesh, primitive, terrain, water, sky, and others).
    The resource-specific `loadFromXML()` restores resource properties;
    `SceneGraphNode::loadFromXML()` restores graph components.
+   Imported submesh leaves use `<scene mesh instance name>_<mesh index>`,
+   independent of imported transform-node names. `SUBMESH` overrides search
+   recursively beneath the instance so nested import hierarchies receive their
+   saved material/component settings. New leaves explicitly start at local
+   identity; the world-preserving reparenting path must not compensate away
+   their imported parent transform.
 4. `Scene::load()` waits for asset tasks, establishes the scene's global water
    plane, requires a sky node, then performs scene-specific post-load work.
    Derived scenes may add further content after calling `Scene::load()`.
@@ -98,8 +104,16 @@ visits. Disabled listeners receive no frame events.
 
 Check project/scene selection and the XML files before debugging rendering.
 A missing per-node XML file skips that node while recursively processing its
-children. The `SUBMESH` case waits for its parent mesh resource to reach
-`RES_LOADED`, so a stall there points toward mesh resource loading.
+children. Before dispatching a mesh's children, `Scene::loadAsset` waits for its resource to
+reach `RES_LOADED` (a failed resource is reported explicitly). Sibling groups
+containing saved submesh overrides are restored sequentially; independent assets
+still load in parallel. Synchronous material loads can contend on shared texture
+resource locks, whose wait path helps execute asset tasks. Enqueuing hundreds of
+sibling overrides lets those waiters recursively execute one another and exhaust
+worker stacks. A stall at the readiness boundary points toward mesh loading.
+Restoring previously skipped overrides can also expose stale per-part transforms
+or obsolete numeric render-stage/pass mappings in authored XML; inspect those
+settings rather than compensating in the importer.
 `SceneGraph::loadFromXML()` expects a `TRANSFORM` root and currently leaves a
 TODO for scene-graph version mismatches rather than rejecting or migrating
 them. Keep loading and `Scene::saveXML()` / `SceneGraph::saveToXML()` in sync

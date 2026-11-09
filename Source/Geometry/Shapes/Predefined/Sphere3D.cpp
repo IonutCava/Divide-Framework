@@ -1,5 +1,4 @@
-
-
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/Sphere3D.h"
 
 #include "Core/Headers/PlatformContext.h"
@@ -35,6 +34,7 @@ bool Sphere3D::load( PlatformContext& context )
     VertexBuffer* vb = geometryBuffer(context.gfx(), vbDescriptor );
     vb->setVertexCount( vertexCount );
     vb->reserveIndexCount( vertexCount );
+    rebuildInternal();
 
     if ( !_descriptor.flag() )
     {
@@ -44,8 +44,6 @@ bool Sphere3D::load( PlatformContext& context )
         Get( matTemp )->properties().shadingMode( ShadingMode::PBR_MR );
         setMaterialTemplate( matTemp, vb->generateAttributeMap() );
     }
-    rebuildInternal();
-
     return Object3D::load(context);
 }
 
