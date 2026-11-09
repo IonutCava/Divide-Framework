@@ -14,14 +14,13 @@ layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 #include "utility.frag"
 
 layout(location = TARGET_ACCUMULATION) out vec4  _accum;
-layout(location = TARGET_REVEALAGE) out float _revealage;
 layout(location = TARGET_NORMALS) out vec4 _normalsOut;
 layout(location = TARGET_MODULATE) out vec4  _modulate;
 
 DESCRIPTOR_SET_RESOURCE(PER_PASS, 1) uniform sampler2D texDepth;
 
 // Shameless copy-paste from http://casual-effects.blogspot.co.uk/2015/03/colored-blended-order-independent.html
-void writePixel(in vec4 colourIn, in vec3 transmissionCoefficient)
+float writePixel(in vec4 colourIn, in vec3 transmissionCoefficient)
 {
     vec4 premultipliedReflect = vec4( colourIn.rgb * colourIn.a, colourIn.a );
 
@@ -61,14 +60,13 @@ void writePixel(in vec4 colourIn, in vec3 transmissionCoefficient)
     // store pixel color accumulation
     _accum = premultipliedReflect * weight;
     // store pixel revealage threshold
-    _revealage = premultipliedReflect.a;
+    return premultipliedReflect.a;
 }
 
 void writeScreenColour(in vec4 colour, in vec3 transmissionCoefficient, in vec3 normalWV)
 {
-    writePixel(colour, transmissionCoefficient);
-
-    _normalsOut = vec4(normalWV * _revealage, _revealage);
+    const float coverage = writePixel(colour, transmissionCoefficient);
+    _normalsOut = vec4(normalWV * coverage, coverage);
 }
 #endif //OIT_PASS
 

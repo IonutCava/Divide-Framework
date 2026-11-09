@@ -19,6 +19,13 @@ Vulkan draw profiling separates source-buffer resolution from the individual
 direct and indirect draw API calls. Their CPU wall times can include validation
 and driver work and are not GPU execution times.
 
+The shared OIT target family packs revealage into the alpha of its RGBA16F
+normal attachment. DISPLAY and planar reflection/refraction no longer allocate a
+separate R16F revealage image. This removes two logical bytes per pixel/sample
+from each target's internal colour storage (plus any corresponding resolve image);
+actual allocation savings depend on backend alignment and compression. Clear and
+separate-alpha blend rules are in [Rendering](rendering.md).
+
 ## Vulkan capabilities
 
 Device extension/feature notes below were checked in `VKDevice::VKDevice` at

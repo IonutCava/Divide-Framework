@@ -1204,11 +1204,33 @@ namespace Divide
         _renderQueue->populateRenderQueues( queueParams, _renderQueuePackages );
 
 
+        Handle<ShaderProgram> timedShader = INVALID_HANDLE<ShaderProgram>;
+        const bool timeShaders = stagePass._passType == RenderPassType::OIT_PASS && _context.queryGPUScopeTimings();
+        bool shaderScopeOpen = false;
         for ( const auto& [rComp, pkg] : _renderQueuePackages )
         {
+            if ( timeShaders )
+            {
+                const Handle<ShaderProgram> shader = pkg->pipelineCmd()._pipeline->descriptor()._shaderProgramHandle;
+                if ( !shaderScopeOpen || shader != timedShader )
+                {
+                    if ( shaderScopeOpen )
+                    {
+                        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
+                    }
+                    auto scope = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut );
+                    Util::StringFormatTo( scope->_scopeName, "OIT Shader {}", Get( shader )->resourceName() );
+                    timedShader = shader;
+                    shaderScopeOpen = true;
+                }
+            }
             pkg->pushConstantsCmd()._uniformData->set(_ID("dvd_enableDeformation"), PushConstantType::UINT,
                                                       params._enableDeformation ? 1u : 0u);
             Attorney::RenderingCompRenderPassExecutor::getCommandBuffer( rComp, pkg, bufferInOut );
+        }
+        if ( shaderScopeOpen )
+        {
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
         }
 
         if ( params._stagePass._passType != RenderPassType::PRE_PASS )
@@ -1373,16 +1395,15 @@ namespace Divide
 
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = " - W-OIT Pass";
 
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "OIT Accumulation";
         // Step1: Draw translucent items into the accumulation and revealage buffers
         GFX::BeginRenderPassCommand* beginRenderPassOitCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
         beginRenderPassOitCmd->_name = "OIT PASS 1";
         beginRenderPassOitCmd->_target = params._targetOIT;
         beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::ACCUMULATION )] = { VECTOR4_ZERO, true };
-        beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::REVEALAGE )]    = { VECTOR4_UNIT, true };
-        beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::NORMALS )]      = { VECTOR4_ZERO, true };
+        beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::NORMALS )]      = { float4( 0.f, 0.f, 0.f, 1.f ), true };
         beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::MODULATE )]     = { VECTOR4_ZERO, false };
         beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::ACCUMULATION )] = true;
-        beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::REVEALAGE )] = true;
         beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::NORMALS )]  = true;
         beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::MODULATE )]  = true;
         beginRenderPassOitCmd->_descriptor._autoResolveMSAA = params._targetDescriptorMainPass._autoResolveMSAA;
@@ -1390,16 +1411,17 @@ namespace Divide
 
         prepareRenderQueues( params, cameraSnapshot, true, RenderingOrder::COUNT, bufferInOut, memCmdInOut );
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut )->_transitionMask[to_base( GFXDevice::ScreenTargets::MODULATE )] = false;
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
         RenderTarget* oitRT = _context.renderTargetPool().getRenderTarget( params._targetOIT );
         const auto& accumAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ACCUMULATION );
-        const auto& revAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::REVEALAGE );
         const auto& normalsAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
         const RenderTarget* target = _context.renderTargetPool().getRenderTarget( params._target );
         const bool writeNormals = target->hasAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
 
         // Step2: Composition pass
         // Don't clear depth & colours and do not write to the depth buffer
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "OIT Composition";
         GFX::BeginRenderPassCommand* beginRenderPassCompCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut);
         beginRenderPassCompCmd->_name = "OIT PASS 2";
         beginRenderPassCompCmd->_target = params._target;
@@ -1421,16 +1443,12 @@ namespace Divide
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, revAtt->texture(), revAtt->_descriptor._sampler );
-            }
-            if ( writeNormals )
-            {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, normalsAtt->texture(), normalsAtt->_descriptor._sampler );
             }
         }
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 

@@ -1133,17 +1133,9 @@ namespace Divide
             accumulationDescriptor._packing = GFXImagePacking::UNNORMALIZED;
             accumulationDescriptor._mipMappingState = MipMappingState::OFF;
 
-            //R = revealage
-            TextureDescriptor revealageDescriptor{};
-            revealageDescriptor._dataType = GFXDataFormat::FLOAT_16;
-            revealageDescriptor._baseFormat = GFXImageFormat::RED;
-            revealageDescriptor._packing = GFXImagePacking::UNNORMALIZED;
-            revealageDescriptor._mipMappingState = MipMappingState::OFF;
-
             InternalRTAttachmentDescriptors oitAttachments
             {
                 InternalRTAttachmentDescriptor{ accumulationDescriptor, accumulationSampler, RTAttachmentType::COLOUR, ScreenTargets::ACCUMULATION, false },
-                InternalRTAttachmentDescriptor{ revealageDescriptor,    accumulationSampler, RTAttachmentType::COLOUR, ScreenTargets::REVEALAGE, false },
                 InternalRTAttachmentDescriptor{ normalsDescriptor,      accumulationSampler, RTAttachmentType::COLOUR, ScreenTargets::NORMALS, false },
             };
 
@@ -3181,12 +3173,12 @@ namespace Divide
 
             DebugView_ptr AlphaRevealageHigh = std::make_shared<DebugView>();
             AlphaRevealageHigh->_shader = _renderTargetDraw;
-            AlphaRevealageHigh->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::REVEALAGE )->texture();
-            AlphaRevealageHigh->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::REVEALAGE )->_descriptor._sampler;
+            AlphaRevealageHigh->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::NORMALS )->texture();
+            AlphaRevealageHigh->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::OIT )->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::NORMALS )->_descriptor._sampler;
             AlphaRevealageHigh->_name = "Alpha Revealage High";
             AlphaRevealageHigh->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
             AlphaRevealageHigh->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::UINT, 0u );
-            AlphaRevealageHigh->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
+            AlphaRevealageHigh->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 3u );
             AlphaRevealageHigh->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 1u );
             AlphaRevealageHigh->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
             AlphaRevealageHigh->_shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 1u );
