@@ -252,6 +252,7 @@ class LightPool final : public FrameListener,
     ShadowCameraState<mat4<F32>> _directionalShadowCamera;
     U32 _shadowRenderMask = 0u;
     std::array<F32, 2> _shadowVisibilityDistances{};
+    std::array<F32, 3> _shadowRangeCameraEye{};
     std::array<U8, 3> _shadowSampleCounts{};
 
     mutable SharedMutex _movedSceneVolumesLock;

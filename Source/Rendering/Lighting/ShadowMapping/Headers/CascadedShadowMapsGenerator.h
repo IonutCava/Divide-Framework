@@ -75,8 +75,8 @@ class CascadedShadowMapsGenerator final : public ShadowMapGenerator {
   protected:
     struct StaticCacheLayer
     {
-        CSMStaticCacheState _state{};
-        CSMStaticCacheKey _pendingKey{};
+        ShadowStaticCacheState _state{};
+        ShadowStaticCacheKey _pendingKey{};
         ShadowCasterBounds _staticBounds{};
         ShadowCasterBounds* _combinedBounds = nullptr;
         bool* _pendingOut = nullptr;

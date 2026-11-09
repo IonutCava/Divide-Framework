@@ -12,6 +12,7 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Scenes/Headers/SceneState.h"
+#include "Graphs/Headers/SceneGraph.h"
 
 #include "Managers/Headers/ProjectManager.h"
 #include "Rendering/Camera/Headers/Camera.h"
@@ -29,6 +30,52 @@
 
 namespace Divide
 {
+    ShadowStaticCacheKey ShadowMap::StaticCacheKey(const Configuration& config, const Light& light, const Camera& shadowCamera,
+                                                   const Camera& playerCamera, const RenderTarget& target,
+                                                   const U8 splitCount)
+    {
+        const auto& filter = config.debug.renderFilter;
+        const auto& scene = *light.sgn()->sceneGraph()->parentScene().state();
+        const auto& eye = playerCamera.snapshot()._eye;
+        ShadowStaticCacheKey key
+        {
+            ._owner = light.getGUID(),
+            ._coverageRevision = light.sgn()->sceneGraph()->worldAORevision(),
+            ._renderMask = (filter.primitives ? toBit(0) : 0u) |
+                           (filter.meshes ? toBit(1) : 0u) |
+                           (filter.terrain ? toBit(2) : 0u) |
+                           (filter.vegetation ? toBit(3) : 0u) |
+                           (filter.treeInstances ? toBit(4) : 0u) |
+                           (filter.particles ? toBit(5) : 0u) |
+                           (scene.renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY) ? toBit(6) : 0u) |
+                           (scene.renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME) ? toBit(7) : 0u),
+            ._resolution = {target.getWidth(), target.getHeight()},
+            ._visibilityDistances = {scene.renderState().generalVisibility(), scene.renderState().treeVisibility()},
+            ._rangeCameraEye = {eye.x, eye.y, eye.z},
+            ._samples = target.getSampleCount(),
+            ._splitCount = splitCount
+        };
+        std::copy_n(shadowCamera.viewProjectionMatrix().mat, key._viewProjection.size(), key._viewProjection.begin());
+        return key;
+    }
+
+    void ShadowMap::restoreStaticBase(const RenderTargetID source, const RenderTargetID destination,
+                                     const U16 sourceLayer, GFX::CommandBuffer& bufferInOut)
+    {
+        auto* copy = GFX::EnqueueCommand<GFX::BlitRenderTargetCommand>(bufferInOut);
+        copy->_source = source;
+        copy->_destination = destination;
+        for (const U8 attachment : {U8{0u}, to_U8(RT_DEPTH_ATTACHMENT_IDX)})
+        {
+            copy->_params.push_back(
+            {
+                ._input = {._layerOffset = sourceLayer, ._index = attachment},
+                ._output = {._layerOffset = 0u, ._index = attachment},
+                ._copySamples = true
+            });
+        }
+    }
+
     U16 ShadowMap::WorldAOCullFlags() noexcept
     {
         return to_base(CullOptions::CULL_AGAINST_CLIPPING_PLANES) |
@@ -211,29 +258,21 @@ namespace Divide
                         TextureDescriptor shadowMapCacheDescriptor = shadowMapDescriptor;
                         shadowMapCacheDescriptor._mipMappingState = MipMappingState::OFF;
 
-                        desc._attachments = 
-                        {
-                            InternalRTAttachmentDescriptor{ shadowMapCacheDescriptor, shadowMapSamplerCache, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
-                        };
-
                         desc._name = isCSM ? "CSM_ShadowMap_StaticCache" : "Single_ShadowMap_StaticCache";
-                        if (isCSM)
+                        shadowMapCacheDescriptor._layerCount = isCSM ? WORLD_AO_LAYER_INDEX : Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS;
+                        TextureDescriptor depthDescriptor{};
+                        depthDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
+                        depthDescriptor._dataType = GFXDataFormat::UNSIGNED_INT;
+                        depthDescriptor._baseFormat = GFXImageFormat::RED;
+                        depthDescriptor._packing = GFXImagePacking::DEPTH;
+                        depthDescriptor._layerCount = shadowMapCacheDescriptor._layerCount;
+                        depthDescriptor._mipMappingState = MipMappingState::OFF;
+                        desc._attachments =
                         {
-                            shadowMapCacheDescriptor._layerCount = WORLD_AO_LAYER_INDEX;
-                            TextureDescriptor depthDescriptor{};
-                            depthDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
-                            depthDescriptor._dataType = GFXDataFormat::UNSIGNED_INT;
-                            depthDescriptor._baseFormat = GFXImageFormat::RED;
-                            depthDescriptor._packing = GFXImagePacking::DEPTH;
-                            depthDescriptor._layerCount = WORLD_AO_LAYER_INDEX;
-                            depthDescriptor._mipMappingState = MipMappingState::OFF;
-                            desc._attachments =
-                            {
-                                InternalRTAttachmentDescriptor{shadowMapCacheDescriptor, shadowMapSamplerCache, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0, false},
-                                InternalRTAttachmentDescriptor{depthDescriptor, shadowMapSamplerCache, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false}
-                            };
-                            desc._msaaSamples = settings.csm.MSAASamples;
-                        }
+                            InternalRTAttachmentDescriptor{shadowMapCacheDescriptor, shadowMapSamplerCache, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0, false},
+                            InternalRTAttachmentDescriptor{depthDescriptor, shadowMapSamplerCache, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false}
+                        };
+                        desc._msaaSamples = isCSM ? settings.csm.MSAASamples : settings.spot.MSAASamples;
                         s_shadowMapCaches[i] = context.renderTargetPool().allocateRT( desc );
                     }
                     if ( isCSM )

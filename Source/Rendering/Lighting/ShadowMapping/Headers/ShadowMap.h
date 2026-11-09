@@ -57,6 +57,7 @@ class ShadowMapInfo;
 class SceneRenderState;
 struct WorldAOCacheKey;
 struct ShadowRefreshPlan;
+struct ShadowStaticCacheKey;
 
 enum class LightType : U8;
 
@@ -67,6 +68,7 @@ namespace GFX {
 
 class LightPool;
 class SceneState;
+struct Configuration;
 class PlatformContext;
 class ShadowMapGenerator {
 
@@ -108,6 +110,12 @@ NOINITVTABLE_CLASS(ShadowMap)
     {
         return mat4<F32>::Multiply( MAT4_BIAS_ZERO_ONE_Z, viewProjection );
     }
+
+    [[nodiscard]] static ShadowStaticCacheKey StaticCacheKey(const Configuration& config, const Light& light, const Camera& shadowCamera,
+                                                             const Camera& playerCamera, const RenderTarget& target,
+                                                             U8 splitCount);
+    static void restoreStaticBase(RenderTargetID source, RenderTargetID destination, U16 sourceLayer,
+                                  GFX::CommandBuffer& bufferInOut);
 
   public:
     // Init and destroy buffers, shaders, etc

@@ -5,6 +5,7 @@
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Scenes/Headers/SceneState.h"
@@ -170,7 +171,7 @@ SingleShadowMapGenerator::~SingleShadowMapGenerator()
     DestroyResource( _blurDepthMapShader );
 }
 
-void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, [[maybe_unused]] const ShadowRefreshPlan& refreshPlan)
+void SingleShadowMapGenerator::render(const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, const ShadowRefreshPlan& refreshPlan)
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -205,7 +206,50 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     Util::StringFormatTo( cmd->_scopeName, "Single Shadow Pass Light: [ {} ]", lightIndex);
     cmd->_scopeId = lightIndex;
 
-    _context.context().kernel().renderPassManager()->doCustomPass(shadowCameras[0], params, bufferInOut, memCmdInOut);
+    const U16 cacheIndex = light.getShadowArrayOffset();
+    StaticCacheLayer& cache = _staticLayers[cacheIndex];
+    const auto& config = _context.context().config();
+    RenderPassManager& rpm = *_context.context().kernel().renderPassManager();
+    bool rebuilt = false;
+    if (config.rendering.shadowMapping.spot.staticCaching)
+    {
+        const RenderTargetHandle& staticTarget = ShadowMap::getShadowMapCache(_type);
+        const ShadowStaticCacheKey key = ShadowMap::StaticCacheKey(
+            config, light, *shadowCameras[0], playerCamera, *_drawBufferDepth._rt, 1u);
+        rebuilt = cache._state.needsRefresh(key, ShadowLayerSelected(refreshPlan._staticMask, 0u));
+        if (rebuilt)
+        {
+            cache._pendingKey = key;
+            cache._rebuilt = true;
+            cache._pendingCasters = false;
+            cache._pendingOut = &pendingCastersOut;
+            RenderPassParams staticParams = params;
+            staticParams._target = staticTarget._targetID;
+            staticParams._passName = "SingleShadowMap_Static";
+            staticParams._pendingShaderOut = &cache._pendingCasters;
+            staticParams._drawMask = to_U8(1u << to_base(RenderPassParams::Flags::DRAW_STATIC_NODES));
+            staticParams._targetDescriptorMainPass._autoResolveMSAA = false;
+            staticParams._targetDescriptorMainPass._keepMSAADataAfterResolve = true;
+            staticParams._targetDescriptorMainPass._writeLayers[0]._layer = {cacheIndex, 1u};
+            staticParams._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = {cacheIndex, 1u};
+            rpm.doCustomPass(shadowCameras[0], staticParams, bufferInOut, memCmdInOut);
+        }
+        ShadowMap::restoreStaticBase(staticTarget._targetID, _drawBufferDepth._targetID, cacheIndex, bufferInOut);
+        params._drawMask = to_U8(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
+        params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX]._enabled = false;
+        params._clearDescriptorMainPass[0]._enabled = false;
+    }
+    else
+    {
+        cache._state._valid = false;
+    }
+    rpm.doCustomPass(shadowCameras[0], params, bufferInOut, memCmdInOut);
+    if (RenderSmokeTest::PerfModeRequested() && GFXDevice::FrameCount() % 64u == 0u)
+    {
+        Console::printfn("[SpotCacheMetrics] frame={} light={} layer={} rebuilt={} reused={} samples={}",
+            GFXDevice::FrameCount(), light.getGUID(), cacheIndex, rebuilt,
+            config.rendering.shadowMapping.spot.staticCaching && !rebuilt, _drawBufferDepth._rt->getSampleCount());
+    }
 
     GFX::BlitRenderTargetCommand blitRenderTargetCommand = {};
     blitRenderTargetCommand._source = _drawBufferDepth._targetID;
@@ -286,12 +330,31 @@ void SingleShadowMapGenerator::blurTarget( const U16 layerOffset, GFX::CommandBu
 
 }
 
+void SingleShadowMapGenerator::finishRender()
+{
+    for (auto& cache : _staticLayers)
+    {
+        if (cache._rebuilt)
+        {
+            cache._state.complete(cache._pendingKey, cache._pendingCasters);
+            *cache._pendingOut |= cache._pendingCasters;
+            cache._pendingOut = nullptr;
+            cache._rebuilt = false;
+        }
+    }
+}
+
 void SingleShadowMapGenerator::updateMSAASampleCount(const U8 sampleCount)
 {
     if (_context.context().config().rendering.shadowMapping.spot.MSAASamples != sampleCount)
     {
         _context.context().config().rendering.shadowMapping.spot.MSAASamples = sampleCount;
         _drawBufferDepth._rt->updateSampleCount(sampleCount);
+        ShadowMap::getShadowMapCache(_type)._rt->updateSampleCount(sampleCount);
+        for (auto& cache : _staticLayers)
+        {
+            cache._state._valid = false;
+        }
     }
 }
 };

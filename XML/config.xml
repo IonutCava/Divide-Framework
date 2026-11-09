@@ -233,6 +233,7 @@
 			</csm>
 			<spot>
 				<enabled>true</enabled>
+				<staticCaching>true</staticCaching>
 				<shadowMapResolution>512</shadowMapResolution>
 				<MSAASamples>0</MSAASamples>
 				<enableBlurring>false</enableBlurring>
