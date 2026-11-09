@@ -471,6 +471,34 @@ namespace Divide
         _instanceShaderDataIndex = dataIndex;
     }
 
+    void RenderingComponent::ConfigureOITBlendStates( RTBlendStates& states )
+    {
+        BlendingSettings& accumulation = states._settings[to_base( GFXDevice::ScreenTargets::ACCUMULATION )];
+        accumulation.enabled( true );
+        accumulation.blendSrc( BlendProperty::ONE );
+        accumulation.blendDest( BlendProperty::ONE );
+        accumulation.blendOp( BlendOperation::ADD );
+
+        BlendingSettings& normalsRevealage = states._settings[to_base( GFXDevice::ScreenTargets::NORMALS )];
+        normalsRevealage.enabled( true );
+        normalsRevealage.blendSrc( BlendProperty::ONE );
+        normalsRevealage.blendDest( BlendProperty::ONE );
+        normalsRevealage.blendOp( BlendOperation::ADD );
+        // RGB sums coverage-weighted normals; alpha retains the product of uncovered fractions.
+        normalsRevealage.blendSrcAlpha( BlendProperty::ZERO );
+        normalsRevealage.blendDestAlpha( BlendProperty::INV_SRC_ALPHA );
+        normalsRevealage.blendOpAlpha( BlendOperation::ADD );
+
+        BlendingSettings& modulate = states._settings[to_base( GFXDevice::ScreenTargets::MODULATE )];
+        modulate.enabled( true );
+        modulate.blendSrc( BlendProperty::ZERO );
+        modulate.blendDest( BlendProperty::INV_SRC_COLOR );
+        modulate.blendOp( BlendOperation::ADD );
+        modulate.blendSrcAlpha( BlendProperty::ZERO );
+        modulate.blendDestAlpha( BlendProperty::ONE );
+        modulate.blendOpAlpha( BlendOperation::ADD );
+    }
+
     bool RenderingComponent::prepareDrawPackage( const CameraSnapshot& cameraSnapshot,
                                                  const SceneRenderState& sceneRenderState,
                                                  const RenderStagePass& renderStagePass,
@@ -622,32 +650,7 @@ namespace Divide
                 }
                 else if ( renderStagePass._passType == RenderPassType::OIT_PASS )
                 {
-                    BlendingSettings& state0 = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::ACCUMULATION )];
-                    state0.enabled( true );
-                    state0.blendSrc( BlendProperty::ONE );
-                    state0.blendDest( BlendProperty::ONE );
-                    state0.blendOp( BlendOperation::ADD );
-
-                    BlendingSettings& state1 = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::REVEALAGE )];
-                    state1.enabled( true );
-                    state1.blendSrc( BlendProperty::ZERO );
-                    state1.blendDest( BlendProperty::INV_SRC_COLOR );
-                    state1.blendOp( BlendOperation::ADD );
-
-                    BlendingSettings& normalState = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::NORMALS )];
-                    normalState.enabled( true );
-                    normalState.blendSrc( BlendProperty::ONE );
-                    normalState.blendDest( BlendProperty::ONE );
-                    normalState.blendOp( BlendOperation::ADD );
-
-                    BlendingSettings& state2 = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::MODULATE )];
-                    state2.enabled( true );
-                    state2.blendSrc( BlendProperty::ZERO );
-                    state2.blendDest( BlendProperty::INV_SRC_COLOR );
-                    state2.blendOp( BlendOperation::ADD );
-                    state2.blendSrcAlpha( BlendProperty::ZERO );
-                    state2.blendDestAlpha( BlendProperty::ONE );
-                    state2.blendOpAlpha( BlendOperation::ADD );
+                    ConfigureOITBlendStates( pipelineDescriptor._blendStates );
                 }
 
                 pipelineDescriptor._stateBlock._primitiveRestartEnabled = primitiveRestartRequired();

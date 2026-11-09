@@ -1482,13 +1482,13 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                         REQUIRE( SpirvHelper::BuildReflectionData( ShaderType::FRAGMENT, spirv, api, reflection ) );
                         CHECK( reflection._fragmentOutputs[to_base( GFXDevice::ScreenTargets::ALBEDO )] );
                         CHECK( reflection._fragmentOutputs[to_base( GFXDevice::ScreenTargets::NORMALS )] == writeNormals );
-                        CHECK( reflection._images.size() == ( writeNormals ? 3u : 2u ) );
+                        CHECK( reflection._images.size() == 2u );
                         for ( const auto& image : reflection._images )
                         {
                             CHECK( image._bindingSet == to_base( DescriptorSetUsage::PER_DRAW ) );
                             CHECK( image._isMultiSampled == useMSAA );
                         }
-                        for ( U8 slot = 0u; slot < ( writeNormals ? 3u : 2u ); ++slot )
+                        for ( U8 slot = 0u; slot < 2u; ++slot )
                         {
                             CHECK( std::ranges::any_of( reflection._images, [slot]( const Reflection::ImageEntry& image )
                             {
@@ -1937,6 +1937,22 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 const bool compiled = SpirvHelper::GLSLtoSPV( variant._stage, data._sourceCodeGLSL.c_str(), spirv, api );
                 INFO( diagnostics.c_str() );
                 REQUIRE( compiled );
+
+                if ( api == RenderAPI::Vulkan && variant._stage == ShaderType::FRAGMENT &&
+                     !variant._prePass && !variant._shadow && !variant._alphaDiscard &&
+                     !variant._sortedTransparency &&
+                     (std::string_view{ variant._file } == "grass.glsl" || standardMaterial) )
+                {
+                    Reflection::Data reflection{};
+                    REQUIRE( SpirvHelper::BuildReflectionData( variant._stage, spirv, api, reflection ) );
+                    for ( const auto slot : { GFXDevice::ScreenTargets::ACCUMULATION,
+                                             GFXDevice::ScreenTargets::NORMALS,
+                                             GFXDevice::ScreenTargets::MODULATE } )
+                    {
+                        CHECK( reflection._fragmentOutputs[to_base( slot )] );
+                    }
+                    CHECK_FALSE( reflection._fragmentOutputs[to_base( GFXDevice::ScreenTargets::REVEALAGE )] );
+                }
 
                 if ( standardMaterial && variant._alphaDiscard )
                 {

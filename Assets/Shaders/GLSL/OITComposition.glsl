@@ -14,13 +14,12 @@
 
 /* sum(rgb * a, a) */
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform SamplerType accumTexture;
-/* prod(1 - a) */
-DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform SamplerType revealageTexture;
+/* sum(normal * a), prod(1 - a) */
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform SamplerType normalsRevealageTexture;
 
 layout(location = TARGET_ALBEDO)   out vec4 _colourOut;
 
 #if !defined(OIT_COLOUR_ONLY)
-DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform SamplerType normalsTexture;
 layout(location = TARGET_NORMALS)  out vec4 _normalsOut;
 #endif
 
@@ -41,7 +40,8 @@ void main()
 {
     const ivec2 C = ivec2(gl_FragCoord.xy);
 
-    const float revealage = texelFetch(revealageTexture, C, SampleID).r;
+    const vec4 normalsRevealage = texelFetch(normalsRevealageTexture, C, SampleID);
+    const float revealage = normalsRevealage.a;
 
     // save the blending and color texture fetch cost if there is not a transparent fragment
     if ( isApproximatelyEqual( revealage, 1.f ) )
@@ -62,7 +62,7 @@ void main()
     // [dst has already been modulated by the transmission colors and coverage and the blend mode inverts revealage for us] 
     _colourOut = vec4(averageColor, revealage);
 #if !defined(OIT_COLOUR_ONLY)
-    const vec3 normalSum = texelFetch(normalsTexture, C, SampleID).xyz;
+    const vec3 normalSum = normalsRevealage.xyz;
     const float normalLengthSquared = dot(normalSum, normalSum);
     _normalsOut = revealage < 0.5f && normalLengthSquared > M_EPSILON * M_EPSILON
         ? vec4(packNormal(normalSum * inversesqrt(normalLengthSquared)), 0.f, 1.f)

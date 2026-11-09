@@ -77,6 +77,7 @@ namespace Attorney
     class RenderingCompRenderBin;
     class RenderingCompRenderPassExecutor;
     class RenderingComponentSGN;
+    class RenderingCompOITTestAccess;
 }
 
 struct RenderParams
@@ -131,6 +132,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     friend class Attorney::RenderingCompRenderBin;
     friend class Attorney::RenderingCompRenderPassExecutor;
     friend class Attorney::RenderingComponentSGN;
+    friend class Attorney::RenderingCompOITTestAccess;
 
    public:
        static constexpr U8 MAX_LOD_LEVEL = 4u;
@@ -215,6 +217,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     PROPERTY_R_IW(bool, rebuildDrawCommands, false);
 
   protected:
+    static void ConfigureOITBlendStates(RTBlendStates& states);
+
                   void           getCommandBuffer(RenderPackage* const pkg, GFX::CommandBuffer& bufferInOut);
     [[nodiscard]] RenderPackage& getDrawPackage(const RenderStagePass& renderStagePass);
     [[nodiscard]] U8             getLoDLevelInternal(const F32 distSQtoCenter, RenderStage renderStage, vec4<U16> lodThresholds);

@@ -674,6 +674,62 @@ Artifacts: `H:\RendererNodePrep20261109` (`baseline-vulkan`, `after-vulkan`,
 are recorded in each attempt's `environment.json`; raw CPU captures and
 summaries are alongside their attempts.
 
+### Packed OIT revealage checkpoint (2026-11-09)
+
+- [x] Separate accumulation/composition timestamps and, only with detailed GPU
+  timing enabled, contiguous shader-group timestamps without changing draw order.
+- [x] Store revealage in the previously unused alpha of the RGBA16F normal
+  target. Clear alpha to one and use separate multiplicative alpha blending;
+  RGB retains additive coverage-weighted normals. Remove the R16F attachment
+  from DISPLAY and both planar target families, its shader output and its
+  composition binding. Retarget the revealage debug view to alpha.
+- [x] Preserve lighting, coloured transmission, coverage, MSAA sample count
+  and per-sample composition. No opacity threshold, foliage-density or
+  reflection/refraction quality change is retained.
+- [x] Cover production blend configuration, two-sampler composition variants
+  and material/grass accumulation output reflection. Debug engine/test builds
+  and the full instrumented Windows suite pass 409/409. The final Release
+  engine/test build and smoke-runner focused tests pass.
+- [x] Normal validation-on Vulkan/OpenGL acceptance each completed 301 presents
+  and normal shutdown. Scene/editor images retain canopy edges, grass, building,
+  water and shadows without obvious new transparency artifacts. Existing
+  startup readiness/STUBBED, GL context fallback and shutdown networking caveats
+  remain; this is not an error-free-log claim.
+
+The Release Vulkan WarScene measurements below are medians of seven warmed
+64-frame GPU-scope block means (frames 192-576), without an Optick client.
+Each run completed 601 presents. Scope attribution is exclusive: the sum of
+DISPLAY OIT shader, accumulation and composition scopes represents that pass.
+
+| GPU scope | Original layout | Packed run 1 | Packed run 2 | Final packed build |
+|---|---:|---:|---:|---:|
+| DISPLAY tree accumulation | 3.92 ms | 3.76 ms | 3.73 ms | 3.73 ms |
+| DISPLAY grass accumulation | 0.32 ms | 0.25 ms | 0.24 ms | 0.23 ms |
+| DISPLAY composition | 0.14 ms | 0.14 ms | 0.13 ms | 0.13 ms |
+| DISPLAY OIT, sum of scopes | 4.49 ms | 4.26 ms | 4.20 ms | 4.18 ms |
+| DISPLAY opaque main pass, control | 3.51 ms | 3.50 ms | 3.48 ms | 3.45 ms |
+
+This is a modest targeted saving, approximately 0.2-0.3 ms for DISPLAY OIT,
+plus removal of two logical bytes/pixel/sample of internal image storage.
+There is one baseline and three after runs, not an alternating repeated A/B.
+Shadow refresh timing and native draw counters vary between snapshots in both
+layouts; these results do not establish an overall frame-rate improvement.
+DISPLAY 1679/1063, REFLECTION 1356/904, REFRACTION 1670/1061 and Hi-Z
+1002 culled / 11 overflow / 3 skipped remain unchanged.
+
+A temporary unlit-fragment diagnostic still spent about 3.09 ms in tree
+accumulation. That change was fully reverted. It suggests that lighting
+arithmetic alone cannot remove most of the cost, but does not distinguish
+vertex work, raster/overdraw and blend bandwidth. Tree accumulation remains
+the largest individual DISPLAY GPU scope; finer vertex/raster attribution is
+the next investigation, not an unmeasured quality reduction or more composition
+work. The packed layout introduces no render-loop allocation or new buffers.
+
+Artifacts: `H:\RendererTransparency20261109` (`baseline-detail`,
+`shader-detail`, `diagnostic-unlit`, `packed-experiment`, `packed-repeat`,
+`packed-final`, `acceptance-vulkan`, `acceptance-opengl`). Each attempt records
+source patches, build/test output, renderer identity, logs and images.
+
 ### Stabilization checkpoint
 
 The per-draw push-constant experiment and fixed-size node-update bitset were

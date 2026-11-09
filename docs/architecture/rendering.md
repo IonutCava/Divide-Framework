@@ -1073,6 +1073,16 @@ combined state changes. Editor controls disable all active sources.
 OIT composition selects a colour-only shader when its destination has no normal
 attachment, as in planar reflection and refraction targets. Destinations with a
 normal attachment use the colour-and-normal variant for either MSAA mode.
+Accumulation uses three colour attachments: RGBA16F weighted colour, RGBA16F
+normal/revealage, and the external destination colour for transmission modulation.
+The normal target clears to `(0,0,0,1)`: RGB adds coverage-weighted normals,
+while separate alpha blending (`ZERO`, `INV_SRC_ALPHA`, `ADD`) multiplies
+uncovered fractions. Its alpha replaces the former R16F revealage attachment
+without changing FP16 storage precision or the coverage calculation.
+Composition binds weighted colour at `PER_DRAW` 0 and normal/revealage at 1
+for every variant. MSAA variants retain `gl_SampleID` fetches; do not resolve
+the product or change sample shading as a shortcut. The revealage debug view
+reads the normal target's alpha.
 It preserves the existing normal/roughness RGB for revealage at or above 0.5.
 Below that threshold it selects the normalized coverage-weighted sum of OIT
 normals and zero roughness, unless the sum is degenerate. Transparent materials
@@ -1086,6 +1096,9 @@ non-finite lighting multiplied by zero can still contaminate the target.
 Positive fractional coverage is retained, including grass distance fade and
 filtered canopy edges; this is not the opaque alpha-discard threshold.
 Passes use `BeginRenderPassCommand` with ordinary pipeline/resource binding commands.
+W-OIT has separate accumulation/composition GPU scopes. Detailed GPU timing also
+wraps contiguous packages sharing a shader, without reordering draws; timestamp
+attribution is exclusive, so parent accumulation excludes these shader scopes.
 
 - Screen-space effects using existing inputs generally belong in PostFX/pre-render operators.
 - Stage-specific lighting or visibility preparation generally belongs in `Renderer` or render-pass code.

@@ -51,6 +51,48 @@
 
 namespace Divide
 {
+    namespace Attorney
+    {
+        class RenderingCompOITTestAccess
+        {
+        public:
+            static RTBlendStates BlendStates()
+            {
+                RTBlendStates states{};
+                RenderingComponent::ConfigureOITBlendStates( states );
+                return states;
+            }
+        };
+    }
+
+    TEST_CASE( "OIT packs multiplicative revealage beside additive normals", "[render_smoke][oit]" )
+    {
+        const RTBlendStates states = Attorney::RenderingCompOITTestAccess::BlendStates();
+        const auto& packed = states._settings[to_base( GFXDevice::ScreenTargets::NORMALS )];
+        REQUIRE( packed.enabled() );
+        CHECK( packed.blendSrc() == BlendProperty::ONE );
+        CHECK( packed.blendDest() == BlendProperty::ONE );
+        CHECK( packed.blendOp() == BlendOperation::ADD );
+        CHECK( packed.blendSrcAlpha() == BlendProperty::ZERO );
+        CHECK( packed.blendDestAlpha() == BlendProperty::INV_SRC_ALPHA );
+        CHECK( packed.blendOpAlpha() == BlendOperation::ADD );
+        CHECK_FALSE( states._settings[to_base( GFXDevice::ScreenTargets::REVEALAGE )].enabled() );
+
+        const auto& accumulation = states._settings[to_base( GFXDevice::ScreenTargets::ACCUMULATION )];
+        CHECK( accumulation.enabled() );
+        CHECK( accumulation.blendSrc() == BlendProperty::ONE );
+        CHECK( accumulation.blendDest() == BlendProperty::ONE );
+        CHECK( accumulation.blendOp() == BlendOperation::ADD );
+        const auto& modulate = states._settings[to_base( GFXDevice::ScreenTargets::MODULATE )];
+        CHECK( modulate.enabled() );
+        CHECK( modulate.blendSrc() == BlendProperty::ZERO );
+        CHECK( modulate.blendDest() == BlendProperty::INV_SRC_COLOR );
+        CHECK( modulate.blendOp() == BlendOperation::ADD );
+        CHECK( modulate.blendSrcAlpha() == BlendProperty::ZERO );
+        CHECK( modulate.blendDestAlpha() == BlendProperty::ONE );
+        CHECK( modulate.blendOpAlpha() == BlendOperation::ADD );
+    }
+
     TEST_CASE( "Node preparation claims are independent per component and data type", "[renderer][threading][node_preparation]" )
     {
         NodePreparationState first;

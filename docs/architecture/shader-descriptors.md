@@ -75,6 +75,14 @@ instances/counts, rebinding the appropriate buffers at each dispatch. Both draw
 shaders read their own compacted buffer through `PER_DRAW` 13 and
 `dvd_instanceDataIndex`; grass colour/LOD metadata survives instance reordering.
 
+OIT accumulation writes weighted colour, coverage-weighted normals plus coverage
+alpha, and coloured transmission modulation. There is no separate revealage
+fragment output. The normal target's separate alpha blend stores revealage;
+composition always samples it at `PER_DRAW` 1 alongside accumulation at 0,
+including colour-only variants. Shader contract tests cover both APIs, both
+sample modes, and accumulation output locations. Source/atom timestamps invalidate
+these source edits; generated-header and preprocessing semantics are unchanged.
+
 ### GLSL authoring and preprocessing
 
 - Effect files are GLSW collections; `ShaderModuleDescriptor` selects a `file.Stage.variant` section, and module/global defines select material, pass, and debug variants.
