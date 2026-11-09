@@ -16,6 +16,32 @@
 
 namespace Divide
 {
+    TEST_CASE("Material coverage revisions track alpha, cull, shader and resource changes", "[materials][worldAO]")
+    {
+        Material material{ResourceDescriptor<Material>{"coverage-revision-test"}};
+        static_cast<void>(material.update(0u));
+        U64 revision = material.coverageRevision();
+        static_cast<void>(material.update(0u));
+        CHECK(material.coverageRevision() == revision);
+
+        material.properties().baseColour(FColour4(1.f, 1.f, 1.f, 0.5f));
+        static_cast<void>(material.update(0u));
+        CHECK(material.coverageRevision() > revision);
+        revision = material.coverageRevision();
+
+        material.properties().doubleSided(true);
+        static_cast<void>(material.update(0u));
+        CHECK(material.coverageRevision() > revision);
+        revision = material.coverageRevision();
+
+        material.setTextureOperation(TextureSlot::UNIT0, TextureOperation::REPLACE);
+        CHECK(material.coverageRevision() > revision);
+        revision = material.coverageRevision();
+
+        material.setRenderStateBlock(RenderStateBlock{}, RenderStage::SHADOW, RenderPassType::MAIN_PASS);
+        CHECK(material.coverageRevision() > revision);
+    }
+
     namespace Attorney
     {
     struct KernelTestAccess

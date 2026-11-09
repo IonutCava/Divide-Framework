@@ -6,6 +6,7 @@
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Graphs/Headers/SceneGraph.h"
@@ -329,6 +330,13 @@ namespace Divide
             const U8 layerCount = to_U8(ShadowMap::getLightLayerRequirements(*light));
             const U32 updateMask = ShadowLayerUpdateMask(layerCount, light->shadowLayersDirty(), cacheValid, cacheInvalidated);
             const bool reuseCached = updateMask == 0u;
+            if ( RenderSmokeTest::PerfModeRequested() && GFXDevice::FrameCount() % 64u == 0u )
+            {
+                Console::printfn( "[ShadowMetrics] frame={} type={} light={} name={} layers={} mask={} cacheValid={} fullInvalidation={} cameraChanged={} movedVolumes={}",
+                                  GFXDevice::FrameCount(), TypeUtil::LightTypeToString( lType ), light->getShadowArrayOffset(),
+                                  light->sgn()->name().c_str(), layerCount, updateMask, cacheValid, cacheInvalidated,
+                                  cameraChanged, movementSnapshot._count );
+            }
             ShadowRefresh& refresh = refreshes[refreshCount];
             if ( !reuseCached && !ShadowMap::generateShadowMaps( playerCamera, *light, refresh._pendingCasters, bufferInOut, memCmdInOut, updateMask ) )
             {
@@ -397,7 +405,28 @@ namespace Divide
         {
             staticHeightRange.set( staticBounds._min.y, staticBounds._max.y );
         }
-        _shadowBufferData._worldAOVPMatrix = ShadowMap::generateWorldAO( playerCamera, staticHeightRange, bufferInOut, memCmdInOut );
+        const auto& filter = _context.config().debug.renderFilter;
+        const auto& renderState = parentScene().state()->renderState();
+        const U32 renderMask = (filter.primitives ? toBit(0) : 0u) |
+                               (filter.meshes ? toBit(1) : 0u) |
+                               (filter.terrain ? toBit(2) : 0u) |
+                               (renderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY) ? toBit(3) : 0u) |
+                               (renderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME) ? toBit(4) : 0u) |
+                               (filter.vegetation ? toBit(5) : 0u) |
+                               (filter.water ? toBit(6) : 0u) |
+                               (filter.sky ? toBit(7) : 0u) |
+                               (filter.particles ? toBit(8) : 0u) |
+                               (filter.grassInstances ? toBit(9) : 0u) |
+                               (filter.treeInstances ? toBit(10) : 0u);
+        const WorldAOCacheKey worldAOKey
+        {
+            ._sceneGUID = parentScene().getGUID(),
+            ._revision = parentScene().sceneGraph()->worldAORevision(),
+            ._center = {camera._eye.x, camera._eye.z},
+            ._height = {staticHeightRange.x, staticHeightRange.y},
+            ._renderMask = renderMask
+        };
+        _shadowBufferData._worldAOVPMatrix = ShadowMap::generateWorldAO( worldAOKey, bufferInOut, memCmdInOut );
         passManager.finishViewBatch( RenderStage::SHADOW, memCmdInOut );
         for ( size_t i = 0u; i < refreshCount; ++i )
         {

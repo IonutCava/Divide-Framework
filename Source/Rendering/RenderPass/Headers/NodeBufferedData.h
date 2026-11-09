@@ -40,6 +40,26 @@ namespace Divide {
     static constexpr U8 MATERIAL_IDX = 1u;
     static constexpr U8 TEXTURES_IDX = 2u;
 
+    class NodePreparationState
+    {
+    public:
+        [[nodiscard]] bool claim( const U8 dataType, const U64 epoch ) noexcept
+        {
+            if ( dataType >= _epochs.size() || epoch == 0u )
+            {
+                DIVIDE_UNEXPECTED_CALL_MSG( "Invalid node preparation type or epoch" );
+            }
+
+            auto& stamp = _epochs[dataType];
+            // Claims select a writer; the stage join, not this stamp, publishes its output.
+            return stamp.load( std::memory_order_relaxed ) != epoch &&
+                   stamp.exchange( epoch, std::memory_order_relaxed ) != epoch;
+        }
+
+    private:
+        std::array<std::atomic<U64>, 2u> _epochs{};
+    };
+
     [[nodiscard]] constexpr bool RequiresInstancedIndirection( const bool alreadyInstanced,
                                                                const bool materialInstanced,
                                                                const U32 instanceCount ) noexcept

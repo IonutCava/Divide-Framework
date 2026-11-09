@@ -82,6 +82,10 @@ void SceneGraphNode::AddSGNComponentInternal(SGNComponent* comp)
     {   //Ewww x3
         Hacks._renderingComponent = (RenderingComponent*)comp;
     }
+    if (comp->type() == ComponentType::ANIMATION || comp->type() == ComponentType::RENDERING)
+    {
+        sceneGraph()->invalidateWorldAO();
+    }
 }
 
 void SceneGraphNode::RemoveSGNComponentInternal(SGNComponent* comp)
@@ -114,6 +118,10 @@ void SceneGraphNode::RemoveSGNComponentInternal(SGNComponent* comp)
     if (comp->type() == ComponentType::RENDERING)
     {
         Hacks._renderingComponent = nullptr;
+    }
+    if (comp->type() == ComponentType::ANIMATION || comp->type() == ComponentType::RENDERING)
+    {
+        sceneGraph()->invalidateWorldAO();
     }
 }
 
@@ -769,6 +777,16 @@ void SceneGraphNode::processEvents()
             case ECS::CustomEvent::Type::EntityFlagChanged:
             {
                 PROFILE_SCOPE("EntityFlagChanged", Profiler::Category::Scene );
+                if ( static_cast<Flags>(evt._flag) == Flags::VEGETATION_TREE ||
+                     static_cast<Flags>(evt._flag) == Flags::IS_CONTAINER )
+                {
+                    sceneGraph()->invalidateWorldAO();
+                }
+                else if ( static_cast<Flags>(evt._flag) == Flags::ACTIVE ||
+                          static_cast<Flags>(evt._flag) == Flags::LOADING )
+                {
+                    sceneGraph()->invalidateWorldAO();
+                }
                 if (static_cast<Flags>(evt._flag) == Flags::SELECTED)
                 {
                     RenderingComponent* rComp = get<RenderingComponent>();
@@ -1023,8 +1041,14 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
         return FrustumCollision::FRUSTUM_OUT;
     }
 
-    // Drawing is disabled for this node
-    if (!_node->renderState().drawState(params._stagePass))
+    const RenderingComponent* rendering = get<RenderingComponent>();
+    const bool translucent = (cullFlags & to_base(CullOptions::CULL_TRANSLUCENT_NODES)) != 0u &&
+                             rendering != nullptr && rendering->hasTransparency();
+    const bool defaultDrawState = !RenderPassCuller::CullGeometryCategory( cullFlags,
+        _node->type() == SceneNodeType::TYPE_VEGETATION || hasFlag(Flags::VEGETATION_TREE),
+        HasComponents(ComponentType::ANIMATION), _node->type() == SceneNodeType::TYPE_TERRAIN, translucent );
+    if ( rendering != nullptr ? !rendering->drawState(params._stagePass, defaultDrawState)
+                              : !_node->renderState().drawState(params._stagePass, defaultDrawState) )
     {
         return FrustumCollision::FRUSTUM_OUT;
     }

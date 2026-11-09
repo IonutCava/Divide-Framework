@@ -16,6 +16,8 @@
 #include "Rendering/Lighting/Headers/ShadowPassState.h"
 #include "Rendering/Lighting/Headers/SpotLightGeometry.h"
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
+#include "Rendering/RenderPass/Headers/RenderPassCuller.h"
+#include "Graphs/Headers/SceneNodeRenderState.h"
 #include "../../../Assets/Shaders/GLSL/Common/shadowStrength.cmn"
 #include "../../../Assets/Shaders/GLSL/Common/spotShadowProjection.cmn"
 
@@ -28,6 +30,196 @@
 
 namespace Divide
 {
+    TEST_CASE("World AO reuses coverage until content or its retained footprint changes", "[lighting][shadows][worldAO]")
+    {
+        WorldAOCacheKey key
+        {
+            ._sceneGUID = 42,
+            ._revision = 7u,
+            ._center = {100.f, -200.f},
+            ._height = {-10.f, 80.f},
+            ._renderMask = 7u
+        };
+        WorldAOCacheState cache{};
+        CHECK(cache.needsRefresh(key, false));
+        cache._key = key;
+        cache._valid = true;
+        CHECK_FALSE(cache.needsRefresh(key, false));
+        CHECK(cache.needsRefresh(key, true));
+
+        SECTION("Small camera movements preserve the original footprint and matrix")
+        {
+            key._center[0] += WorldAOCacheState::RECENTER_DISTANCE - 1.f;
+            key._center[1] -= WorldAOCacheState::RECENTER_DISTANCE - 1.f;
+            CHECK_FALSE(cache.needsRefresh(key, false));
+            CHECK(cache._key._center == std::array<F32, 2>{{100.f, -200.f}});
+        }
+        SECTION("Each horizontal boundary forces a new footprint")
+        {
+            for (size_t axis = 0u; axis < 2u; ++axis)
+            {
+                for (const F32 sign : {-1.f, 1.f})
+                {
+                    auto moved = key;
+                    moved._center[axis] += sign * WorldAOCacheState::RECENTER_DISTANCE;
+                    CHECK(cache.needsRefresh(moved, false));
+                }
+            }
+        }
+        SECTION("Scene changes cannot reuse another scene's shared layer")
+        {
+            ++key._sceneGUID;
+            CHECK(cache.needsRefresh(key, false));
+        }
+        SECTION("Geometry and material revisions invalidate coverage")
+        {
+            ++key._revision;
+            CHECK(cache.needsRefresh(key, false));
+        }
+        SECTION("Height and debug visibility changes invalidate coverage")
+        {
+            key._height[1] += 1.f;
+            CHECK(cache.needsRefresh(key, false));
+            key._height = cache._key._height;
+            key._renderMask ^= 1u;
+            CHECK(cache.needsRefresh(key, false));
+        }
+        SECTION("Target recreation invalidates an otherwise matching cache")
+        {
+            cache._valid = false;
+            CHECK(cache.needsRefresh(key, false));
+        }
+    }
+
+    TEST_CASE("Coverage passes exclude vegetation, skinned geometry and terrain independently", "[lighting][shadows][worldAO]")
+    {
+        constexpr U16 vegetation = to_base(CullOptions::CULL_VEGETATION_NODES);
+        constexpr U16 skinned = to_base(CullOptions::CULL_SKINNED_NODES);
+        constexpr U16 terrain = to_base(CullOptions::CULL_TERRAIN_NODES);
+        for (const bool isVegetation : {false, true})
+        {
+            for (const bool isSkinned : {false, true})
+            {
+                for (const bool isTerrain : {false, true})
+                {
+                    CHECK_FALSE(RenderPassCuller::CullGeometryCategory(0u, isVegetation, isSkinned, isTerrain));
+                    CHECK(RenderPassCuller::CullGeometryCategory(vegetation, isVegetation, isSkinned, isTerrain) == isVegetation);
+                    CHECK(RenderPassCuller::CullGeometryCategory(skinned, isVegetation, isSkinned, isTerrain) == isSkinned);
+                    CHECK(RenderPassCuller::CullGeometryCategory(terrain, isVegetation, isSkinned, isTerrain) == isTerrain);
+                    CHECK(RenderPassCuller::CullGeometryCategory(vegetation | skinned | terrain, isVegetation, isSkinned, isTerrain) ==
+                          (isVegetation || isSkinned || isTerrain));
+                }
+            }
+        }
+    }
+
+    TEST_CASE("Generic draw masks resolve defaults and per-instance overrides without changing shared resources", "[rendering][worldAO]")
+    {
+        SceneNodeRenderState source{};
+        SceneNodeRenderState first{};
+        SceneNodeRenderState second{};
+        const RenderStagePass coverage = ShadowMap::WorldAOStagePass();
+        RenderStagePass mainPass = coverage;
+        mainPass._passType = RenderPassType::MAIN_PASS;
+        source.addToDrawExclusionMask(RenderStage::SHADOW);
+        CHECK_FALSE(first.drawState(coverage, true, &source));
+        CHECK_FALSE(first.drawState(mainPass, true, &source));
+        first.setDrawStateOverride(coverage, true);
+        CHECK(first.drawState(coverage, false, &source));
+        CHECK(first.drawState(mainPass, false, &source));
+        CHECK_FALSE(second.drawState(coverage, false, &source));
+        CHECK_FALSE(source.drawState(coverage));
+        CHECK(first.drawState({RenderStage::DISPLAY, RenderPassType::MAIN_PASS}, true, &source));
+        CHECK(first.drawState({RenderStage::REFLECTION, RenderPassType::MAIN_PASS}, true, &source));
+        CHECK_FALSE(first.drawState({RenderStage::SHADOW, RenderPassType::MAIN_PASS, 0u, coverage._variant}, true, &source));
+
+        source.drawState(false);
+        CHECK_FALSE(first.drawState(coverage, true, &source));
+        source.drawState(true);
+        first.setDrawStateOverride(coverage, false);
+        CHECK_FALSE(first.drawState(coverage, true, &source));
+        first.clearDrawStateOverride(coverage);
+        CHECK_FALSE(first.drawStateOverride(coverage).has_value());
+        CHECK_FALSE(first.drawState(coverage, true, &source));
+    }
+
+    TEST_CASE("Draw mask specificity takes precedence over broad rules and revisions track real edits", "[rendering][worldAO]")
+    {
+        SceneNodeRenderState state{};
+        const RenderStagePass coverage = ShadowMap::WorldAOStagePass();
+        const RenderStagePass shadows{RenderStage::SHADOW, RenderPassType::COUNT, g_AllIndicesID,
+                                     RenderStagePass::VariantType::COUNT, RenderStagePass::PassIndex::COUNT};
+        state.setDrawStateOverride(coverage, true);
+        state.setDrawStateOverride(shadows, false);
+        CHECK(state.drawState(coverage, false));
+        const U64 revision = state.coverageRevision();
+        state.setDrawStateOverride(coverage, true);
+        CHECK(state.coverageRevision() == revision);
+        state.setDrawStateOverride(coverage, false);
+        CHECK(state.coverageRevision() == revision + 1u);
+        CHECK_FALSE(state.drawState(coverage, true));
+        state.setDrawStateOverride(coverage, true);
+        CHECK(state.drawState(coverage, false));
+        state.clearDrawStateOverride(coverage);
+        CHECK_FALSE(state.drawState(coverage, true));
+        const U64 afterClear = state.coverageRevision();
+        state.clearDrawStateOverride(coverage);
+        CHECK(state.coverageRevision() == afterClear);
+        state.clearDrawStateOverride(shadows);
+        CHECK(state.drawState(coverage, true));
+        CHECK_FALSE(state.drawState(coverage, false));
+    }
+
+    TEST_CASE("World AO category exclusions are defaults rather than irreversible bans", "[rendering][worldAO]")
+    {
+        const U16 flags = ShadowMap::WorldAOCullFlags();
+        const RenderStagePass coverage = ShadowMap::WorldAOStagePass();
+        for (U8 categories = 0u; categories < 16u; ++categories)
+        {
+            SceneNodeRenderState state{};
+            const bool defaultState = !RenderPassCuller::CullGeometryCategory(flags,
+                (categories & 1u) != 0u, (categories & 2u) != 0u, (categories & 4u) != 0u, (categories & 8u) != 0u);
+            CHECK(defaultState == (categories == 0u));
+            CHECK(state.drawState(coverage, defaultState) == defaultState);
+            state.setDrawStateOverride(coverage, true);
+            CHECK(state.drawState(coverage, defaultState));
+            state.setDrawStateOverride(coverage, false);
+            CHECK_FALSE(state.drawState(coverage, defaultState));
+            state.clearDrawStateOverride(coverage);
+            CHECK(state.drawState(coverage, defaultState) == defaultState);
+        }
+    }
+
+    TEST_CASE("Node coverage revisions track visibility and new pass exclusions", "[lighting][shadows][worldAO]")
+    {
+        SceneNodeRenderState state{};
+        const U64 initial = state.coverageRevision();
+        state.drawState(true);
+        CHECK(state.coverageRevision() == initial);
+        state.drawState(false);
+        CHECK(state.coverageRevision() == initial + 1u);
+        state.drawState(false);
+        CHECK(state.coverageRevision() == initial + 1u);
+        state.drawState(true);
+        CHECK(state.coverageRevision() == initial + 2u);
+        state.addToDrawExclusionMask(RenderStage::SHADOW);
+        CHECK(state.coverageRevision() == initial + 3u);
+        state.addToDrawExclusionMask(RenderStage::SHADOW);
+        CHECK(state.coverageRevision() == initial + 3u);
+    }
+
+    TEST_CASE("Imported foliage can exclude world AO without changing directional shadows", "[lighting][shadows][worldAO]")
+    {
+        SceneNodeRenderState state{};
+        const auto variant = static_cast<RenderStagePass::VariantType>(ShadowType::CSM);
+        state.addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, variant, ShadowMap::WORLD_AO_LAYER_INDEX);
+        CHECK_FALSE(state.drawState({RenderStage::SHADOW, RenderPassType::COUNT, ShadowMap::WORLD_AO_LAYER_INDEX, variant}));
+        CHECK_FALSE(state.drawState({RenderStage::SHADOW, RenderPassType::MAIN_PASS, ShadowMap::WORLD_AO_LAYER_INDEX, variant}));
+        CHECK(state.drawState({RenderStage::SHADOW, RenderPassType::MAIN_PASS, 0u, variant}));
+        CHECK(state.drawState({RenderStage::DISPLAY, RenderPassType::MAIN_PASS}));
+        CHECK(state.drawState({RenderStage::REFLECTION, RenderPassType::MAIN_PASS}));
+    }
+
     TEST_CASE( "Shadow matrices apply the XY bias after projection", "[lighting][shadows]" )
     {
         const mat4<F32> view = Camera::LookAt( float3{ 4.f, 3.f, 6.f }, float3{ 0.f, 0.f, 0.f }, float3{ 0.f, 1.f, 0.f } );

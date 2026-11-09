@@ -17,6 +17,7 @@
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
 #include "Rendering/Lighting/Headers/ShadowPassState.h"
+#include "Rendering/RenderPass/Headers/RenderPassCuller.h"
 
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -28,6 +29,16 @@
 
 namespace Divide
 {
+    U16 ShadowMap::WorldAOCullFlags() noexcept
+    {
+        return to_base(CullOptions::CULL_AGAINST_CLIPPING_PLANES) |
+               to_base(CullOptions::CULL_AGAINST_FRUSTUM) |
+               to_base(CullOptions::CULL_VEGETATION_NODES) |
+               to_base(CullOptions::CULL_SKINNED_NODES) |
+               to_base(CullOptions::CULL_TERRAIN_NODES) |
+               to_base(CullOptions::CULL_TRANSLUCENT_NODES);
+    }
+
     namespace
     {
         Mutex s_shadowPreviewLock;
@@ -503,9 +514,9 @@ namespace Divide
         return false;
     }
 
-    mat4<F32> ShadowMap::generateWorldAO( const Camera& activeCamera, const float2& staticHeightRange, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+    mat4<F32> ShadowMap::generateWorldAO( const WorldAOCacheKey& key, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        return static_cast<CascadedShadowMapsGenerator*>(s_shadowMapGenerators[to_base( ShadowType::CSM )].get())->generateWorldAO( activeCamera, staticHeightRange, bufferInOut, memCmdInOut );
+        return static_cast<CascadedShadowMapsGenerator*>(s_shadowMapGenerators[to_base( ShadowType::CSM )].get())->generateWorldAO( key, bufferInOut, memCmdInOut );
     }
 
     const RenderTargetHandle& ShadowMap::getShadowMap( const LightType type )

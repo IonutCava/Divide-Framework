@@ -45,6 +45,7 @@ namespace Divide
     {
         // Use to partition parallel jobs
         constexpr U32 g_nodesPerPrepareDrawPartition = 16u;
+        U64 g_nodePreparationEpoch = 0u;
 
         template<typename DataContainer>
         using ExecutorBuffer = RenderPassExecutor::ExecutorBuffer<DataContainer>;
@@ -90,9 +91,6 @@ namespace Divide
                 bufferPtr data = &executorBuffer._data._gpuData[uploadRange._firstIDX];
                 memCmdInOut._bufferLocks.push_back( executorBuffer._gpuBuffer->writeData( { uploadRange._firstIDX, uploadRange.range() }, data ) );
             }
-
-            LockGuard<Mutex> w_lock(executorBuffer._nodeProcessedLock);
-            executorBuffer._nodeProcessedThisFrame.clear();
         }
 
         template<typename DataContainer>
@@ -106,14 +104,6 @@ namespace Divide
                 executorBuffer._updateRange._firstIDX = 0u;
                 executorBuffer._updateRange._lastIDX = to_U32( executorBuffer._data._gpuData.size() - 1u );
             }
-        }
-
-        template<typename DataContainer>
-        bool NodeNeedsUpdate( ExecutorBuffer<DataContainer>& executorBuffer, const U32 indirectionIDX )
-        {
-            PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
-            LockGuard<Mutex> w_lock( executorBuffer._nodeProcessedLock );
-            return executorBuffer._nodeProcessedThisFrame.insert(indirectionIDX).second;
         }
 
         void MarkMaterialUsed( RenderPassExecutor::MaterialLookupInfo& material ) noexcept
@@ -137,10 +127,6 @@ namespace Divide
                 LockGuard<SharedMutex> w_lock(executorBuffer._rangeLock);
                 executorBuffer._updateRange.reset();
                 std::ranges::fill( executorBuffer._slotUpdateRanges, RenderPassExecutor::BufferUpdateRange{} );
-            }
-            {
-                LockGuard<Mutex> w_lock(executorBuffer._nodeProcessedLock);
-                executorBuffer._nodeProcessedThisFrame.clear();
             }
         }
     }
@@ -296,6 +282,12 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
+        if ( g_nodePreparationEpoch == U64_MAX )
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG( "Node preparation epoch exhausted" );
+        }
+        ++g_nodePreparationEpoch;
+
         const U16 requiredRingLength = BufferQueueLengthForPlayers( playerCount );
         const U16 ringLength = std::max( requiredRingLength, s_indirectionBuffer._gpuBuffer->queueLength() );
         if (s_resizeBufferQueued || ringLength != s_indirectionBuffer._gpuBuffer->queueLength())
@@ -434,14 +426,19 @@ namespace Divide
         }
     }
 
+    bool RenderPassExecutor::NodeNeedsUpdate( RenderingComponent* const rComp, const U8 dataType )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+        return Attorney::RenderingCompRenderPassExecutor::claimNodePreparation( rComp, dataType, g_nodePreparationEpoch );
+    }
+
     RenderPassExecutor::ParseResult RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp, const D64 interpolationFactor, U32& transformIDXOut)
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         ParseResult ret{};
 
-        const U32 indirectionIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry( rComp );
-        if ( !NodeNeedsUpdate( s_transformBuffer, indirectionIDX ) )
+        if ( !NodeNeedsUpdate( rComp, TRANSFORM_IDX ) )
         {
             return ret;
         }
@@ -548,7 +545,7 @@ namespace Divide
         ParseResult ret{};
         indirectionIDXOut = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry(rComp);
 
-        if (!NodeNeedsUpdate(s_materialBuffer, indirectionIDXOut))
+        if ( !NodeNeedsUpdate( rComp, MATERIAL_IDX ) )
         {
             return ret;
         }
@@ -1176,7 +1173,7 @@ namespace Divide
                 {
                     continue;
                 }
-                if ( sgn->getNode().renderState().drawState( stagePass ) )
+                if ( rComp->drawState( stagePass ) )
                 {
                     if ( Attorney::RenderingCompRenderPass::prepareDrawPackage( *rComp, cameraSnapshot, sceneRenderState, stagePass, postDrawMemCmd, false ) )
                     {
@@ -1307,7 +1304,17 @@ namespace Divide
 
         assert( params._stagePass._passType == RenderPassType::MAIN_PASS );
 
-        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = " - MainPass";
+        auto mainScope = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut );
+        if ( IsShadowPass( params._stagePass ) )
+        {
+            Util::StringFormatTo( mainScope->_scopeName, "MainPass V{} L{} P{}",
+                                 to_base( params._stagePass._variant ), params._stagePass._index,
+                                 to_base( params._stagePass._pass ) );
+        }
+        else
+        {
+            mainScope->_scopeName = " - MainPass";
+        }
 
         if ( params._target != INVALID_RENDER_TARGET_ID ) [[likely]]
         {
@@ -1493,7 +1500,7 @@ namespace Divide
                     const RenderBinType binType = RenderQueue::getBinForNode( node._node, rComp->getMaterialInstance() );
                     DIVIDE_ASSERT( binType != RenderBinType::COUNT );
                     if ( !RenderQueue::PopulateQueueParams::RequiresMaterialForPreparation(
-                             stagePass, binType, node._node->getNode().renderState().drawState( stagePass ) ) )
+                             stagePass, binType, rComp->drawState( stagePass ) ) )
                     {
                         continue;
                     }
@@ -1583,7 +1590,7 @@ namespace Divide
             cullParams._frustum = &frustum;
             cullParams._maxLoD = params._maxLoD;
 
-            U16 cullFlags = to_base( CullOptions::DEFAULT_CULL_OPTIONS );
+            U16 cullFlags = params._cullFlags;
             if ( _stage == RenderStage::REFLECTION )
             {
                 const auto& reflection = _context.context().config().rendering.reflection;

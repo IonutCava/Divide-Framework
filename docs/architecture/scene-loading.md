@@ -70,6 +70,23 @@ frames may continue loading after the editor becomes available.
 
 ## Invariants and troubleshooting
 
+`SceneGraph::worldAORevision` tracks changes to rigid interior-coverage
+geometry separately from directional-shadow movement queues and static height
+bounds. Terrain, vegetation, skinned nodes and translucent materials are excluded
+by default; per-instance Include/Exclude rules use the existing generic draw mask.
+Explicitly included geometry invalidates coverage when it changes, and policy
+transitions invalidate the old image even when a node becomes excluded. Geometry
+events, material coverage revisions and source-node visibility changes feed
+the revision; see [Rendering](rendering.md#shadow-maps-and-spotlights) for the
+cached world-AO image and its camera-footprint contract.
+
+The rendering component's `World AO Participation` dropdown persists Automatic
+(0), Include (1) or Exclude (2) as `RENDERING.World__AO__Participation` in each
+renderable node's XML. Missing fields remain Automatic. A container does not
+implicitly apply its overrides to children: imported mesh submeshes have their
+own rendering fields. WarScene's unclassified standalone tree stores exclusions
+on its three submeshes instead of mutating the shared imported resource.
+
 `FrameListenerManager` dispatches by call order, then listener GUID. Re-registering
 a listener changes its order without registering it twice. A project or scene
 switch can destroy and create listeners from a frame callback; dispatch resumes

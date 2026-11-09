@@ -34,6 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DVD_RENDERING_COMPONENT_H_
 
 #include "SGNComponent.h"
+#include "Graphs/Headers/SceneNodeRenderState.h"
 
 #include "Core/Headers/PoolHandle.h"
 #include "Geometry/Material/Headers/MaterialEnums.h"
@@ -193,6 +194,12 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     [[nodiscard]] bool canDraw(const RenderStagePass& renderStagePass);
     [[nodiscard]] bool shaderPending(const RenderStagePass& renderStagePass) const;
+    [[nodiscard]] bool drawState(RenderStagePass stagePass, bool defaultState = true) const;
+    [[nodiscard]] std::optional<bool> drawStateOverride(RenderStagePass stagePass) const;
+    void setDrawStateOverride(RenderStagePass stagePass, bool state);
+    void clearDrawStateOverride(RenderStagePass stagePass);
+    [[nodiscard]] bool worldAOContributor() const;
+    [[nodiscard]] bool hasTransparency() const;
 
     void drawDebugAxis();
     void drawSelectionGizmo();
@@ -300,6 +307,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     std::array<PackagesPerPassType, to_base(RenderStage::COUNT)> _renderPackages{};
 
     NodeIndirectionData _indirectionData{};
+    NodePreparationState _preparationState{};
 
     float2 _renderRange;
 
@@ -312,6 +320,11 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     bool _updateReflection{ false };
     bool _updateRefraction{ false };
     U32 _materialUpdateMask{ to_base(MaterialUpdateResult::OK) };
+    U64 _materialCoverageRevision{0u};
+    U64 _nodeCoverageRevision{0u};
+    SceneNodeRenderState _drawStateOverrides{};
+    bool _worldAOParticipant{false};
+    U64 _worldAOPolicyRevision{U64_MAX};
 
 END_COMPONENT(Rendering);
 
@@ -433,6 +446,11 @@ class RenderingCompRenderBin
 
 class RenderingCompRenderPassExecutor
 {
+
+    [[nodiscard]] static bool claimNodePreparation( RenderingComponent* const renderable, const U8 dataType, const U64 epoch ) noexcept
+    {
+        return renderable->_preparationState.claim( dataType, epoch );
+    }
 
     static void setIndirectionBufferEntry(RenderingComponent* renderable, const U32 indirectionBufferEntry) noexcept
     {

@@ -34,6 +34,7 @@
 #define DVD_CSM_GENERATOR_H_
 
 #include "ShadowMap.h"
+#include "Rendering/Lighting/Headers/ShadowPassState.h"
 #include "Platform/Video/Headers/Commands.h"
 
 namespace Divide {
@@ -58,7 +59,7 @@ class CascadedShadowMapsGenerator final : public ShadowMapGenerator {
     ~CascadedShadowMapsGenerator() override;
 
     void render(const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, U32 layerMask) override;
-    [[nodiscard]] mat4<F32> generateWorldAO( const Camera& activeCamera, const float2& staticHeightRange, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
+    [[nodiscard]] mat4<F32> generateWorldAO( const WorldAOCacheKey& key, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
    protected:
     using SplitDepths = std::array<F32, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT>;
@@ -74,6 +75,9 @@ class CascadedShadowMapsGenerator final : public ShadowMapGenerator {
 
   protected:
     Camera* _worldAOCamera = nullptr;
+    WorldAOCacheState _worldAOCache{};
+    mat4<F32> _worldAOVP{};
+    bool _worldAOPendingCasters = false;
     Pipeline* _blurPipelineCSM = nullptr;
     Pipeline* _blurPipelineAO = nullptr;
     Handle<ShaderProgram> _blurDepthMapShader = INVALID_HANDLE<ShaderProgram>;

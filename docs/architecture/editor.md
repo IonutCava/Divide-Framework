@@ -57,6 +57,15 @@ also restore the inner/outer angle invariant and invalidate shadow state.
 Other editor widgets use their existing undo paths; do not assume every widget
 uses `PropertyEditState`.
 
+Dropdown fields explicitly typed as `UINT`/`DWORD` persist their index through
+`EditorComponent` XML serialization; untyped legacy dropdowns remain unchanged.
+Missing fields retain their current/default value. Out-of-range indices report
+an error without replacing the value, as does malformed numeric text.
+`RenderingComponent` uses this for **World AO
+Participation**, preserving Automatic rather than serializing its resolved
+boolean. Its setter is also used by undo/redo. See [Rendering](rendering.md) for
+the per-renderable-node draw-mask and cache-invalidation contract.
+
 ## Gizmo and console updates
 
 Spatial-change notifications may originate from scene workers.

@@ -14,6 +14,7 @@
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
 
@@ -444,15 +445,28 @@ namespace Divide
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 
-    mat4<F32> CascadedShadowMapsGenerator::generateWorldAO( const Camera& activeCamera, const float2& staticHeightRange, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+    mat4<F32> CascadedShadowMapsGenerator::generateWorldAO( const WorldAOCacheKey& key, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        constexpr F32 horizontalExtent = 500.f;
+        const bool refresh = _worldAOCache.needsRefresh(key, _worldAOPendingCasters);
+        if ( RenderSmokeTest::PerfModeRequested() && GFXDevice::FrameCount() % 64u == 0u )
+        {
+            Console::printfn("[WorldAOMetrics] frame={} revision={} refresh={} pendingCasters={}",
+                             GFXDevice::FrameCount(), key._revision, refresh, _worldAOPendingCasters);
+        }
+        if ( !refresh )
+        {
+            return _worldAOVP;
+        }
+        _worldAOCache._key = key;
+        _worldAOCache._valid = true;
+        _worldAOPendingCasters = false;
+
+        constexpr F32 horizontalExtent = WorldAOCacheState::HORIZONTAL_EXTENT;
         constexpr F32 verticalMargin = 50.f;
-        const float3 activeCameraPos = activeCamera.snapshot()._eye;
-        const F32 top = staticHeightRange.y + verticalMargin;
-        const F32 bottom = staticHeightRange.x - verticalMargin;
-        const float3 eye{ activeCameraPos.x, top, activeCameraPos.z };
-        const float3 target{ activeCameraPos.x, top - 1.f, activeCameraPos.z };
+        const F32 top = key._height[1] + verticalMargin;
+        const F32 bottom = key._height[0] - verticalMargin;
+        const float3 eye{ key._center[0], top, key._center[1] };
+        const float3 target{ key._center[0], top - 1.f, key._center[1] };
 
         const float2 maxExtents( horizontalExtent, horizontalExtent );
         const float2 minExtents = -maxExtents;
@@ -467,12 +481,14 @@ namespace Divide
         // Render large(ish) objects into shadow map
         RenderPassParams params = {};
         params._sourceNode = nullptr;
-        params._stagePass = { RenderStage::SHADOW, RenderPassType::COUNT, ShadowMap::WORLD_AO_LAYER_INDEX, static_cast<RenderStagePass::VariantType>(ShadowType::CSM) };
+        params._stagePass = ShadowMap::WorldAOStagePass();
         params._target = _drawBufferDepth._targetID;
         params._maxLoD = -1;
         params._refreshLightData = false;
         params._passName = "WorldAOPass";
         params._enableDeformation = false;
+        params._pendingShaderOut = &_worldAOPendingCasters;
+        params._cullFlags = ShadowMap::WorldAOCullFlags();
         params._minExtents.set( g_minExtentsFactors[1] );
         params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
         params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
@@ -504,7 +520,8 @@ namespace Divide
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
         const mat4<F32> worldAOVP = mat4<F32>::Multiply( projMatrix, viewMatrix );
-        return ShadowMap::BiasedViewProjection( worldAOVP );
+        _worldAOVP = ShadowMap::BiasedViewProjection( worldAOVP );
+        return _worldAOVP;
     }
 
     void CascadedShadowMapsGenerator::blurTarget( const U16 layerOffset, const U16 layerCount, GFX::CommandBuffer & bufferInOut, const U8 firstLayer )
@@ -582,6 +599,7 @@ namespace Divide
         {
             _context.context().config().rendering.shadowMapping.csm.MSAASamples = sampleCount;
             _drawBufferDepth._rt->updateSampleCount( sampleCount );
+            _worldAOCache._valid = false;
         }
     }
 }

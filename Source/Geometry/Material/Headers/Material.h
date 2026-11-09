@@ -252,6 +252,7 @@ class Material final : public CachedResource {
     static void OnShutdown();
     static void RecomputeShaders();
     static void Update(U64 deltaTimeUS);
+    [[nodiscard]] U64 coverageRevision() const noexcept { return _coverageRevision.load(std::memory_order_relaxed); }
     static bool Clone(Handle<Material> src, Handle<Material>& dst, const std::string_view nameSuffix);
 
     /// Return a new instance of this material with the name composed of the base material's name and the give name suffix (clone calls CreateResource internally!).
@@ -428,6 +429,7 @@ class Material final : public CachedResource {
     size_t _shaderAttributesHash{ 0u };
 
     static bool s_shadersDirty;
+    std::atomic<U64> _coverageRevision{1u};
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Material);

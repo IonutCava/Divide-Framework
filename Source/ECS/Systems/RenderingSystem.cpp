@@ -1,9 +1,10 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/RenderingSystem.h"
 
 #include "Graphs/Headers/SceneNode.h"
 #include "Graphs/Headers/SceneGraphNode.h"
+#include "Graphs/Headers/SceneGraph.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
@@ -29,6 +30,34 @@ namespace Divide
             {
                 comp->_materialUpdateMask |= Get(comp->_materialInstance)->update( microSec );
             }
+            if (comp->parentSGN()->hasFlag(SceneGraphNode::Flags::LOADING))
+            {
+                if (comp->_worldAOParticipant)
+                {
+                    comp->parentSGN()->sceneGraph()->invalidateWorldAO();
+                    comp->_worldAOParticipant = false;
+                }
+                comp->_worldAOPolicyRevision = U64_MAX;
+                continue;
+            }
+            const U64 materialRevision = comp->_materialInstance == INVALID_HANDLE<Material>
+                                       ? 0u : Get(comp->_materialInstance)->coverageRevision();
+            const U64 nodeRevision = comp->parentSGN()->getNode().renderState().coverageRevision();
+            SceneGraph& graph = *comp->parentSGN()->sceneGraph();
+            const bool coverageChanged = materialRevision != comp->_materialCoverageRevision ||
+                                         nodeRevision != comp->_nodeCoverageRevision;
+            if (coverageChanged || graph.worldAORevision() != comp->_worldAOPolicyRevision)
+            {
+                const bool participates = comp->worldAOContributor();
+                if (participates != comp->_worldAOParticipant || (participates && coverageChanged))
+                {
+                    graph.invalidateWorldAO();
+                }
+                comp->_worldAOParticipant = participates;
+                comp->_worldAOPolicyRevision = graph.worldAORevision();
+            }
+            comp->_materialCoverageRevision = materialRevision;
+            comp->_nodeCoverageRevision = nodeRevision;
         }
 
         for ( RenderingComponent* comp : _componentCache )

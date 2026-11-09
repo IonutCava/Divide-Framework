@@ -34,6 +34,7 @@
 #define DVD_SHADOW_MAP_H_
 
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
+#include "Platform/Video/Headers/RenderStagePass.h"
 
 namespace Divide {
 
@@ -54,6 +55,7 @@ class Light;
 class Camera;
 class ShadowMapInfo;
 class SceneRenderState;
+struct WorldAOCacheKey;
 
 enum class LightType : U8;
 
@@ -139,7 +141,14 @@ NOINITVTABLE_CLASS(ShadowMap)
 
     static vector<Camera*>& shadowCameras(const ShadowType type) noexcept { return s_shadowCameras[to_base(type)]; }
 
-    [[nodiscard]] static mat4<F32> generateWorldAO(const Camera& activeCamera, const float2& staticHeightRange, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
+    [[nodiscard]] static constexpr RenderStagePass WorldAOStagePass() noexcept
+    {
+        return {RenderStage::SHADOW, RenderPassType::COUNT, WORLD_AO_LAYER_INDEX,
+                static_cast<RenderStagePass::VariantType>(ShadowType::CSM)};
+    }
+    [[nodiscard]] static U16 WorldAOCullFlags() noexcept;
+
+    [[nodiscard]] static mat4<F32> generateWorldAO(const WorldAOCacheKey& key, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
   protected:
       static bool commitLayerRange(Light& light);

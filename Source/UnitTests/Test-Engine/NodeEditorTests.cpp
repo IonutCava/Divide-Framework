@@ -1,6 +1,10 @@
 // Copyright (c) 2026 DIVIDE-Studio
 #include "UnitTests/unitTestCommon.h"
 
+#include "Core/Headers/Application.h"
+#include "Core/Headers/PlatformContext.h"
+#include "ECS/Components/Headers/EditorComponent.h"
+#include "Editor/Headers/UndoManager.h"
 #include "Editor/Widgets/DockedWindows/Headers/SceneViewWindow.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 
@@ -9,6 +13,82 @@
 
 namespace Divide
 {
+    namespace Attorney
+    {
+        class EditorComponentTestAccess
+        {
+        public:
+            static void Save(const EditorComponent& component, boost::property_tree::ptree& tree)
+            {
+                component.saveToXML(tree);
+            }
+
+            static void Load(EditorComponent& component, const boost::property_tree::ptree& tree)
+            {
+                component.loadFromXML(tree);
+            }
+        };
+    }
+
+    TEST_CASE("Typed dropdown fields preserve automatic and explicit values through XML and undo", "[editor][serialization][worldAO]")
+    {
+        platformInitRunListener::PlatformInit();
+        Application app;
+        PlatformContext context{app};
+        EditorComponent component{context, ComponentType::RENDERING, "RENDERING"};
+        U32 value = 0u;
+        U32 notifications = 0u;
+        component.onChangedCbk([&notifications](std::string_view) { ++notifications; });
+        EditorComponentField field{};
+        field._name = "World AO Participation";
+        field._type = EditorComponentFieldType::DROPDOWN_TYPE;
+        field._basicType = PushConstantType::UINT;
+        field._range = {0.f, 3.f};
+        field._data = &value;
+        component.registerField(MOV(field));
+
+        for (const U32 saved : {0u, 1u, 2u})
+        {
+            value = saved;
+            boost::property_tree::ptree tree;
+            Attorney::EditorComponentTestAccess::Save(component, tree);
+            CHECK(tree.get<U32>("RENDERING.World__AO__Participation") == saved);
+            value = (saved + 1u) % 3u;
+            Attorney::EditorComponentTestAccess::Load(component, tree);
+            CHECK(value == saved);
+        }
+
+        boost::property_tree::ptree missing;
+        missing.put("RENDERING.Unrelated", 0u);
+        value = 0u;
+        Attorney::EditorComponentTestAccess::Load(component, missing);
+        CHECK(value == 0u);
+
+        boost::property_tree::ptree invalid;
+        invalid.put("RENDERING.World__AO__Participation", 3u);
+        value = 2u;
+        Attorney::EditorComponentTestAccess::Load(component, invalid);
+        CHECK(value == 2u);
+        invalid.put("RENDERING.World__AO__Participation", "not-an-index");
+        Attorney::EditorComponentTestAccess::Load(component, invalid);
+        CHECK(value == 2u);
+
+        EditorComponentField& registered = component.fields().front();
+        UndoEntry<U32> edit{};
+        edit._name = registered._name;
+        edit._oldVal = 0u;
+        edit._newVal = 2u;
+        edit._dataSetter = [&registered](const U32& state) { registered.set<U32>(state); };
+        edit._onChangedCbk = registered._onUndoRedo;
+        UndoManager history{4u};
+        history.registerUndoEntry(edit);
+        CHECK(history.Undo());
+        CHECK(value == 0u);
+        CHECK(history.Redo());
+        CHECK(value == 2u);
+        CHECK(notifications == 2u);
+    }
+
     TEST_CASE("Scene View uses the frame with in-game UI", "[editor][scene_view]")
     {
         const RenderTargetID previousScreen = RenderTargetNames::SCREEN;

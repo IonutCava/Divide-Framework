@@ -88,6 +88,9 @@ class SceneGraph final : NonCopyable,
     void invalidateShadowBounds(const SceneGraphNode& node, const BoundingSphere& previous, bool previousStatic);
     void updateStaticGeometryBounds();
     [[nodiscard]] bool staticGeometryBounds(BoundingBox& boundsOut) const noexcept;
+    void invalidateWorldAO(const SceneGraphNode& node) noexcept;
+    void invalidateWorldAO() noexcept { _worldAORevision.fetch_add(1u, std::memory_order_relaxed); }
+    [[nodiscard]] U64 worldAORevision() const noexcept { return _worldAORevision.load(std::memory_order_relaxed); }
 
     bool intersect(const SGNIntersectionParams& params, vector<SGNRayResult>& intersectionsOut) const;
 
@@ -165,6 +168,7 @@ class SceneGraph final : NonCopyable,
     bool _nodeListChanged = false;
     bool _unloading = false;
     std::atomic<U64> _staticGeometryRevision{ 1u };
+    std::atomic<U64> _worldAORevision{ 1u };
     U64 _computedStaticGeometryRevision = 0u;
     BoundingBox _staticGeometryBounds{};
     bool _hasStaticGeometryBounds = false;
