@@ -284,6 +284,9 @@ namespace Divide
         _shadowRenderMask = renderMask;
         _shadowVisibilityDistances = visibilityDistances;
         _shadowSampleCounts = sampleCounts;
+        const std::array<F32, 3> rangeCameraEye{camera._eye.x, camera._eye.y, camera._eye.z};
+        const bool rangeCameraMoved = _shadowRangeCameraEye != rangeCameraEye;
+        _shadowRangeCameraEye = rangeCameraEye;
         const bool cameraChanged = _directionalShadowCamera.update(
             camera._viewMatrix, camera._projectionMatrix, camera._zPlanes.x, camera._zPlanes.y );
 
@@ -300,6 +303,7 @@ namespace Divide
         {
             light->shadowPropertyIndex( -1 );
             if ( movementSnapshot._invalidateAll || renderPolicyChanged ||
+                 ( rangeCameraMoved && light->getLightType() == LightType::SPOT ) ||
                  ( cameraChanged && light->getLightType() == LightType::DIRECTIONAL ) )
             {
                 light->staticShadowsDirty( true );

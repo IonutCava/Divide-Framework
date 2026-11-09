@@ -413,16 +413,6 @@ namespace Divide
         const RenderTargetHandle& rtHandle = ShadowMap::getShadowMap( _type );
         const RenderTargetHandle& staticTarget = ShadowMap::getShadowMapCache(_type);
         const auto& config = _context.context().config();
-        const auto& filter = config.debug.renderFilter;
-        const auto& scene = *light.sgn()->sceneGraph()->parentScene().state();
-        const U32 renderMask = (filter.primitives ? toBit(0) : 0u) |
-                               (filter.meshes ? toBit(1) : 0u) |
-                               (filter.terrain ? toBit(2) : 0u) |
-                               (filter.vegetation ? toBit(3) : 0u) |
-                               (filter.treeInstances ? toBit(4) : 0u) |
-                               (filter.particles ? toBit(5) : 0u) |
-                               (scene.renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY) ? toBit(6) : 0u) |
-                               (scene.renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME) ? toBit(7) : 0u);
         U32 staticRebuildMask = 0u;
         U32 staticReuseMask = 0u;
 
@@ -447,18 +437,8 @@ namespace Divide
             StaticCacheLayer& cache = _staticLayers[cacheIndex];
             if (config.rendering.shadowMapping.csm.staticCaching)
             {
-                CSMStaticCacheKey key
-                {
-                    ._owner = light.getGUID(),
-                    ._coverageRevision = light.sgn()->sceneGraph()->worldAORevision(),
-                    ._renderMask = renderMask,
-                    ._resolution = {_drawBufferDepth._rt->getWidth(), _drawBufferDepth._rt->getHeight()},
-                    ._visibilityDistances = {scene.renderState().generalVisibility(), scene.renderState().treeVisibility()},
-                    ._samples = _drawBufferDepth._rt->getSampleCount(),
-                    ._splitCount = numSplits
-                };
-                const auto& viewProjection = ShadowMap::shadowCameras(ShadowType::CSM)[i]->viewProjectionMatrix();
-                std::copy_n(viewProjection.mat, key._viewProjection.size(), key._viewProjection.begin());
+                const ShadowStaticCacheKey key = ShadowMap::StaticCacheKey(
+                    config, light, *ShadowMap::shadowCameras(ShadowType::CSM)[i], playerCamera, *_drawBufferDepth._rt, numSplits);
                 const bool rebuild = cache._state.needsRefresh(
                     key, ShadowLayerSelected(refreshPlan._staticMask, to_U8(i)));
                 cache._combinedBounds = params._shadowBoundsFeedback;
@@ -487,18 +467,7 @@ namespace Divide
                     staticReuseMask |= 1u << i;
                 }
 
-                auto* copy = GFX::EnqueueCommand<GFX::BlitRenderTargetCommand>(bufferInOut);
-                copy->_source = staticTarget._targetID;
-                copy->_destination = _drawBufferDepth._targetID;
-                for (const U8 attachment : {U8{0u}, to_U8(RT_DEPTH_ATTACHMENT_IDX)})
-                {
-                    copy->_params.push_back(
-                    {
-                        ._input = {._layerOffset = cacheIndex, ._index = attachment},
-                        ._output = {._layerOffset = 0u, ._index = attachment},
-                        ._copySamples = true
-                    });
-                }
+                ShadowMap::restoreStaticBase(staticTarget._targetID, _drawBufferDepth._targetID, cacheIndex, bufferInOut);
                 RenderPassParams dynamicParams = params;
                 dynamicParams._drawMask = to_U8(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
                 dynamicParams._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX]._enabled = false;

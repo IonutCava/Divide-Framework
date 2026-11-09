@@ -710,7 +710,7 @@ generators. Cache misses rebuild both; static changes also require dynamic
 recomposition; animation-only changes leave the static mask empty. Explicit
 layer invalidations conservatively refresh both (a static-usage caster can
 still deform). Perf-mode `ShadowMetrics` appends `staticMask` and `dynamicMask`.
-Spot and point generators still render the union using the full-render path.
+Point generators still render the union using the full-render path.
 World AO retains its separate existing cache.
 
 **Implemented CSM static base:** `rendering.shadowMapping.csm.staticCaching`
@@ -726,9 +726,10 @@ At 2048-square, two samples and the eight-layer budget, raw cache storage is
 approximately 768 MiB before allocator/driver overhead (480 MiB more than the old
 nine-layer colour-only cache).
 
-Per-layer `CSMStaticCacheState` checks the stable light GUID, exact matrix
-elements, coverage revision, render mask, visibility distances, resolution,
-sample count and split count. Camera/light changes and explicit static-layer
+Per-layer `ShadowStaticCacheState`, shared by CSM and spotlights, checks the
+stable light GUID, exact matrix elements, coverage revision, render mask,
+visibility distances, range-camera position, resolution, sample count and
+split count. Camera/light changes and explicit static-layer
 invalidations rebuild as before; wind still invalidates the deforming cascade.
 Material/source coverage revisions, draw-state overrides, shader readiness,
 loading and activation changes publish shadow invalidations. Render-filter,
@@ -736,8 +737,8 @@ visibility-distance and sample-count changes dirty final shadow maps as well.
 The `CAST_SHADOWS` hard gate and previous/current movement bounds remain authoritative.
 
 Static and dynamic passes share their cascade identity and therefore record on
-the same serial lane. `RenderPassManager` reserves an extra directional-layer
-budget of view records without changing GPU/pass indices. Shader-pending flags
+the same serial lane. `RenderPassManager` reserves extra directional-layer and
+spotlight view records without changing GPU/pass indices. Shader-pending flags
 and cached static caster bounds live in generator-owned contiguous records;
 `ShadowMap::finishShadowMaps` runs after the view batch joins, merges static
 bounds into dynamic scene-fit feedback, and forwards pending static shaders to
@@ -746,8 +747,27 @@ in the deferred recording path. Static shaders that remain pending prevent
 cache validity. CPU/command storage may grow to its recording high-water mark;
 this is not an allocation-free cold path.
 
-**Planned stages:** extend static depth/moment caching to spot and point lights,
+**Implemented spotlight static base:** `rendering.shadowMapping.spot.staticCaching`
+defaults to true and can select the full-render fallback independently of CSM.
+The bounded spotlight cache retains raw depth and unfiltered RG16F moments;
+`ShadowMap::StaticCacheKey` and `restoreStaticBase` share the key and GFX-command
+copy contract with CSM. Static-only rebuilds render directly to the owning
+array layer, restore colour/depth to scratch, and draw dynamic casters without
+clearing. Resolve, final-layer copy, optional blur and mip generation are unchanged.
+Shader-pending results are finalized after the deferred batch join, not at enqueue.
+The view-record budget includes one additional rebuild per spotlight. At
+512-square, no MSAA and six layers, storage is approximately 12 MiB before
+allocator overhead (6 MiB more than the previous colour-only cache).
+Player-camera movement also dirties spotlight coverage because range culling
+uses the player's position even though the spotlight projection is unchanged.
+Wind invalidations that intersect a spotlight still conservatively rebuild its
+static base; caching does not freeze procedural deformation. Perf-mode
+`SpotCacheMetrics` reports rebuild/reuse, ownership layer and sample count.
+
+**Planned stages:** extend static depth/moment caching to point lights,
 then address finer-grained deformation invalidation if measurements justify it.
+`CubeShadowMapGenerator::render` marks the remaining omni-light cache work with
+a `STUBBED` TODO; point shadows still use the full-render path.
 
 If a visible shadow caster's material shader is still pending, its shadow map
 stays dirty and is regenerated until the shader is ready. Hidden nodes and

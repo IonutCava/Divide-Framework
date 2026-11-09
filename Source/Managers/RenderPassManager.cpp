@@ -423,7 +423,8 @@ RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage, cons
             if (renderStage == RenderStage::SHADOW)
             {
                 batch._viewCapacity += Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS *
-                                       Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT;
+                                       Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT +
+                                       Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS;
             }
             batch._views = std::make_unique<ViewRecording[]>( batch._viewCapacity );
             batch._schedule.reserve( batch._viewCapacity );

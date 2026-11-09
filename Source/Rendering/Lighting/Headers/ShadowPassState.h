@@ -82,7 +82,7 @@ namespace Divide
         }
     };
 
-    struct CSMStaticCacheKey
+    struct ShadowStaticCacheKey
     {
         I64 _owner = -1;
         std::array<F32, 16> _viewProjection{};
@@ -90,26 +90,27 @@ namespace Divide
         U32 _renderMask = 0u;
         std::array<U16, 2> _resolution{};
         std::array<F32, 2> _visibilityDistances{};
+        std::array<F32, 3> _rangeCameraEye{};
         U8 _samples = 0u;
         U8 _splitCount = 0u;
 
-        bool operator==(const CSMStaticCacheKey&) const = default;
+        bool operator==(const ShadowStaticCacheKey&) const = default;
     };
 
-    struct CSMStaticCacheState
+    struct ShadowStaticCacheState
     {
-        [[nodiscard]] bool needsRefresh(const CSMStaticCacheKey& key, const bool staticDirty) const noexcept
+        [[nodiscard]] bool needsRefresh(const ShadowStaticCacheKey& key, const bool staticDirty) const noexcept
         {
             return !_valid || staticDirty || _key != key;
         }
 
-        void complete(const CSMStaticCacheKey& key, const bool pendingCasters) noexcept
+        void complete(const ShadowStaticCacheKey& key, const bool pendingCasters) noexcept
         {
             _key = key;
             _valid = !pendingCasters;
         }
 
-        CSMStaticCacheKey _key{};
+        ShadowStaticCacheKey _key{};
         bool _valid = false;
     };
 

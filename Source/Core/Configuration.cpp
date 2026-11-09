@@ -159,6 +159,7 @@ bool Configuration::fromXML(const ResourcePath& xmlFilePath, const char* fileNam
         GET_PARAM(rendering.shadowMapping.csm.splitCount);
         GET_PARAM(rendering.shadowMapping.csm.maxAnisotropicFilteringLevel);
         GET_PARAM(rendering.shadowMapping.spot.enabled);
+        GET_PARAM(rendering.shadowMapping.spot.staticCaching);
         GET_PARAM(rendering.shadowMapping.spot.shadowMapResolution);
         GET_PARAM(rendering.shadowMapping.spot.MSAASamples);
         GET_PARAM(rendering.shadowMapping.spot.enableBlurring);
@@ -331,6 +332,7 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
     PUT_PARAM(rendering.shadowMapping.csm.splitCount);
     PUT_PARAM(rendering.shadowMapping.csm.maxAnisotropicFilteringLevel);
     PUT_PARAM(rendering.shadowMapping.spot.enabled);
+    PUT_PARAM(rendering.shadowMapping.spot.staticCaching);
     PUT_PARAM(rendering.shadowMapping.spot.shadowMapResolution);
     PUT_PARAM(rendering.shadowMapping.spot.MSAASamples);
     PUT_PARAM(rendering.shadowMapping.spot.enableBlurring);

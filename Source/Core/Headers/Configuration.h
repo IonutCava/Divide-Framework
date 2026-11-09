@@ -240,7 +240,10 @@ struct Configuration final : XML::IXMLSerializable {
                 F32 splitLambda = 0.95f;
                 U8  splitCount = 3u;
             } csm;
-            ShadowSettings spot = {};
+            struct SpotSettings : public ShadowSettings
+            {
+                bool staticCaching = true;
+            } spot;
             ShadowSettings point = {};
         } shadowMapping = {};
     } rendering = {};

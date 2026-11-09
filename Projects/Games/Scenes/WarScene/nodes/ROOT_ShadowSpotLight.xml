@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
 <static>true</static>
 <TRANSFORM>
     <Transform>
-        <position x="139.611786" y="17.2321358" z="6.01869011"/>
+        <position x="146" y="24" z="16"/>
         <orientation x="0" y="-0" z="0"/>
         <scale x="0.999991775" y="0.999991775" z="0.999991775"/>
     </Transform>
@@ -11,9 +12,9 @@
 <SPOT_LIGHT>
     <Cutoff__Angle>25</Cutoff__Angle>
     <Outer__Cutoff__Angle>35</Outer__Cutoff__Angle>
-    <Direction x="0" y="0" z="-1"/>
+    <Direction x="0" y="-0.8" z="-0.6"/>
     <Show__direction__cone>false</Show__direction__cone>
-    <Range>10</Range>
+    <Range>20</Range>
     <Intensity>1</Intensity>
     <Colour r="1" g="0" b="0"/>
     <Is__Shadow__Caster>true</Is__Shadow__Caster>

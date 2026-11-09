@@ -972,9 +972,9 @@ namespace Divide
         check(32u, 0u, false, false, false, U32_MAX, U32_MAX);
     }
 
-    TEST_CASE("CSM static cache requires matching ownership projection and coverage", "[renderer][shadow][render_smoke]")
+    TEST_CASE("Shadow static caches require matching ownership projection and coverage", "[renderer][shadow][render_smoke]")
     {
-        const CSMStaticCacheKey key
+        const ShadowStaticCacheKey key
         {
             ._owner = 42,
             ._coverageRevision = 3u,
@@ -986,20 +986,20 @@ namespace Divide
         };
         auto projectionKey = key;
         projectionKey._viewProjection[0] = 1.f;
-        CSMStaticCacheState projectionCache{};
+        ShadowStaticCacheState projectionCache{};
         projectionCache.complete(projectionKey, false);
         projectionKey._viewProjection[0] = std::nextafter(1.f, 2.f);
         CHECK(projectionCache.needsRefresh(projectionKey, false));
 
-        CSMStaticCacheState cache{};
+        ShadowStaticCacheState cache{};
         CHECK(cache.needsRefresh(key, false));
         cache.complete(key, false);
         CHECK_FALSE(cache.needsRefresh(key, false));
         CHECK(cache.needsRefresh(key, true));
 
-        for (size_t field = 0u; field < 9u; ++field)
+        for (size_t field = 0u; field < 10u; ++field)
         {
-            CSMStaticCacheKey changed = key;
+            ShadowStaticCacheKey changed = key;
             switch (field)
             {
                 case 0u: ++changed._owner; break;
@@ -1011,6 +1011,7 @@ namespace Divide
                 case 6u: changed._samples = 0u; break;
                 case 7u: ++changed._splitCount; break;
                 case 8u: changed._visibilityDistances[1] += 1.f; break;
+                case 9u: changed._rangeCameraEye[0] += 1.f; break;
             }
             CAPTURE(field);
             CHECK(cache.needsRefresh(changed, false));
@@ -1040,7 +1041,7 @@ namespace Divide
         CHECK(feedback._bounds._max == float3{20.f, 30.f, 40.f});
     }
 
-    TEST_CASE("CSM exact-copy commands retain separate colour and depth layers", "[renderer][shadow][render_smoke]")
+    TEST_CASE("Shadow cache restore commands retain separate colour and depth layers", "[renderer][shadow][render_smoke]")
     {
         const auto floatMoments = GLUtil::InternalFormatAndDataType(
             GFXImageFormat::RG, GFXDataFormat::FLOAT_32, GFXImagePacking::UNNORMALIZED);
@@ -1048,18 +1049,8 @@ namespace Divide
             GFXImageFormat::RG, GFXDataFormat::FLOAT_32, TextureDescriptor{}._packing);
         CHECK(floatMoments._format == defaultPacking._format);
         CHECK_FALSE(RTBlitEntry{}._copySamples);
-        GFX::BlitRenderTargetCommand copy{};
-        for (const U8 attachment : {U8{0u}, to_U8(RT_DEPTH_ATTACHMENT_IDX)})
-        {
-            copy._params.push_back(
-            {
-                ._input = {._layerOffset = 3u, ._index = attachment},
-                ._output = {._layerOffset = 0u, ._index = attachment},
-                ._copySamples = true
-            });
-        }
         GFX::CommandBuffer source;
-        GFX::EnqueueCommand(source, copy);
+        ShadowMap::restoreStaticBase(INVALID_RENDER_TARGET_ID, INVALID_RENDER_TARGET_ID, 3u, source);
         GFX::CommandBuffer commands;
         commands.add(source, 0u, 1u);
         source.clear();
@@ -1076,6 +1067,39 @@ namespace Divide
             CHECK(entry._layerCount == 1u);
         }
         CHECK(recorded._params[1]._input._index == RT_DEPTH_ATTACHMENT_IDX);
+    }
+
+    TEST_CASE("Spotlight static bases survive dynamic refresh and retry pending shaders", "[renderer][shadow][spot-cache][render_smoke]")
+    {
+        std::array<ShadowStaticCacheState, 2> layers{};
+        const ShadowStaticCacheKey key{._owner = 42, ._samples = 0u, ._splitCount = 1u};
+        const auto initial = BuildShadowRefreshPlan(1u, 0u, false, false, false);
+        CHECK(layers[0].needsRefresh(key, ShadowLayerSelected(initial._staticMask, 0u)));
+        layers[0].complete(key, false);
+        const auto animated = BuildShadowRefreshPlan(1u, 0u, true, false, true);
+        CHECK(animated._dynamicMask == 1u);
+        CHECK_FALSE(layers[0].needsRefresh(key, ShadowLayerSelected(animated._staticMask, 0u)));
+        CHECK(layers[1].needsRefresh(key, false));
+
+        const auto wind = BuildShadowRefreshPlan(1u, 1u, true, false, true);
+        CHECK(layers[0].needsRefresh(key, ShadowLayerSelected(wind._staticMask, 0u)));
+        layers[0].complete(key, true);
+        CHECK(layers[0].needsRefresh(key, false));
+        layers[0].complete(key, false);
+        CHECK_FALSE(layers[0].needsRefresh(key, false));
+
+        auto reassigned = key;
+        ++reassigned._owner;
+        CHECK(layers[0].needsRefresh(reassigned, false));
+        auto movedLight = key;
+        movedLight._viewProjection[12] = 2.f;
+        CHECK(layers[0].needsRefresh(movedLight, false));
+        auto movedCamera = key;
+        movedCamera._rangeCameraEye[2] = 50.f;
+        CHECK(layers[0].needsRefresh(movedCamera, false));
+        auto multisampled = key;
+        multisampled._samples = 2u;
+        CHECK(layers[0].needsRefresh(multisampled, false));
     }
 
     TEST_CASE("Shadow refresh fallback preserves full-render layer selection", "[renderer][shadow][render_smoke]")
