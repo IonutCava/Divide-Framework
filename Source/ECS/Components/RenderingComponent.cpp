@@ -108,6 +108,41 @@ namespace Divide
             _editorComponent.registerField( MOV( receivesShadowsField ) );
         }
         {
+            EditorComponentField worldAOField = {};
+            worldAOField._name = "World AO Participation";
+            worldAOField._tooltip = "This renderable node only. Automatic excludes terrain, animation, vegetation and translucent materials.";
+            worldAOField._type = EditorComponentFieldType::DROPDOWN_TYPE;
+            worldAOField._basicType = PushConstantType::UINT;
+            worldAOField._range = {0.f, 3.f};
+            worldAOField._dataGetter = [this](void* dataOut, [[maybe_unused]] void* userData)
+            {
+                const std::optional<bool> state = drawStateOverride(ShadowMap::WorldAOStagePass());
+                *static_cast<U32*>(dataOut) = state.has_value() ? (*state ? 1u : 2u) : 0u;
+            };
+            worldAOField._dataSetter = [this](const void* data, [[maybe_unused]] void* userData)
+            {
+                const U32 value = *static_cast<const U32*>(data);
+                if (value == 0u)
+                {
+                    clearDrawStateOverride(ShadowMap::WorldAOStagePass());
+                }
+                else if (value < 3u)
+                {
+                    setDrawStateOverride(ShadowMap::WorldAOStagePass(), value == 1u);
+                }
+                else
+                {
+                    Console::errorfn("Invalid World AO participation value: {}", value);
+                }
+            };
+            worldAOField._displayNameGetter = [](const U32 index, [[maybe_unused]] void* userData) noexcept
+            {
+                constexpr const char* names[] = {"Automatic", "Include", "Exclude"};
+                return index < 3u ? names[index] : "Invalid";
+            };
+            _editorComponent.registerField(MOV(worldAOField));
+        }
+        {
             EditorComponentField castsShadowsField = {};
             castsShadowsField._name = "Casts Shadows";
             castsShadowsField._data = &_castsShadows;
@@ -164,6 +199,7 @@ namespace Divide
         {
             DestroyResource( _materialInstance );
             _materialInstance = newInstance;
+            _materialCoverageRevision = U64_MAX;
             ResourcePtr<Material> mat = Get(_materialInstance);
 
             DIVIDE_ASSERT( !mat->resourceName().empty() );

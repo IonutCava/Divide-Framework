@@ -61,6 +61,10 @@ enum class CullOptions : U16
     CULL_REFLECTION_GRASS = toBit(6),
     CULL_REFLECTION_TREES = toBit(7),
     CULL_REFLECTION_DYNAMIC_OBJECTS = toBit(8),
+    CULL_VEGETATION_NODES = toBit(9),
+    CULL_SKINNED_NODES = toBit(10),
+    CULL_TERRAIN_NODES = toBit(11),
+    CULL_TRANSLUCENT_NODES = toBit(12),
     DEFAULT_CULL_OPTIONS = CULL_AGAINST_CLIPPING_PLANES | CULL_AGAINST_FRUSTUM | CULL_AGAINST_LOD
 };
 
@@ -172,6 +176,15 @@ private:
 };
 
 struct RenderPassCuller {
+    [[nodiscard]] static constexpr bool CullGeometryCategory( const U16 flags, const bool vegetation,
+                                                              const bool skinned, const bool terrain, const bool translucent = false ) noexcept
+    {
+        return (vegetation && (flags & to_base(CullOptions::CULL_VEGETATION_NODES)) != 0u) ||
+               (skinned && (flags & to_base(CullOptions::CULL_SKINNED_NODES)) != 0u) ||
+               (terrain && (flags & to_base(CullOptions::CULL_TERRAIN_NODES)) != 0u) ||
+               (translucent && (flags & to_base(CullOptions::CULL_TRANSLUCENT_NODES)) != 0u);
+    }
+
     enum class EntityFilter : U8
     {
         PRIMITIVES = toBit( 0 ),

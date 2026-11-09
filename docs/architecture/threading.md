@@ -34,6 +34,12 @@ available budget, with a warning when it cannot be honored. OpenGL creates a
 shared context for each asset and render worker using the same calculated counts.
 DDS/NVTT cache generation uses `HIGH_PRIORITY` when available.
 Render preparation uses partitions (`g_nodesPerPrepareDrawPartition`) and shared locks around dirty ranges.
+Duplicate transform/material preparation uses per-component atomic epoch claims,
+not a shared processed-node set. All render views in one player pass share the
+epoch; the next player pass advances it only after the previous recording work
+has joined. Relaxed atomic claims provide single-writer ownership, not output
+publication. The stage join still precedes buffer uploads. Claim storage is
+component-owned, independent of GPU indirection indices, and allocates nothing.
 When the main thread waits for `Parallel_For` partitions, it also services
 `PlatformContext` completion callbacks. Asset-loading workers can depend on
 these callbacks to finalize resources, including work from another pool.

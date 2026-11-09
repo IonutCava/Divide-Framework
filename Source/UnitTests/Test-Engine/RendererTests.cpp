@@ -51,6 +51,92 @@
 
 namespace Divide
 {
+    TEST_CASE( "Node preparation claims are independent per component and data type", "[renderer][threading][node_preparation]" )
+    {
+        NodePreparationState first;
+        NodePreparationState second;
+        for ( const U64 epoch : { U64_ONE, U64{2u}, U64{3u}, U64_MAX } )
+        {
+            CHECK( first.claim( TRANSFORM_IDX, epoch ) );
+            CHECK_FALSE( first.claim( TRANSFORM_IDX, epoch ) );
+            CHECK( first.claim( MATERIAL_IDX, epoch ) );
+            CHECK_FALSE( first.claim( MATERIAL_IDX, epoch ) );
+            CHECK( second.claim( MATERIAL_IDX, epoch ) );
+            CHECK( second.claim( TRANSFORM_IDX, epoch ) );
+        }
+    }
+
+    TEST_CASE( "Node preparation has no visible-node index capacity or recycled-slot state", "[renderer][threading][node_preparation]" )
+    {
+        constexpr size_t nodeCount = Config::MAX_VISIBLE_NODES + 65u;
+        auto nodes = std::make_unique<std::array<NodePreparationState, nodeCount>>();
+        for ( size_t i = 0u; i < nodeCount; ++i )
+        {
+            REQUIRE( (*nodes)[i].claim( TRANSFORM_IDX, 1u ) );
+            REQUIRE( (*nodes)[i].claim( MATERIAL_IDX, 1u ) );
+        }
+        for ( size_t i = 0u; i < nodeCount; ++i )
+        {
+            REQUIRE_FALSE( (*nodes)[i].claim( TRANSFORM_IDX, 1u ) );
+            REQUIRE_FALSE( (*nodes)[i].claim( MATERIAL_IDX, 1u ) );
+            REQUIRE( (*nodes)[i].claim( TRANSFORM_IDX, 2u ) );
+        }
+
+        NodePreparationState replacement;
+        CHECK( replacement.claim( TRANSFORM_IDX, 2u ) );
+        CHECK( replacement.claim( MATERIAL_IDX, 2u ) );
+    }
+
+    TEST_CASE( "Concurrent render views claim each node preparation exactly once per player pass", "[renderer][threading][node_preparation]" )
+    {
+        constexpr size_t nodeCount = 129u;
+        constexpr size_t threadCount = 8u;
+        std::array<NodePreparationState, nodeCount> nodes{};
+        std::array<std::array<std::atomic<U32>, 2u>, nodeCount> claims{};
+        for ( U64 epoch = 1u; epoch <= 4u; ++epoch )
+        {
+            std::atomic_size_t ready{0u};
+            std::atomic_bool start{false};
+            std::array<std::thread, threadCount> workers;
+            for ( size_t worker = 0u; worker < threadCount; ++worker )
+            {
+                workers[worker] = std::thread( [&, worker]
+                {
+                    ready.fetch_add( 1u );
+                    while ( !start.load() )
+                    {
+                        std::this_thread::yield();
+                    }
+                    for ( size_t i = 0u; i < nodeCount * 4u; ++i )
+                    {
+                        const size_t node = (i + worker * 17u) % nodeCount;
+                        for ( const U8 dataType : { TRANSFORM_IDX, MATERIAL_IDX } )
+                        {
+                            if ( nodes[node].claim( dataType, epoch ) )
+                            {
+                                claims[node][dataType].fetch_add( 1u, std::memory_order_relaxed );
+                            }
+                        }
+                    }
+                } );
+            }
+            while ( ready.load() != threadCount )
+            {
+                std::this_thread::yield();
+            }
+            start.store( true );
+            for ( std::thread& worker : workers )
+            {
+                worker.join();
+            }
+            for ( const auto& nodeClaims : claims )
+            {
+                CHECK( nodeClaims[TRANSFORM_IDX].load() == epoch );
+                CHECK( nodeClaims[MATERIAL_IDX].load() == epoch );
+            }
+        }
+    }
+
     TEST_CASE( "Resolved binding cache validates exact keys after direct-map collisions", "[renderer][bindings]" )
     {
         ResolvedBindingCache<U32, 4u> cache;
@@ -2822,6 +2908,9 @@ namespace Divide
         CHECK( NormalizeGPUScopeName( "Custom pass ( SHADOW - Light 3 )" ) == "Custom pass" );
         CHECK( NormalizeGPUScopeName( "Post Render pass for stage [ DISPLAY ]" ) == "Post Render pass for stage" );
         CHECK( NormalizeGPUScopeName( "HiZ Construct & Cull" ) == "HiZ Construct & Cull" );
+        CHECK( NormalizeGPUScopeName( "MainPass V1 L0 P0" ) == "MainPass V1 L0 P0" );
+        CHECK( NormalizeGPUScopeName( "MainPass V1 L0 P1" ) != NormalizeGPUScopeName( "MainPass V1 L0 P0" ) );
+        CHECK( NormalizeGPUScopeName( "MainPass V1 L8 P0" ) == "MainPass V1 L8 P0" );
         CHECK( NormalizeGPUScopeName( " - " ).empty() );
         CHECK( NormalizeGPUScopeName( "" ).empty() );
     }

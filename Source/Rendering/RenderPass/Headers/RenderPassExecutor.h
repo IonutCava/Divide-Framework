@@ -208,9 +208,6 @@ public:
         BufferUpdateRange _updateRange;
         std::array<BufferUpdateRange, (Config::MAX_FRAMES_IN_FLIGHT + 1u) * Config::MAX_LOCAL_PLAYER_COUNT> _slotUpdateRanges{};
 
-        Mutex _nodeProcessedLock;
-        eastl::fixed_set<U32, Config::MAX_VISIBLE_NODES, true> _nodeProcessedThisFrame;
-
         ShaderBuffer_uptr _gpuBuffer{ nullptr };
     };
 
@@ -337,6 +334,7 @@ private:
                              GFX::MemoryBarrierCommand& memCmdInOut);
 
     ParseResult processVisibleNodeTransform(RenderingComponent* rComp, D64 interpolationFactor, U32& transformIDXOut);
+    [[nodiscard]] static bool NodeNeedsUpdate( RenderingComponent* rComp, U8 dataType );
 
     // Returns true on a cache hit
     ParseResult processVisibleNodeMaterial( RenderingComponent* rComp, U32& materialIDXOut, U32& indirectionIDXOut );

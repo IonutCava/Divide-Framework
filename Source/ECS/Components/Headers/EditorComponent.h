@@ -47,6 +47,7 @@ namespace Divide
     {
         class EditorComponentEditor;
         class EditorComponentSceneGraphNode;
+        class EditorComponentTestAccess;
     }; //namespace Attorney
 
     enum class ComponentType : U32
@@ -167,6 +168,7 @@ namespace Divide
     {
         friend class Attorney::EditorComponentEditor;
         friend class Attorney::EditorComponentSceneGraphNode;
+        friend class Attorney::EditorComponentTestAccess;
 
       public:
 

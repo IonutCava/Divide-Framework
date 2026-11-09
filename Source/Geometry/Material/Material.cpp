@@ -427,11 +427,16 @@ namespace Divide
             ret |= to_base( MaterialUpdateResult::NEW_SHADER );
         }
 
+        if ( ret != to_base(MaterialUpdateResult::OK) )
+        {
+            _coverageRevision.fetch_add(1u, std::memory_order_relaxed);
+        }
         return ret;
     }
 
     void Material::clearRenderStates()
     {
+        _coverageRevision.fetch_add(1u, std::memory_order_relaxed);
         for ( U8 s = 0u; s < to_U8( RenderStage::COUNT ); ++s )
         {
             auto& perPassStates = _defaultRenderStates[s];
@@ -1204,6 +1209,7 @@ namespace Divide
 
     void Material::setRenderStateBlock( const RenderStateBlock& renderStateBlock, const RenderStage stage, const RenderPassType pass, const RenderStagePass::VariantType variant )
     {
+        _coverageRevision.fetch_add(1u, std::memory_order_relaxed);
         for ( U8 s = 0u; s < to_U8( RenderStage::COUNT ); ++s )
         {
             for ( U8 p = 0u; p < to_U8( RenderPassType::COUNT ); ++p )
@@ -1274,6 +1280,7 @@ namespace Divide
 
     void Material::invalidateDescriptorSets() noexcept
     {
+        _coverageRevision.fetch_add(1u, std::memory_order_relaxed);
         _resourceBindings = {};
         _descriptorSetMainPass._bindingCount = 0u;
         _descriptorSetSecondaryPass._bindingCount = 0u;

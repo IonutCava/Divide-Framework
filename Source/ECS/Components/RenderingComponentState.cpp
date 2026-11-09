@@ -1,12 +1,82 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/RenderingComponent.h"
 #include "Graphs/Headers/SceneGraphNode.h"
+#include "Graphs/Headers/SceneGraph.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Geometry/Material/Headers/Material.h"
+#include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
+#include "Rendering/RenderPass/Headers/RenderPassCuller.h"
 
 namespace Divide {
+
+bool RenderingComponent::drawState(const RenderStagePass stagePass, const bool defaultState) const
+{
+    const SceneNodeRenderState& source = _parentSGN->getNode().renderState();
+    return _drawStateOverrides.drawState(stagePass, defaultState, &source);
+}
+
+std::optional<bool> RenderingComponent::drawStateOverride(const RenderStagePass stagePass) const
+{
+    return _drawStateOverrides.drawStateOverride(stagePass);
+}
+
+void RenderingComponent::setDrawStateOverride(const RenderStagePass stagePass, const bool state)
+{
+    const U64 revision = _drawStateOverrides.coverageRevision();
+    _drawStateOverrides.setDrawStateOverride(stagePass, state);
+    if (revision != _drawStateOverrides.coverageRevision())
+    {
+        _parentSGN->sceneGraph()->invalidateWorldAO();
+    }
+}
+
+void RenderingComponent::clearDrawStateOverride(const RenderStagePass stagePass)
+{
+    const U64 revision = _drawStateOverrides.coverageRevision();
+    _drawStateOverrides.clearDrawStateOverride(stagePass);
+    if (revision != _drawStateOverrides.coverageRevision())
+    {
+        _parentSGN->sceneGraph()->invalidateWorldAO();
+    }
+}
+
+bool RenderingComponent::hasTransparency() const
+{
+    return _materialInstance != INVALID_HANDLE<Material> && Get(_materialInstance)->hasTransparency();
+}
+
+bool RenderingComponent::worldAOContributor() const
+{
+    if (_parentSGN->hasFlag(SceneGraphNode::Flags::LOADING) ||
+        !_parentSGN->hasFlag(SceneGraphNode::Flags::ACTIVE) ||
+        !renderOptionEnabled(RenderOptions::IS_VISIBLE) ||
+        !renderOptionEnabled(RenderOptions::CAST_SHADOWS))
+    {
+        return false;
+    }
+    const SceneNodeType type = _parentSGN->getNode().type();
+    bool defaultState = (IsPrimitive(type) || type == SceneNodeType::TYPE_SUBMESH ||
+                         type == SceneNodeType::TYPE_TERRAIN || type == SceneNodeType::TYPE_VEGETATION) &&
+                        !_parentSGN->hasFlag(SceneGraphNode::Flags::IS_CONTAINER) &&
+                        !RenderPassCuller::CullGeometryCategory(ShadowMap::WorldAOCullFlags(),
+                            type == SceneNodeType::TYPE_VEGETATION || _parentSGN->hasFlag(SceneGraphNode::Flags::VEGETATION_TREE),
+                            _parentSGN->HasComponents(ComponentType::ANIMATION), type == SceneNodeType::TYPE_TERRAIN,
+                            hasTransparency());
+    if (defaultState)
+    {
+        for (const SceneGraphNode* parent = _parentSGN->parent(); parent != nullptr; parent = parent->parent())
+        {
+            if (parent->getNode().type() == SceneNodeType::TYPE_SKY)
+            {
+                defaultState = false;
+                break;
+            }
+        }
+    }
+    return drawState(ShadowMap::WorldAOStagePass(), defaultState);
+}
 
 void RenderingComponent::toggleRenderOption(RenderOptions option, bool state, bool recursive) {
     if (renderOptionEnabled(option) != state)
@@ -38,6 +108,10 @@ bool RenderingComponent::renderOptionEnabled(const RenderOptions option) const n
 
 void RenderingComponent::onRenderOptionChanged(const RenderOptions option, const bool state)
 {
+    if ( option == RenderOptions::CAST_SHADOWS || option == RenderOptions::IS_VISIBLE )
+    {
+        _parentSGN->sceneGraph()->invalidateWorldAO();
+    }
     switch (option)
     {
       case RenderOptions::RECEIVE_SHADOWS:

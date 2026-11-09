@@ -171,6 +171,18 @@ the next non-barrier command, so repeated sibling scopes (per-chunk vegetation
 culling, for example) merge. Past its budget, a buffer's remaining time goes to
 its last timed label. On WarScene the overhead was within noise.
 
+Shadow main-pass scope labels retain the complete view identity as
+`MainPass V<variant> L<index> P<pass>` instead of merging every view into
+`SHADOW/MainPass`. The variant is `ShadowType`; CSM's index is the light-pass
+index and its pass is the cascade, while `WORLD_AO_LAYER_INDEX` identifies the
+world-AO view. Cubemap passes identify their face. These labels survive
+`NormalizeGPUScopeName` without per-object decorations or unbounded label growth.
+Perf-mode `LightPool` also logs `[ShadowMetrics]` every 64 frames for eligible
+lights: array offset, layer/update mask, cache validity, full invalidation,
+camera changes and moved-volume count. These snapshots explain refresh
+decisions but are not per-frame distributions; array offsets are not permanent
+light IDs. No additional GPU queries are issued by this logging.
+
 For startup, measure cold and warm scene readiness separately from frame time.
 `ResourceCache::Build` includes the resource `load` call and synchronous waits,
 not task-queue delay or GPU frame execution. Preserve shader-cache invalidation
@@ -575,6 +587,17 @@ offsets once when selecting an indirect-command buffer region.
 Dirty ranges permit partial uploads. Preparation is partitioned with `g_nodesPerPrepareDrawPartition`; see [threading](threading.md) before changing parallel preparation or locking.
 Start here for CPU render scalability, draw-call buildup, or stale per-node data.
 
+`RenderingComponent` owns two CPU-only atomic preparation stamps, one each for
+transform and material work. `PrepareGPUBuffers` advances a process-lifetime
+64-bit epoch once per player pass, before skylight or stage recording starts.
+`NodeNeedsUpdate` claims that component/type once in the epoch without a shared
+set, mutex, allocation or indirection-index capacity limit. New components start
+unclaimed even when GPU slots are recycled. The epoch is not reset at renderer
+restart; exhaustion is fatal rather than silently reusing stale stamps.
+Claims select writers only: skipped duplicate work must not read the winner's
+output before the existing stage join. Uploads remain after that join, and
+neither GPU wire layouts nor buffer-slot selection changes.
+
 Material cache hits refresh the entry's lifetime under the shared lookup lock;
 parallel hits use an atomic lifetime update. A matched material index must be
 written to both the component and the GPU indirection data.
@@ -731,7 +754,10 @@ mask; its matrix is uploaded with the player's shadow properties and captured
 by the existing per-frame descriptor binding, rather than shared camera state.
 The shadow block remains available to materials that disable direct shadow
 mapping but still use world AO. Its
-1000-by-1000 horizontal footprint follows the active camera. Its height comes
+1000-by-1000 horizontal footprint is retained until the active camera moves
+250 units along either horizontal axis from its recorded centre. Camera
+rotation, vertical movement and small horizontal movement do not refresh it;
+reused images retain their original view-projection matrix. Its height comes
 from the scene graph's cached static-geometry AABB with 50 units of margin above
 and below; an empty scene uses the world origin and reports a warning. The
 separate static AABB excludes sky, water, infinite planes and dynamic nodes
@@ -740,8 +766,64 @@ static geometry is added, removed, transformed or changes its source bounds,
 not by scanning the scene every frame. Vegetation contributes conservative
 world-space height bounds for terrain-rooted instances; grass wind and camera
 displacement are lateral and are not included in its bounds padding. Dynamic
-terrain transforms remain unimplemented. This height selection does not filter
-dynamic occluders from the world-AO render pass.
+terrain transforms remain unimplemented. This height selection is independent
+of the world-AO caster filter.
+
+World AO excludes terrain, vegetation (including instanced tree nodes), nodes with
+animation/skinning components and translucent materials by default. These are
+defaults, not hard bans: `RenderingComponent` owns per-instance pass overrides
+using the generic `SceneNodeRenderState` draw mask. The editor's **World AO
+Participation** field selects Automatic, Include or Exclude for that renderable
+node. Include overrides category defaults and the shared source's pass mask;
+Exclude removes otherwise eligible geometry. Automatic removes the instance
+rule and follows current defaults again. Global source visibility, active/loading
+state, geometry filters and the existing casts-shadows option remain authoritative.
+`ShadowMap::WorldAOCullFlags()` owns the shared category defaults used by both
+culling and coverage invalidation, so changing a category's default cannot leave
+its newly included geometry outside the invalidation policy.
+Rigid static and dynamic geometry still participates automatically, so moving a door or changing a building can update indoor
+coverage. Its pass disables camera-distance/LoD culling so the cached coverage
+for structural geometry does not depend on the player's previous CPU culling
+range. Explicitly included vegetation retains its existing GPU instance
+visibility/LoD limits; the draw-mask override does not disable those shader
+policies. Directional, point and spot
+caster policies are unchanged.
+
+An imported tree stored as an ordinary mesh has no automatic vegetation
+classification. WarScene stores Exclude on its standalone `CopacelBVlablabla`
+renderable submeshes in scene XML; it does not change shared mesh resources or
+hardcode a name check in rendering. Other instances, normal display, reflection
+and directional shadows are unchanged. Select the renderable submeshes when
+editing an imported container; overrides do not implicitly propagate to children.
+Other scenes must similarly classify or explicitly exclude unclassified foliage
+rather than relying on mesh-name heuristics in rendering infrastructure.
+
+Generic draw-mask rules match stage, pass type, variant, layer and subpass, with
+the existing wildcard values. The most-specific matching rule wins; equal
+specificity uses the last inserted rule. Updating an exact rule preserves its
+priority, and clearing it restores the fallback. Empty masks allocate nothing;
+adding rules can allocate during loading or explicit edits, never during lookup
+or view recording. Per-instance changes do not mutate a shared `SceneNode`.
+
+`SceneGraph::worldAORevision` invalidates coverage on eligible geometry
+addition/removal, bounds/transform changes, shader readiness and visibility
+changes. `RenderingSystem` observes material coverage revisions and source-node
+draw-state revisions; material alpha, cull, shader and resource-binding changes
+therefore invalidate the mask without polling the graph during shadow
+recording. Eligibility is recomputed only after coverage or policy revisions
+change, not by walking ancestors every frame. Include-to-exclude transitions
+invalidate the old image, including a material becoming translucent. Excluded
+terrain/vegetation/skinned movement does not increment this revision; explicitly
+included geometry does, including animation bounds updates. Scene identity,
+height range and relevant debug geometry filters are
+also part of the cache key. The CSM generator owns the shared layer's key and
+matrix, preventing scene/player switches from reusing another view's coverage;
+generator recreation and MSAA changes invalidate it. Pending shaders keep the
+map refreshing until ready. Their result flag is generator-owned and remains
+alive through deferred `finishViewBatch`, not a function-local output.
+`[WorldAOMetrics]` reports sampled revision/refresh/pending state in perf mode.
+Reuse skips the complete AO view, copy, blur and mip generation without adding
+per-frame allocations. There is no timer-based stale-image allowance.
 
 The editor's `Debug > BRDF Settings > WORLD_AO` view displays the sampled mask
 on standard lit materials: white is unoccluded, darker values suppress the

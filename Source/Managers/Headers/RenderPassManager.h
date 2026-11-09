@@ -97,6 +97,7 @@ namespace Divide
                        1 << to_base( Flags::DRAW_TRANSLUCENT_NODES );
 
         bool _refreshLightData{true};
+        U16 _cullFlags{to_base(CullOptions::DEFAULT_CULL_OPTIONS)};
         bool _enableDeformation{true};
         bool _useMSAA{false};
     };

@@ -553,6 +553,127 @@ editor captures were inspected with terrain, building, trees, grass and water
 present. These checks do not establish other-platform behavior or a frame-time
 target.
 
+### Shadow-view investigation (2026-11-09)
+
+The aggregate `SHADOW/MainPass` hid a significant distinction: a Release Vulkan
+run with per-view labels showed the always-rendered world-AO view consuming
+about 2.19 ms of GPU time, more than any individual directional cascade.
+The three CSM views averaged about 0.52, 1.37 and 0.88 ms, respectively,
+as medians of seven warmed 64-frame block means. World-AO outer-scope work
+(copy/blur/mips and other commands) was about 0.23 ms separately.
+Artifacts: `H:\RendererShadowSlice20261109\baseline-detail`.
+
+The run completed 601 presents and clean shutdown without an Optick capture
+client. Warmed GPU scope sums had a median block mean of 20.16 ms; the log
+interval from frame 192 to 576 averaged 24.41 ms/frame. Full CSM refreshes
+occurred with an unchanged camera when ordinary scene movement was pending;
+other sampled frames reused all directional layers. World AO was still
+rendered on those reuse frames.
+
+A conservative light-space sphere/cascade intersection experiment did not
+reduce the sampled refresh masks: ordinary movement still reached every
+active cascade. Its small timing difference is not evidence of improvement.
+The experiment and its temporary tests were removed. Bounded per-view
+scope labels and sparse refresh-reason diagnostics remain.
+
+The user's clarified policy is that World AO identifies interiors, should
+rarely update, and defaults to excluding terrain, vegetation, skinned geometry
+and translucent materials. Per-instance Automatic/Include/Exclude controls reuse
+the generic draw mask, so category defaults are overridable without changing
+other instances or passes. The follow-on
+implementation retains its 1000-by-1000 coverage image and original matrix,
+recentering only after 250 units of horizontal camera movement. Eligible rigid
+geometry changes, material coverage changes, visibility, pending shaders,
+scene/height/filter changes and resource recreation trigger refreshes. Neither
+default-excluded vegetation animation nor skinned movement invalidates the image;
+explicitly included geometry does. Participation changes also erase old coverage.
+No timed
+refresh or stale-image interval is used. See the world-AO contract in
+`docs/architecture/rendering.md` for ownership and invalidation routes.
+Performance and runtime acceptance for this follow-on must be measured
+separately from the baseline above; the discarded experiment is not evidence
+for it.
+
+The settled per-instance-control slice passed Windows/MSVC instrumented Debug
+CTest (405/405) and the Release engine build. Normal validation-on WarScene
+acceptance completed 301 presents and normal shutdown on both Vulkan and OpenGL,
+with scene/editor images inspected. Known startup foliage shader-readiness
+messages, the existing OpenGL context fallback and shutdown networking messages
+remain; these are not claims of completely error-free logs.
+
+The final 600-present Vulkan Release diagnostic retained revision 17962 from
+frame 64 through 576, with no pending casters or sampled refreshes. All seven
+warmed GPU timing blocks ending at frames 192 through 576 omitted both World AO
+main and outer scopes. Their median reported GPU-scope sum was 18.12 ms; the log
+cadence over that interval was 22.58 ms/frame, not an Optick CPU-frame median.
+This confirms full warmed AO-view reuse with the controls enabled, not a fresh
+matched A/B frame-time speedup. The WORLD_AO debug capture showed building
+coverage with exterior terrain and the standalone imported tree unoccluded.
+Artifacts are under `H:\RendererWorldAO20261109` in
+`vulkan-overrides-final`, `opengl-overrides-final`,
+`vulkan-overrides-release-profile` and `vulkan-overrides-ao-view`.
+
+### Per-node preparation ownership checkpoint (2026-11-09)
+
+- [x] Replace the shared mutex/fixed-tree processed-node sets with two
+  component-owned atomic stamps, retaining separate transform/material claims.
+- [x] Advance the epoch once per player pass before any view recording; retain
+  the join-before-upload boundary. No index-sized bitmap, frame allocation,
+  global lookup lock or GPU layout change is introduced.
+- [x] Cover concurrent claims, independent types/components, successive player
+  passes, more than `MAX_VISIBLE_NODES` components and fresh/recycled-slot
+  state. The instrumented Windows Debug suite passes 408/408.
+- [x] Build Debug and Release engine/test targets. Normal validation-on Vulkan
+  and OpenGL acceptance each completed 301 presents and normal shutdown;
+  scene/editor images retain building, terrain, vegetation, water and shadows.
+  Existing startup shader-readiness, STUBBED, OpenGL context-fallback and
+  shutdown networking messages remain; logs are not entirely error-free.
+
+The Release Vulkan comparison uses one warmed 64-frame Optick CPU capture
+before and after, requested after present 160 (actual attachment at 175 and
+160), with detailed GPU scopes enabled. Each run completed 601 presents.
+Times below are reported per-frame scope medians; worker aggregates are not
+main-thread critical-path time and must not be added to wall-frame time.
+
+| CPU scope | Before | After |
+|---|---:|---:|
+| Transform duplicate lookup, aggregate worker time | 3.24 ms | combined below |
+| Material duplicate lookup, aggregate worker time | 2.46 ms | combined below |
+| Combined duplicate-claim scope | sum above: 5.70 ms | 0.37 ms |
+| Record SHADOW, inclusive | 9.82 ms | 9.13 ms |
+| Record REFRACTION, inclusive | 9.03 ms | 8.52 ms |
+| Record REFLECTION, inclusive | 8.70 ms | 8.17 ms |
+| Whole CPU frame median / p95 | 37.58 / 40.00 ms | 37.21 / 40.01 ms |
+
+This removes a measured shared lookup cost, but the small whole-frame
+difference from a single pair does not establish an overall speedup.
+Serial translation remains about 17.4-17.7 ms in these captures.
+
+Two subsequent capture-free Release Vulkan runs completed 601 presents each.
+Their frame-192-to-576 log cadences were 20.69 and 20.52 ms/frame; the medians
+of seven warmed GPU-scope block means were 17.32 and 17.29 ms. The previous
+World-AO capture-free run used the identical baseline executable hash and
+reported 22.57 ms/frame and 18.12 ms of GPU scopes. This is not a repeated,
+alternating matched A/B: time-dependent shadow refresh, GPU scheduling and
+instrumentation variation prevent crediting those differences to CPU stamps.
+The CPU-captured runs include the Optick export pause outside their captured
+frames and must not be used for ordinary rendering cadence.
+
+All warmed snapshots retain DISPLAY 1679/1063, REFLECTION 1356/904,
+REFRACTION 1670/1061 and Hi-Z 1002 culled / 11 overflow / 3 skipped.
+World AO remains reused without sampled pending casters or refreshes.
+DISPLAY W-OIT remains the largest individual warmed GPU scope at about
+4.4 ms, followed by its main pass at 3.4-3.5 ms and prepass at 1.6 ms.
+Neither performance target is established. The next GPU investigation should
+separate W-OIT accumulation from composition and identify costly draws without
+silently reducing transparency, MSAA or vegetation quality.
+
+Artifacts: `H:\RendererNodePrep20261109` (`baseline-vulkan`, `after-vulkan`,
+`after-vulkan-no-client-1`, `after-vulkan-no-client-2`,
+`acceptance-vulkan`, `acceptance-opengl`). The baseline/after renderer hashes
+are recorded in each attempt's `environment.json`; raw CPU captures and
+summaries are alongside their attempts.
+
 ### Stabilization checkpoint
 
 The per-draw push-constant experiment and fixed-size node-update bitset were
@@ -645,11 +766,13 @@ the growable node set, but the crash's root cause was not established. If it
 recurs, capture a debugger stack and investigate; do not infer a GPU loss or
 claim the set change proved the cause.
 
-The restored `NodeNeedsUpdate` set remains a possible optimization target:
+At that checkpoint, the restored `NodeNeedsUpdate` set remained an optimization target:
 the OpenGL capture attributes approximately 3.6 ms and 2.9 ms of aggregate
 worker time per frame to its transform and material lookups, respectively.
 Any replacement must handle indirection indices beyond `MAX_VISIBLE_NODES`,
 avoid render-loop allocation churn, and include concurrent and overflow tests.
+The later component-owned preparation stamps above replace this set without
+an indirection-index capacity bound.
 
 ## Findings (perf mode, Vulkan, WarScene, CPU frame median)
 

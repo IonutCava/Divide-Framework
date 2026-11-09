@@ -14,10 +14,38 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 
 namespace Divide
 {
+    struct WorldAOCacheKey
+    {
+        I64 _sceneGUID = -1;
+        U64 _revision = 0u;
+        std::array<F32, 2> _center{};
+        std::array<F32, 2> _height{};
+        U32 _renderMask = 0u;
+    };
+
+    struct WorldAOCacheState
+    {
+        static constexpr F32 HORIZONTAL_EXTENT = 500.f;
+        static constexpr F32 RECENTER_DISTANCE = HORIZONTAL_EXTENT * 0.5f;
+
+        [[nodiscard]] bool needsRefresh(const WorldAOCacheKey& key, const bool pendingCasters) const noexcept
+        {
+            return !_valid || pendingCasters || key._sceneGUID != _key._sceneGUID ||
+                   key._revision != _key._revision || key._height != _key._height ||
+                   key._renderMask != _key._renderMask ||
+                   std::abs(key._center[0] - _key._center[0]) >= RECENTER_DISTANCE ||
+                   std::abs(key._center[1] - _key._center[1]) >= RECENTER_DISTANCE;
+        }
+
+        WorldAOCacheKey _key{};
+        bool _valid = false;
+    };
+
     [[nodiscard]] constexpr F32 CSMOverlapNearFraction(const F32 cameraNear, const F32 clipRange,
                                                         const F32 previousStart, const F32 previousEnd) noexcept
     {

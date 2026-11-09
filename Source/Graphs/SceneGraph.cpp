@@ -20,6 +20,7 @@
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
 #include "ECS/Components/Headers/RigidBodyComponent.h"
+#include "ECS/Components/Headers/RenderingComponent.h"
 
 #include <ECS/EntityManager.h>
 
@@ -138,6 +139,15 @@ namespace Divide
         _staticGeometryRevision.fetch_add( 1u, std::memory_order_relaxed );
     }
 
+    void SceneGraph::invalidateWorldAO( const SceneGraphNode& node ) noexcept
+    {
+        const RenderingComponent* rendering = node.get<RenderingComponent>();
+        if (rendering != nullptr && rendering->worldAOContributor())
+        {
+            invalidateWorldAO();
+        }
+    }
+
     void SceneGraph::invalidateStaticGeometryBounds( const SceneGraphNode& node ) noexcept
     {
         if ( IsStaticGeometry( node ) )
@@ -149,6 +159,7 @@ namespace Divide
     void SceneGraph::invalidateShadowBounds( const SceneGraphNode& node, const BoundingSphere& previous,
                                              const bool previousStatic )
     {
+        invalidateWorldAO(node);
         const BoundsComponent* bounds = node.get<BoundsComponent>();
         if ( bounds != nullptr )
         {
@@ -255,6 +266,7 @@ namespace Divide
 
     void SceneGraph::onNodeUpdated( const SceneGraphNode& node )
     {
+        invalidateWorldAO(node);
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         //ToDo: Maybe add particles too? -Ionut
@@ -271,6 +283,7 @@ namespace Divide
 
     void SceneGraph::onNodeSpatialChange( const SceneGraphNode& node )
     {
+        invalidateWorldAO(node);
         BoundsComponent* bComp = node.get<BoundsComponent>();
         if ( bComp != nullptr )
         {
@@ -297,6 +310,7 @@ namespace Divide
 
     void SceneGraph::onNodeDestroy( SceneGraphNode* oldNode )
     {
+        invalidateWorldAO(*oldNode);
         const I64 guid = oldNode->getGUID();
         const bool isRoot = oldNode == _root;
 
@@ -352,8 +366,10 @@ namespace Divide
 
     void SceneGraph::onNodeAdd( SceneGraphNode* newNode, const bool reparented )
     {
+        invalidateWorldAO(*newNode);
         if ( reparented )
         {
+            invalidateWorldAO();
             invalidateStaticGeometryBounds();
         }
         else

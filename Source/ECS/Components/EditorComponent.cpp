@@ -83,7 +83,10 @@ namespace Divide {
             }
             if constexpr(Config::Build::ENABLE_EDITOR)
             {
-                Attorney::EditorEditorComponent::registerUnsavedSceneChanges(context().editor());
+                if (context().hasEditor())
+                {
+                    Attorney::EditorEditorComponent::registerUnsavedSceneChanges(context().editor());
+                }
             }
         };
         _fields.push_back(field);
@@ -133,6 +136,13 @@ namespace Divide {
 
             switch(field._type)
             {
+                case EditorComponentFieldType::DROPDOWN_TYPE:
+                {
+                    if (field._basicType == PushConstantType::UINT && field._basicTypeSize == PushConstantSize::DWORD)
+                    {
+                        saveFieldToXML(field, pt);
+                    }
+                } break;
                 case EditorComponentFieldType::SLIDER_TYPE:
                 case EditorComponentFieldType::PUSH_TYPE:
                 {
@@ -213,6 +223,22 @@ namespace Divide {
 
                 switch (field._type)
                 {
+                    case EditorComponentFieldType::DROPDOWN_TYPE:
+                    {
+                        if (field._basicType == PushConstantType::UINT && field._basicTypeSize == PushConstantSize::DWORD &&
+                            pt.get_child_optional(entryName))
+                        {
+                            const auto value = pt.get_optional<U32>(entryName);
+                            if (!value || *value < to_U32(field._range.x) || *value >= to_U32(field._range.y))
+                            {
+                                Console::errorfn("Invalid dropdown value '{}' for {}", pt.get<std::string>(entryName), entryName);
+                            }
+                            else
+                            {
+                                field.set<U32>(*value);
+                            }
+                        }
+                    } break;
                     case EditorComponentFieldType::SLIDER_TYPE:
                     case EditorComponentFieldType::PUSH_TYPE:
                     {
@@ -250,7 +276,6 @@ namespace Divide {
                         mat->loadFromXML(entryName, pt);
                     } break;
                     default:
-                    case EditorComponentFieldType::DROPDOWN_TYPE:
                     case EditorComponentFieldType::BUTTON:
                     {
                         // Skip
