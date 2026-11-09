@@ -1,6 +1,7 @@
 // Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/RenderingComponent.h"
+#include "Headers/BoundsComponent.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Graphs/Headers/SceneGraph.h"
 #include "Core/Headers/Configuration.h"
@@ -13,6 +14,11 @@ namespace Divide {
 
 bool RenderingComponent::drawState(const RenderStagePass stagePass, const bool defaultState) const
 {
+    if (stagePass._stage == RenderStage::SHADOW &&
+        !IsShadowCaster(_parentSGN->getNode().type(), renderOptionEnabled(RenderOptions::CAST_SHADOWS)))
+    {
+        return false;
+    }
     const SceneNodeRenderState& source = _parentSGN->getNode().renderState();
     return _drawStateOverrides.drawState(stagePass, defaultState, &source);
 }
@@ -49,14 +55,14 @@ bool RenderingComponent::hasTransparency() const
 
 bool RenderingComponent::worldAOContributor() const
 {
+    const SceneNodeType type = _parentSGN->getNode().type();
     if (_parentSGN->hasFlag(SceneGraphNode::Flags::LOADING) ||
         !_parentSGN->hasFlag(SceneGraphNode::Flags::ACTIVE) ||
         !renderOptionEnabled(RenderOptions::IS_VISIBLE) ||
-        !renderOptionEnabled(RenderOptions::CAST_SHADOWS))
+        !IsShadowCaster(type, renderOptionEnabled(RenderOptions::CAST_SHADOWS)))
     {
         return false;
     }
-    const SceneNodeType type = _parentSGN->getNode().type();
     bool defaultState = (IsPrimitive(type) || type == SceneNodeType::TYPE_SUBMESH ||
                          type == SceneNodeType::TYPE_TERRAIN || type == SceneNodeType::TYPE_VEGETATION) &&
                         !_parentSGN->hasFlag(SceneGraphNode::Flags::IS_CONTAINER) &&
@@ -95,7 +101,19 @@ void RenderingComponent::toggleRenderOption(RenderOptions option, bool state, bo
             }
         }
 
+        const bool previouslyCastShadows = renderOptionEnabled(RenderOptions::CAST_SHADOWS);
         state ? _renderMask |= to_U32(option) : _renderMask &= ~to_U32(option);
+
+        if (option == RenderOptions::CAST_SHADOWS || option == RenderOptions::IS_VISIBLE)
+        {
+            const BoundsComponent* bounds = _parentSGN->get<BoundsComponent>();
+            if (bounds != nullptr)
+            {
+                _parentSGN->sceneGraph()->invalidateShadowBounds(
+                    *_parentSGN, bounds->getBoundingSphere(),
+                    _parentSGN->usageContext() == NodeUsageContext::NODE_STATIC, previouslyCastShadows);
+            }
+        }
 
         onRenderOptionChanged(option, state);
     }

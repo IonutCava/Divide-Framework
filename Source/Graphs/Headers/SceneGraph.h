@@ -85,7 +85,8 @@ class SceneGraph final : NonCopyable,
 
     void invalidateStaticGeometryBounds() noexcept;
     void invalidateStaticGeometryBounds(const SceneGraphNode& node) noexcept;
-    void invalidateShadowBounds(const SceneGraphNode& node, const BoundingSphere& previous, bool previousStatic);
+    void invalidateShadowBounds(const SceneGraphNode& node, const BoundingSphere& previous, bool previousStatic,
+                                bool previouslyCastShadows = false);
     void updateStaticGeometryBounds();
     [[nodiscard]] bool staticGeometryBounds(BoundingBox& boundsOut) const noexcept;
     void invalidateWorldAO(const SceneGraphNode& node) noexcept;

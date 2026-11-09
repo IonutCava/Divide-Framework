@@ -307,6 +307,12 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
         PROFILE_TAG( "Node", (_parentSGN->name().c_str()) );
 
+        if (renderStagePass._stage == RenderStage::SHADOW &&
+            !IsShadowCaster(_parentSGN->getNode().type(), renderOptionEnabled(RenderOptions::CAST_SHADOWS)))
+        {
+            return false;
+        }
+
         bool shaderJustFinishedLoading = false;
         bool materialReady = true;
         if ( _materialInstance != INVALID_HANDLE<Material> )
