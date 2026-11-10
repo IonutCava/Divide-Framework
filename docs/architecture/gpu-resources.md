@@ -85,6 +85,9 @@ recovery.
 
 Logical buffers are not normally one-to-one with GL allocations. Update frequency and host visibility affect allocation/sync strategy.
 For GL-only performance issues, inspect allocation churn, contention, sync, and unnecessary buffer recreation.
+Do not assume residency: moving the vegetation instance buffers to device-local
+storage did not change the Release OpenGL `Cull Vegetation` cost, which came from
+the dispatch shape (see [Rendering](rendering.md#vegetation-culling-data)).
 
 Textures use immutable `glTextureStorage*` storage and DSA mip/layer uploads; the driver manages residency, with no custom texture allocator.
 Both backends allocate the mip count selected by the shared texture policy and
