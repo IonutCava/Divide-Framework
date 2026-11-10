@@ -98,7 +98,6 @@ namespace Divide
 
         bool _refreshLightData{true};
         U16 _cullFlags{to_base(CullOptions::DEFAULT_CULL_OPTIONS)};
-        bool _enableDeformation{true};
         bool _useMSAA{false};
     };
 

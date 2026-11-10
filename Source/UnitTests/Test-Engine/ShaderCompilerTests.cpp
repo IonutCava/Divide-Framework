@@ -1701,6 +1701,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             bool _disableSSAO = false;
             bool _occlusion = false;
             bool _sortedTransparency = false;
+            bool _windDisabled = false;
         };
         constexpr std::array variants{
             Variant{ ShaderType::COMPUTE, "instanceCountPatch.glsl", "instanceCountPatch.Compute", false, false, false, DescriptorSetUsage::PER_DRAW, 13u },
@@ -1715,6 +1716,12 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             Variant{ ShaderType::VERTEX, "tree.glsl", "tree.Vertex", true, true, false, DescriptorSetUsage::PER_DRAW, 13u },
             Variant{ ShaderType::VERTEX, "tree.glsl", "tree.Vertex", true, false, true, DescriptorSetUsage::PER_DRAW, 13u },
             Variant{ ShaderType::VERTEX, "tree.glsl", "tree.Vertex", true, false, false, DescriptorSetUsage::PER_DRAW, 13u, false, true },
+            Variant{ ._stage = ShaderType::VERTEX, ._file = "tree.glsl", ._source = "tree.Vertex",
+                     ._tree = true, ._prePass = false, ._display = false, ._bufferSet = DescriptorSetUsage::PER_DRAW,
+                     ._bufferSlot = 13u, ._shadow = true, ._windDisabled = true },
+            Variant{ ._stage = ShaderType::VERTEX, ._file = "grass.glsl", ._source = "grass.Vertex",
+                     ._tree = false, ._prePass = true, ._display = true, ._bufferSet = DescriptorSetUsage::PER_DRAW,
+                     ._bufferSlot = 13u, ._windDisabled = true },
             Variant{ ShaderType::FRAGMENT, "grass.glsl", "grass.Fragment.PrePass", false, true, true, DescriptorSetUsage::COUNT, 0u },
             Variant{ ShaderType::FRAGMENT, "grass.glsl", "grass.Fragment.PrePass", false, true, false, DescriptorSetUsage::COUNT, 0u },
             Variant{ ShaderType::FRAGMENT, "grass.glsl", "grass.Fragment.Colour.OIT", false, false, false, DescriptorSetUsage::COUNT, 0u },
@@ -1758,7 +1765,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             {
                 CAPTURE( api, variant._source, variant._tree, variant._prePass, variant._display, variant._alphaDiscard,
                          variant._shadow, variant._orthographic, variant._pbr, variant._disableIBL, variant._disableSSAO,
-                         variant._sortedTransparency );
+                         variant._sortedTransparency, variant._windDisabled );
                 ModuleDefines defines;
                 for ( const char* define : {
                           "MAX_TREE_INSTANCES 64", "MAX_GRASS_INSTANCES 64", "WORK_GROUP_SIZE 64",
@@ -1788,6 +1795,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 if ( variant._disableIBL ) defines.emplace_back( "NO_ENV_MAPPING" );
                 if ( variant._disableSSAO ) defines.emplace_back( "NO_SSAO" );
                 if ( variant._occlusion ) defines.emplace_back( "OCCLUSION_PASS" );
+                if ( variant._windDisabled ) defines.emplace_back( "VEGETATION_WIND_DISABLED" );
                 if ( std::string_view{ variant._file } == "particles.glsl" ) defines.emplace_back( "HAS_TEXTURE" );
                 const bool standardMaterial = std::string_view{ variant._file } == "material.glsl" ||
                                               std::string_view{ variant._file } == "depthPass.glsl";
@@ -1824,22 +1832,28 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 {
                     CHECK( data._sourceCodeGLSL.find( "min(dvd_drawCommands[record.count].instanceCount" ) != string::npos );
                 }
+                if ( variant._tree && variant._stage == ShaderType::COMPUTE )
+                {
+                    CHECK( data._sourceCodeGLSL.find( "dvd_treeWindAnimated" ) != string::npos );
+                }
                 if ( variant._tree && variant._stage == ShaderType::VERTEX )
                 {
                     CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.INDIRECT_DATA_IDX" ) != string::npos );
                     CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.dvd_instanceDataIndex" ) != string::npos );
                     CHECK( atoms.contains( _ID("treeWind.cmn") ) );
-                    CHECK( data._sourceCodeGLSL.find("const float amplitude") != string::npos );
                     CHECK( data._sourceCodeGLSL.find("dvd_Vertex.y * scale") == string::npos );
-                    if (variant._shadow)
-                    {
-                        CHECK(data._sourceCodeGLSL.find("dvd_enableDeformation") != string::npos);
-                    }
+                    CHECK( data._sourceCodeGLSL.find("dvd_enableDeformation") == string::npos );
+                    CHECK( (data._sourceCodeGLSL.find("const float amplitude") != string::npos) == !variant._windDisabled );
                 }
                 if ( std::string_view{ variant._file } == "grass.glsl" && variant._stage == ShaderType::VERTEX )
                 {
                     CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.INDIRECT_DATA_IDX" ) != string::npos );
                     CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.dvd_instanceDataIndex" ) != string::npos );
+                    const size_t motion = data._sourceCodeGLSL.find( "largetScaleMotion" );
+                    REQUIRE( motion != string::npos );
+                    // The definition always remains; only the call is compiled out.
+                    CHECK( (data._sourceCodeGLSL.find( "largetScaleMotion", motion + 1u ) != string::npos) == !variant._windDisabled );
+                    CHECK( data._sourceCodeGLSL.find( "viewDirection" ) != string::npos );
                 }
                 if ( variant._stage == ShaderType::FRAGMENT && variant._prePass )
                 {

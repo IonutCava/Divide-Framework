@@ -109,8 +109,9 @@ these source edits; generated-header and preprocessing semantics are unchanged.
 - `treeWind.cmn` shares tree sway amplitude, height/LoD eligibility and maximum
   displacement with CPU regressions and vegetation culling. Wind uses the same
   `PER_FRAME` scene data in compute and draw variants.
-  Its shadow variant opts into the generic `dvd_enableDeformation` pass
-  uniform; render infrastructure does not dispatch on vegetation flags.
+  The tree draw reads a per-pass wind flag that vegetation culling writes into
+  the draw entry (`TREE_WIND_ENABLED`); `VEGETATION_WIND_DISABLED` compiles
+  grass and tree sway out. Render infrastructure carries no deformation state.
 - `shadowStrength.cmn` shares shadow-strength and variance light-bleed arithmetic
   with CPU regressions, including the maximum-bias boundary.
 - `csmShadow.cmn` shares cascade overlap, blend-weight and depth-scale

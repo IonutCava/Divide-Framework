@@ -424,7 +424,6 @@ namespace Divide
             }
             Util::StringFormatTo( params._passName, "CSM_PASS_{}", i );
             params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
-            params._enableDeformation = i == 0;
             params._minExtents.set( g_minExtentsFactors[i] );
             params._shadowBoundsFeedback = SelectCascadeBoundsFeedback(
                 dirLight.cascadeBoundsFeedback()[i], to_U8( i ), dirLight.csmUseSceneAABBFit()[i] );
@@ -545,7 +544,6 @@ namespace Divide
         params._maxLoD = -1;
         params._refreshLightData = false;
         params._passName = "WorldAOPass";
-        params._enableDeformation = false;
         params._pendingShaderOut = &_worldAOPendingCasters;
         params._cullFlags = ShadowMap::WorldAOCullFlags();
         params._minExtents.set( g_minExtentsFactors[1] );

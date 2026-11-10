@@ -326,6 +326,8 @@ class Material final : public CachedResource {
     // type == ShaderType::Count = add to all stages
     void addShaderDefine(ShaderType type, const string& define, bool addPrefix = true);
     void addShaderDefine(const string& define, bool addPrefix = true);
+    /// Adds or removes an extra define (ShaderType::COUNT = all stages). Requests new shaders only if the set changed.
+    bool setShaderDefine(ShaderType type, const string& define, bool enabled, bool addPrefix = true);
     void saveToXML( const std::string& entryName, boost::property_tree::ptree& pt) const;
     void loadFromXML( const std::string& entryName, const boost::property_tree::ptree& pt);
 

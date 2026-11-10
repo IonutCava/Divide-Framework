@@ -1224,8 +1224,6 @@ namespace Divide
                     shaderScopeOpen = true;
                 }
             }
-            pkg->pushConstantsCmd()._uniformData->set(_ID("dvd_enableDeformation"), PushConstantType::UINT,
-                                                      params._enableDeformation ? 1u : 0u);
             Attorney::RenderingCompRenderPassExecutor::getCommandBuffer( rComp, pkg, bufferInOut );
         }
         if ( shaderScopeOpen )
