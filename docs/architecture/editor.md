@@ -19,6 +19,18 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 - ImGui persists window positions and docking in `imgui.ini`. The smoke runner
   reads this layout but disables saving it so diagnostics do not rewrite it.
 
+## Teardown without a rendering API
+
+`PlatformContext::terminate` destroys the `Editor` before the `GFXDevice`, and
+headless fixtures (a `Kernel` plus `ReleaseUninitializedManagers`) never run
+`GFXDevice::initRenderingAPI`, so `GFXDevice::renderTargetPool()` has no pool
+there. `Editor::close` therefore releases `_nodePreviewRTHandle` only when
+`Editor::init` allocated it. Calling the accessor with a null pool binds a
+reference through a null pointer, which is undefined behaviour even when the
+result is unused: the Linux ASAN+UBSAN jobs abort on it while MSVC builds do
+not notice. Teardown paths reachable from a headless context must not call
+`renderTargetPool()` unless they own a live handle.
+
 ## Docking invariants
 
 Scene View uses `SceneViewWindow::WINDOW_NAME` with the stable ImGui
