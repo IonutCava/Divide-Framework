@@ -153,6 +153,13 @@ dependencies. `ConfigureSanitizers.cmake` runs after manifest provisioning;
 its late `VCPKG_BUILD_TYPE` cache assignment does not rebuild or instrument
 dependencies. Do not report sanitizer runs as dependency instrumentation.
 
+The `test-*-asan-ubsan` presets inherit `test-sanitizer-common`: unlike
+`test-common`, it keeps running after a failing test, so one CTest pass lists
+every failure, and it sets `UBSAN_OPTIONS`/`ASAN_OPTIONS` for stack traces,
+error-type names and `addr2line` symbolization. `-fno-sanitize-recover=all` still
+aborts each test process at its first finding, and any failing test still fails
+the job.
+
 Windows matrix steps invoke CMake/CTest presets directly after MSVC setup.
 Do not reinitialize MSVC through `run-cmake`: its automatic `vcpkg env` lookup
 can select Visual Studio's bundled, manifest-only vcpkg instead of the pinned
