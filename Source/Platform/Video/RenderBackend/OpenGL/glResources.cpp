@@ -101,7 +101,19 @@ namespace Divide
         std::array<gl46core::GLenum, to_base( FillMode::COUNT )> glFillModeTable;
         std::array<gl46core::GLenum, to_base( TextureType::COUNT )> glTextureTypeTable;
         std::array<gl46core::GLenum, to_base( PrimitiveTopology::COUNT )> glPrimitiveTypeTable;
-        std::array<gl46core::GLenum, to_base( GFXDataFormat::COUNT )> glDataFormatTable;
+        constinit const std::array<gl46core::GLenum, to_base( GFXDataFormat::COUNT )> glDataFormatTable = []
+        {
+            std::array<gl46core::GLenum, to_base( GFXDataFormat::COUNT )> table{};
+            table[to_base( GFXDataFormat::UNSIGNED_BYTE )] = gl46core::GL_UNSIGNED_BYTE;
+            table[to_base( GFXDataFormat::UNSIGNED_SHORT )] = gl46core::GL_UNSIGNED_SHORT;
+            table[to_base( GFXDataFormat::UNSIGNED_INT )] = gl46core::GL_UNSIGNED_INT;
+            table[to_base( GFXDataFormat::SIGNED_BYTE )] = gl46core::GL_BYTE;
+            table[to_base( GFXDataFormat::SIGNED_SHORT )] = gl46core::GL_SHORT;
+            table[to_base( GFXDataFormat::SIGNED_INT )] = gl46core::GL_INT;
+            table[to_base( GFXDataFormat::FLOAT_16 )] = gl46core::GL_HALF_FLOAT;
+            table[to_base( GFXDataFormat::FLOAT_32 )] = gl46core::GL_FLOAT;
+            return table;
+        }();
         std::array<gl46core::GLenum, to_base( TextureWrap::COUNT )> glWrapTable;
         std::array<gl46core::GLenum, to_base( ShaderType::COUNT )> glShaderStageTable;
         std::array<gl46core::GLenum, to_base( QueryType::COUNT )> glQueryTypeTable;
@@ -183,15 +195,6 @@ namespace Divide
             glPrimitiveTypeTable[to_base( PrimitiveTopology::PATCH )] = gl46core::GL_PATCHES;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::MESHLET)] = gl46core::GL_NONE;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::COMPUTE )] = gl46core::GL_NONE;
-
-            glDataFormatTable[to_base( GFXDataFormat::UNSIGNED_BYTE )] = gl46core::GL_UNSIGNED_BYTE;
-            glDataFormatTable[to_base( GFXDataFormat::UNSIGNED_SHORT )] = gl46core::GL_UNSIGNED_SHORT;
-            glDataFormatTable[to_base( GFXDataFormat::UNSIGNED_INT )] = gl46core::GL_UNSIGNED_INT;
-            glDataFormatTable[to_base( GFXDataFormat::SIGNED_BYTE )] = gl46core::GL_BYTE;
-            glDataFormatTable[to_base( GFXDataFormat::SIGNED_SHORT )] = gl46core::GL_SHORT;
-            glDataFormatTable[to_base( GFXDataFormat::SIGNED_INT )] = gl46core::GL_INT;
-            glDataFormatTable[to_base( GFXDataFormat::FLOAT_16 )] = gl46core::GL_HALF_FLOAT;
-            glDataFormatTable[to_base( GFXDataFormat::FLOAT_32 )] = gl46core::GL_FLOAT;
 
             glWrapTable[to_base( TextureWrap::MIRROR_REPEAT )] = gl46core::GL_MIRRORED_REPEAT;
             glWrapTable[to_base( TextureWrap::REPEAT )] = gl46core::GL_REPEAT;

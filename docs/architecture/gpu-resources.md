@@ -52,6 +52,10 @@ out-of-bounds write by a nonconforming layer.
 
 ## OpenGL memory
 
+`GLUtil::glDataFormatTable` is immutable and constant-initialized. Texture format
+mapping is available before `GLUtil::OnStartup`, including in headless unit
+tests; it must not depend on creating an OpenGL context.
+
 `WindowManager::applyAPISettingsPreCreate` explicitly sets the no-error context
 attribute for every attempt. SDL retains attributes between retries; enabling a
 debug context must clear a previous non-debug no-error request.

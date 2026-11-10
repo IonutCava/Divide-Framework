@@ -13,6 +13,7 @@
 #include "Managers/Headers/ProjectManager.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/File/Headers/FileManagement.h"
@@ -28,6 +29,11 @@
 
 namespace Divide
 {
+    LightPool::ViewLightData::ViewLightData() = default;
+    LightPool::ViewLightData::~ViewLightData() = default;
+    LightPool::ViewLightData::ViewLightData(ViewLightData&&) noexcept = default;
+    LightPool::ViewLightData& LightPool::ViewLightData::operator=(ViewLightData&&) noexcept = default;
+
     Handle<Texture>       LightPool::s_lightIconsTexture = INVALID_HANDLE<Texture>;
     Handle<ShaderProgram> LightPool::s_lightImpostorShader = INVALID_HANDLE<ShaderProgram>;
     ShaderBuffer_uptr LightPool::s_shadowBuffer = nullptr;
