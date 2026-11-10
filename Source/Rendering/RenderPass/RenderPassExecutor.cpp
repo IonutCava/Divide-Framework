@@ -549,7 +549,9 @@ namespace Divide
         {
             return ret;
         }
-        U32 materialIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionNodeData(rComp)._materialIDX;
+        const NodeIndirectionData& nodeData = Attorney::RenderingCompRenderPassExecutor::getIndirectionNodeData( rComp );
+        U32 materialIDX = nodeData._materialIDX;
+        ret._updateIndirection = s_indirectionBuffer._data._gpuData[indirectionIDXOut].setInstanceDataOffset( nodeData._instanceDataOffset );
 
         NodeMaterialData tempData{};
         // Get the colour matrix (base colour, metallic, etc)

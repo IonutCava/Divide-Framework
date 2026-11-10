@@ -184,6 +184,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
                          void             instantiateMaterial(Handle<Material> material);
     [[nodiscard]] inline Handle<Material> getMaterialInstance() const noexcept { return _materialInstance; }
+    /// Storage-buffer instances use baseInstance for node identity, not vertex-attribute offsets.
+    /// Change this binding only outside render preparation; shaders must use a draw-local instance index.
     void setInstanceShaderBuffer(ShaderBuffer* buffer, U32 dataIndex) noexcept;
     void setPreparationOwner(RenderingComponent* owner) noexcept { _preparationOwner = owner; }
     /// Optional GPU-written instance count (one U32 at 'element' in 'buffer'). Indirect draws clamp their instance count to it after preparation.
@@ -287,7 +289,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     ShaderBuffer* _instanceShaderBuffer{ nullptr };
     RenderingComponent* _preparationOwner{ nullptr };
     ShaderBuffer* _instanceCountSource{ nullptr };
-    U32 _instanceShaderDataIndex{ 0u };
     U32 _instanceCountElement{ 0u };
     RenderCallback _reflectionCallback{};
     RenderCallback _refractionCallback{};

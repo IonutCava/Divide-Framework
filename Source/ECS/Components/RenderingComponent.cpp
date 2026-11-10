@@ -45,17 +45,34 @@ namespace Divide
     namespace
     {
         constexpr I16 g_renderRangeLimit = I16_MAX;
+
+        void SetInstanceBufferDefine( Material& material, const bool enabled )
+        {
+            const auto& bindings = material.shaderAttributes()._vertexBindings;
+            if ( enabled && eastl::any_of( bindings.begin(), bindings.end(), []( const VertexBinding& binding )
+            {
+                return !binding._perVertexInputRate;
+            } ) )
+            {
+                DIVIDE_UNEXPECTED_CALL_MSG( "Storage-buffer instancing cannot offset per-instance vertex attributes" );
+            }
+            material.setShaderDefine( ShaderType::COUNT, "STORAGE_BUFFER_INSTANCING", enabled );
+        }
     }
 
-    void SetNodeIndirectionIndex( RenderPackage& package, const bool instanced, const U32 indirectionIndex ) noexcept
+    void SetNodeIndirectionIndex( RenderPackage& package, const bool uniformIndirection, const U32 indirectionIndex ) noexcept
     {
-        if ( instanced )
+        if ( uniformIndirection )
         {
             if ( indirectionIndex == NodeIndirectionData::INVALID_IDX )
             {
                 DIVIDE_UNEXPECTED_CALL_MSG( "Instanced draw has no node indirection index" );
             }
             package.pushConstantsCmd()._uniformData->set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, indirectionIndex );
+        }
+        else
+        {
+            package.pushConstantsCmd()._uniformData->remove( _ID( "INDIRECT_DATA_IDX" ) );
         }
     }
 
@@ -244,6 +261,7 @@ namespace Divide
             mat->properties().isStatic( _parentSGN->usageContext() == NodeUsageContext::NODE_STATIC );
             isInstanced( RequiresInstancedIndirection( isInstanced(), mat->properties().isInstanced(), _parentSGN->instanceCount() ) );
             mat->properties().isInstanced( isInstanced() );
+            SetInstanceBufferDefine( *mat, _instanceShaderBuffer != nullptr );
         }
     }
 
@@ -475,7 +493,11 @@ namespace Divide
     void RenderingComponent::setInstanceShaderBuffer( ShaderBuffer* buffer, const U32 dataIndex ) noexcept
     {
         _instanceShaderBuffer = buffer;
-        _instanceShaderDataIndex = dataIndex;
+        _indirectionData.setInstanceDataOffset( buffer != nullptr ? dataIndex : 0u );
+        if ( _materialInstance != INVALID_HANDLE<Material> )
+        {
+            SetInstanceBufferDefine( *Get( _materialInstance ), buffer != nullptr );
+        }
     }
 
     void RenderingComponent::ConfigureOITBlendStates( RTBlendStates& states )
@@ -619,7 +641,8 @@ namespace Divide
                     _updateReflection = _updateRefraction = true;
                 }
 
-                SetNodeIndirectionIndex( pkg, isInstanced(), _indirectionBufferEntry );
+                SetNodeIndirectionIndex( pkg, RequiresUniformIndirection( isInstanced(), _instanceShaderBuffer != nullptr ),
+                                        _indirectionBufferEntry );
                 PipelineDescriptor pipelineDescriptor = {};
 
                 if ( _materialInstance != INVALID_HANDLE<Material> )
@@ -760,7 +783,6 @@ namespace Divide
                     instanceBinding = &AddBinding( set, 13u, ShaderStageVisibility::VERTEX );
                 }
                 Set( instanceBinding->_data, _instanceShaderBuffer );
-                pkg.pushConstantsCmd()._uniformData->set( _ID( "dvd_instanceDataIndex" ), PushConstantType::UINT, _instanceShaderDataIndex );
             }
         }
 
@@ -788,7 +810,8 @@ namespace Divide
             pkg.drawCommandsOverride(getDrawPackage(preparedPass).drawCommandsOverride());
             pkg.lodLevel( getDrawPackage( preparedPass ).lodLevel() );
         }
-        SetNodeIndirectionIndex( pkg, isInstanced(), _indirectionBufferEntry );
+        const bool uniformIndirection = RequiresUniformIndirection( isInstanced(), _instanceShaderBuffer != nullptr );
+        SetNodeIndirectionIndex( pkg, uniformIndirection, _indirectionBufferEntry );
         pkg.stagePassBaseIndex( BaseIndex( stagePass ) );
 
         pkg.drawCmdOffset( cmdOffset + to_U32( cmdsInOut.size() ) );
@@ -803,7 +826,7 @@ namespace Divide
         {
             IndirectIndexedDrawCommand& iCmd = cmdsInOut.emplace_back(gCmd._cmd);
 
-            iCmd.baseInstance = IndirectionBaseInstance( isInstanced(), _indirectionBufferEntry );
+            iCmd.baseInstance = IndirectionBaseInstance( uniformIndirection, _indirectionBufferEntry );
 
             if ( autoIndex )
             {

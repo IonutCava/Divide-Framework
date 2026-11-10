@@ -10,9 +10,7 @@
 #define VEGETATION_INSTANCE_INDEX uint(dvd_InstanceIndex)
 #endif
 
-#if defined(VEGETATION_TREE_DRAW) || defined(VEGETATION_GRASS_DRAW)
-uniform uint dvd_instanceDataIndex = 0u;
-#else
+#if !defined(VEGETATION_TREE_DRAW) && !defined(VEGETATION_GRASS_DRAW)
 uniform uint dvd_terrainChunkOffset = 0u;
 #endif
 
