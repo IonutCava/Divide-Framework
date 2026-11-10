@@ -241,6 +241,26 @@ struct DeviceInformation
            to_U64( x ) * y * z <= info._maxWorkgroupInvocations;
 }
 
+/// Largest 1D compute workgroup size that does not exceed `preferred`, fits the device limits and is a multiple of `granularity` (e.g. a wave size) when the limits allow it.
+[[nodiscard]] constexpr U32 FitComputeWorkgroup1D( const DeviceInformation& info, const U32 preferred, const U32 granularity ) noexcept
+{
+    U32 size = preferred;
+    if ( size > info._maxWorkgroupSize[0] )
+    {
+        size = info._maxWorkgroupSize[0];
+    }
+    if ( size > info._maxWorkgroupInvocations )
+    {
+        size = info._maxWorkgroupInvocations;
+    }
+    if ( granularity > 1u && size >= granularity )
+    {
+        size -= size % granularity;
+    }
+
+    return size > 0u ? size : 1u;
+}
+
 
 struct DebugScope
 {

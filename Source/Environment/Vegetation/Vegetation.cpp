@@ -45,6 +45,9 @@ namespace Divide
         constexpr U16 TREE_CACHE_VERSION = 6u;
 
         constexpr U32 WORK_GROUP_SIZE = 64;
+        // One cull workgroup walks a whole chunk: more invocations per workgroup means fewer dependent load rounds per chunk.
+        // Preferred size only: it is clamped to the device limits when the cull shader is created.
+        constexpr U32 CULL_WORK_GROUP_SIZE = 1024;
         constexpr I16 g_maxRadiusSteps = 512;
         constexpr F32 g_ArBase = 1.0f; // Starting radius of circle A
         constexpr F32 g_BrBase = 1.0f; // Starting radius of circle B
@@ -483,7 +486,7 @@ namespace Divide
         ShaderModuleDescriptor compModule = {};
         compModule._moduleType = ShaderType::COMPUTE;
         compModule._sourceFile = "instanceCullVegetation.glsl";
-        compModule._defines.emplace_back( Util::StringFormat( "WORK_GROUP_SIZE {}", WORK_GROUP_SIZE ) );
+        compModule._defines.emplace_back( Util::StringFormat( "WORK_GROUP_SIZE {}", FitComputeWorkgroup1D( GFXDevice::GetDeviceInformation(), CULL_WORK_GROUP_SIZE, WORK_GROUP_SIZE ) ) );
         compModule._defines.emplace_back( Util::StringFormat( "MAX_TREE_INSTANCES {}", _maxTreeInstances ) );
         compModule._defines.emplace_back( Util::StringFormat( "MAX_GRASS_INSTANCES {}", _maxGrassInstances ) );
         

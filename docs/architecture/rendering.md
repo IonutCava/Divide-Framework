@@ -355,7 +355,10 @@ Later candidates, each needing its own measurement:
   overridden. Add the override with a `DrawIndex`-safety check (no shader reads
   `gl_DrawID` today; recheck).
 - Batch the vegetation culling dispatches, which use per-chunk uniforms such as
-  `dvd_terrainChunkOffset`.
+  `dvd_terrainChunkOffset`. Even with 1024-thread groups OpenGL spends about
+  1.4 ms per pass on dozens of back-to-back single-workgroup dispatches (Vulkan
+  about 0.36 ms), so one dispatch with a per-workgroup chunk table is the
+  remaining lever there.
 - Skip redundant `vkCmdBindPipeline` calls (`VK_API::bindPipeline` binds
   unconditionally) and add descriptor fast paths.
 - Pool geometry buffers: separate mesh buffers cannot fuse today.
@@ -1114,6 +1117,19 @@ of the same view's depth and Hi-Z work. Opt-in packages must declare every
 written range and have no hidden inter-package dependencies.
 Nonempty indirect-command lists are culled even when they occupy less than one
 workgroup; padding lanes never address a draw command.
+
+Each grass chunk and each tree species is culled by a single workgroup, so the
+loop (load, test, shared `atomicAdd`, `barrier()`, write per round) is a chain of
+dependent rounds. `Vegetation` sets its `WORK_GROUP_SIZE` shader define with
+`FitComputeWorkgroup1D` (`RenderAPIWrapper.h`): a preferred 1024 invocations,
+clamped to the device's workgroup limits and rounded down to a multiple of 64. A
+larger group cuts the rounds per chunk proportionally. In a Release WarScene on
+the RX 9070 XT, OpenGL `Cull Vegetation` fell from about 8.1 ms to about 1.4 ms
+per pass (frame cadence 44.7 to 23.4 ms), while Vulkan was already about 0.36 ms
+per pass. The OpenGL cost tracked the per-dispatch loop length, so those
+dispatches do not overlap there; the 64-thread group still sets the instance-count
+rounding. Memory residency, the `coherent` qualifier and per-chunk barrier
+recording did not change it.
 
 Water positions are surface centers, with full X/Z dimensions and a positive
 depth. CPU camera tests and GPU terrain queries use the same position-relative

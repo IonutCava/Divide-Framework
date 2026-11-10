@@ -3871,6 +3871,43 @@ namespace Divide
         CHECK_FALSE( SupportsComputeWorkgroup( vkMinimum, 16u, 16u, 1u ) );
     }
 
+    TEST_CASE( "Compute workgroup fitting clamps a preferred 1D size to the device limits", "[compute][device_limits]" )
+    {
+        DeviceInformation info{};
+        info._maxWorkgroupSize[0] = 1024u;
+        info._maxWorkgroupSize[1] = 1024u;
+        info._maxWorkgroupSize[2] = 64u;
+        info._maxWorkgroupInvocations = 1024u;
+
+        // The preferred size is kept when the device allows it, and rounded down to the granularity otherwise.
+        CHECK( FitComputeWorkgroup1D( info, 1024u, 64u ) == 1024u );
+        CHECK( FitComputeWorkgroup1D( info, 256u, 64u ) == 256u );
+        CHECK( FitComputeWorkgroup1D( info, 1000u, 64u ) == 960u );
+
+        // Either the per-axis or the total-invocation limit can be the tighter one.
+        info._maxWorkgroupSize[0] = 512u;
+        CHECK( FitComputeWorkgroup1D( info, 1024u, 64u ) == 512u );
+        info._maxWorkgroupSize[0] = 1024u;
+        info._maxWorkgroupInvocations = 400u;
+        CHECK( FitComputeWorkgroup1D( info, 1024u, 64u ) == 384u );
+
+        // Vulkan's guaranteed minimum limits.
+        DeviceInformation vkMinimum{};
+        vkMinimum._maxWorkgroupSize[0] = 128u;
+        vkMinimum._maxWorkgroupSize[1] = 128u;
+        vkMinimum._maxWorkgroupSize[2] = 64u;
+        vkMinimum._maxWorkgroupInvocations = 128u;
+        CHECK( FitComputeWorkgroup1D( vkMinimum, 1024u, 64u ) == 128u );
+        CHECK( SupportsComputeWorkgroup( vkMinimum, FitComputeWorkgroup1D( vkMinimum, 1024u, 64u ), 1u, 1u ) );
+
+        // A limit below the granularity is returned unrounded and still fits; unusable limits never produce a zero-sized group.
+        vkMinimum._maxWorkgroupInvocations = 48u;
+        CHECK( FitComputeWorkgroup1D( vkMinimum, 1024u, 64u ) == 48u );
+        CHECK( SupportsComputeWorkgroup( vkMinimum, FitComputeWorkgroup1D( vkMinimum, 1024u, 64u ), 1u, 1u ) );
+        info._maxWorkgroupSize[0] = 0u;
+        CHECK( FitComputeWorkgroup1D( info, 1024u, 64u ) == 1u );
+    }
+
     TEST_CASE( "Instanced draws agree with material indirection requirements", "[instancing][indirection]" )
     {
         for ( const U32 instanceCount : { 0u, 1u, 2u, 64u } )
