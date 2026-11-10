@@ -796,72 +796,121 @@ namespace
 
         [[nodiscard]] bool CanBatchIndirectDraw( const GenericDrawCommand& draw ) noexcept
         {
-            constexpr U16 requiredOptions = to_base( CmdRenderOptions::RENDER_GEOMETRY ) |
-                                            to_base( CmdRenderOptions::RENDER_INDIRECT );
-            return draw._renderOptions == requiredOptions && draw._drawCount == 1u &&
-                   draw._cmd.instanceCount == 1u && draw._cmd.indexCount > 0u &&
-                   draw._sourceBuffersCount == 2u && draw._sourceBuffers != nullptr;
+            return ClassifyIndirectDraw( draw ) == IndirectDrawCandidate::CANDIDATE;
         }
+    }
+
+    IndirectDrawCandidate ClassifyIndirectDraw( const GenericDrawCommand& draw ) noexcept
+    {
+        constexpr U16 requiredOptions = to_base( CmdRenderOptions::RENDER_GEOMETRY ) |
+                                        to_base( CmdRenderOptions::RENDER_INDIRECT );
+        if ( draw._renderOptions != requiredOptions )
+        {
+            return IndirectDrawCandidate::OPTIONS;
+        }
+        if ( draw._cmd.indexCount == 0u )
+        {
+            return IndirectDrawCandidate::NO_INDICES;
+        }
+        if ( draw._sourceBuffersCount != 2u || draw._sourceBuffers == nullptr )
+        {
+            return IndirectDrawCandidate::BUFFERS;
+        }
+        if ( draw._drawCount != 1u )
+        {
+            return IndirectDrawCandidate::MULTI_RECORD;
+        }
+        if ( draw._cmd.instanceCount != 1u )
+        {
+            return IndirectDrawCandidate::INSTANCED;
+        }
+        return IndirectDrawCandidate::CANDIDATE;
     }
 
     size_t CollectIndirectDrawBatch( const CommandBuffer::CommandList& commands,
                                      const size_t drawIndex,
                                      const bool shaderCompatible,
                                      const U32 maxDrawCount,
-                                     GenericDrawCommand& batchOut ) noexcept
+                                     GenericDrawCommand& batchOut,
+                                     IndirectBatchStop* stopOut ) noexcept
     {
-        if ( !shaderCompatible || maxDrawCount <= 2u || drawIndex == 0u ||
-             drawIndex >= commands.size() || commands[drawIndex] == nullptr ||
-             commands[drawIndex - 1u] == nullptr ||
-             commands[drawIndex]->type() != CommandType::DRAW_COMMANDS ||
-             commands[drawIndex - 1u]->type() != CommandType::SEND_PUSH_CONSTANTS )
-        {
-            return 0u;
-        }
-
-        const DrawCommand* firstDraw = commands[drawIndex]->As<DrawCommand>();
-        if ( firstDraw->_drawCommands.size() != 1u || !CanBatchIndirectDraw( firstDraw->_drawCommands.front() ) )
-        {
-            return 0u;
-        }
-
-        const SendPushConstantsCommand* firstPush = commands[drawIndex - 1u]->As<SendPushConstantsCommand>();
-        GenericDrawCommand batch = firstDraw->_drawCommands.front();
+        IndirectBatchStop stop = IndirectBatchStop::NOT_STARTED;
         size_t consumed = 0u;
-        while ( commands.size() - drawIndex - consumed > 2u && batch._drawCount < maxDrawCount - 1u )
+
+        if ( shaderCompatible && maxDrawCount > 2u && drawIndex > 0u &&
+             drawIndex < commands.size() && commands[drawIndex] != nullptr &&
+             commands[drawIndex - 1u] != nullptr &&
+             commands[drawIndex]->type() == CommandType::DRAW_COMMANDS &&
+             commands[drawIndex - 1u]->type() == CommandType::SEND_PUSH_CONSTANTS )
         {
-            const CommandBase* pushBase = commands[drawIndex + consumed + 1u];
-            const CommandBase* drawBase = commands[drawIndex + consumed + 2u];
-            if ( pushBase == nullptr || drawBase == nullptr ||
-                 pushBase->type() != CommandType::SEND_PUSH_CONSTANTS ||
-                 drawBase->type() != CommandType::DRAW_COMMANDS )
+            const DrawCommand* firstDraw = commands[drawIndex]->As<DrawCommand>();
+            if ( firstDraw->_drawCommands.size() == 1u && CanBatchIndirectDraw( firstDraw->_drawCommands.front() ) )
             {
-                break;
-            }
+                const SendPushConstantsCommand* firstPush = commands[drawIndex - 1u]->As<SendPushConstantsCommand>();
+                GenericDrawCommand batch = firstDraw->_drawCommands.front();
+                while ( true )
+                {
+                    if ( commands.size() - drawIndex - consumed <= 2u )
+                    {
+                        stop = IndirectBatchStop::END_OF_BUFFER;
+                        break;
+                    }
+                    if ( batch._drawCount >= maxDrawCount - 1u )
+                    {
+                        stop = IndirectBatchStop::DRAW_LIMIT;
+                        break;
+                    }
 
-            const auto* push = static_cast<const SendPushConstantsCommand*>( pushBase );
-            const auto* draw = static_cast<const DrawCommand*>( drawBase );
-            if ( draw->_drawCommands.size() != 1u )
-            {
-                break;
-            }
+                    const CommandBase* pushBase = commands[drawIndex + consumed + 1u];
+                    const CommandBase* drawBase = commands[drawIndex + consumed + 2u];
+                    if ( pushBase == nullptr || drawBase == nullptr ||
+                         pushBase->type() != CommandType::SEND_PUSH_CONSTANTS ||
+                         drawBase->type() != CommandType::DRAW_COMMANDS )
+                    {
+                        stop = IndirectBatchStop::NEXT_COMMANDS;
+                        break;
+                    }
 
-            const GenericDrawCommand& next = draw->_drawCommands.front();
-            if ( !CanBatchIndirectDraw( next ) || !Compatible( batch, next ) ||
-                 next._commandOffset <= batch._commandOffset ||
-                 next._commandOffset - batch._commandOffset != batch._drawCount ||
-                 !SamePushData( *firstPush, *push ) )
-            {
-                break;
-            }
+                    const auto* push = static_cast<const SendPushConstantsCommand*>( pushBase );
+                    const auto* draw = static_cast<const DrawCommand*>( drawBase );
+                    if ( draw->_drawCommands.size() != 1u || !CanBatchIndirectDraw( draw->_drawCommands.front() ) )
+                    {
+                        stop = IndirectBatchStop::NEXT_DRAW;
+                        break;
+                    }
 
-            ++batch._drawCount;
-            consumed += 2u;
+                    const GenericDrawCommand& next = draw->_drawCommands.front();
+                    if ( !Compatible( batch, next ) )
+                    {
+                        stop = IndirectBatchStop::BUFFERS;
+                        break;
+                    }
+                    if ( next._commandOffset <= batch._commandOffset ||
+                         next._commandOffset - batch._commandOffset != batch._drawCount )
+                    {
+                        stop = IndirectBatchStop::OFFSET_GAP;
+                        break;
+                    }
+                    if ( !SamePushData( *firstPush, *push ) )
+                    {
+                        stop = IndirectBatchStop::PUSH_DATA;
+                        break;
+                    }
+
+                    ++batch._drawCount;
+                    consumed += 2u;
+                }
+
+                if ( consumed > 0u )
+                {
+                    batchOut = batch;
+                }
+            }
         }
 
-        if ( consumed > 0u )
+        if ( stopOut != nullptr )
         {
-            batchOut = batch;
+            *stopOut = stop;
         }
         return consumed;
     }

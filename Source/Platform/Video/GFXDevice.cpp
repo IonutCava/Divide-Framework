@@ -1738,6 +1738,7 @@ namespace Divide
     bool GFXDevice::frameStarted( [[maybe_unused]] const FrameEvent& evt )
     {
         _resourceBindingMetrics.beginFrame( RenderSmokeTest::PerfModeRequested() );
+        _drawBatchingMetrics.beginFrame( RenderSmokeTest::PerfModeRequested() );
         if ( _uniformUploadFailed )
         {
             return false;
@@ -1842,6 +1843,7 @@ namespace Divide
 
         frameDrawCallsPrev( frameDrawCalls() );
         _resourceBindingMetrics.endFrame();
+        _drawBatchingMetrics.endFrame();
         frameDrawCalls( 0u );
 
         if ( _gfxBuffers._needsResizeCam )
@@ -2581,26 +2583,50 @@ namespace Divide
                 continue;
             }
 
-            if ( cmd->type() == GFX::CommandType::DRAW_COMMANDS &&
-                 commandIndex > 0u && commands.size() - commandIndex > 2u &&
-                 commands[commandIndex - 1u]->type() == GFX::CommandType::SEND_PUSH_CONSTANTS &&
-                 commands[commandIndex + 1u]->type() == GFX::CommandType::SEND_PUSH_CONSTANTS &&
-                 commands[commandIndex + 2u]->type() == GFX::CommandType::DRAW_COMMANDS )
+            if ( cmd->type() == GFX::CommandType::DRAW_COMMANDS )
             {
                 const GFX::DrawCommand& draw = *cmd->As<GFX::DrawCommand>();
-                if ( draw._drawCommands.size() == 1u && _api->supportsIndirectDrawBatching( draw._drawCommands.front() ) )
+                const bool trackBatching = _drawBatchingMetrics.enabled();
+
+                GFX::IndirectBatchStop stop = GFX::IndirectBatchStop::NEXT_COMMANDS;
+                if ( commandIndex > 0u && commands.size() - commandIndex > 2u &&
+                     commands[commandIndex - 1u]->type() == GFX::CommandType::SEND_PUSH_CONSTANTS &&
+                     commands[commandIndex + 1u]->type() == GFX::CommandType::SEND_PUSH_CONSTANTS &&
+                     commands[commandIndex + 2u]->type() == GFX::CommandType::DRAW_COMMANDS )
                 {
-                    GenericDrawCommand batch{};
-                    const size_t consumed = GFX::CollectIndirectDrawBatch( commands, commandIndex, true,
-                                                                            GetDeviceInformation()._maxDrawIndirectCount, batch );
-                    if ( consumed > 0u )
+                    if ( draw._drawCommands.size() == 1u && _api->supportsIndirectDrawBatching( draw._drawCommands.front() ) )
                     {
-                        PROFILE_SCOPE( "Batched indirect draw", Profiler::Category::Graphics );
-                        GFX::DrawCommand combined{ MOV( batch ) };
-                        _api->flushCommand( &combined );
-                        commandIndex += consumed;
-                        continue;
+                        GenericDrawCommand batch{};
+                        const size_t consumed = GFX::CollectIndirectDrawBatch( commands, commandIndex, true,
+                                                                                GetDeviceInformation()._maxDrawIndirectCount, batch,
+                                                                                trackBatching ? &stop : nullptr );
+                        if ( consumed > 0u )
+                        {
+                            if ( trackBatching )
+                            {
+                                _drawBatchingMetrics.observeDraw( commands, commandIndex, draw, consumed, batch._drawCount, stop );
+                            }
+
+                            PROFILE_SCOPE( "Batched indirect draw", Profiler::Category::Graphics );
+                            GFX::DrawCommand combined{ MOV( batch ) };
+                            _api->flushCommand( &combined );
+                            commandIndex += consumed;
+                            continue;
+                        }
                     }
+                    else
+                    {
+                        stop = GFX::IndirectBatchStop::UNSUPPORTED;
+                    }
+                }
+                else if ( trackBatching && commands.size() - commandIndex <= 2u )
+                {
+                    stop = GFX::IndirectBatchStop::END_OF_BUFFER;
+                }
+
+                if ( trackBatching )
+                {
+                    _drawBatchingMetrics.observeDraw( commands, commandIndex, draw, 0u, 0u, stop );
                 }
             }
 
