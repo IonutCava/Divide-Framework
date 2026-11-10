@@ -11,6 +11,23 @@
 
 namespace Divide {
 
+    namespace
+    {
+        [[nodiscard]] constexpr const char* PresentModeName( const VkPresentModeKHR mode ) noexcept
+        {
+            switch ( mode )
+            {
+                case VK_PRESENT_MODE_IMMEDIATE_KHR:    return "IMMEDIATE";
+                case VK_PRESENT_MODE_MAILBOX_KHR:      return "MAILBOX";
+                case VK_PRESENT_MODE_FIFO_KHR:         return "FIFO";
+                case VK_PRESENT_MODE_FIFO_RELAXED_KHR: return "FIFO_RELAXED";
+                default: break;
+            }
+
+            return "OTHER";
+        }
+    }
+
     VKSwapChain::VKSwapChain( VK_API& context, const VKDevice& device, const DisplayWindow& window, const bool smokeReadback )
         : _context(context)
         , _device(device)
@@ -141,6 +158,13 @@ namespace Divide {
         if ( _swapChain.image_format == VK_FORMAT_UNDEFINED )
         {
             return ErrorCode::VK_SURFACE_CREATE;
+        }
+
+        // Report the mode the driver actually granted: IMMEDIATE silently falls back to FIFO (display-synchronised) if unsupported
+        Console::printfn( "Vulkan swapchain present mode: {} (VSync requested: {})", PresentModeName( _swapChain.present_mode ), vSync );
+        if ( !vSync && _swapChain.present_mode == VK_PRESENT_MODE_FIFO_KHR )
+        {
+            Console::warnfn( "Vulkan IMMEDIATE present mode is unavailable: presentation is synchronised to the display refresh rate" );
         }
 
         const VkSemaphoreCreateInfo semaphoreCreateInfo = vk::semaphoreCreateInfo();
