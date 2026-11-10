@@ -1048,6 +1048,8 @@ namespace Divide
         const auto defaultPacking = GLUtil::InternalFormatAndDataType(
             GFXImageFormat::RG, GFXDataFormat::FLOAT_32, TextureDescriptor{}._packing);
         CHECK(floatMoments._format == defaultPacking._format);
+        CHECK(floatMoments._dataType == gl46core::GL_FLOAT);
+        CHECK(defaultPacking._dataType == gl46core::GL_FLOAT);
         CHECK_FALSE(RTBlitEntry{}._copySamples);
         GFX::CommandBuffer source;
         ShadowMap::restoreStaticBase(INVALID_RENDER_TARGET_ID, INVALID_RENDER_TARGET_ID, 3u, source);

@@ -229,6 +229,13 @@ class LightPool final : public FrameListener,
 
     struct ViewLightData
     {
+        ViewLightData();
+        ~ViewLightData();
+        ViewLightData(ViewLightData&&) noexcept;
+        ViewLightData& operator=(ViewLightData&&) noexcept;
+        ViewLightData(const ViewLightData&) = delete;
+        ViewLightData& operator=(const ViewLightData&) = delete;
+
         vector<LightProperties> _properties;
         vector<Light*> _lights;
         SceneData _scene;

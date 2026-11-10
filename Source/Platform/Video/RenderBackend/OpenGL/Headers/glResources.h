@@ -210,7 +210,7 @@ extern std::array<gl46core::GLenum, to_base(CullMode::COUNT)> glCullModeTable;
 extern std::array<gl46core::GLenum, to_base(FillMode::COUNT)> glFillModeTable;
 extern std::array<gl46core::GLenum, to_base(TextureType::COUNT)> glTextureTypeTable;
 extern std::array<gl46core::GLenum, to_base(PrimitiveTopology::COUNT)> glPrimitiveTypeTable;
-extern std::array<gl46core::GLenum, to_base(GFXDataFormat::COUNT)> glDataFormatTable;
+extern const std::array<gl46core::GLenum, to_base(GFXDataFormat::COUNT)> glDataFormatTable;
 extern std::array<gl46core::GLenum, to_base(TextureWrap::COUNT)> glWrapTable;
 extern std::array<gl46core::GLenum, to_base(ShaderType::COUNT)> glShaderStageTable;
 extern std::array<gl46core::GLenum, to_base( QueryType::COUNT )> glQueryTypeTable;

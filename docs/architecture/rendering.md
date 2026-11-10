@@ -444,7 +444,10 @@ camera-space positions, directions, counts or ambient colour. Shadow indices
 are patched into every snapshot used by the current player after the stage wait.
 CPU view records are pre-sized contiguous values at light-pool construction,
 bounded by `TotalPassCountForStage`; acquiring a view cannot allocate or move
-earlier records. Light GPU buffers are created on first use and retained;
+earlier records. View-record construction, destruction and moves are defined
+out of line where `ShaderBuffer` is complete, so header consumers need no
+buffer implementation.
+Light GPU buffers are created on first use and retained;
 their capacity grows geometrically from 32 lights up to
 `MAX_ACTIVE_LIGHTS_PER_FRAME`, rather than allocating the maximum for every view.
 Existing frame/player ring lengths and deferred GPU-resource retirement apply.
