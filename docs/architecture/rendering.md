@@ -80,7 +80,8 @@ be combined by this optimization. For `BY_STATE` render bins, matching shader,
 state and texture keys are secondarily ordered by the first draw command's
 vertex/index buffer handles before the distance tie-breaker. This keeps repeated
 meshes adjacent where their other sort keys match, without changing explicit
-depth or back-to-front ordering.
+depth or back-to-front ordering. Planned extensions are listed under
+[Planned multi-draw batching follow-ups](#planned-multi-draw-batching-follow-ups-not-implemented).
 
 Hi-Z indirect-command culling uses a bounded two-dimensional compute grid when
 one workgroup row is insufficient. Its padded groups return before forming a
@@ -235,6 +236,128 @@ not all engine allocations. Published/live binding record counts expose revision
 churn; payload bytes exclude pool slack and ownership control blocks. A stable
 published count after warmup establishes no new binding publications, not
 general allocation freedom.
+
+## Draw batching diagnostics
+
+Explicit `-PerfMode` runs also emit three `[DrawBatching]` lines for the previous
+completed CPU frame at the existing metrics cadence. They describe submission-time
+multi-draw fusion (see [Command flow](#command-flow)), not recording-time
+`BatchDrawCommands` merging: `DrawBatchingMetrics` observes each `DRAW_COMMANDS`
+command as `GFXDevice::flushCommandBufferInternal` reaches it, after any fusion.
+Ordinary runs pay only a disabled-flag check. The counters use no atomics,
+allocation or GPU queries and are owned by the thread that flushes command buffers.
+
+- Counter line: draw commands and generic draws entering submission, native
+  geometry/wireframe calls after fusion, how many of those calls use indirect
+  records and how many records they issue, the fused runs and the records inside
+  them, and a `recordsPerCall` histogram with buckets `1, 2-3, 4-7, 8-15, 16-31,
+  32-63, 64-127, 128+`. Compare `nativeCalls` with `[PerfMetrics] backendDraws`.
+- `candidates`: every generic draw classified by `GFX::ClassifyIndirectDraw`, which
+  names the *first* property that keeps it out of a fused run: `OPTIONS` (render
+  options other than exactly geometry + indirect), `NO_INDICES`, `BUFFERS` (not a
+  vertex/index buffer pair), `MULTI_RECORD` (already spans several indirect
+  records) or `INSTANCED`. `CANDIDATE` draws may fuse.
+- `runs`: lone candidate draws that follow their push constants and so can start a
+  run, with why each run ended (`stops`) and which command followed it (`next`;
+  `END_OF_BUFFER` means none did). Stop reasons come from the optional
+  `IndirectBatchStop` out-parameter of `GFX::CollectIndirectDrawBatch`:
+  `END_OF_BUFFER`; `NEXT_COMMANDS` (anything other than a push + draw pair, such
+  as a descriptor update or barrier); `NEXT_DRAW` (the next draw is not a
+  candidate or holds several draws); `BUFFERS` (different source buffers);
+  `OFFSET_GAP` (non-contiguous indirect records); `PUSH_DATA` (fast constants or
+  loose uniforms differ); `DRAW_LIMIT` (the device's indirect-draw count);
+  `UNSUPPORTED` (the backend or bound pipeline does not fuse, for example OpenGL
+  or a shader that may read `DrawIndex`); `NOT_STARTED` (never reached the
+  collector's own checks).
+
+A draw absorbed into a run is not a run of its own, but a draw that could not join
+the previous run counts as the start of a new one. Read the histogram with the stop
+reasons: many one-record calls dominated by one reason show what to remove first.
+Each fused run counts as one native call holding all of its records, so a
+reduction in `nativeCalls` and growth in `collectedRecords` indicate fusion gains.
+
+### Planned multi-draw batching follow-ups (not implemented)
+
+Nothing in this subsection is implemented; the metrics above landed first so each
+step can be measured. Land the numbered steps as separate commits, each with
+tests, documentation and Debug Vulkan and OpenGL smoke runs (see
+[Framework smoke diagnosis](#framework-smoke-diagnosis)), and compare a Release
+Vulkan `-PerfMode -GpuScopeTimings` capture against this baseline.
+
+Baseline: WarScene, Vulkan Release `-PerfMode -GpuScopeTimings` with `IMMEDIATE`
+presentation, commit `b52016c69` plus the metrics, warmed frames 320-576. Cadence
+was 16.58 ms/frame (60.3 FPS) with an average `gpuMS` of 16.71, so the frame is at
+or near its GPU time: confirm the CPU frame time with Optick before expecting
+CPU-side batching to raise FPS. Frames that skip shadow rendering submit about
+2.8k draws and the others about 7.4k, so compare like with like; the figures below
+are from a frame of the second kind (frame 576): `drawCmds=761`,
+`genericDraws=nativeCalls=7465` with no fused runs, `recordsPerCall`
+7150/236/16/0/0/0/0/0, `candidates: CANDIDATE=90 OPTIONS=63 MULTI_RECORD=252
+INSTANCED=7060`, and `runs=8`, all ending on `NEXT_COMMANDS`. About 95% of generic
+draws are therefore stopped first by `instanceCount != 1`. The run statistics say
+nothing yet about that instanced stream, so re-read `stops` and `next` after step
+1; steps 2 and 3 only pay off once step 1 admits those draws.
+
+1. **Instanced indirect batching.** `GFX::ClassifyIndirectDraw` reports `INSTANCED`
+   for any `instanceCount != 1`. Accept `instanceCount > 0` for draws with identical
+   render options, and keep rejecting zero: `SubmitRenderCommand` returns early on a
+   zero instance count, and the fused record must not start with one. The indirect
+   records stay untouched in the GPU buffer, so `vkCmdDrawIndexedIndirect` honours
+   each record's own `instanceCount` and `baseInstance`. Leave `BatchDrawCommands`
+   alone: it merges at recording time, also serves OpenGL, and the non-indirect
+   path asserts on `instanceCount > 1 && drawCount > 1`. Update the "Indirect draw
+   batches preserve adjacent submission state" test, which asserts that an instance
+   count of 2 is rejected, plus the `INSTANCED` classification tests; rename the
+   enumerator (for example `NO_INSTANCES`) in `Names::indirectDrawCandidate`, and
+   fix the "non-instanced" wording in [Command flow](#command-flow).
+2. **Per-usage descriptor-bind dedup.** `CommandBuffer::cleanInternal` keeps one
+   `prevDescriptorSet` across all `DescriptorSetUsage` values, so alternating
+   `PER_PASS`/`PER_DRAW` binds (grass) never match the previous one and also break
+   `[push, draw]` adjacency. Track the previous bind per usage with the exact
+   `sameBindings` comparison, and invalidate it at pipeline binds, render-pass
+   boundaries and anything else that resets descriptor state. First verify the
+   overlay-versus-replace semantics of `ResourceBindingHandle` and
+   `ComposeResourceBindings`, and the Vulkan descriptor and pipeline-layout epoch
+   assumptions. Expect fewer runs ending in `next: BIND_SHADER_RESOURCES` and a
+   lower `[BindingMetrics] commands=`.
+3. **No-loose-uniform fast path.** Vegetation draw packages share `_uniforms` with
+   their culling dispatch (`additionalPushConstantsCmd()` in
+   `Vegetation::prepareRender`), so chunk-specific culling uniforms make otherwise
+   identical grass draws differ in `SamePushData`. The grass and tree draw stages
+   have no loose-uniform block: the "Vegetation culling and draw shaders compile
+   for both rendering backends" test in `ShaderCompilerTests.cpp` asserts empty
+   `_uniforms` and no uniform-block binding index for them. Extend the backend
+   capability query behind `supportsIndirectDrawBatching` so that, when the bound
+   graphics program's reflection has no loose-uniform block, only the fast push data
+   is compared. Do not change the culling dispatch uniforms, and test against real
+   shader reflection. Expect fewer `PUSH_DATA` stops.
+
+Later candidates, each needing its own measurement:
+
+- Pack indirect records in each pass's actual draw order.
+  `RenderPassExecutor::buildDrawCommands` packs them in the initial main-pass order,
+  but `prepareRenderQueues` re-sorts per pass (`FRONT_TO_BACK_ALPHA_LAST` for opaque
+  depth and shadow), so records are non-consecutive and stop on `OFFSET_GAP`. Keep
+  the Hi-Z cull indices and `InstanceCountPatch` command indices in sync.
+- OpenGL parity: its `SubmitRenderCommand` already issues
+  `glMultiDrawElementsIndirect`, but `supportsIndirectDrawBatching` is not
+  overridden. Add the override with a `DrawIndex`-safety check (no shader reads
+  `gl_DrawID` today; recheck).
+- Batch the vegetation culling dispatches, which use per-chunk uniforms such as
+  `dvd_terrainChunkOffset`.
+- Skip redundant `vkCmdBindPipeline` calls (`VK_API::bindPipeline` binds
+  unconditionally) and add descriptor fast paths.
+- Pool geometry buffers: separate mesh buffers cannot fuse today.
+- Translate command buffers to native calls earlier or in parallel. `flushWindow`
+  replays them serially after the render-stage join, and late data finalisation and
+  barriers depend on that join (medium to high risk).
+- Cache omni-light shadows (the existing `STUBBED` item under
+  [Shadow maps and spotlights](#shadow-maps-and-spotlights)).
+- GPU side: the final-tree capture's `[PerfMetrics] gpuPasses` line summed to about
+  15.9 ms per frame, with `DISPLAY/OIT Shader tree_material` (about 4.0 ms) and
+  `DISPLAY/MainPass` (about 3.4 ms) dominating, followed by `DISPLAY/PrePass` (about
+  1.7 ms). Check these first if Optick shows the CPU main thread already below the
+  GPU time; further CPU-side batching cannot raise FPS in that case.
 
 ## Framework smoke diagnosis
 

@@ -43,6 +43,7 @@
 #include "RenderStagePass.h"
 #include "IMPrimitiveDescriptors.h"
 #include "ResourceBindingMetrics.h"
+#include "DrawBatchingMetrics.h"
 
 #include "Core/Math/Headers/Line.h"
 #include "Core/Headers/FrameListener.h"
@@ -421,6 +422,7 @@ public:  // Accessors and Mutators
     /// GPU time per command buffer name, accumulated while queryPerformanceStats() is enabled. Callers reset it after consuming.
     [[nodiscard]] GPUPassTimingTable& gpuPassTimings() noexcept { return _gpuPassTimings; }
     [[nodiscard]] ResourceBindingMetrics& resourceBindingMetrics() noexcept { return _resourceBindingMetrics; }
+    [[nodiscard]] DrawBatchingMetrics& drawBatchingMetrics() noexcept { return _drawBatchingMetrics; }
 
     void onThreadCreated(const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread) const;
 
@@ -659,6 +661,7 @@ private:
     std::array<F32, GPU_PASS_TIMESTAMP_CAPACITY> _gpuPassTimestampScratch{};
     GPUPassTimingTable _gpuPassTimings{};
     ResourceBindingMetrics _resourceBindingMetrics{};
+    DrawBatchingMetrics _drawBatchingMetrics{};
 
     /// Debug scope timing state, only valid while flushWindow() translates main-window command buffers with scope timing enabled.
     static constexpr U8 GPU_SCOPE_MAX_DEPTH = 16u;

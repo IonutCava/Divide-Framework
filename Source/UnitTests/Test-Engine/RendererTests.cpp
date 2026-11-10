@@ -4343,6 +4343,363 @@ namespace Divide
         }
     }
 
+    namespace
+    {
+        // A legal run of push/draw pairs, so each case edits only the property it exercises
+        struct IndirectRunFixture
+        {
+            static constexpr size_t DRAW_COUNT = 4u;
+
+            std::array<UniformData, DRAW_COUNT> uniforms;
+            std::array<PoolHandle, 2u> buffers{ PoolHandle{ 1u, 1u }, PoolHandle{ 2u, 1u } };
+            std::array<PoolHandle, 2u> otherBuffers{ PoolHandle{ 1u, 1u }, PoolHandle{ 3u, 1u } };
+            std::array<GFX::SendPushConstantsCommand*, DRAW_COUNT> pushes{};
+            std::array<GFX::DrawCommand*, DRAW_COUNT> commandsByDraw{};
+            std::array<GenericDrawCommand*, DRAW_COUNT> draws{};
+            GFX::CommandBuffer commands;
+
+            IndirectRunFixture()
+            {
+                for ( size_t i = 0u; i < DRAW_COUNT; ++i )
+                {
+                    uniforms[i].set( 7u, PushConstantType::UINT, 5u );
+                    pushes[i] = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( commands );
+                    pushes[i]->_uniformData = &uniforms[i];
+                    commandsByDraw[i] = GFX::EnqueueCommand<GFX::DrawCommand>( commands );
+                    GenericDrawCommand& draw = commandsByDraw[i]->_drawCommands.emplace_back();
+                    draw._sourceBuffers = buffers.data();
+                    draw._sourceBuffersCount = to_U16( buffers.size() );
+                    draw._commandOffset = 10u + to_U32( i );
+                    draw._cmd.indexCount = 3u;
+                    draw._cmd.baseInstance = 100u + to_U32( i );
+                    enableOption( draw, CmdRenderOptions::RENDER_INDIRECT );
+                    draws[i] = &draw;
+                }
+            }
+
+            [[nodiscard]] const GFX::CommandBuffer::CommandList& list() const noexcept
+            {
+                return commands.commands();
+            }
+        };
+    }
+
+    TEST_CASE( "Draw batching diagnostics bucket record counts", "[renderer][draw_batching]" )
+    {
+        using Counters = DrawBatchingCounters;
+        static_assert( Counters::RECORD_BUCKETS == 8u );
+
+        const std::initializer_list<std::pair<U32, size_t>> expected
+        {
+            { 0u, 0u }, { 1u, 0u }, { 2u, 1u }, { 3u, 1u }, { 4u, 2u }, { 7u, 2u }, { 8u, 3u }, { 15u, 3u },
+            { 16u, 4u }, { 31u, 4u }, { 32u, 5u }, { 63u, 5u }, { 64u, 6u }, { 127u, 6u }, { 128u, 7u }, { U32_MAX, 7u }
+        };
+        for ( const auto& [records, bucket] : expected )
+        {
+            INFO( "records=" << records );
+            CHECK( Counters::RecordBucket( records ) == bucket );
+        }
+    }
+
+    TEST_CASE( "Draw batching diagnostics are frame scoped and off unless requested", "[renderer][draw_batching]" )
+    {
+        IndirectRunFixture fixture;
+        const auto observe = [&]( DrawBatchingMetrics& metrics )
+        {
+            metrics.observeDraw( fixture.list(), 1u, *fixture.commandsByDraw[0], 0u, 0u, GFX::IndirectBatchStop::NEXT_COMMANDS );
+        };
+
+        DrawBatchingMetrics metrics;
+        CHECK_FALSE( metrics.enabled() );
+        observe( metrics );
+        CHECK( metrics.current()._drawCommands == 0u );
+
+        metrics.beginFrame( false );
+        observe( metrics );
+        CHECK( metrics.current()._drawCommands == 0u );
+        CHECK( metrics.current()._runs == 0u );
+
+        metrics.beginFrame( true );
+        CHECK( metrics.enabled() );
+        observe( metrics );
+        CHECK( metrics.current()._drawCommands == 1u );
+        CHECK( metrics.previous()._drawCommands == 0u );
+
+        metrics.endFrame();
+        CHECK( metrics.previous()._drawCommands == 1u );
+        metrics.beginFrame( true );
+        CHECK( metrics.current()._drawCommands == 0u );
+        CHECK( metrics.previous()._drawCommands == 1u );
+
+        metrics.endFrame();
+        metrics.beginFrame( false );
+        CHECK_FALSE( metrics.enabled() );
+        CHECK( metrics.current()._drawCommands == 0u );
+        CHECK( metrics.previous()._drawCommands == 0u );
+    }
+
+    TEST_CASE( "Indirect draw candidates report their first blocking property", "[renderer][draw_batching]" )
+    {
+        using Candidate = GFX::IndirectDrawCandidate;
+
+        std::array<PoolHandle, 2u> buffers{ PoolHandle{ 1u, 1u }, PoolHandle{ 2u, 1u } };
+        GenericDrawCommand draw{};
+        draw._sourceBuffers = buffers.data();
+        draw._sourceBuffersCount = to_U16( buffers.size() );
+        draw._cmd.indexCount = 3u;
+        enableOption( draw, CmdRenderOptions::RENDER_INDIRECT );
+        REQUIRE( GFX::ClassifyIndirectDraw( draw ) == Candidate::CANDIDATE );
+
+        SECTION( "render options must be exactly geometry and indirect" )
+        {
+            enableOption( draw, CmdRenderOptions::RENDER_WIREFRAME );
+            CHECK( GFX::ClassifyIndirectDraw( draw ) == Candidate::OPTIONS );
+            disableOption( draw, CmdRenderOptions::RENDER_WIREFRAME );
+            disableOption( draw, CmdRenderOptions::RENDER_INDIRECT );
+            CHECK( GFX::ClassifyIndirectDraw( draw ) == Candidate::OPTIONS );
+            enableOption( draw, CmdRenderOptions::RENDER_INDIRECT );
+            disableOption( draw, CmdRenderOptions::RENDER_GEOMETRY );
+            CHECK( GFX::ClassifyIndirectDraw( draw ) == Candidate::OPTIONS );
+        }
+        SECTION( "an empty index range" )
+        {
+            draw._cmd.indexCount = 0u;
+            CHECK( GFX::ClassifyIndirectDraw( draw ) == Candidate::NO_INDICES );
+        }
+        SECTION( "source buffers must be the vertex and index pair" )
+        {
+            draw._sourceBuffersCount = 1u;
+            CHECK( GFX::ClassifyIndirectDraw( draw ) == Candidate::BUFFERS );
+            draw._sourceBuffersCount = 2u;
+            draw._sourceBuffers = nullptr;
+            CHECK( GFX::ClassifyIndirectDraw( draw ) == Candidate::BUFFERS );
+        }
+        SECTION( "a draw that already spans several indirect records" )
+        {
+            draw._drawCount = 2u;
+            CHECK( GFX::ClassifyIndirectDraw( draw ) == Candidate::MULTI_RECORD );
+        }
+        SECTION( "a draw with an instance count other than one" )
+        {
+            draw._cmd.instanceCount = 2u;
+            CHECK( GFX::ClassifyIndirectDraw( draw ) == Candidate::INSTANCED );
+            draw._cmd.instanceCount = 0u;
+            CHECK( GFX::ClassifyIndirectDraw( draw ) == Candidate::INSTANCED );
+        }
+        SECTION( "the earliest failing property wins" )
+        {
+            draw._cmd.instanceCount = 2u;
+            draw._drawCount = 2u;
+            draw._sourceBuffersCount = 1u;
+            draw._cmd.indexCount = 0u;
+            CHECK( GFX::ClassifyIndirectDraw( draw ) == Candidate::NO_INDICES );
+            draw._cmd.indexCount = 3u;
+            CHECK( GFX::ClassifyIndirectDraw( draw ) == Candidate::BUFFERS );
+            draw._sourceBuffersCount = 2u;
+            CHECK( GFX::ClassifyIndirectDraw( draw ) == Candidate::MULTI_RECORD );
+            draw._drawCount = 1u;
+            CHECK( GFX::ClassifyIndirectDraw( draw ) == Candidate::INSTANCED );
+            enableOption( draw, CmdRenderOptions::RENDER_WIREFRAME );
+            CHECK( GFX::ClassifyIndirectDraw( draw ) == Candidate::OPTIONS );
+        }
+    }
+
+    TEST_CASE( "Indirect batch collection reports why a run stopped", "[renderer][draw_batching]" )
+    {
+        using Stop = GFX::IndirectBatchStop;
+
+        IndirectRunFixture fixture;
+        GenericDrawCommand batch{};
+        Stop stop = Stop::COUNT;
+        const auto collect = [&]( const size_t drawIndex = 1u, const bool shaderCompatible = true, const U32 maxDrawCount = 16u )
+        {
+            stop = Stop::COUNT;
+            return GFX::CollectIndirectDrawBatch( fixture.list(), drawIndex, shaderCompatible, maxDrawCount, batch, &stop );
+        };
+
+        SECTION( "a complete run ends at the end of the buffer" )
+        {
+            CHECK( collect() == 6u );
+            CHECK( batch._drawCount == 4u );
+            CHECK( stop == Stop::END_OF_BUFFER );
+        }
+        SECTION( "an intervening command ends the run" )
+        {
+            GFX::MemoryBarrierCommand barrier;
+            GFX::CommandBuffer::CommandList interrupted;
+            interrupted.push_back( fixture.pushes[0] );
+            interrupted.push_back( fixture.commandsByDraw[0] );
+            interrupted.push_back( fixture.pushes[1] );
+            interrupted.push_back( fixture.commandsByDraw[1] );
+            interrupted.push_back( &barrier );
+            interrupted.push_back( fixture.pushes[2] );
+            interrupted.push_back( fixture.commandsByDraw[2] );
+
+            stop = Stop::COUNT;
+            CHECK( GFX::CollectIndirectDrawBatch( interrupted, 1u, true, 16u, batch, &stop ) == 2u );
+            CHECK( batch._drawCount == 2u );
+            CHECK( stop == Stop::NEXT_COMMANDS );
+        }
+        SECTION( "a following draw that cannot be a record ends the run" )
+        {
+            enableOption( *fixture.draws[1], CmdRenderOptions::RENDER_WIREFRAME );
+            CHECK( collect() == 0u );
+            CHECK( stop == Stop::NEXT_DRAW );
+
+            disableOption( *fixture.draws[1], CmdRenderOptions::RENDER_WIREFRAME );
+            fixture.draws[2]->_drawCount = 2u;
+            CHECK( collect() == 2u );
+            CHECK( stop == Stop::NEXT_DRAW );
+        }
+        SECTION( "a following command with several draws ends the run" )
+        {
+            fixture.commandsByDraw[1]->_drawCommands.emplace_back();
+            CHECK( collect() == 0u );
+            CHECK( stop == Stop::NEXT_DRAW );
+        }
+        SECTION( "different source buffers end the run" )
+        {
+            fixture.draws[2]->_sourceBuffers = fixture.otherBuffers.data();
+            CHECK( collect() == 2u );
+            CHECK( stop == Stop::BUFFERS );
+        }
+        SECTION( "indirect records that are not contiguous end the run" )
+        {
+            fixture.draws[1]->_commandOffset = 12u;
+            CHECK( collect() == 0u );
+            CHECK( stop == Stop::OFFSET_GAP );
+            fixture.draws[1]->_commandOffset = 10u;
+            CHECK( collect() == 0u );
+            CHECK( stop == Stop::OFFSET_GAP );
+        }
+        SECTION( "different push constants end the run" )
+        {
+            fixture.uniforms[2].set( 7u, PushConstantType::UINT, 6u );
+            CHECK( collect() == 2u );
+            CHECK( stop == Stop::PUSH_DATA );
+        }
+        SECTION( "the device limit ends the run" )
+        {
+            CHECK( collect( 1u, true, 3u ) == 2u );
+            CHECK( batch._drawCount == 2u );
+            CHECK( stop == Stop::DRAW_LIMIT );
+        }
+        SECTION( "a run that never starts reports so" )
+        {
+            CHECK( collect( 1u, false ) == 0u );
+            CHECK( stop == Stop::NOT_STARTED );
+            CHECK( collect( 1u, true, 2u ) == 0u );
+            CHECK( stop == Stop::NOT_STARTED );
+            CHECK( collect( 0u ) == 0u );
+            CHECK( stop == Stop::NOT_STARTED );
+            CHECK( collect( 2u ) == 0u );
+            CHECK( stop == Stop::NOT_STARTED );
+            CHECK( collect( fixture.list().size() ) == 0u );
+            CHECK( stop == Stop::NOT_STARTED );
+
+            enableOption( *fixture.draws[0], CmdRenderOptions::RENDER_WIREFRAME );
+            CHECK( collect() == 0u );
+            CHECK( stop == Stop::NOT_STARTED );
+        }
+    }
+
+    TEST_CASE( "Draw batching diagnostics count fused and lone draws", "[renderer][draw_batching]" )
+    {
+        using Candidate = GFX::IndirectDrawCandidate;
+        using Stop = GFX::IndirectBatchStop;
+        using Counters = DrawBatchingCounters;
+
+        IndirectRunFixture fixture;
+        DrawBatchingMetrics metrics;
+        metrics.beginFrame( true );
+
+        SECTION( "a fused run is one native call holding every record" )
+        {
+            GenericDrawCommand batch{};
+            Stop stop = Stop::COUNT;
+            const size_t consumed = GFX::CollectIndirectDrawBatch( fixture.list(), 1u, true, 16u, batch, &stop );
+            REQUIRE( consumed == 6u );
+
+            metrics.observeDraw( fixture.list(), 1u, *fixture.commandsByDraw[0], consumed, batch._drawCount, stop );
+            const Counters& counters = metrics.current();
+            CHECK( counters._drawCommands == 4u );
+            CHECK( counters._genericDraws == 4u );
+            CHECK( counters._candidates[to_base( Candidate::CANDIDATE )] == 4u );
+            CHECK( counters._nativeCalls == 1u );
+            CHECK( counters._indirectCalls == 1u );
+            CHECK( counters._indirectRecords == 4u );
+            CHECK( counters._recordsPerCall[Counters::RecordBucket( 4u )] == 1u );
+            CHECK( counters._collectedRuns == 1u );
+            CHECK( counters._collectedRecords == 4u );
+            CHECK( counters._runs == 1u );
+            CHECK( counters._runStops[to_base( Stop::END_OF_BUFFER )] == 1u );
+            CHECK( counters._runNext[to_size( GFX::CommandType::COUNT )] == 1u );
+        }
+        SECTION( "a lone draw is classified and attributed to the command that ended its run" )
+        {
+            GFX::MemoryBarrierCommand barrier;
+            GFX::CommandBuffer::CommandList interrupted;
+            interrupted.push_back( fixture.pushes[0] );
+            interrupted.push_back( fixture.commandsByDraw[0] );
+            interrupted.push_back( &barrier );
+
+            metrics.observeDraw( interrupted, 1u, *fixture.commandsByDraw[0], 0u, 0u, Stop::NEXT_COMMANDS );
+            const Counters& counters = metrics.current();
+            CHECK( counters._drawCommands == 1u );
+            CHECK( counters._genericDraws == 1u );
+            CHECK( counters._candidates[to_base( Candidate::CANDIDATE )] == 1u );
+            CHECK( counters._nativeCalls == 1u );
+            CHECK( counters._indirectCalls == 1u );
+            CHECK( counters._indirectRecords == 1u );
+            CHECK( counters._recordsPerCall[0] == 1u );
+            CHECK( counters._collectedRuns == 0u );
+            CHECK( counters._collectedRecords == 0u );
+            CHECK( counters._runs == 1u );
+            CHECK( counters._runStops[to_base( Stop::NEXT_COMMANDS )] == 1u );
+            CHECK( counters._runNext[to_size( GFX::CommandType::MEMORY_BARRIER )] == 1u );
+        }
+        SECTION( "a draw that does not follow push constants never starts a run" )
+        {
+            GFX::MemoryBarrierCommand barrier;
+            GFX::CommandBuffer::CommandList list;
+            list.push_back( &barrier );
+            list.push_back( fixture.commandsByDraw[0] );
+
+            metrics.observeDraw( list, 1u, *fixture.commandsByDraw[0], 0u, 0u, Stop::NEXT_COMMANDS );
+            metrics.observeDraw( list, 0u, *fixture.commandsByDraw[0], 0u, 0u, Stop::NEXT_COMMANDS );
+            CHECK( metrics.current()._drawCommands == 2u );
+            CHECK( metrics.current()._runs == 0u );
+        }
+        SECTION( "wireframe doubles native calls and multi-record commands count every record" )
+        {
+            GFX::DrawCommand drawCommand;
+            GenericDrawCommand& wireframe = drawCommand._drawCommands.emplace_back();
+            wireframe._sourceBuffers = fixture.buffers.data();
+            wireframe._sourceBuffersCount = to_U16( fixture.buffers.size() );
+            wireframe._cmd.indexCount = 3u;
+            enableOption( wireframe, CmdRenderOptions::RENDER_WIREFRAME );
+
+            GenericDrawCommand& multi = drawCommand._drawCommands.emplace_back();
+            multi._sourceBuffers = fixture.buffers.data();
+            multi._sourceBuffersCount = to_U16( fixture.buffers.size() );
+            multi._cmd.indexCount = 3u;
+            multi._drawCount = 3u;
+            enableOption( multi, CmdRenderOptions::RENDER_WIREFRAME );
+            enableOption( multi, CmdRenderOptions::RENDER_INDIRECT );
+
+            metrics.observeDraw( fixture.list(), 1u, drawCommand, 0u, 0u, Stop::NEXT_COMMANDS );
+            const Counters& counters = metrics.current();
+            CHECK( counters._drawCommands == 1u );
+            CHECK( counters._genericDraws == 2u );
+            CHECK( counters._candidates[to_base( Candidate::OPTIONS )] == 2u );
+            CHECK( counters._nativeCalls == 4u );
+            CHECK( counters._indirectCalls == 2u );
+            CHECK( counters._indirectRecords == 6u );
+            CHECK( counters._recordsPerCall[Counters::RecordBucket( 3u )] == 2u );
+            CHECK( counters._runs == 0u );
+        }
+    }
+
     TEST_CASE( "Push command merging preserves shared uniform storage", "[push_constants]" )
     {
         UniformData uniforms;

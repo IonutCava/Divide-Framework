@@ -90,6 +90,62 @@ namespace Names {
 
 static_assert(std::size( Names::errorType ) == to_base( ErrorType::COUNT ) + 1u, "ErrorType name array out of sync!");
 
+/// Whether a draw can join a submission-time multi-draw batch. Checks run in declaration order,
+/// so every rejected draw is attributed to exactly one reason.
+enum class IndirectDrawCandidate : U8
+{
+    CANDIDATE = 0,
+    OPTIONS,
+    NO_INDICES,
+    BUFFERS,
+    MULTI_RECORD,
+    INSTANCED,
+    COUNT
+};
+
+/// Why a run of adjacent indirect draws stopped growing (see CollectIndirectDrawBatch).
+enum class IndirectBatchStop : U8
+{
+    NOT_STARTED = 0,
+    END_OF_BUFFER,
+    NEXT_COMMANDS,
+    NEXT_DRAW,
+    BUFFERS,
+    OFFSET_GAP,
+    PUSH_DATA,
+    DRAW_LIMIT,
+    UNSUPPORTED,
+    COUNT
+};
+
+namespace Names {
+    static const char* indirectDrawCandidate[] = {
+        "CANDIDATE",
+        "OPTIONS",
+        "NO_INDICES",
+        "BUFFERS",
+        "MULTI_RECORD",
+        "INSTANCED",
+        "UNKNOWN"
+    };
+
+    static const char* indirectBatchStop[] = {
+        "NOT_STARTED",
+        "END_OF_BUFFER",
+        "NEXT_COMMANDS",
+        "NEXT_DRAW",
+        "BUFFERS",
+        "OFFSET_GAP",
+        "PUSH_DATA",
+        "DRAW_LIMIT",
+        "UNSUPPORTED",
+        "UNKNOWN"
+    };
+};
+
+static_assert(std::size( Names::indirectDrawCandidate ) == to_base( IndirectDrawCandidate::COUNT ) + 1u, "IndirectDrawCandidate name array out of sync!");
+static_assert(std::size( Names::indirectBatchStop ) == to_base( IndirectBatchStop::COUNT ) + 1u, "IndirectBatchStop name array out of sync!");
+
 enum class CommandType : U8;
 class CommandBuffer;
 struct CommandBase;
@@ -170,11 +226,15 @@ template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
 [[nodiscard]] bool Merge(MemoryBarrierCommand* lhs, MemoryBarrierCommand* rhs);
 [[nodiscard]] bool Merge(SendPushConstantsCommand* lhs, SendPushConstantsCommand* rhs);
 [[nodiscard]] bool BatchDrawCommands(GenericDrawCommand& previousGDC, GenericDrawCommand& currentGDC) noexcept;
+[[nodiscard]] IndirectDrawCandidate ClassifyIndirectDraw( const GenericDrawCommand& draw ) noexcept;
+/// Fuses the adjacent single-record indirect draw at drawIndex with the (push constants, draw) pairs that follow it.
+/// Returns the number of commands consumed after drawIndex; stopOut, when provided, receives why the run ended.
 [[nodiscard]] size_t CollectIndirectDrawBatch( const CommandBuffer::CommandList& commands,
                                                size_t drawIndex,
                                                bool shaderCompatible,
                                                U32 maxDrawCount,
-                                               GenericDrawCommand& batchOut ) noexcept;
+                                               GenericDrawCommand& batchOut,
+                                               IndirectBatchStop* stopOut = nullptr ) noexcept;
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
 FORCE_INLINE T* EnqueueCommand(CommandBuffer& buffer) { return buffer.add<T>(); }

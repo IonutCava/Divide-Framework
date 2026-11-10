@@ -476,6 +476,35 @@ void RenderPassManager::logPerfMetrics() const
     const auto bindingStorage = GetResourceBindingStorageStats();
     Console::printfn( "[BindingMetrics] recordsPublished={} liveRecords={} liveRecordBytes={}",
                       bindingStorage._published, bindingStorage._live, bindingStorage._live * sizeof( ResourceBindingSet ) );
+
+    const DrawBatchingCounters& batching = _context.drawBatchingMetrics().previous();
+    string recordsPerCall, candidates, runStops, runNext;
+    for ( const U64 calls : batching._recordsPerCall )
+    {
+        recordsPerCall.append( Util::StringFormat( "{}/", calls ) );
+    }
+    recordsPerCall.pop_back();
+    for ( size_t i = 0u; i < batching._candidates.size(); ++i )
+    {
+        candidates.append( Util::StringFormat( "{}={} ", GFX::Names::indirectDrawCandidate[i], batching._candidates[i] ) );
+    }
+    for ( size_t i = 0u; i < batching._runStops.size(); ++i )
+    {
+        runStops.append( Util::StringFormat( "{}={} ", GFX::Names::indirectBatchStop[i], batching._runStops[i] ) );
+    }
+    for ( size_t i = 0u; i < batching._runNext.size(); ++i )
+    {
+        if ( batching._runNext[i] > 0u )
+        {
+            const char* name = i == to_size( GFX::CommandType::COUNT ) ? "END_OF_BUFFER" : GFX::Names::commandType[i];
+            runNext.append( Util::StringFormat( "{}={} ", name, batching._runNext[i] ) );
+        }
+    }
+    Console::printfn( "[DrawBatching] drawCmds={} genericDraws={} nativeCalls={} indirectCalls={} indirectRecords={} collectedRuns/records={}/{} recordsPerCall[1,2-3,4-7,8-15,16-31,32-63,64-127,128+]={}",
+                      batching._drawCommands, batching._genericDraws, batching._nativeCalls, batching._indirectCalls, batching._indirectRecords,
+                      batching._collectedRuns, batching._collectedRecords, recordsPerCall );
+    Console::printfn( "[DrawBatching] candidates: {}", candidates );
+    Console::printfn( "[DrawBatching] runs={} stops: {}next: {}", batching._runs, runStops, runNext );
     if ( passTimings._frameCount > 0u )
     {
         std::array<size_t, GPU_PASS_TIMESTAMP_CAPACITY> order{};

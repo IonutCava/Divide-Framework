@@ -584,6 +584,7 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/Headers/IMPrimitiveDescriptors.h
                              Platform/Video/Headers/UniformDataSnapshots.h
                              Platform/Video/Headers/ResourceBindingMetrics.h
+                             Platform/Video/Headers/DrawBatchingMetrics.h
                              Platform/Video/Headers/ResolvedBindingCache.h
                              Platform/Video/Headers/GPUCompletionGuard.h
                              Platform/Video/Headers/LockManager.h
@@ -679,6 +680,7 @@ set( PLATFORM_SOURCE Platform/ConditionalWait.cpp
                      Platform/Video/CommandBufferPool.cpp
                      Platform/Video/Commands.cpp
                      Platform/Video/DescriptorSets.cpp
+                     Platform/Video/DrawBatchingMetrics.cpp
                      Platform/Video/GenericDrawCommand.cpp
                      Platform/Video/GFXDevice.cpp
                      Platform/Video/GFXRTPool.cpp
