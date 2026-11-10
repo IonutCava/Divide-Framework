@@ -12,7 +12,7 @@
 #include "lightingDefaults.vert"
 
 VegetationData GrassData(in uint instanceID) {
-    return grassData[dvd_instanceDataIndex + instanceID];
+    return grassData[dvd_InstanceDataOffset + instanceID];
 }
 
 layout(location = ATTRIB_FREE_START + 0) flat out uint  _layer;

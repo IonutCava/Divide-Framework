@@ -930,18 +930,34 @@ vertex shader tests the sentinel before converting it to `uint`; LOD 3 is
 reserved for that culled fallback.
 
 Tree mesh draws use separate child `RenderingComponent` packages per species.
-Each child binds its own instance buffer and supplies `dvd_instanceDataIndex`
-as the absolute offset of its species range in the chunk's fixed-capacity block.
-The uniform's GLSL initializer is not a fallback because shader preprocessing
-strips loose-uniform initializers.
+Each child binds its own instance buffer and stores its species range's absolute
+offset in the node indirection record.
 
-Materials that require instanced indirection must mark their rendering component instanced even for a single instance. Instanced draws upload `INDIRECT_DATA_IDX` and use base instance zero; ordinary draws encode the node indirection index plus one in the base instance. Grass and tree shaders use a draw-local instance index: OpenGL's `gl_InstanceID` is already local, while Vulkan's `gl_InstanceIndex` includes the base instance. Vegetation buffers accept CPU writes, and empty chunks do not issue zero-length uploads. A terrain can omit tree meshes when it only needs grass.
+Instanced materials must mark their rendering component instanced even for a
+single instance. Vertex-attribute instancing uploads `INDIRECT_DATA_IDX` and
+uses baseInstance zero; ordinary and storage-buffer-instanced draws encode the
+node indirection index plus one in baseInstance. Grass and tree shaders use a
+draw-local instance index: OpenGL's `gl_InstanceID` is already local, while
+Vulkan subtracts baseInstance from `gl_InstanceIndex`. Vegetation buffers accept
+CPU writes, and empty chunks do not issue zero-length uploads. A terrain can
+omit tree meshes when it only needs grass.
 
 Tree culling compacts visible instances. One workgroup per species writes visible entries into the species' range of `_treeDrawData` (`PER_PASS` 14, `COMPACTED_INSTANCE_DATA`) and the visible count to `_treeVisibleCounts` (`PER_PASS` 15, `VISIBLE_INSTANCE_COUNTS`, element `chunkID * MAX_VEGETATION_TREE_MESHES + speciesID`). Ranges come from the `dvd_treeRangeOffsets`/`dvd_treeRangeCounts` uniforms. Each tree `RenderingComponent` reads instances from the compacted buffer (`setInstanceShaderBuffer`) and names its count element with `setInstanceCountSource`.
 
 Grass uses the same compaction loop, with one workgroup per chunk and separate
 `_grassDrawData`/`_grassVisibleCounts` buffers. Slots 14/15 are rebound before
 each grass or tree dispatch; draws read compacted data at `PER_DRAW` 13.
+Storage-buffer instancing carries node identity in the indirect command's
+`baseInstance` and the compacted range offset in the existing 16-byte
+`NodeIndirectionData` record. The material-gather epoch propagates changed
+offsets through the normal indirection dirty-range upload even when the material
+itself is unchanged. Tree/grass draws no longer stamp `INDIRECT_DATA_IDX`,
+`dvd_instanceDataIndex`, or the unused grass `dvd_terrainChunkOffset`.
+Their per-instance culling and count-patch ordering are unchanged. Whole-draw
+Hi-Z now sees their node identity but still skips them through `occlusionCull(false)`;
+terrain/particle vertex-attribute instancing keeps its zero-baseInstance path.
+Removing these draw uniforms does not remove the command collector's other
+multi-draw restrictions or batch the culling dispatches.
 Frustum/range culling always reads immutable source instances, while Hi-Z
 recompacts the current visible prefix in place. Each round finishes reading
 before overwriting that prefix. The unused tail retains negative `data.z`

@@ -72,8 +72,17 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
 
 Vegetation compute reuses `PER_PASS` 14/15 for either grass or tree compacted
 instances/counts, rebinding the appropriate buffers at each dispatch. Both draw
-shaders read their own compacted buffer through `PER_DRAW` 13 and
-`dvd_instanceDataIndex`; grass colour/LOD metadata survives instance reordering.
+shaders read their own compacted buffer through `PER_DRAW` 13; the range offset
+is `NodeIndirectionData::_instanceDataOffset` (the third U32), not a loose uniform.
+`RenderingComponent::setInstanceShaderBuffer` selects the generic
+`STORAGE_BUFFER_INSTANCING` shader define, including after material replacement.
+It suppresses `OVERRIDE_DATA_IDX`: the indirect record's `baseInstance - 1`
+selects the node on both backends. Vulkan subtracts baseInstance from its
+instance index; OpenGL's instance ID is already draw-local. Per-instance vertex
+attributes cannot use this addressing mode; terrain and particles retain zero
+baseInstance and uniform node identity. Grass colour/LOD metadata survives
+instance reordering. Tree and grass draw stages have no loose-uniform block;
+their culling dispatches still use per-view/per-chunk uniforms.
 
 OIT accumulation writes weighted colour, coverage-weighted normals plus coverage
 alpha, and coloured transmission modulation. There is no separate revealage

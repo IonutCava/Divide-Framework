@@ -899,8 +899,6 @@ namespace Divide
             rComp.setIndexBufferElementOffset( _buffer->firstIndexOffsetCount() );
         }
 
-        pkg.pushConstantsCmd()._uniformData->set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, sgn->dataFlag() );
-
         Handle<GFX::CommandBuffer> cmdBuffer = GetCommandBuffer( pkg );
         DIVIDE_ASSERT(cmdBuffer != INVALID_HANDLE<GFX::CommandBuffer>);
 

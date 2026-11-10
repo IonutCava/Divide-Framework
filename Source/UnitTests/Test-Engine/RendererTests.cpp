@@ -576,6 +576,7 @@ namespace Divide
         STATIC_CHECK( sizeof(NodeTransformData) == 128u );
         STATIC_CHECK( sizeof(NodeIndirectionData) == 4u * sizeof(U32) );
         STATIC_CHECK( sizeof(NodeIndirectionData) == 16u );
+        STATIC_CHECK( offsetof(NodeIndirectionData, _instanceDataOffset) == 2u * sizeof(U32) );
         STATIC_CHECK( sizeof(GFXShaderData::CamData) == 8u * sizeof(mat4<F32>) );
         STATIC_CHECK( sizeof(GFXShaderData::CamData) == 512u );
         STATIC_CHECK( offsetof(TransformData, _rotation) == 2u * sizeof(float4) );
@@ -3886,6 +3887,60 @@ namespace Divide
         }
 
         CHECK( IndirectionBaseInstance( false, 0u ) == 1u );
+    }
+
+    TEST_CASE( "Storage-buffer instances carry node identity without per-draw uniforms", "[instancing][indirection][uniforms]" )
+    {
+        for ( const U32 instanceCount : { 0u, 1u, 2u, 64u } )
+        {
+            const bool instanced = RequiresInstancedIndirection( false, true, instanceCount );
+            CHECK( RequiresUniformIndirection( instanced, false ) );
+            CHECK_FALSE( RequiresUniformIndirection( instanced, true ) );
+            for ( const U32 nodeIndex : { 0u, 37u, 1024u } )
+            {
+                CAPTURE( instanceCount, nodeIndex );
+                const bool uniformIndirection = RequiresUniformIndirection( instanced, true );
+                CHECK( IndirectionBaseInstance( uniformIndirection, nodeIndex ) == nodeIndex + 1u );
+                CHECK( IndirectionBaseInstance( RequiresUniformIndirection( instanced, false ), nodeIndex ) == 0u );
+                RenderPackage package;
+                SetNodeIndirectionIndex( package, uniformIndirection, nodeIndex );
+                CHECK( package.pushConstantsCmd()._uniformData->entries().empty() );
+                CHECK( package.pushConstantsCmd()._fastData.dataFlags() == PushConstantsStruct::DataFlags::NONE );
+            }
+        }
+        CHECK_FALSE( RequiresUniformIndirection( false, false ) );
+        CHECK_FALSE( RequiresUniformIndirection( false, true ) );
+
+        RenderPackage changedMode;
+        changedMode.pushConstantsCmd()._uniformData->set( _ID( "unrelated" ), PushConstantType::UINT, 7u );
+        SetNodeIndirectionIndex( changedMode, true, 37u );
+        SetNodeIndirectionIndex( changedMode, false, 37u );
+        const auto& entries = changedMode.pushConstantsCmd()._uniformData->entries();
+        REQUIRE( eastl::count_if( entries.begin(), entries.end(), []( const UniformData::Entry& entry )
+        {
+            return entry._type != PushConstantType::COUNT;
+        } ) == 1 );
+        CHECK( eastl::none_of( entries.begin(), entries.end(), []( const UniformData::Entry& entry )
+        {
+            return entry._bindingHash == _ID( "INDIRECT_DATA_IDX" );
+        } ) );
+        CHECK( entries.front()._bindingHash == _ID( "unrelated" ) );
+    }
+
+    TEST_CASE( "Node instance offsets invalidate indirection independently of material identity", "[instancing][indirection][gpu_data]" )
+    {
+        NodeIndirectionData data{};
+        data._transformIDX = 5u;
+        data._materialIDX = 9u;
+        CHECK_FALSE( data.setInstanceDataOffset( 0u ) );
+        CHECK( data.setInstanceDataOffset( 4096u + 123u ) );
+        CHECK( data._instanceDataOffset == 4219u );
+        CHECK_FALSE( data.setInstanceDataOffset( 4219u ) );
+        CHECK( data.setInstanceDataOffset( 0u ) );
+        CHECK( data._instanceDataOffset == 0u );
+        CHECK( data._transformIDX == 5u );
+        CHECK( data._materialIDX == 9u );
+        CHECK( data._padding__1 == 0u );
     }
 
     TEST_CASE( "Light descriptor visibility names match their shader stages", "[descriptors][lighting]" )

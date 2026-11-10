@@ -10,7 +10,7 @@
 #include "treeWind.cmn"
 
 VegetationData TreeData(in uint instanceID) {
-    return treeData[dvd_instanceDataIndex + instanceID];
+    return treeData[dvd_InstanceDataOffset + instanceID];
 }
 
 vec3 rotate_vertex_position(vec3 position, vec4 q) {

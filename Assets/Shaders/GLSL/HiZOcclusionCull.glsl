@@ -78,9 +78,8 @@ void main()
 
     const uint DVD_BASE_INSTANCE = dvd_drawCommands[ident].baseInstance;
 
-    // We don't currently handle instanced nodes with this. We might need to in the future
-    // Usually this is just terrain, vegetation and the skybox. So not that bad all in all since those have
-    // their own culling routines
+    // Vertex-attribute instancing keeps baseInstance zero. Storage-buffer instances carry
+    // a node identity and use the node's occlusion flag to opt out of this whole-draw cull.
     if (DVD_BASE_INSTANCE == 0u)
     {
         if (dvd_countCulledItems == 1u)

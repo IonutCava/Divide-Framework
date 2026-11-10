@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #ifndef _NODE_BUFFERED_INPUT_CMN_
 #define _NODE_BUFFERED_INPUT_CMN_
 
@@ -9,20 +11,22 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH, 3, std430) coherent ACCESS_R buffer dv
     NodeTransformData dvd_Transforms[];
 };
 
-#if defined(OVERRIDE_DATA_IDX)
+#if defined(OVERRIDE_DATA_IDX) && !defined(STORAGE_BUFFER_INSTANCING)
 uniform uint INDIRECT_DATA_IDX;
-#endif //OVERRIDE_DATA_IDX
+#endif //OVERRIDE_DATA_IDX && !STORAGE_BUFFER_INSTANCING
 
 #if defined(VERT_SHADER)
 
-#if !defined(OVERRIDE_DATA_IDX)
+#if !defined(OVERRIDE_DATA_IDX) || defined(STORAGE_BUFFER_INSTANCING)
 #define INDIRECT_DATA_IDX (DVD_GL_BASE_INSTANCE - 1u)
-#endif //!OVERRIDE_DATA_IDX
+#endif //!OVERRIDE_DATA_IDX || STORAGE_BUFFER_INSTANCING
 
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH, 4, std430) coherent ACCESS_R buffer dvd_IndirectionBlock
 {
     NodeIndirectionData dvd_IndirectionData[];
 };
+
+#define dvd_InstanceDataOffset (dvd_IndirectionData[INDIRECT_DATA_IDX]._instanceDataOffset)
 
 void ComputeIndirectionData()
 {

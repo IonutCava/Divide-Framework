@@ -1725,6 +1725,9 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             Variant{ ShaderType::FRAGMENT, "grass.glsl", "grass.Fragment.PrePass", false, true, true, DescriptorSetUsage::COUNT, 0u },
             Variant{ ShaderType::FRAGMENT, "grass.glsl", "grass.Fragment.PrePass", false, true, false, DescriptorSetUsage::COUNT, 0u },
             Variant{ ShaderType::FRAGMENT, "grass.glsl", "grass.Fragment.Colour.OIT", false, false, false, DescriptorSetUsage::COUNT, 0u },
+            Variant{ ShaderType::FRAGMENT, "material.glsl", "material.Fragment", true, false, true, DescriptorSetUsage::COUNT, 0u },
+            Variant{ ShaderType::FRAGMENT, "depthPass.glsl", "depthPass.Fragment.PrePass", true, true, true, DescriptorSetUsage::COUNT, 0u, true },
+            Variant{ ShaderType::FRAGMENT, "depthPass.glsl", "depthPass.Fragment.Shadow.VSM", true, false, false, DescriptorSetUsage::COUNT, 0u, true, true },
             Variant{ ShaderType::FRAGMENT, "material.glsl", "material.Fragment", false, false, true, DescriptorSetUsage::COUNT, 0u },
             Variant{ ._stage = ShaderType::FRAGMENT, ._file = "material.glsl", ._source = "material.Fragment",
                      ._tree = false, ._prePass = false, ._display = true, ._bufferSet = DescriptorSetUsage::COUNT,
@@ -1800,6 +1803,9 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 const bool standardMaterial = std::string_view{ variant._file } == "material.glsl" ||
                                               std::string_view{ variant._file } == "depthPass.glsl";
                 if ( standardMaterial ) defines.emplace_back( "USE_OPACITY_TEXTURE" );
+                const bool storageBufferInstances = variant._stage != ShaderType::COMPUTE &&
+                    ( variant._tree || std::string_view{ variant._file } == "grass.glsl" );
+                if ( storageBufferInstances ) defines.emplace_back( "STORAGE_BUFFER_INSTANCING" );
 
                 ShaderProgram::LoadData data{};
                 data._type = variant._stage;
@@ -1809,6 +1815,14 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 eastl::set<U64> atoms;
                 ShaderProgramTestAccess::Parse( api, defines, data, atoms );
                 REQUIRE_FALSE( data._sourceCodeGLSL.empty() );
+                if ( storageBufferInstances )
+                {
+                    CHECK( data._uniforms.empty() );
+                    CHECK( data._reflectionData._uniformBlockBindingIndex == Reflection::INVALID_BINDING_INDEX );
+                    CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.INDIRECT_DATA_IDX" ) == string::npos );
+                    CHECK( data._sourceCodeGLSL.find( "dvd_instanceDataIndex" ) == string::npos );
+                    CHECK( data._sourceCodeGLSL.find( "dvd_terrainChunkOffset" ) == string::npos );
+                }
                 const bool countPatch = std::string_view{ variant._file } == "instanceCountPatch.glsl";
                 if ( variant._stage == ShaderType::FRAGMENT && !variant._prePass && !variant._shadow &&
                      (std::string_view{ variant._file } == "grass.glsl" ||
@@ -1838,8 +1852,8 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 }
                 if ( variant._tree && variant._stage == ShaderType::VERTEX )
                 {
-                    CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.INDIRECT_DATA_IDX" ) != string::npos );
-                    CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.dvd_instanceDataIndex" ) != string::npos );
+                    CHECK( data._sourceCodeGLSL.find( "dvd_IndirectionData" ) != string::npos );
+                    CHECK( data._sourceCodeGLSL.find( api == RenderAPI::Vulkan ? "gl_BaseInstanceARB" : "gl_BaseInstance" ) != string::npos );
                     CHECK( atoms.contains( _ID("treeWind.cmn") ) );
                     CHECK( data._sourceCodeGLSL.find("dvd_Vertex.y * scale") == string::npos );
                     CHECK( data._sourceCodeGLSL.find("dvd_enableDeformation") == string::npos );
@@ -1847,8 +1861,8 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 }
                 if ( std::string_view{ variant._file } == "grass.glsl" && variant._stage == ShaderType::VERTEX )
                 {
-                    CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.INDIRECT_DATA_IDX" ) != string::npos );
-                    CHECK( data._sourceCodeGLSL.find( "dvd_uniforms.dvd_instanceDataIndex" ) != string::npos );
+                    CHECK( data._sourceCodeGLSL.find( "dvd_IndirectionData" ) != string::npos );
+                    CHECK( data._sourceCodeGLSL.find( api == RenderAPI::Vulkan ? "gl_BaseInstanceARB" : "gl_BaseInstance" ) != string::npos );
                     const size_t motion = data._sourceCodeGLSL.find( "largetScaleMotion" );
                     REQUIRE( motion != string::npos );
                     // The definition always remains; only the call is compiled out.
@@ -1951,6 +1965,15 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 const bool compiled = SpirvHelper::GLSLtoSPV( variant._stage, data._sourceCodeGLSL.c_str(), spirv, api );
                 INFO( diagnostics.c_str() );
                 REQUIRE( compiled );
+                if ( storageBufferInstances && api == RenderAPI::Vulkan )
+                {
+                    Reflection::Data reflection{};
+                    REQUIRE( SpirvHelper::BuildReflectionData( variant._stage, spirv, api, reflection ) );
+                    CHECK_FALSE( std::ranges::any_of( reflection._buffers, []( const Reflection::BufferEntry& entry )
+                    {
+                        return entry._uniformBuffer && entry._bindingSet == to_base( DescriptorSetUsage::PER_DRAW );
+                    } ) );
+                }
 
                 if ( api == RenderAPI::Vulkan && variant._stage == ShaderType::FRAGMENT &&
                      !variant._prePass && !variant._shadow && !variant._alphaDiscard &&
@@ -2022,18 +2045,18 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
 
             for ( const U8 variant : { U8{ 0u }, U8{ 1u }, U8{ 2u } } )
             {
-                for ( const bool overrideDataIndex : { false, true } )
+                for ( const bool storageBufferInstances : { false, true } )
                 {
-                    CAPTURE( api, variant, overrideDataIndex );
+                    CAPTURE( api, variant, storageBufferInstances );
                     ModuleDefines defines;
                     for ( const char* define : {
                               "MAX_GRASS_INSTANCES 64", "ENABLE_TBN", "HAS_POSITION_ATTRIBUTE",
                               "HAS_NORMAL_ATTRIBUTE", "HAS_TEXCOORD_ATTRIBUTE", "USE_UNIT0_TEXTURE",
-                              "NODE_DYNAMIC", "SHADING_MODE_BLINN_PHONG" } )
+                              "NODE_DYNAMIC", "SHADING_MODE_BLINN_PHONG", "OVERRIDE_DATA_IDX" } )
                     {
                         defines.emplace_back( define );
                     }
-                    if ( overrideDataIndex ) defines.emplace_back( "OVERRIDE_DATA_IDX" );
+                    if ( storageBufferInstances ) defines.emplace_back( "STORAGE_BUFFER_INSTANCING" );
                     if ( variant == 0u ) defines.emplace_back( "OIT_PASS" );
                     if ( variant == 1u ) defines.emplace_back( "PRE_PASS" );
                     if ( variant < 2u )
@@ -2062,9 +2085,12 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                         ShaderProgramTestAccess::Parse( api, defines, stage, atoms, uniformBlocks );
                         REQUIRE_FALSE( stage._sourceCodeGLSL.empty() );
                     }
-                    CHECK( stages[0]._reflectionData._uniformBlockBindingIndex == 14u );
-                    CHECK( stages[1]._reflectionData._uniformBlockBindingIndex ==
-                           ( overrideDataIndex ? 15u : Reflection::INVALID_BINDING_INDEX ) );
+                    for ( const ShaderProgram::LoadData& stage : stages )
+                    {
+                        CHECK( stage._reflectionData._uniformBlockBindingIndex ==
+                               ( storageBufferInstances ? Reflection::INVALID_BINDING_INDEX : 14u ) );
+                        CHECK( stage._uniforms.empty() == storageBufferInstances );
+                    }
 
                     TBuiltInResource resources{};
                     SpirvHelper::InitResources( resources );

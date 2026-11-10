@@ -67,9 +67,14 @@ namespace Divide {
         return alreadyInstanced || materialInstanced || instanceCount > 1u;
     }
 
-    [[nodiscard]] constexpr U32 IndirectionBaseInstance( const bool instanced, const U32 indirectionIndex ) noexcept
+    [[nodiscard]] constexpr bool RequiresUniformIndirection( const bool instanced, const bool instanceDataFromBuffer ) noexcept
     {
-        return instanced ? 0u : indirectionIndex + 1u;
+        return instanced && !instanceDataFromBuffer;
+    }
+
+    [[nodiscard]] constexpr U32 IndirectionBaseInstance( const bool uniformIndirection, const U32 indirectionIndex ) noexcept
+    {
+        return uniformIndirection ? 0u : indirectionIndex + 1u;
     }
 
     struct TransformData
@@ -115,13 +120,23 @@ namespace Divide {
 
         U32 _transformIDX = INVALID_IDX;
         U32 _materialIDX = INVALID_IDX;
-        U32 _padding__0 = 0u;
+        U32 _instanceDataOffset = 0u;
         U32 _padding__1 = 0u;
+
+        constexpr bool setInstanceDataOffset( const U32 offset ) noexcept
+        {
+            if ( _instanceDataOffset == offset )
+            {
+                return false;
+            }
+            _instanceDataOffset = offset;
+            return true;
+        }
     };
 
     [[nodiscard]] size_t HashMaterialData(const NodeMaterialData& dataIn);
 
-    void SetNodeIndirectionIndex( RenderPackage& package, bool instanced, U32 indirectionIndex ) noexcept;
+    void SetNodeIndirectionIndex( RenderPackage& package, bool uniformIndirection, U32 indirectionIndex ) noexcept;
 
 } //namespace Divide
 
