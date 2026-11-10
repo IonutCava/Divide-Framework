@@ -909,7 +909,11 @@ namespace Divide
             window.reset();
         }
 
-        DIVIDE_EXPECTED_CALL( _context.gfx().renderTargetPool().deallocateRT( _nodePreviewRTHandle ) );
+        // The preview target only exists after init(); a never-initialised editor must not touch the (possibly null) pool
+        if ( _nodePreviewRTHandle._rt != nullptr )
+        {
+            DIVIDE_EXPECTED_CALL( _context.gfx().renderTargetPool().deallocateRT( _nodePreviewRTHandle ) );
+        }
 
         Camera::DestroyCamera( _editorCamera );
         Camera::DestroyCamera( _nodePreviewCamera );
