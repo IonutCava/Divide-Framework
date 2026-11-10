@@ -191,6 +191,17 @@ camera changes and moved-volume count. These snapshots explain refresh
 decisions but are not per-frame distributions; array offsets are not permanent
 light IDs. No additional GPU queries are issued by this logging.
 
+Confirm presentation was not display-synchronised before trusting any cadence
+figure. `VKSwapChain::create` logs `Vulkan swapchain present mode: <mode> (VSync
+requested: <bool>)` and the OpenGL context setup in
+`WindowManager::applyAPISettingsPostCreate` logs `OpenGL swap interval: <n> (VSync
+requested: <bool>)`; both warn when VSync is off but the driver still synchronised
+presentation. An uncapped capture needs Vulkan `IMMEDIATE` (it silently falls back
+to `FIFO` when unsupported) or an OpenGL interval of 0, with `runtime.enableVSync`
+false and `runtime.frameRateLimit` 0 in `XML/config.xml`; `Kernel` only sleeps to
+cap the frame rate when `frameRateLimit` is positive. Vulkan ignores `adaptiveSync`
+today, and driver-level variable refresh (FreeSync/G-Sync) is outside engine control.
+
 For startup, measure cold and warm scene readiness separately from frame time.
 `ResourceCache::Build` includes the resource `load` call and synchronous waits,
 not task-queue delay or GPU frame execution. Preserve shader-cache invalidation
