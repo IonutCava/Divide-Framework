@@ -53,11 +53,6 @@ readiness and camera culling must not suppress geometry invalidation.
 including cached-queue readiness checks. World-AO Include and other draw-state
 overrides cannot re-enable a non-caster.
 
-`RenderPassParams::_enableDeformation` supplies `dvd_enableDeformation` to
-shaders opting into optional procedural deformation. It defaults to enabled;
-CSM enables it only for cascade 0, and world AO disables it. This does not
-disable skeletal animation or implicitly classify objects by scene type.
-
 ## Command flow
 
 Systems record backend-neutral rendering commands, then `GFXDevice` translates them through the active backend wrapper at flush time.
@@ -1047,7 +1042,15 @@ fade offsets; tree bounds use the species radius plus the maximum wind offset.
 Near-tree vertices above the scaled 0.85-unit trunk threshold receive the
 original inexpensive sinusoidal wind sway in depth and colour, the nearest CSM
 cascade (index 0), and close-up local shadow views. Farther CSM cascades and
-world AO use undeformed silhouettes.
+world AO use undeformed silhouettes. Vegetation owns this policy
+(`TreeWindAnimatedInPass`): its tree cull compute receives
+`dvd_treeWindAnimated` and stores the flag in each compacted draw entry's
+`data.x`, so render passes carry no deformation state. The vegetation editor's
+"Wind animation" switch (serialised with the scene) adds or removes the
+`VEGETATION_WIND_DISABLED` define on the grass and tree materials, compiling sway
+out of both shaders. Grass camera displacement is not wind and remains. The cull
+flag and invalidations stop immediately; materials recompile once, which also
+refreshes affected shadow and world-AO caches.
 The height check uses the already scaled/rotated vertex, not a second scale.
 The existing far-tree LoD cutoff remains. Wind and culling read the same
 frame's scene wind data; vegetation motion vectors are still not implemented.
@@ -1058,7 +1061,8 @@ For local lights it supplies both the vegetation bounds and a camera-centred
 influence sphere with 33% of the effective tree visibility radius; this policy
 stays in `Vegetation::sceneUpdate`, not the light pool. No new distance setting
 is introduced. Ordinary invalidations and pending casters still force complete
-updates. Paused, unchanged wind does not force shadow refreshes. Aggregate
+updates. Paused, unchanged wind does not force shadow refreshes, and disabled
+wind animation submits no wind invalidations. Aggregate
 vegetation bounds retain high-water wind padding.
 Tree-only chunks still run culling, and chunks with trees remain eligible through
 the larger of the grass and tree visibility distances. Visible tree submeshes

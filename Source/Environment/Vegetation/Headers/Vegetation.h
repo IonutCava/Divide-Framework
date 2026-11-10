@@ -80,7 +80,8 @@ struct VegetationData
 {
     float4 _positionAndScale;
     float4 _orientationQuat;
-    // x - grass layer/tree species, y - grass chunk ID (source) or packed LoD/tint (draw)/tree cull radius,
+    // x - grass layer/tree species (source) or tree wind flag (draw),
+    // y - grass chunk ID (source) or packed LoD/tint (draw)/tree cull radius,
     // z - visibility/fade, w - camera distance
     float4 _data = { 1.0f, 1.0f, 1.0f, 0.0f };
 };
@@ -146,6 +147,20 @@ struct VegetationWindState
     }
 };
 
+/// Trees sway only where their shadows are refreshed every frame: colour/pre-passes, spot and point shadows
+/// and the nearest CSM cascade. Farther cascades and World AO use the rest pose so they remain cacheable.
+[[nodiscard]] constexpr bool TreeWindAnimatedInPass( const RenderStagePass& stagePass ) noexcept
+{
+    if ( stagePass._stage != RenderStage::SHADOW ||
+         stagePass._variant != static_cast<RenderStagePass::VariantType>(ShadowType::CSM) )
+    {
+        return true;
+    }
+
+    return stagePass._pass == RenderStagePass::PassIndex::PASS_0 &&
+           stagePass._index != ShadowMap::WORLD_AO_LAYER_INDEX;
+}
+
 class VegetationInstance;
 
 /// Generates grass on the terrain.
@@ -184,6 +199,7 @@ DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
     void prepareDraw(SceneGraphNode* sgn, VegetationInstance& instance);
     [[nodiscard]] Handle<Material> treeMaterialFor(Handle<Material> source);
     [[nodiscard]] VegetationInstance* findInstance(U32 chunkID);
+    void applyWindAnimation();
 
    protected:
     friend class VegetationInstance;
@@ -200,6 +216,10 @@ DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
     const VegetationDescriptor _descriptor;
 
     VegetationWindState _windShadowState;
+    /// Editor-controlled. Disabling it compiles wind out of the vegetation shaders and keeps every shadow static.
+    bool _windAnimation = true;
+    /// State currently applied to the vegetation materials. Written on the main thread by applyWindAnimation.
+    std::atomic_bool _appliedWindAnimation{ true };
     F32 _windBoundsPadding = 0.f;
     float4 _grassExtents = VECTOR4_UNIT;
     Mutex _sceneUpdateLock;

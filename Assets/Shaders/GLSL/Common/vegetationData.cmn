@@ -19,7 +19,8 @@ uniform uint dvd_terrainChunkOffset = 0u;
 struct VegetationData {
     vec4 positionAndScale;
     vec4 orientationQuad;
-    // x - grass layer/tree species, y - grass LoD/tree cull radius, z - visibility/fade, w - camera distance
+    // x - grass layer/tree species (source) or tree wind flag (draw), y - grass LoD/tree cull radius,
+    // z - visibility/fade, w - camera distance
     vec4 data;
 };
 

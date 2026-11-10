@@ -8,11 +8,6 @@
 #include "vegetationData.cmn"
 #include "lightingDefaults.vert"
 #include "treeWind.cmn"
-#if defined(SHADOW_PASS)
-uniform uint dvd_enableDeformation;
-#else
-#define dvd_enableDeformation 1u
-#endif
 
 VegetationData TreeData(in uint instanceID) {
     return treeData[dvd_instanceDataIndex + instanceID];
@@ -44,11 +39,13 @@ void main(void){
 
 
     dvd_Vertex.xyz = rotate_vertex_position(dvd_Vertex.xyz * scale, data.orientationQuad);
-    if (dvd_enableDeformation != 0u && TREE_WIND_ANIMATED(VAR._LoDLevel, dvd_Vertex.y)) {
+#if !defined(VEGETATION_WIND_DISABLED)
+    if (TREE_WIND_ENABLED(data.data.x) && TREE_WIND_ANIMATED(VAR._LoDLevel, dvd_Vertex.y)) {
         const float time = dvd_windDetails.w * MSToSeconds(dvd_GameTimeMS) * 0.25f;
         const float amplitude = TREE_WIND_AMPLITUDE(dvd_Vertex.x, dvd_Vertex.y);
         dvd_Vertex.xz += amplitude * vec2(cos(time) * dvd_windDetails.x, sin(time) * dvd_windDetails.z);
     }
+#endif //!VEGETATION_WIND_DISABLED
 
     VAR._vertexW = (dvd_Vertex + vec4(data.positionAndScale.xyz, 0.0f));
 

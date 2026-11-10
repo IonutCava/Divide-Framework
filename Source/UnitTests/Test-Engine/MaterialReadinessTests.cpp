@@ -43,6 +43,52 @@ namespace Divide
         CHECK(material.coverageRevision() > revision);
     }
 
+    TEST_CASE("Material shader defines toggle once and request a shader rebuild", "[materials][shader]")
+    {
+        Material material{ResourceDescriptor<Material>{"shader-define-toggle-test"}};
+        static_cast<void>(material.update(0u));
+        const auto hasDefine = [&material](const ShaderType type)
+        {
+            const ModuleDefines& defines = material.shaderDefines(type);
+            return eastl::find_if(defines.begin(), defines.end(), [](const ModuleDefine& entry)
+            {
+                return entry._define == "TOGGLED_DEFINE";
+            }) != defines.end();
+        };
+        const auto needsNewShader = [&material]()
+        {
+            return (material.update(0u) & to_base(MaterialUpdateResult::NEW_SHADER)) != 0u;
+        };
+
+        CHECK(material.setShaderDefine(ShaderType::VERTEX, "TOGGLED_DEFINE", true));
+        CHECK(hasDefine(ShaderType::VERTEX));
+        CHECK_FALSE(hasDefine(ShaderType::FRAGMENT));
+        CHECK(needsNewShader());
+
+        CHECK_FALSE(material.setShaderDefine(ShaderType::VERTEX, "TOGGLED_DEFINE", true));
+        CHECK(material.shaderDefines(ShaderType::VERTEX).size() == 1u);
+        CHECK_FALSE(needsNewShader());
+
+        CHECK(material.setShaderDefine(ShaderType::COUNT, "TOGGLED_DEFINE", true));
+        for (U8 i = 0u; i < to_base(ShaderType::COUNT); ++i)
+        {
+            CAPTURE(i);
+            CHECK(hasDefine(static_cast<ShaderType>(i)));
+            CHECK(material.shaderDefines(static_cast<ShaderType>(i)).size() == 1u);
+        }
+        CHECK(needsNewShader());
+
+        CHECK(material.setShaderDefine(ShaderType::COUNT, "TOGGLED_DEFINE", false));
+        for (U8 i = 0u; i < to_base(ShaderType::COUNT); ++i)
+        {
+            CAPTURE(i);
+            CHECK_FALSE(hasDefine(static_cast<ShaderType>(i)));
+        }
+        CHECK(needsNewShader());
+        CHECK_FALSE(material.setShaderDefine(ShaderType::COUNT, "TOGGLED_DEFINE", false));
+        CHECK_FALSE(needsNewShader());
+    }
+
     namespace Attorney
     {
     class GFXDeviceTestAccess

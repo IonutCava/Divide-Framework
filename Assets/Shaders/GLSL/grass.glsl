@@ -62,7 +62,9 @@ void main() {
     VAR._vertexW = dvd_Vertex + vec4(data.positionAndScale.xyz, 0.0f);
 
     if (animate) {
+#if !defined(VEGETATION_WIND_DISABLED)
         largetScaleMotion(VAR._vertexW, dvd_Vertex, dvd_Vertex.y * 0.075f, timeGrass);
+#endif //!VEGETATION_WIND_DISABLED
 
 #       if 1
             const vec2 viewDirection = normalize(VAR._vertexW.xz - dvd_CameraPosition.xz);

@@ -55,6 +55,8 @@ namespace Divide
         constexpr F32 g_distanceRingsBaseTrees = 2.5f;
         constexpr F32 g_slopeLimitGrass = 30.0f;
         constexpr F32 g_slopeLimitTrees = 10.0f;
+        // Compiles wind out of the grass and tree vertex shaders when the editor disables it.
+        constexpr const char* g_windDisabledDefine = "VEGETATION_WIND_DISABLED";
 
         [[nodiscard]] U64 TreePlacementHash( const VegetationDescriptor& descriptor ) noexcept
         {
@@ -184,6 +186,15 @@ namespace Divide
         visDistanceTreesField._readOnly = true;
         visDistanceTreesField._basicType = PushConstantType::FLOAT;
         _editorComponent->registerField( MOV( visDistanceTreesField ) );
+
+        EditorComponentField windAnimationField = {};
+        windAnimationField._name = "Wind animation";
+        windAnimationField._tooltip = "Disabling wind compiles it out of the grass and tree shaders and keeps their shadows static.";
+        windAnimationField._data = &_windAnimation;
+        windAnimationField._type = EditorComponentFieldType::SWITCH_TYPE;
+        windAnimationField._basicType = PushConstantType::BOOL;
+        windAnimationField._readOnly = false;
+        _editorComponent->registerField( MOV( windAnimationField ) );
 
         _lodPartitions.fill( 0u );
 
@@ -580,6 +591,7 @@ namespace Divide
     {
         DIVIDE_ASSERT( !sceneState.waterBodies().empty(), "Vegetation requires the global water body" );
         _globalWaterHeight = sceneState.waterBodies().front()._positionW.y;
+        applyWindAnimation();
         VegetationInstance* instance = findInstance( sgn->dataFlag() );
         if ( instance == nullptr || instance->_initialized )
         {
@@ -680,6 +692,45 @@ namespace Divide
         instance->_initialized = true;
     }
 
+    void Vegetation::applyWindAnimation()
+    {
+        // Runs on the main thread between the scene update and rendering, so no render task reads the defines.
+        const bool windAnimation = _windAnimation;
+        if ( windAnimation == _appliedWindAnimation.load( std::memory_order_relaxed ) )
+        {
+            return;
+        }
+
+        const auto applyDefine = [windDisabled = !windAnimation]( const Handle<Material> handle )
+        {
+            Material* material = Get( handle );
+            if ( material == nullptr )
+            {
+                return;
+            }
+
+            material->setShaderDefine( ShaderType::COUNT, g_windDisabledDefine, windDisabled );
+            material->lockInstancesForRead();
+            for ( const Handle<Material> instance : material->getInstancesLocked() )
+            {
+                Material* instanceMaterial = Get( instance );
+                if ( instanceMaterial != nullptr )
+                {
+                    instanceMaterial->setShaderDefine( ShaderType::COUNT, g_windDisabledDefine, windDisabled );
+                }
+            }
+            material->unlockInstancesForRead();
+        };
+
+        LockGuard<Mutex> w_lock( _treeMaterialLock );
+        applyDefine( _vegetationMaterial );
+        for ( const auto& entry : _treeMaterials )
+        {
+            applyDefine( entry.second );
+        }
+        _appliedWindAnimation.store( windAnimation, std::memory_order_relaxed );
+    }
+
     Handle<Material> Vegetation::treeMaterialFor( const Handle<Material> source )
     {
         LockGuard<Mutex> w_lock( _treeMaterialLock );
@@ -708,6 +759,10 @@ namespace Divide
         shaderData._colourShaderVertVariant = "";
         material->baseShaderData( shaderData );
         material->addShaderDefine( Util::StringFormat( "MAX_TREE_INSTANCES {}", _maxTreeInstances ) );
+        if ( !_appliedWindAnimation.load( std::memory_order_relaxed ) )
+        {
+            material->addShaderDefine( g_windDisabledDefine );
+        }
         material->properties().isInstanced( true );
         material->properties().isStatic( false );
         const U32 updateResult = material->update( 0u );
@@ -902,6 +957,8 @@ namespace Divide
                 uniforms->set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, sgn->dataFlag() );
                 uniforms->set( _ID( "dvd_grassInstanceCount" ), PushConstantType::UINT, instance->_drawState._grassInstanceCount );
                 uniforms->set( _ID( "dvd_treeInstanceCount" ), PushConstantType::UINT, instance->_drawState._treeInstanceCount );
+                uniforms->set( _ID( "dvd_treeWindAnimated" ), PushConstantType::UINT,
+                               (_appliedWindAnimation.load( std::memory_order_relaxed ) && TreeWindAnimatedInPass( renderStagePass )) ? 1u : 0u );
                 {
                     static_assert(MAX_VEGETATION_TREE_MESHES == 4u, "Tree range uniforms are packed in a uvec4");
                     const auto& ranges = instance->_treeRanges;
@@ -1032,6 +1089,7 @@ namespace Divide
                 sgn->sceneGraph()->invalidateStaticGeometryBounds(*sgn);
             }
             if (instance->_drawState._treeInstanceCount > 0u &&
+                _appliedWindAnimation.load(std::memory_order_relaxed) &&
                 _windShadowState.update(GFXDevice::FrameCount(), deltaTimeUS, float3{windX, windZ, sceneState.windSpeed()}))
             {
                 BoundingSphere bounds;

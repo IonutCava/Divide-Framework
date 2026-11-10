@@ -6,6 +6,8 @@
 #if defined(CULL_TREES)
 uniform float dvd_treeVisibilityDistance;
 uniform uint dvd_treeInstanceCount;
+// 1 when trees sway in this pass. Written into each visible draw entry's data.x.
+uniform uint dvd_treeWindAnimated;
 
 #   define MAX_INSTANCES MAX_TREE_INSTANCES
 #   define Data treeData
@@ -123,6 +125,7 @@ void main(void) {
                 const vec3 positionW = instance.positionAndScale.xyz;
                 const float dist = distance(positionW.xz, dvd_cameraPosition.xz);
                 if (dvd_visibilityDistance > 0.f && dist <= dvd_visibilityDistance && SphereInFrustum(positionW, radius)) {
+                    instance.data.x = float(dvd_treeWindAnimated);
                     instance.data.z = dist > (dvd_visibilityDistance * 0.33f) ? 2.0f : 1.0f;
                     instance.data.w = dist;
                     visible = true;

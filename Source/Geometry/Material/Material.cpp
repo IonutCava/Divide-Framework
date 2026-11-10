@@ -825,6 +825,45 @@ namespace Divide
         }
     }
 
+    bool Material::setShaderDefine(const ShaderType type, const string& define, const bool enabled, const bool addPrefix)
+    {
+        const U8 first = type == ShaderType::COUNT ? 0u : to_base(type);
+        const U8 last = type == ShaderType::COUNT ? to_base(ShaderType::COUNT) : to_U8(first + 1u);
+
+        bool changed = false;
+        for (U8 i = first; i < last; ++i)
+        {
+            ModuleDefines& defines = _extraShaderDefines[i];
+            const auto it = eastl::find_if(defines.begin(), defines.end(), [&define, addPrefix](const ModuleDefine& entry) noexcept
+            {
+                return entry._addPrefix == addPrefix && entry._define == define;
+            });
+
+            const bool present = it != defines.end();
+            if (present == enabled)
+            {
+                continue;
+            }
+
+            if (enabled)
+            {
+                defines.emplace_back(define, addPrefix);
+            }
+            else
+            {
+                defines.erase(it);
+            }
+            changed = true;
+        }
+
+        if (changed)
+        {
+            properties()._needsNewShader = true;
+        }
+
+        return changed;
+    }
+
     void Material::computeAndAppendShaderDefines( ShaderProgramDescriptor& shaderDescriptor, const RenderStagePass renderStagePass ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );

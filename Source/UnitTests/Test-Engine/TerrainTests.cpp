@@ -50,6 +50,34 @@ namespace Divide
         CHECK_FALSE(state.update(6u, 16667u, float3{0.3f, 0.5f, 0.f}));
     }
 
+    TEST_CASE("Tree wind animates only in passes that refresh their shadows every frame", "[vegetation][wind][shadow]")
+    {
+        const auto shadowPass = []( const ShadowType type, const U16 index, const U8 pass )
+        {
+            RenderStagePass stagePass{ RenderStage::SHADOW, RenderPassType::COUNT, index,
+                                       static_cast<RenderStagePass::VariantType>(type) };
+            stagePass._pass = static_cast<RenderStagePass::PassIndex>(pass);
+            return stagePass;
+        };
+
+        CHECK( TreeWindAnimatedInPass( RenderStagePass{ RenderStage::DISPLAY, RenderPassType::PRE_PASS } ) );
+        CHECK( TreeWindAnimatedInPass( RenderStagePass{ RenderStage::DISPLAY, RenderPassType::MAIN_PASS } ) );
+        CHECK( TreeWindAnimatedInPass( RenderStagePass{ RenderStage::REFLECTION, RenderPassType::MAIN_PASS } ) );
+        CHECK( TreeWindAnimatedInPass( shadowPass( ShadowType::SINGLE, 2u, 0u ) ) );
+        CHECK( TreeWindAnimatedInPass( shadowPass( ShadowType::CUBEMAP, 1u, 5u ) ) );
+        CHECK( TreeWindAnimatedInPass( shadowPass( ShadowType::CSM, 0u, 0u ) ) );
+        CHECK( TreeWindAnimatedInPass( shadowPass( ShadowType::CSM, 1u, 0u ) ) );
+        for ( U8 cascade = 1u; cascade < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++cascade )
+        {
+            CAPTURE( cascade );
+            CHECK_FALSE( TreeWindAnimatedInPass( shadowPass( ShadowType::CSM, 0u, cascade ) ) );
+        }
+        CHECK_FALSE( TreeWindAnimatedInPass( ShadowMap::WorldAOStagePass() ) );
+
+        CHECK( TREE_WIND_ENABLED( 1.f ) );
+        CHECK_FALSE( TREE_WIND_ENABLED( 0.f ) );
+    }
+
     TEST_CASE( "Terrain tile-factor shader declaration contains a literal opening brace", "[terrain][render_smoke]" )
     {
         CHECK( BuildTerrainTileFactorArrayHeader( 1u ) == "const vec2 CURRENT_TILE_FACTORS[4] = {\n" );
