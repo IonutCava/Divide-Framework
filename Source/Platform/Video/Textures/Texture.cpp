@@ -881,9 +881,8 @@ namespace Divide
                 case GFXImageFormat::BC2:
                 case GFXImageFormat::BC3:
                 case GFXImageFormat::BC7:
-                {
                     valid = _descriptor._dataType == GFXDataFormat::UNSIGNED_BYTE;
-                } break;
+                    break;
 
                 case GFXImageFormat::RED: 
                 case GFXImageFormat::RG: 
@@ -893,10 +892,12 @@ namespace Divide
                 case GFXImageFormat::BC5s: 
                 case GFXImageFormat::BC5u: 
                 case GFXImageFormat::BC6s: 
-                case GFXImageFormat::BC6u: break;
+                case GFXImageFormat::BC6u:
+                    break;
 
                 case GFXImageFormat::COUNT:
-                default: DIVIDE_UNEXPECTED_CALL();
+                default:
+                    DIVIDE_UNEXPECTED_CALL();
             }
 
             DIVIDE_GPU_ASSERT(valid, "SRGB textures are only supported for RGB/BGR(A) normalized formats!" );

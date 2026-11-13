@@ -219,9 +219,14 @@ void Console::FlushOutputStreams()
         {
             switch ( static_cast<StreamType>( i ) )
             {
-                case StreamType::STD_FILE:  s_logStream.flush();    break;
-                case StreamType::ERR_FILE:  s_errorStream.flush();  break;
-                default:                    DIVIDE_UNEXPECTED_CALL();
+                case StreamType::STD_FILE:
+                    s_logStream.flush();
+                    break;
+                case StreamType::ERR_FILE:
+                    s_errorStream.flush();
+                    break;
+                default:
+                    DIVIDE_UNEXPECTED_CALL();
             }
         }
     }

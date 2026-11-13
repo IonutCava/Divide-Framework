@@ -1057,9 +1057,8 @@ namespace Divide {
             case SceneNodeType::TYPE_TRANSFORM:
             case SceneNodeType::TYPE_SKY:
             case SceneNodeType::TYPE_VEGETATION: break;
-
-            default:
-            case SceneNodeType::COUNT: DIVIDE_UNEXPECTED_CALL();
+            case SceneNodeType::COUNT:
+            default: DIVIDE_UNEXPECTED_CALL();
         }
 
         return;

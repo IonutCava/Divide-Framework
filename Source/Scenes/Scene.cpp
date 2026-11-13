@@ -1147,7 +1147,8 @@ namespace Divide
                         state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::NONE} );
                     }
                 } break;
-                default: DIVIDE_UNEXPECTED_CALL();
+                default:
+                    DIVIDE_UNEXPECTED_CALL();
             }
         };
 

@@ -94,7 +94,6 @@ PoolHandle ObjectPool<T, N, allowResize>::registerExistingInternal(T& object, co
     if (!allowResize || retry)
     {
         DIVIDE_UNEXPECTED_CALL();
-        return {};
     }
 
     _ids.resize( _ids.size() * 2, PoolHandle{} );

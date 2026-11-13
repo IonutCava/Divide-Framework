@@ -326,8 +326,8 @@ namespace Divide
 
             } break;
 
-            default:
             case RenderStage::COUNT:
+            default:
                 DIVIDE_UNEXPECTED_CALL();
         };
     }

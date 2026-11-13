@@ -26,8 +26,7 @@ namespace
             case Divide::ShaderType::COMPUTE:           return EShLangCompute;
             case Divide::ShaderType::MESH:              return EShLangMesh;
             case Divide::ShaderType::TASK:              return EShLangTask;
-            default:
-                DIVIDE_UNEXPECTED_CALL();
+            default:                                    DIVIDE_UNEXPECTED_CALL();
         }
     }
 };
@@ -341,9 +340,8 @@ namespace
             case ShaderType::MESH:              return ShaderStageVisibility::MESH;
             case ShaderType::TASK:              return ShaderStageVisibility::TASK;
 
-            default:
             case ShaderType::COUNT:
-                DIVIDE_UNEXPECTED_CALL();
+            default:                            DIVIDE_UNEXPECTED_CALL();
         };
     }
 

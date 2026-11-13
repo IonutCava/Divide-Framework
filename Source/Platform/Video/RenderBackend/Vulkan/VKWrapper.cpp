@@ -3735,7 +3735,8 @@ namespace Divide
                             memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
                             memoryBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
                         }break;
-                        default : DIVIDE_UNEXPECTED_CALL();
+                        default:
+                            DIVIDE_UNEXPECTED_CALL();
                     }
 
                     if ( bufferBarrierCount == MAX_BUFFER_BARRIERS_PER_CMD )
@@ -3938,10 +3939,11 @@ namespace Divide
             case GFX::CommandType::SET_CLIP_PLANES:
             case GFX::CommandType::BIND_SHADER_RESOURCES:
             case GFX::CommandType::READ_BUFFER_DATA:
-            case GFX::CommandType::CLEAR_BUFFER_DATA: break;
-
+            case GFX::CommandType::CLEAR_BUFFER_DATA:
+                break;
             case GFX::CommandType::COUNT:
-            default: DIVIDE_UNEXPECTED_CALL();
+            default:
+                DIVIDE_UNEXPECTED_CALL();
         }
     }
 

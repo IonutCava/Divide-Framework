@@ -750,7 +750,8 @@ void WindowManager::toggleFullScreen() const
             mainWindow()->changeType( WindowType::WINDOW );
             break;
         case WindowType::COUNT:
-        default: DIVIDE_UNEXPECTED_CALL();
+        default: 
+            DIVIDE_UNEXPECTED_CALL();
     }
 }
 

@@ -31,7 +31,7 @@ namespace
     constexpr U32 g_particleGeometryBuffer = 0;
     constexpr U32 g_particlePositionBuffer = g_particleGeometryBuffer + 1;
     constexpr U32 g_particleColourBuffer = g_particlePositionBuffer + 1;
-    constexpr U32 g_particleIndexBuffer = g_particleColourBuffer + 1;
+    //constexpr U32 g_particleIndexBuffer = g_particleColourBuffer + 1;
 
     [[nodiscard]] vector<U32> ParticleGeometryIndices(const vector<float3>& vertices, const vector<U32>& indices)
     {

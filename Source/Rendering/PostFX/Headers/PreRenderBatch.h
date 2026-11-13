@@ -176,7 +176,6 @@ class PreRenderBatch {
 
             default:
                 DIVIDE_UNEXPECTED_CALL();
-                break;
         }
 
         return FilterSpace::COUNT;

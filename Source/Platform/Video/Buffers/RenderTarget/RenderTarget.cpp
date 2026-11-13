@@ -76,7 +76,8 @@ bool RenderTarget::create()
                 _attachments[to_base(attDesc._slot)] = std::make_unique<RTAttachment>(*this, attDesc);
                 att = _attachments[to_base(attDesc._slot)].get();
             } break;
-            default: DIVIDE_UNEXPECTED_CALL();
+            default:
+                DIVIDE_UNEXPECTED_CALL();
         };
 
         if (printWarning)

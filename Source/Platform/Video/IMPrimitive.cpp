@@ -301,8 +301,8 @@ void IMPrimitive::endBatch() noexcept
             case NS_GLIM::GLIM_BUFFER_TYPE::POINTS:    updateRange(batchData.m_IndexBuffer_Points,    range); break;
             case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: updateRange(batchData.m_IndexBuffer_Triangles, range); break;
             case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: updateRange(batchData.m_IndexBuffer_Wireframe, range); break;
-            default:
-            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:     DIVIDE_UNEXPECTED_CALL();
+            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:
+            default:                                   DIVIDE_UNEXPECTED_CALL();
         }
     }
 
@@ -328,8 +328,8 @@ void IMPrimitive::endBatch() noexcept
             case NS_GLIM::GLIM_BUFFER_TYPE::POINTS:    insert(_indices, batchData.m_IndexBuffer_Points);    break;
             case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: insert(_indices, batchData.m_IndexBuffer_Triangles); break;
             case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: insert(_indices, batchData.m_IndexBuffer_Wireframe); break;
-            default:
-            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:     DIVIDE_UNEXPECTED_CALL();
+            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:
+            default:                                   DIVIDE_UNEXPECTED_CALL();
         }
     }
 

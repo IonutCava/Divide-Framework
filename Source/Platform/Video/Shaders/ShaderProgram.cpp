@@ -1236,8 +1236,11 @@ namespace Divide
                     return typeB == DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC ||
                            typeB == DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC;
 
-                case DescriptorSetBindingType::COUNT: DIVIDE_UNEXPECTED_CALL();
-                default: break;
+                case DescriptorSetBindingType::COUNT:
+                    DIVIDE_UNEXPECTED_CALL();
+
+                default:
+                    break;
             };
 
             return typeA == typeB;
@@ -1298,8 +1301,8 @@ namespace Divide
                 bindingData._glBinding = INVALID_TEXTURE_BINDING;
                 break;
 
-            default:
             case DescriptorSetBindingType::COUNT:
+            default:
                 DIVIDE_UNEXPECTED_CALL();
         }
     }
