@@ -26,6 +26,8 @@
 
 #include <boost/property_tree/xml_parser.hpp>
 
+#include "Utility/Headers/XMLParser.h"
+
 #include <ImGuiMisc/imguistyleserializer/imguistyleserializer.h>
 #include <imgui_stdlib.h>
 
@@ -302,13 +304,18 @@ static void populateProjects( ProjectDB& projects, SDL_Renderer* renderer, Image
 {
     projects.resize(0);
 
+    struct ProjectVisualConfig
+    {
+        std::string logo{};
+    } visualConfig;
+
     try
     {
-        boost::property_tree::iptree XmlTree;
-
         const std::filesystem::directory_iterator end;
         for ( std::filesystem::directory_iterator iter{ g_projectPath / PROJECTS_FOLDER_NAME }; iter != end; ++iter )
         {
+            visualConfig.logo = {};
+
             if ( !std::filesystem::is_directory( *iter ) ||
                  iter->path().filename().string().compare( Divide::Config::DELETED_FOLDER_NAME ) == 0 )
             {
@@ -323,16 +330,16 @@ static void populateProjects( ProjectDB& projects, SDL_Renderer* renderer, Image
 
             if ( std::filesystem::is_regular_file( iter->path() / PROJECT_CONFIG_FILE_NAME ) )
             {
-                XmlTree.clear();
-                boost::property_tree::read_xml( (iter->path() / PROJECT_CONFIG_FILE_NAME).string(), XmlTree, boost::property_tree::xml_parser::trim_whitespace);
-                if (!XmlTree.empty() )
+                Divide::XML::detail::SerializerContext SerializerContext;
+                SerializerContext._rootNodePath = "config.";
+
+                boost::property_tree::read_xml( (iter->path() / PROJECT_CONFIG_FILE_NAME).string(), SerializerContext.XmlTree, boost::property_tree::xml_parser::trim_whitespace);
+
+                GET_TEMP_PARAM(logo, visualConfig.logo);
+                if (!visualConfig.logo.empty())
                 {
-                    const std::string logoName = XmlTree.get<std::string>( CONFIG_LOGO_TAG, "" );
-                    if (!logoName.empty())
-                    {
-                        entry._logoName = logoName;
-                        entry._logoPath = iter->path().string();
-                    }
+                    entry._logoName = visualConfig.logo;
+                    entry._logoPath = iter->path().string();
                 }
             }
             entry._logo = loadImage( entry._logoPath, entry._logoName, renderer, imageDB );

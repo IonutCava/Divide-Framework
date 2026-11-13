@@ -308,7 +308,7 @@ namespace Import
         const ResourcePath settingsPath = dataOut.modelPath() / Util::StringFormat( "{}.import.xml", dataOut.modelName() );
         if ( fileExists( settingsPath ) )
         {
-            XML::detail::LoadSave settingsFile;
+            XML::detail::SerializerContext settingsFile;
             const string settingsName = Util::StringFormat( "{}.import.xml", dataOut.modelName() );
             if ( !settingsFile.read( dataOut.modelPath(), settingsName.c_str(), "import" ) )
             {

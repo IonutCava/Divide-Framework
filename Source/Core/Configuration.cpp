@@ -9,7 +9,7 @@ namespace Divide {
 bool Configuration::fromXML(const ResourcePath& xmlFilePath, const char* fileName )
 {
     Console::printfn(LOCALE_STR("XML_LOAD_CONFIG"), (xmlFilePath.string() + fileName).c_str());
-    if (LoadSave.read(xmlFilePath, fileName, "config."))
+    if (SerializerContext.read(xmlFilePath, fileName, "config."))
     {
         GET_PARAM(debug.renderer.enableRenderAPIDebugging);
         GET_PARAM(debug.renderer.enableRenderAPIBestPractices);
@@ -342,12 +342,12 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
     PUT_PARAM(defaultAssetLocation.textures);
     PUT_PARAM(defaultAssetLocation.shaders);
 
-    return LoadSave.write( xmlFilePath, fileName );
+    return SerializerContext.write( xmlFilePath, fileName );
 }
 
 void Configuration::save()
 {
-    if (changed() && toXML(LoadSave._filePath, LoadSave._fileName.c_str()))
+    if (changed() && toXML(SerializerContext._filePath, SerializerContext._fileName.c_str()))
     {
         changed(false);
     }

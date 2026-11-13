@@ -27,7 +27,7 @@ namespace Divide
             std::tuple{"Testwuson.X", 0.8f, 1.2f} } )
         {
             CAPTURE( name );
-            XML::detail::LoadSave settings;
+            XML::detail::SerializerContext settings;
             const string settingsName = Util::StringFormat( "{}.import.xml", name );
             REQUIRE( settings.read( ResourcePath{"Assets"} / "Models", settingsName.c_str(), "import" ) );
             const float3 angles{

@@ -51,7 +51,7 @@ namespace XML
 {
     namespace detail
     {
-        struct LoadSave
+        struct SerializerContext
         {
             mutable boost::property_tree::iptree XmlTree;
             std::string _rootNodePath;
@@ -69,15 +69,15 @@ namespace XML
 #define GET_PARAM(X) GET_TEMP_PARAM(X, X)
 
 #define GET_TEMP_PARAM(X, TEMP) \
-    TEMP = LoadSave.XmlTree.get(LoadSave._rootNodePath + TO_STRING(X), TEMP)
+    TEMP = SerializerContext.XmlTree.get(SerializerContext._rootNodePath + TO_STRING(X), TEMP)
 
 #define GET_PARAM_ATTRIB(X, Y) \
-    X.Y = LoadSave.XmlTree.get(CONCAT(CONCAT(LoadSave._rootNodePath + TO_STRING(X), ".<xmlattr>."), TO_STRING(Y)), (X.Y))
+    X.Y = SerializerContext.XmlTree.get(CONCAT(CONCAT(SerializerContext._rootNodePath + TO_STRING(X), ".<xmlattr>."), TO_STRING(Y)), (X.Y))
 
 #define PUT_TEMP_PARAM(X, TEMP) \
-    LoadSave.XmlTree.put(LoadSave._rootNodePath + TO_STRING(X), TEMP)
+    SerializerContext.XmlTree.put(SerializerContext._rootNodePath + TO_STRING(X), TEMP)
 #define PUT_PARAM_ATTRIB(X, Y) \
-    LoadSave.XmlTree.put(CONCAT(CONCAT(LoadSave._rootNodePath + TO_STRING(X), ".<xmlattr>."), TO_STRING(Y)), (X.Y))
+    SerializerContext.XmlTree.put(CONCAT(CONCAT(SerializerContext._rootNodePath + TO_STRING(X), ".<xmlattr>."), TO_STRING(Y)), (X.Y))
 #endif
 
 #define PUT_PARAM(X) PUT_TEMP_PARAM(X, X)
@@ -94,7 +94,7 @@ namespace XML
         virtual bool fromXML( const ResourcePath& xmlFilePath, const char* fileName ) = 0;
         virtual bool toXML( const ResourcePath& xmlFilePath, const char* fileName ) const = 0;
 
-        detail::LoadSave LoadSave;
+        detail::SerializerContext SerializerContext;
     };
 
     bool loadFromXML( IXMLSerializable& object, const ResourcePath& filePath, const char* fileName );
