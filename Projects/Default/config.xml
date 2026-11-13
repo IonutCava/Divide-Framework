@@ -1,1 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<config>
+    <logo>logo.jpg</logo>
+    <startupScene>Default</startupScene>
+</config>

@@ -117,6 +117,13 @@ namespace Divide
                 });
             }
         }
+
+        const ResourcePath projectPath = Paths::g_projectsLocation / projectID._name;
+        XML::detail::SerializerContext SerializerContext;
+        if (SerializerContext.read( projectPath, Config::PROJECT_CONFIG_FILE_NAME, "config." ) )
+        {
+            GET_TEMP_PARAM(startupScene, _startupSceneConfig.startupScene);
+        }
     }
 
     Project::~Project()
@@ -438,16 +445,35 @@ namespace Divide
 
         const SceneEntries& sceneEntries = _activeProject->getSceneEntries();
         auto startupScene = sceneEntries.cbegin();
+
+        const auto findSceneByName = [&sceneEntries]( const char* sceneName )
+        {
+            return std::find_if( sceneEntries.cbegin(), sceneEntries.cend(), [sceneName]( const SceneEntry& entry )
+            {
+                return entry._name == sceneName;
+            });
+        };
+
         if ( RenderSmokeTest::Enabled() && !RenderSmokeTest::Scene().empty() )
         {
-            startupScene = std::find_if( sceneEntries.cbegin(), sceneEntries.cend(), []( const SceneEntry& entry )
-            {
-                return entry._name == RenderSmokeTest::Scene().c_str();
-            });
+            startupScene = findSceneByName( RenderSmokeTest::Scene().c_str() );
             if ( startupScene == sceneEntries.cend() )
             {
                 Console::errorfn( LOCALE_STR( "ERROR_SCENE_LOAD" ), RenderSmokeTest::Scene().c_str() );
                 return ErrorCode::MISSING_SCENE_DATA;
+            }
+        }
+        else
+        {
+            startupScene = findSceneByName( _activeProject->startupSceneConfig().startupScene.c_str() );
+            if ( startupScene == sceneEntries.cend() )
+            {
+                startupScene = findSceneByName( Config::DEFAULT_SCENE_NAME );
+            }
+
+            if ( startupScene == sceneEntries.cend() )
+            {
+                startupScene = sceneEntries.cbegin();
             }
         }
 

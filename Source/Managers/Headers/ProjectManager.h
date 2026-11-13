@@ -125,6 +125,11 @@ namespace Divide
         bool _createIfNotExist = false;
     };
 
+    struct ProjectStartupSceneConfig
+    {
+        string startupScene{ Config::DEFAULT_SCENE_NAME };
+    };
+
     struct SwitchProjectTarget
     {
         ProjectID _targetProject = {};
@@ -161,6 +166,7 @@ namespace Divide
         [[nodiscard]] bool switchScene( const SwitchSceneTarget& scene );
 
         [[nodiscard]] inline const SceneEntries& getSceneEntries() const noexcept { return _sceneEntries; }
+        [[nodiscard]] inline const ProjectStartupSceneConfig& startupSceneConfig() const noexcept { return _startupSceneConfig; }
 
         [[nodiscard]] inline ProjectManager& parent() noexcept { return _parentManager; }
 
@@ -183,6 +189,7 @@ namespace Divide
         ProjectManager& _parentManager;
 
         vector<SceneEntry> _sceneEntries;
+        ProjectStartupSceneConfig _startupSceneConfig;
     };
 
     FWD_DECLARE_MANAGED_CLASS( Project );

@@ -30,7 +30,7 @@ namespace
 
 namespace detail
 {
-    bool LoadSave::read(const ResourcePath& filePath, const char* fileName, const std::string& rootNode)
+    bool SerializerContext::read(const ResourcePath& filePath, const char* fileName, const std::string& rootNode)
     {
         _filePath = filePath;
         _fileName = fileName;
@@ -81,7 +81,7 @@ namespace detail
         return false;
     }
 
-    bool LoadSave::write( const ResourcePath& filePath, const char* fileName ) const
+    bool SerializerContext::write( const ResourcePath& filePath, const char* fileName ) const
     {
         const ResourcePath savePath = filePath / fileName;
 

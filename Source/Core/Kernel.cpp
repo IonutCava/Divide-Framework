@@ -721,7 +721,10 @@ ErrorCode Kernel::initialize(const string& entryPoint)
             return ErrorCode::RENDER_SMOKE_TEST_FAILED;
         }
 
-        config.startupProject = RenderSmokeTest::Project().empty() ? Config::DEFAULT_PROJECT_NAME : RenderSmokeTest::Project().c_str();
+        if ( !RenderSmokeTest::Project().empty() )
+        {
+            config.startupProject = RenderSmokeTest::Project().c_str();
+        }
         config.runtime.enableEditor = true;
         // The smoke backend switch is explicit; override in memory only (config.xml is not written back).
         config.runtime.targetRenderingAPI = to_U8( vulkan ? RenderAPI::Vulkan : RenderAPI::OpenGL );
@@ -893,16 +896,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         return initError;
     }
 
-    Str<256> startupProject = config.startupProject.c_str();
-    if ( Config::Build::IS_EDITOR_BUILD && RenderSmokeTest::Enabled() && config.runtime.enableEditor)
-    {
-        startupProject = RenderSmokeTest::Project().empty() ? Config::DEFAULT_PROJECT_NAME : RenderSmokeTest::Project().c_str();
-        Console::printfn(LOCALE_STR("START_FRAMEWORK_EDITOR"), startupProject.c_str() );
-    }
-    else
-    {
-        Console::printfn( LOCALE_STR( "START_FRAMEWORK_GAME" ), startupProject.c_str() );
-    }
+    Console::printfn( LOCALE_STR( "START_FRAMEWORK_GAME" ), config.startupProject.c_str() );
 
     ProjectIDs& projects = Attorney::ProjectManagerKernel::init(_projectManager.get());
     if ( projects.empty() )
@@ -914,7 +908,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     ProjectID targetProject{};
     for ( auto& project : projects )
     {
-        if (project._name == startupProject)
+        if (config.startupProject.compare(project._name.c_str()) == 0)
         {
             targetProject = project;
             break;
@@ -923,20 +917,20 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     if ( RenderSmokeTest::Enabled() && targetProject._guid == 0 && !RenderSmokeTest::Project().empty() )
     {
-        Console::errorfn( "Render smoke test project [ {} ] not found.", startupProject.c_str() );
+        Console::errorfn( "Render smoke test project [ {} ] not found.", config.startupProject.c_str() );
         return ErrorCode::MISSING_PROJECT_DATA;
     }
 
     while ( targetProject._guid == 0 )
     {
         targetProject = projects.front();
-        Console::warnfn( LOCALE_STR( "WARN_PROJECT_NOT_FOUND" ), startupProject.c_str(), targetProject._name.c_str() );
-        startupProject = targetProject._name;
+        Console::warnfn( LOCALE_STR( "WARN_PROJECT_NOT_FOUND" ), config.startupProject.c_str(), targetProject._name.c_str() );
+        config.startupProject = targetProject._name;
     }
 
     if ( targetProject._guid == 0 )
     {
-        Console::errorfn( LOCALE_STR( "WARN_PROJECT_NOT_FOUND" ), startupProject.c_str(), targetProject._name.c_str() );
+        Console::errorfn( LOCALE_STR( "WARN_PROJECT_NOT_FOUND" ), config.startupProject.c_str(), targetProject._name.c_str() );
         return ErrorCode::MISSING_PROJECT_DATA;
     }
 
@@ -951,7 +945,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     if (!_projectManager->loadComplete())
     {
-        Console::errorfn(LOCALE_STR("ERROR_SCENE_LOAD_NOT_CALLED"), startupProject.c_str() );
+        Console::errorfn(LOCALE_STR("ERROR_SCENE_LOAD_NOT_CALLED"), config.startupProject.c_str() );
         return ErrorCode::MISSING_SCENE_LOAD_CALL;
     }
 
