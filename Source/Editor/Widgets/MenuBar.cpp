@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/MenuBar.h"
 #include "Editor/Headers/Utils.h"
@@ -414,7 +414,6 @@ namespace Divide
 
                     default:
                         DIVIDE_UNEXPECTED_CALL();
-                        break;
                 }
 
                 ResourcePtr<Material> mat = Get( materialHandle );
@@ -917,14 +916,7 @@ namespace Divide
                 bool filterEnabled = postFX.getFilterState( f );
                 if ( ImGui::MenuItem( PostFX::FilterName( f ), nullptr, &filterEnabled ) )
                 {
-                    if ( filterEnabled )
-                    {
-                        postFX.pushFilter( f, true );
-                    }
-                    else
-                    {
-                        postFX.popFilter( f, true );
-                    }
+                    postFX.setFilterState( f, filterEnabled, true );
                 }
             }
             ImGui::EndMenu();

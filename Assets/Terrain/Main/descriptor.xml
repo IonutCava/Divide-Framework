@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
 <heightfield>heightfield.raw</heightfield>
 <heightfieldTex>heightfield.png</heightfieldTex>
 <!--
@@ -29,13 +30,16 @@ min and max basically remap what 0 and 1 respectively mean in the heightmap
 
 <vegetation>
     <vegetationTextureLocation>Assets/MiscImages</vegetationTextureLocation>
-    <grassMap>alpha_maps_Alpha1.png</grassMap>
+    <!-- RGBA masks: 1=red, 2=green, 4=blue, 8=alpha. Only grass materials generate grass. -->
+    <grassMap channelMask="3">alpha_maps_Alpha1.png</grassMap>
+    <grassMapSecondary channelMask="8">alpha_maps_Alpha2.png</grassMapSecondary>
     <grassBillboard1 scale="0.75">billboardgrass0001.png</grassBillboard1>
     <grassBillboard2 scale="0.5">grass_billboards1.png</grassBillboard2>
     <grassBillboard3 scale="1">grass_billboards2.png</grassBillboard3>
     <grassBillboard4 scale="1">grass_billboards3.png</grassBillboard4>
     <treeMap>alpha_maps_Alpha1.png</treeMap>
-	<treeMesh1 scale = "0.075" rotate_x = "-90" rotate_y = "0" rotate_z = "0">tree_mango_01.fbx</treeMesh1>
-	<treeMesh2 scale = "0.075" rotate_x = "-90" rotate_y = "0" rotate_z = "0">tree_mango_02.fbx</treeMesh2>
-	<treeMesh3 scale = "0.0075" rotate_x = "0" rotate_y = "0" rotate_z = "0">birch_13m.obj</treeMesh3>
+    <!-- Mango FBX units are converted on import; scale the converted meshes to match the birch. -->
+	<treeMesh1 scale = "1.5" density = "3" rotate_x = "-90" rotate_y = "0" rotate_z = "0">tree_mango_01.fbx</treeMesh1>
+	<treeMesh2 scale = "1.5" density = "2" rotate_x = "-90" rotate_y = "0" rotate_z = "0">tree_mango_02.fbx</treeMesh2>
+	<treeMesh3 scale = "0.0075" density = "1" rotate_x = "0" rotate_y = "0" rotate_z = "0">birch_13m.obj</treeMesh3>
 </vegetation>

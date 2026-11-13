@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -170,6 +170,10 @@ namespace Divide
     {
         updateViewMatrix();
         updateProjection();
+        if ( _frustumDirty )
+        {
+            mat4<F32>::Multiply( _data._projectionMatrix, _data._viewMatrix, _viewProjectionMatrix );
+        }
         return _viewProjectionMatrix;
     }
 

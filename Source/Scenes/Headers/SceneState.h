@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -61,6 +61,16 @@ struct WaterBodyData
 
     bool operator==(const WaterBodyData& other) const = default;
 };
+
+[[nodiscard]] inline bool PointInsideWater( const WaterBodyData& water, const float3& point ) noexcept
+{
+    const float4& extents = water._extents;
+    const float4& position = water._positionW;
+    return extents.x > 0.f && extents.y > 0.f && extents.z > 0.f &&
+           std::abs( point.x - position.x ) <= extents.x * 0.5f &&
+           std::abs( point.z - position.z ) <= extents.z * 0.5f &&
+           point.y < position.y && point.y > position.y - extents.y;
+}
 
 struct ProbeData
 {

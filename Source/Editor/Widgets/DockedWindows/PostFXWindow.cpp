@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/PostFXWindow.h"
 
@@ -75,14 +75,7 @@ namespace
             ImGui::PushID(to_base(filter));
             if (ImGui::Checkbox(label, &filterEnabled))
             {
-                if (filterEnabled)
-                {
-                    _postFX.pushFilter(filter, overrideScene);
-                }
-                else
-                {
-                    _postFX.popFilter(filter, overrideScene);
-                }
+                _postFX.setFilterState(filter, filterEnabled, overrideScene);
             }
             ImGui::PopID();
         };
@@ -170,7 +163,7 @@ namespace
                 ImGui::AlignTextToFramePadding();
                 ImGui::Text("Quality level: "); ImGui::SameLine();
                 ImGui::PushID("quality_level_slider");
-                if (ImGui::SliderInt("##hidelabel", &level, 0, 5))
+                if (ImGui::SliderInt("##hidelabel", &level, 0, to_I32(PostAAPreRenderOperator::MaxQualityLevel(aaOp.useSMAA()))))
                 {
                     aaOp.postAAQualityLevel(to_U8(level));
                 }
@@ -187,12 +180,12 @@ namespace
             {
                 if (selection != 2)
                 {
-                    _postFX.pushFilter(FilterType::FILTER_SS_ANTIALIASING);
+                    _postFX.setFilterState(FilterType::FILTER_SS_ANTIALIASING, true);
                     aaOp.useSMAA(selection == 0);
                 }
                 else
                 {
-                    _postFX.popFilter(FilterType::FILTER_SS_ANTIALIASING);
+                    _postFX.setFilterState(FilterType::FILTER_SS_ANTIALIASING, false);
                 }
             }
         }

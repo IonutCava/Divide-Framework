@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/glShaderProgram.h"
 #include "Headers/glShader.h"
@@ -165,10 +166,7 @@ ShaderResult glShaderProgram::validatePreBind(const Configuration& config, const
                 gl46core::glCreateProgramPipelines(1, &_glHandle);
                 if constexpr(Config::ENABLE_GPU_VALIDATION)
                 {
-                    gl46core::glObjectLabel( gl46core::GL_PROGRAM_PIPELINE,
-                                             _glHandle,
-                                             -1,
-                                             resourceName().c_str() );
+                    GLUtil::SetObjectLabel( gl46core::GL_PROGRAM_PIPELINE, _glHandle, resourceName().c_str() );
                 }
                 // We can reuse previous handles
                 LockGuard<SharedMutex> w_lock(g_deletionSetLock);

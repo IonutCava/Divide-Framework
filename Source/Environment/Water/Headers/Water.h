@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -59,7 +59,7 @@ DEFINE_NODE_TYPE(WaterPlane, SceneNodeType::TYPE_WATER)
                              F32 offset) const;
 
     // width, length, depth
-    const vec3<U16>& getDimensions() const noexcept;
+    const vec3<U32>& getDimensions() const noexcept;
 
     void saveToXML(boost::property_tree::ptree& pt) const override;
     void loadFromXML(const boost::property_tree::ptree& pt)  override;
@@ -88,7 +88,6 @@ DEFINE_NODE_TYPE(WaterPlane, SceneNodeType::TYPE_WATER)
 
     void postLoad(SceneGraphNode* sgn) override;
 
-    void sceneUpdate(U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) override;
     void prepareRender(SceneGraphNode* sgn,
                        RenderingComponent& rComp,
                        RenderPackage& pkg,
@@ -104,11 +103,16 @@ DEFINE_NODE_TYPE(WaterPlane, SceneNodeType::TYPE_WATER)
     void onEditorChange(std::string_view field) noexcept;
 
    private:
+#if defined(ENABLE_UNIT_TESTING)
+    friend struct WaterPlaneTestAccess;
+#endif
+    void registerEditorFields(PlatformContext& context);
+    void updateGeometry();
     bool updateReflection(RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const;
     bool updateRefraction(RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const;
 
    private:
-    vec3<U16> _dimensions{1u};
+    vec3<U32> _dimensions{1u};
     Handle<Quad3D> _plane{ INVALID_HANDLE<Quad3D> };
     Camera* _reflectionCam{ nullptr };
 };

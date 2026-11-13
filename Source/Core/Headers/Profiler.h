@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -102,6 +102,8 @@ bool OnProfilerStateChanged( const Profiler::State state );
 #define PROFILE_SCOPE_AUTO(CATEGORY) OPTICK_EVENT(OPTICK_FUNC, CATEGORY); static_assert(true, "")
 #define PROFILE_TAG(NAME, ...) OPTICK_TAG( NAME, __VA_ARGS__ ); static_assert(true, "")
 #define PROFILE_FRAME(NAME) NO_DESTROY OPTICK_FRAME( NAME ); static_assert(true, "")
+// Runtime-named scope (name is copied once into Optick's shared description table). Takes a lock per call: keep it off per-draw paths.
+#define PROFILE_SCOPE_DYNAMIC(NAME) OPTICK_EVENT_DYNAMIC(NAME) static_assert(true, "")
 
 #define PROFILE_VK_INIT(DEVICES, PHYSICAL_DEVICES, CMD_QUEUES, CMD_QUEUES_FAMILY, NUM_CMD_QUEUS, FUNCTIONS) OPTICK_GPU_INIT_VULKAN(DEVICES, PHYSICAL_DEVICES, CMD_QUEUES, CMD_QUEUES_FAMILY, NUM_CMD_QUEUS, FUNCTIONS); static_assert(true, "")
 #define PROFILE_VK_PRESENT(SWAP_CHAIN) OPTICK_GPU_FLIP(SWAP_CHAIN); static_assert(true, "")
@@ -118,6 +120,7 @@ bool OnProfilerStateChanged( const Profiler::State state );
 #define PROFILE_SCOPE_AUTO(CATEGORY) static_assert(true, "")
 #define PROFILE_TAG(NAME, ...) static_assert(true, "")
 #define PROFILE_FRAME(NAME) static_assert(true, "")
+#define PROFILE_SCOPE_DYNAMIC(NAME) static_assert(true, "")
 
 #define PROFILE_VK_INIT(DEVICES, PHYSICAL_DEVICES, CMD_QUEUES, CMD_QUEUES_FAMILY, NUM_CMD_QUEUS, FUNCTIONS) static_assert(true, "")
 #define PROFILE_VK_PRESENT(SWAP_CHAIN) static_assert(true, "")

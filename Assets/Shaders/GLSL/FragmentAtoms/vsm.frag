@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #ifndef _VSM_FRAG_
 #define _VSM_FRAG_
 

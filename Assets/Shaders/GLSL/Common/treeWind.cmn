@@ -1,0 +1,12 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
+#ifndef _TREE_WIND_CMN_
+#define _TREE_WIND_CMN_
+
+#define TREE_WIND_AMPLITUDE(X, HEIGHT) ((HEIGHT) * 0.25f * cos(X) * sin(X))
+#define TREE_WIND_PADDING(RADIUS, WIND_LENGTH) ((RADIUS) * 0.125f * (WIND_LENGTH))
+#define TREE_WIND_ANIMATED(LOD, HEIGHT) ((LOD) < 2u && (HEIGHT) > 0.85f)
+// The vegetation cull stores the per-pass wind flag in the draw data's x component.
+#define TREE_WIND_ENABLED(DRAW_FLAG) ((DRAW_FLAG) > 0.5f)
+
+#endif

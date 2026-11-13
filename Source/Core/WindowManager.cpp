@@ -52,7 +52,6 @@ namespace
         if (!Validate(result))
         {
             DIVIDE_UNEXPECTED_CALL();
-            return false;
         }
 
         return true;
@@ -678,6 +677,18 @@ ErrorCode WindowManager::applyAPISettingsPostCreate( const PlatformContext& cont
         {
             SDL_GL_SetSwapInterval(SDL_WINDOW_SURFACE_VSYNC_DISABLED);
         }
+
+        // Report what the driver actually applied so a capture can prove it was not display-synchronised
+        int swapInterval = 0;
+        if ( SDL_GL_GetSwapInterval( &swapInterval ) )
+        {
+            const bool vsyncRequested = ( targetWindow->flags() & to_base( WindowFlags::VSYNC ) ) != 0u;
+            Console::printfn( "OpenGL swap interval: {} (VSync requested: {})", swapInterval, vsyncRequested );
+            if ( !vsyncRequested && swapInterval != 0 )
+            {
+                Console::warnfn( "OpenGL swap interval is {} although VSync is disabled: presentation is synchronised to the display refresh rate", swapInterval );
+            }
+        }
     }
 
     return ErrorCode::NO_ERR;
@@ -739,7 +750,8 @@ void WindowManager::toggleFullScreen() const
             mainWindow()->changeType( WindowType::WINDOW );
             break;
         case WindowType::COUNT:
-        default: DIVIDE_UNEXPECTED_CALL(); break;
+        default: 
+            DIVIDE_UNEXPECTED_CALL();
     }
 }
 

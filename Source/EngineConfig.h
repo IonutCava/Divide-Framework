@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -200,6 +200,7 @@ constexpr bool ENABLE_LOCALE_FILE_WATCHER = !Build::IS_SHIPPING_BUILD && Build::
 constexpr char DEFAULT_PROJECT_NAME[] = "Default";
 constexpr char DEFAULT_SCENE_NAME[] = "Default";
 constexpr char DELETED_FOLDER_NAME[] = "Deleted";
+constexpr char PROJECT_CONFIG_FILE_NAME[] = "config.xml";
 constexpr char ENGINE_NAME[] = "Divide Framework";
 constexpr auto ENGINE_VERSION_MAJOR = 0u;
 constexpr auto ENGINE_VERSION_MINOR = 1u;

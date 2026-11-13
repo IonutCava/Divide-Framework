@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
 <static>true</static>
 <model>defaultobject_0_copac</model>
 <SUBMESH/>
 <TRANSFORM>
     <Transform>
-        <position x="6.92160034" y="184.478607" z="26.5265503"/>
+        <position x="0" y="0" z="0"/>
         <orientation x="0" y="-0" z="0"/>
         <scale x="1" y="1" z="1"/>
     </Transform>
@@ -12,6 +13,7 @@
 <NAVIGATION/>
 <BOUNDS/>
 <RENDERING>
+    <World__AO__Participation>2</World__AO__Participation>
     <Material>
         <version>1</version>
         <shadingMode>BLINN_PHONG</shadingMode>

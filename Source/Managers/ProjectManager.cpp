@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/ProjectManager.h"
 #include "Headers/FrameListenerManager.h"
@@ -8,6 +9,7 @@
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Core/Resources/Headers/ResourceCache.h"
@@ -114,6 +116,13 @@ namespace Divide
                     ._name = name.c_str()
                 });
             }
+        }
+
+        const ResourcePath projectPath = Paths::g_projectsLocation / projectID._name;
+        XML::detail::SerializerContext SerializerContext;
+        if (SerializerContext.read( projectPath, Config::PROJECT_CONFIG_FILE_NAME, "config." ) )
+        {
+            GET_TEMP_PARAM(startupScene, _startupSceneConfig.startupScene);
         }
     }
 
@@ -434,9 +443,43 @@ namespace Divide
             return ErrorCode::MISSING_PROJECT_DATA;
         }
 
+        const SceneEntries& sceneEntries = _activeProject->getSceneEntries();
+        auto startupScene = sceneEntries.cbegin();
+
+        const auto findSceneByName = [&sceneEntries]( const char* sceneName )
+        {
+            return std::find_if( sceneEntries.cbegin(), sceneEntries.cend(), [sceneName]( const SceneEntry& entry )
+            {
+                return entry._name == sceneName;
+            });
+        };
+
+        if ( RenderSmokeTest::Enabled() && !RenderSmokeTest::Scene().empty() )
+        {
+            startupScene = findSceneByName( RenderSmokeTest::Scene().c_str() );
+            if ( startupScene == sceneEntries.cend() )
+            {
+                Console::errorfn( LOCALE_STR( "ERROR_SCENE_LOAD" ), RenderSmokeTest::Scene().c_str() );
+                return ErrorCode::MISSING_SCENE_DATA;
+            }
+        }
+        else
+        {
+            startupScene = findSceneByName( _activeProject->startupSceneConfig().startupScene.c_str() );
+            if ( startupScene == sceneEntries.cend() )
+            {
+                startupScene = findSceneByName( Config::DEFAULT_SCENE_NAME );
+            }
+
+            if ( startupScene == sceneEntries.cend() )
+            {
+                startupScene = sceneEntries.cbegin();
+            }
+        }
+
         SwitchSceneTarget sceneTarget
         {
-            ._targetScene = _activeProject->getSceneEntries().front(),
+            ._targetScene = *startupScene,
             ._unloadPreviousScene = true,
             ._loadInSeparateThread = false,
             ._deferToStartOfFrame = false,
@@ -445,7 +488,7 @@ namespace Divide
 
         if ( !_activeProject->switchScene( sceneTarget ) )
         {
-            Console::errorfn( LOCALE_STR( "ERROR_SCENE_LOAD" ), _activeProject->getSceneEntries().front()._name.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_SCENE_LOAD" ), startupScene->_name.c_str() );
             return ErrorCode::MISSING_SCENE_DATA;
         }
 
@@ -846,11 +889,19 @@ namespace Divide
         const auto& waterBodies = activeSceneState->waterBodies();
         for ( const auto& body : waterBodies )
         {
+            if ( index >= GLOBAL_WATER_BODIES_COUNT )
+            {
+                break;
+            }
             sceneData->waterDetails( index++, body );
+        }
+        for ( ; index < GLOBAL_WATER_BODIES_COUNT; ++index )
+        {
+            sceneData->waterDetails( index, WaterBodyData{} );
         }
         _saveTimer += deltaGameTimeUS;
 
-        if ( _saveTimer >= Time::SecondsToMicroseconds<U64>( Config::Build::IS_DEBUG_BUILD ? 5 : 10 ) )
+        if ( !RenderSmokeTest::Enabled() && _saveTimer >= Time::SecondsToMicroseconds<U64>( Config::Build::IS_DEBUG_BUILD ? 5 : 10 ) )
         {
             if ( !saveActiveScene( true, true ) )
             {
@@ -927,7 +978,6 @@ namespace Divide
 
         _currentPlayerPass = idx;
         Attorney::SceneProjectManager::currentPlayerPass( activeProject()->getActiveScene(), _currentPlayerPass );
-        playerCamera()->updateLookAt();
     }
 
     void ProjectManager::editorPreviewNode( const I64 editorPreviewNode ) noexcept
@@ -976,7 +1026,7 @@ namespace Divide
     }
 
     
-    void ProjectManager::getSortedReflectiveNodes( const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut ) const
+    void ProjectManager::getSortedReflectiveNodes( const Camera* camera, const bool inView, VisibleNodeList<>& nodesOut ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -994,10 +1044,11 @@ namespace Divide
         {
             NodeCullParams cullParams = {};
             cullParams._lodThresholds = activeProject()->getActiveScene()->state()->renderState().lodThresholds();
-            cullParams._stage = stage;
+            cullParams._stagePass._stage = RenderStage::DISPLAY;
             cullParams._cameraEyePos = camera->snapshot()._eye;
+            cullParams._rangeCameraEyePos = cullParams._cameraEyePos;
             cullParams._frustum = &camera->getFrustum();
-            cullParams._cullMaxDistance = camera->snapshot()._zPlanes.max;
+            cullParams._cullMaxDistance = activeProject()->getActiveScene()->state()->renderState().generalVisibility();
 
             RenderPassCuller::FrustumCull( parent().platformContext(), cullParams, to_base( CullOptions::DEFAULT_CULL_OPTIONS ), allNodes, nodesOut );
         }
@@ -1007,7 +1058,7 @@ namespace Divide
         }
     }
 
-    void ProjectManager::getSortedRefractiveNodes( const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut ) const
+    void ProjectManager::getSortedRefractiveNodes( const Camera* camera, const bool inView, VisibleNodeList<>& nodesOut ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -1024,10 +1075,11 @@ namespace Divide
         {
             NodeCullParams cullParams = {};
             cullParams._lodThresholds = activeProject()->getActiveScene()->state()->renderState().lodThresholds();
-            cullParams._stage = stage;
+            cullParams._stagePass._stage = RenderStage::DISPLAY;
             cullParams._cameraEyePos = camera->snapshot()._eye;
+            cullParams._rangeCameraEyePos = cullParams._cameraEyePos;
             cullParams._frustum = &camera->getFrustum();
-            cullParams._cullMaxDistance = camera->snapshot()._zPlanes.max;
+            cullParams._cullMaxDistance = activeProject()->getActiveScene()->state()->renderState().generalVisibility();
 
             RenderPassCuller::FrustumCull( parent().platformContext(), cullParams, to_base( CullOptions::DEFAULT_CULL_OPTIONS ), allNodes, nodesOut );
         }
@@ -1046,7 +1098,7 @@ namespace Divide
     {
         Scene* activeScene = activeProject()->getActiveScene();
 
-        cullParamsInOut._stage = stage;
+        cullParamsInOut._stagePass._stage = stage;
         cullParamsInOut._lodThresholds = activeScene->state()->renderState().lodThresholds( stage );
         if ( stage != RenderStage::SHADOW )
         {
@@ -1062,12 +1114,12 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        Time::ScopedTimer timer( *_sceneGraphCullTimers[to_U32( params._stage )] );
+        Time::ScopedTimer timer( *_sceneGraphCullTimers[to_U32( params._stagePass._stage )] );
 
         Scene* activeScene = activeProject()->getActiveScene();
         RenderPassCuller::FrustumCull( params, cullFlags, *activeScene->sceneGraph(), *activeScene->state(), _parent.platformContext(), nodesOut );
 
-        if ( params._stage == RenderStage::DISPLAY )
+        if ( params._stagePass._stage == RenderStage::DISPLAY )
         {
             _recentlyRenderedNodes = nodesOut;
         }
@@ -1087,16 +1139,12 @@ namespace Divide
                     const BoundsComponent* bComp = sgn->get<BoundsComponent>();
                     VisibleNode temp{};
                     temp._node = sgn;
-                    temp._distanceToCameraSq = bComp == nullptr ? 0.f : bComp->getBoundingSphere().getDistanceFromPoint( cameraEye );
+                    temp._distanceToCameraSq = bComp == nullptr
+                                                   ? 0.f
+                                                   : bComp->getBoundingBox().nearestPoint( cameraEye ).distanceSquared( cameraEye );
                     nodesOut.append( temp );
                 };
                 appendNode( sgn );
-
-                const BoundsComponent* bComp = sgn->get<BoundsComponent>();
-                VisibleNode temp{};
-                temp._node = sgn;
-                temp._distanceToCameraSq = bComp == nullptr ? 0.f : bComp->getBoundingSphere().getDistanceFromPoint( cameraEye );
-                nodesOut.append( temp );
 
                 const auto& children = sgn->getChildren();
                 SharedLock<SharedMutex> r_lock( children._lock );
@@ -1109,7 +1157,7 @@ namespace Divide
         }
     }
 
-    void ProjectManager::prepareLightData( const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
+    LightDataBinding ProjectManager::prepareLightData( const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -1117,8 +1165,9 @@ namespace Divide
         {
             LightPool* pool = activeProject()->getActiveScene()->lightPool().get();
             pool->sortLightData( stage, cameraSnapshot );
-            pool->uploadLightData( stage, cameraSnapshot, memCmdInOut );
+            return pool->uploadLightData( stage, cameraSnapshot, memCmdInOut );
         }
+        return {};
     }
 
     void ProjectManager::onChangeFocus( const bool hasFocus )

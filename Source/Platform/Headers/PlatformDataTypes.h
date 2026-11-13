@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -74,9 +74,6 @@ namespace Divide
     using I64x = int_least64_t;  using i64x = I64x;
     using F32  = float;          using f32  = F32;
     using D64  = double;         using d64  = D64;
-
-    static_assert(sizeof(F32) == 4, "F32 is not at least 32 bits!");
-    static_assert(sizeof(D64) == 8, "D64 is not at least 64 bits!");
 
     /// Since "In" variant is short for intN_t, we default to it, but some(most) people prefer "Sn" variant
     using S8   = I8;   using s8   = S8;

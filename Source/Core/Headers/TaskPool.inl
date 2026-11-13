@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -45,6 +45,37 @@ namespace Divide {
     FORCE_INLINE Task* CreateTask(Predicate&& threadedFunction)
     {
         return CreateTask(nullptr, MOV(threadedFunction) );
+    }
+
+    inline TaskGroup::TaskGroup( TaskPool& pool ) noexcept
+        : _pool( pool )
+    {
+    }
+
+    inline TaskGroup::~TaskGroup()
+    {
+        wait();
+    }
+
+    template<typename Predicate>
+    void TaskGroup::enqueue( Predicate&& function )
+    {
+        // An allocated but unsubmitted pooled parent permanently occupies its slot.
+        if ( _parent == nullptr )
+        {
+            _parent = CreateTask( TASK_NOP );
+        }
+        _pool.enqueue( *CreateTask( _parent, MOV( function ) ) );
+    }
+
+    inline void TaskGroup::wait()
+    {
+        if ( _parent != nullptr )
+        {
+            _pool.enqueue( *_parent );
+            _pool.wait( *_parent );
+            _parent = nullptr;
+        }
     }
 
     FORCE_INLINE TaskPool::QueueType& TaskPool::getQueue(const TaskPriority priority) noexcept

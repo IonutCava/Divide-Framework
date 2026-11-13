@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/Resource.h"
 #include "Headers/ResourceCache.h"
@@ -16,12 +16,12 @@ Resource::Resource( const std::string_view resourceName, const std::string_view 
 
 ResourceState Resource::getState() const noexcept
 {
-    return _resourceState.load(std::memory_order_relaxed);
+    return _resourceState.load(std::memory_order_acquire);
 }
 
 void Resource::setState(const ResourceState currentState)
 {
-    _resourceState.store(currentState, std::memory_order_relaxed);
+    _resourceState.store(currentState, std::memory_order_release);
 }
 
 bool WaitForReady( Resource* res )

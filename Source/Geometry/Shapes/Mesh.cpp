@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/Mesh.h"
 #include "Headers/SubMesh.h"
@@ -36,8 +37,18 @@ void Mesh::setMaterialTemplate( const Handle<Material> material, const Attribute
 
     for (const Mesh::MeshData& subMesh : _subMeshList)
     {
-        Get(subMesh._mesh)->setMaterialTemplate( material, geometryAttributes );
+        SubMesh* node = Get( subMesh._mesh );
+        const Handle<Material> subMeshMaterial = material != INVALID_HANDLE<Material> &&
+                                                node->getMaterialTemplate() != material
+            ? GetResourceRef( material )
+            : material;
+        node->setMaterialTemplate( subMeshMaterial, geometryAttributes );
     }
+}
+
+void Mesh::buildDrawCommands( SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut )
+{
+    SceneNode::buildDrawCommands( sgn, cmdsOut );
 }
 
 void Mesh::setAnimationCount( const size_t animationCount, const bool useDualQuaternions)
@@ -80,7 +91,7 @@ SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* rootMeshNode, SceneGraphNod
     SceneGraphNodeDescriptor subMeshDescriptor;
     subMeshDescriptor._usageContext = rootMeshNode->usageContext();
     subMeshDescriptor._instanceCount = rootMeshNode->instanceCount();
-    subMeshDescriptor._nodeHandle = FromHandle(meshData._mesh);
+    subMeshDescriptor._nodeHandle = FromSharedHandle( meshData._mesh );
     subMeshDescriptor._componentMask = normalMask;
 
     if (rootMeshNode->HasComponents(ComponentType::SELECTION))
@@ -93,9 +104,11 @@ SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* rootMeshNode, SceneGraphNod
         subMeshDescriptor._componentMask |= skinnedMask;
     }
 
-    Util::StringFormatTo( subMeshDescriptor._name, "{}_{}", parentNode->name().c_str(), meshIndex );
+    Util::StringFormatTo( subMeshDescriptor._name, "{}_{}", rootMeshNode->name().c_str(), meshIndex );
 
-    return parentNode->addChildNode(subMeshDescriptor);
+    SceneGraphNode* subMeshNode = parentNode->addChildNode(subMeshDescriptor);
+    subMeshNode->get<TransformComponent>()->setTransforms( MAT4_IDENTITY );
+    return subMeshNode;
 }
 
 void Mesh::processNode(SceneGraphNode* rootMeshNode, SceneGraphNode* parentNode, const MeshNodeData& node)
@@ -107,20 +120,19 @@ void Mesh::processNode(SceneGraphNode* rootMeshNode, SceneGraphNode* parentNode,
 
     if (!node._children.empty())
     {
-        const Handle<TransformNode> transformHandle = CreateResource(ResourceDescriptor<TransformNode>{ node._name + "_transform" });
-
-        SceneGraphNodeDescriptor tempNodeDescriptor
-        {
-            ._name = node._name.c_str(),
-            ._instanceCount = parentNode->instanceCount(),
-            ._nodeHandle = FromHandle(transformHandle),
-            ._componentMask = to_base(ComponentType::TRANSFORM) |
-                              to_base(ComponentType::NETWORKING),
-            ._usageContext = parentNode->usageContext()
-        };
-
         for (const MeshNodeData& it : node._children)
         {
+            const Handle<TransformNode> transformHandle = CreateResource(ResourceDescriptor<TransformNode>{ node._name + "_transform" });
+            SceneGraphNodeDescriptor tempNodeDescriptor
+            {
+                ._name = node._name.c_str(),
+                ._instanceCount = parentNode->instanceCount(),
+                ._nodeHandle = FromHandle(transformHandle),
+                ._componentMask = to_base(ComponentType::TRANSFORM) |
+                                  to_base(ComponentType::NETWORKING),
+                ._usageContext = parentNode->usageContext()
+            };
+
             SceneGraphNode* targetSGN = parentNode;
             targetSGN = parentNode->addChildNode(tempNodeDescriptor);
             targetSGN->get<TransformComponent>()->setTransforms(it._transform);

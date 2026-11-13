@@ -17,10 +17,17 @@ vcpkg_from_github(
         skip-building-libsquish.patch
         fix-intrinsic-function.patch
         fix-release-flags.patch
+        fix-bmp-memory-offset.patch
 )
 
 vcpkg_replace_string("${SOURCE_PATH}/cmake/OptimalOptions.cmake"
     " -march=native" "")
+
+# Debug pointer validation assumes the legacy 8 TB Windows user address space. Modern 64-bit
+# address spaces (and ASan's high heap) exceed it, so accept any 48-bit user-space address.
+vcpkg_replace_string("${SOURCE_PATH}/src/nvcore/Debug.h"
+    "if (reinterpret_cast<uint64>(ptr) >= 0x000007FFFFFEFFFFULL) return false;"
+    "if (reinterpret_cast<uint64>(ptr) >= 0x0001000000000000ULL) return false;")
 
 vcpkg_check_features(
     OUT_FEATURE_OPTIONS FEATURE_OPTIONS

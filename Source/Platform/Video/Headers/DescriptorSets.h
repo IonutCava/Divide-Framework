@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -130,6 +130,33 @@ namespace Divide
 
         bool operator==( const DescriptorSet& ) const = default;
     };
+
+    struct ResourceBindingSet
+    {
+        ResourceBindingSet( const DescriptorSet& bindings, std::span<const Handle<Texture>> textures );
+        ~ResourceBindingSet();
+        ResourceBindingSet( const ResourceBindingSet& ) = delete;
+        ResourceBindingSet& operator=( const ResourceBindingSet& ) = delete;
+
+        const DescriptorSet _bindings;
+        const U64 _revision;
+
+    private:
+        std::array<Handle<Texture>, MAX_BINDINGS_PER_DESCRIPTOR_SET> _textures{};
+        U8 _textureCount{ 0u };
+    };
+
+    using ResourceBindingHandle = std::shared_ptr<const ResourceBindingSet>;
+    struct ResourceBindingStorageStats
+    {
+        U64 _published{ 0u }, _live{ 0u };
+    };
+    [[nodiscard]] ResourceBindingStorageStats GetResourceBindingStorageStats() noexcept;
+    // Publication allocates from the existing pool; command copies only retain the revision.
+    [[nodiscard]] ResourceBindingHandle CreateResourceBindings( const DescriptorSet& bindings,
+                                                               std::span<const Handle<Texture>> textures );
+    [[nodiscard]] DescriptorSet ComposeResourceBindings( const ResourceBindingHandle& base, const DescriptorSet& overrides );
+    [[nodiscard]] bool EqualActiveBindings( const DescriptorSet& lhs, const DescriptorSet& rhs ) noexcept;
 
     void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer ) noexcept;
     void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange<> range ) noexcept;

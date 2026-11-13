@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -34,6 +34,7 @@
 #define DVD_SPOT_LIGHT_COMPONENT_H_
 
 #include "Rendering/Lighting/Headers/Light.h"
+#include "Rendering/Lighting/Headers/SpotLightGeometry.h"
 
 namespace Divide {
 
@@ -41,8 +42,13 @@ BEGIN_COMPONENT_EXT1(SpotLight, ComponentType::SPOT_LIGHT, Light)
    public:
     explicit SpotLightComponent(SceneGraphNode* sgn, PlatformContext& context);
 
-    PROPERTY_RW(Angle::DEGREES_F, coneCutoffAngle, 35.0f);
-    PROPERTY_RW(Angle::DEGREES_F, outerConeCutoffAngle, 15.0f);
+    [[nodiscard]] Angle::DEGREES_F coneCutoffAngle() const noexcept { return _coneAngles._inner; }
+    void coneCutoffAngle(Angle::DEGREES_F angle) noexcept;
+    [[nodiscard]] Angle::DEGREES_F outerConeCutoffAngle() const noexcept { return _coneAngles._outer; }
+    void outerConeCutoffAngle(Angle::DEGREES_F angle) noexcept;
+
+    void loadFromXML(const boost::property_tree::ptree& pt) override;
+
     /// If this is true, we render a cone narrow cone to approximate the light's direction
     PROPERTY_RW(bool, showDirectionCone, false);
 
@@ -53,6 +59,9 @@ BEGIN_COMPONENT_EXT1(SpotLight, ComponentType::SPOT_LIGHT, Light)
    protected:
     void OnData(const ECS::CustomEvent& data) override;
     void setDirection(const float3& direction) const;
+
+   private:
+    SpotConeAngles _coneAngles;
 
 END_COMPONENT(SpotLight);
 

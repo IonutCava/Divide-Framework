@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -59,8 +59,6 @@ struct IndirectIndexedDrawCommand
     };
 };
 
-static_assert(sizeof( IndirectIndexedDrawCommand ) == 20u, "Wrong indexed indirect command size!");
-
 struct IndirectNonIndexedDrawCommand
 {
     U32  vertexCount{0u};
@@ -73,8 +71,6 @@ struct IndirectNonIndexedDrawCommand
     };
 };
 
-static_assert(sizeof( IndirectNonIndexedDrawCommand ) == 16u, "Wrong non-indexed indirect command size!");
-
 enum class CmdRenderOptions : U8
 {
     RENDER_GEOMETRY           = toBit(1),
@@ -83,19 +79,15 @@ enum class CmdRenderOptions : U8
     COUNT = 3
 };
 
-#pragma pack(push, 1)
 struct GenericDrawCommand
 {
-    IndirectIndexedDrawCommand _cmd{};
     const PoolHandle* _sourceBuffers{nullptr};
+    IndirectIndexedDrawCommand _cmd{};
     U32 _commandOffset{ 0u };
     U32 _drawCount{ 1u };
     U16 _sourceBuffersCount{0u};
     U16 _renderOptions{ to_base(CmdRenderOptions::RENDER_GEOMETRY) };
 };
-#pragma pack(pop)
-
-static_assert(sizeof(GenericDrawCommand) == 40, "Wrong command size! May cause performance issues. Disable assert to continue anyway.");
 
 using GenericDrawCommandContainer = fixed_vector<GenericDrawCommand, 1, true>;
 

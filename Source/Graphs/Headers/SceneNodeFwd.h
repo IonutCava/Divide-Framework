@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -109,6 +109,14 @@ namespace Divide {
     [[nodiscard]] FORCE_INLINE constexpr bool IsTransformNode( const SceneNodeType nodeType ) noexcept
     {
         return nodeType == SceneNodeType::TYPE_TRANSFORM || nodeType == SceneNodeType::TYPE_MESH;
+    }
+
+    [[nodiscard]] constexpr bool IsShadowCaster( const SceneNodeType type, const bool castsShadows ) noexcept
+    {
+        return castsShadows &&
+               (IsPrimitive(type) || type == SceneNodeType::TYPE_SUBMESH ||
+                type == SceneNodeType::TYPE_TERRAIN || type == SceneNodeType::TYPE_VEGETATION ||
+                type == SceneNodeType::TYPE_PARTICLE_EMITTER);
     }
 
     template<typename T>

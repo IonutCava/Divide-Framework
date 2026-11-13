@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -77,6 +77,7 @@ void AddVariableF( TerrainDescriptor& descriptor, std::string_view name, F32 val
 
 [[nodiscard]] U32    MaxNodesPerStage( const TerrainDescriptor& descriptor ) noexcept;
 [[nodiscard]] U8     TileRingCount( const TerrainDescriptor& descriptor, const U8 index ) noexcept;
+[[nodiscard]] string BuildTerrainTileFactorArrayHeader( U8 layerCount );
 
 }  // namespace Divide
 

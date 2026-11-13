@@ -1,7 +1,9 @@
+// Copyright (c) 2026 DIVIDE-Studio
 #include "UnitTests/unitTestCommon.h"
 
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
+#include "Platform/Headers/PlatformRuntime.h"
 #include <atomic>
 #include <iostream>
 
@@ -38,6 +40,23 @@ namespace
         }
 
     }
+
+    NO_INLINE U32 TouchStackPages( volatile U8* stack, const size_t size ) noexcept
+    {
+        U32 checksum = 0u;
+        for ( size_t i = 0u; i < size; i += 4096u )
+        {
+            stack[i] = to_U8( i / 4096u + 1u );
+            checksum += stack[i];
+        }
+        return checksum;
+    }
+
+    NO_INLINE U32 TouchWorkerStack() noexcept
+    {
+        volatile U8 stack[64u * 1024u];
+        return TouchStackPages( stack, std::size( stack ) );
+    }
 };
 
 TEST_CASE( "Task Pool Construction Test", "[threading_tests]" )
@@ -62,6 +81,158 @@ TEST_CASE( "Task Pool Construction Test", "[threading_tests]" )
 
     test.shutdown();
 }
+
+TEST_CASE( "Task-pool idle checks never wait on a queue", "[threading_tests][task-pool]" )
+{
+    using TaskPoolDetail::DequeueMayBlock;
+
+    CHECK_FALSE( DequeueMayBlock( true, TaskPriority::HIGH ) );
+    CHECK_FALSE( DequeueMayBlock( true, TaskPriority::DONT_CARE ) );
+    CHECK_FALSE( DequeueMayBlock( false, TaskPriority::HIGH ) );
+    CHECK( DequeueMayBlock( false, TaskPriority::DONT_CARE ) );
+}
+
+TEST_CASE( "Task workers retain stack space and aligned task storage", "[threading_tests][task-pool]" )
+{
+    platformInitRunListener::PlatformInit();
+
+    TaskPool pool{ "TASK_STACK_TEST" };
+    REQUIRE( pool.init( 1u ) );
+    SCOPE_EXIT
+    {
+        pool.shutdown();
+    };
+
+    std::atomic_uint checksum{ 0u };
+    std::atomic_bool aligned{ false };
+    Task* parent = CreateTask( [&]( const Task& )
+    {
+        Task* child = CreateTask( [&]( const Task& )
+        {
+            checksum = TouchWorkerStack();
+        } );
+        aligned = reinterpret_cast<uintptr_t>( child ) % alignof(Task) == 0u;
+        pool.enqueue( *child, TaskPriority::REALTIME );
+    } );
+    pool.enqueue( *parent, TaskPriority::DONT_CARE_NO_IDLE );
+    pool.wait( *parent );
+
+    CHECK( aligned.load() );
+    CHECK( checksum.load() == 136u );
+}
+
+TEST_CASE( "Task-pool waits help eligible work without running worker-only tasks", "[threading_tests][task-pool]" )
+{
+    platformInitRunListener::PlatformInit();
+
+    TaskPool pool{ "TASK_WAIT_TEST" };
+    REQUIRE( pool.init( 1u ) );
+    std::atomic_bool workerStarted{ false };
+    std::atomic_bool releaseWorker{ false };
+    SCOPE_EXIT
+    {
+        releaseWorker = true;
+        pool.shutdown();
+    };
+
+    pool.enqueue( *CreateTask( [&]( const Task& )
+    {
+        workerStarted = true;
+        while ( !releaseWorker.load() )
+        {
+            std::this_thread::yield();
+        }
+    } ), TaskPriority::HIGH );
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds( 5 );
+    while ( !workerStarted.load() && std::chrono::steady_clock::now() < deadline )
+    {
+        std::this_thread::yield();
+    }
+    REQUIRE( workerStarted.load() );
+
+    constexpr U32 childCount = 32u;
+    std::atomic_uint completedChildren{ 0u };
+    Task* parent = CreateTask( TASK_NOP );
+    for ( U32 i = 0u; i < childCount; ++i )
+    {
+        pool.enqueue( *CreateTask( parent, [&]( const Task& )
+        {
+            completedChildren.fetch_add( 1u );
+        } ) );
+    }
+    pool.enqueue( *parent );
+    pool.wait( *parent );
+    CHECK( Finished( *parent ) );
+    CHECK( completedChildren.load() == childCount );
+
+    std::atomic_bool workerOnlyRan{ false };
+    Task* workerOnly = CreateTask( [&]( const Task& )
+    {
+        workerOnlyRan = true;
+    } );
+    pool.enqueue( *workerOnly, TaskPriority::DONT_CARE_NO_IDLE );
+    CHECK_FALSE( pool.threadWaiting() );
+    CHECK_FALSE( workerOnlyRan.load() );
+
+    releaseWorker = true;
+    pool.wait( *workerOnly );
+    CHECK( workerOnlyRan.load() );
+}
+
+TEST_CASE( "Realtime task waits service callbacks needed by a child", "[threading_tests][task-pool]" )
+{
+    platformInitRunListener::PlatformInit();
+
+    TaskPool pool{ "REALTIME_WAIT_TEST" };
+    REQUIRE( pool.init( 1u ) );
+    SCOPE_EXIT
+    {
+        pool.shutdown();
+    };
+
+    std::atomic_bool callbackExecuted{ false };
+    std::atomic_bool callbackOnMain{ false };
+    std::atomic_bool childOnMain{ false };
+    std::atomic_bool childTimedOut{ false };
+    bool parentOnMain = false;
+    bool completionOnMain = false;
+
+    Task* parent = CreateTask( [&]( const Task& )
+    {
+        parentOnMain = Runtime::isMainThread();
+    } );
+    Task* child = CreateTask( parent, [&]( const Task& )
+    {
+        childOnMain = Runtime::isMainThread();
+        pool.enqueue( *CreateTask( TASK_NOP ), TaskPriority::HIGH, [&]
+        {
+            callbackOnMain = Runtime::isMainThread();
+            callbackExecuted = true;
+        } );
+
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds( 5 );
+        while ( !callbackExecuted.load() && std::chrono::steady_clock::now() < deadline )
+        {
+            std::this_thread::yield();
+        }
+        childTimedOut = !callbackExecuted.load();
+    } );
+    pool.enqueue( *child, TaskPriority::DONT_CARE_NO_IDLE );
+    pool.enqueue( *parent, TaskPriority::REALTIME, [&]
+    {
+        completionOnMain = Runtime::isMainThread();
+    } );
+
+    CHECK_FALSE( childTimedOut.load() );
+    CHECK_FALSE( childOnMain.load() );
+    CHECK( callbackExecuted.load() );
+    CHECK( callbackOnMain.load() );
+    CHECK( parentOnMain );
+    CHECK( completionOnMain );
+    CHECK( Finished( *parent ) );
+}
+
 
 TEST_CASE( "Parallel For Test", "[threading_tests]" )
 {

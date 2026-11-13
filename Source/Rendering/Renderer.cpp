@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/Renderer.h"
 
@@ -7,6 +8,7 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Rendering/PostFX/Headers/PostFX.h"
+#include "Rendering/Lighting/Headers/ClusteredLighting.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
 
 #include "Managers/Headers/ProjectManager.h"
@@ -151,7 +153,9 @@ Renderer::~Renderer()
 void Renderer::prepareLighting(const RenderStage stage,
                                const Rect<I32>& viewport,
                                const CameraSnapshot& cameraSnapshot,
-                               GFX::CommandBuffer& bufferInOut)
+                               const LightDataBinding& lightData,
+                               GFX::CommandBuffer& bufferInOut,
+                               const bool independentView)
 {
     if (stage == RenderStage::SHADOW) {
         // Nothing to do in the shadow pass
@@ -160,6 +164,17 @@ void Renderer::prepareLighting(const RenderStage stage,
 
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+    if ( lightData._lights == nullptr || lightData._scene == nullptr )
+    {
+        DIVIDE_UNEXPECTED_CALL_MSG( "Lighting requires a prepared view light snapshot" );
+    }
+
+    if ( !DIVIDE_ASSERT( ClusteredLighting::IsValidClusterDepthRange( cameraSnapshot._zPlanes.min, cameraSnapshot._zPlanes.max ),
+                         "Renderer::prepareLighting: clustered lighting requires finite camera planes with 0 < zNear < zFar" ) )
+    {
+        return;
+    }
+
     GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Renderer Cull Lights";
     {
         PerRenderStageData& data = _lightDataPerStage[to_base(stage)];
@@ -167,21 +182,20 @@ void Renderer::prepareLighting(const RenderStage stage,
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
 
-            const size_t stageIndex = to_size( stage );
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 8u, ShaderStageVisibility::COMPUTE_AND_DRAW );
-                Set(binding._data, LightPool::SceneBuffer(), {stageIndex, 1u});
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 8u, ShaderStageVisibility::COMPUTE_AND_FRAGMENT );
+                Set(binding._data, lightData._scene, {0u, 1u});
             }
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 9u, ShaderStageVisibility::COMPUTE_AND_DRAW );
-                Set(binding._data, LightPool::LightBuffer(), {stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME } );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 9u, ShaderStageVisibility::VERTEX_FRAGMENT_COMPUTE );
+                Set(binding._data, lightData._lights);
             }
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 10u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 10u, ShaderStageVisibility::COMPUTE_AND_FRAGMENT );
                 Set(binding._data, data._lightIndexBuffer.get() );
             }
             {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 11u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 11u, ShaderStageVisibility::COMPUTE_AND_FRAGMENT );
                 Set(binding._data, data._lightGridBuffer.get() );
             }
             {
@@ -219,25 +233,23 @@ void Renderer::prepareLighting(const RenderStage stage,
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
         }
 
-        bool needRebuild = data._invalidated || g_rebuildLightGridEachFrame;
-        if (!needRebuild )
-        {
-            PerRenderStageData::GridBuildData tempData;
-            tempData._invProjectionMatrix = cameraSnapshot._invProjectionMatrix;
-            tempData._viewport = viewport;
-            tempData._zPlanes = cameraSnapshot._zPlanes;
+        // Always capture the current inputs so a forced rebuild never dispatches with stale (or never-initialised) grid data.
+        PerRenderStageData::GridBuildData tempData;
+        tempData._invProjectionMatrix = cameraSnapshot._invProjectionMatrix;
+        tempData._viewport = viewport;
+        tempData._zPlanes = cameraSnapshot._zPlanes;
 
-             needRebuild = data._gridData != tempData;
-             if (needRebuild)
-             {
-                 data._gridData = tempData;
-             }
+        bool needRebuild;
+        {
+            LockGuard<Mutex> lock( data._recordLock );
+            needRebuild = independentView || data._invalidated || g_rebuildLightGridEachFrame || data._gridData != tempData;
+            data._gridData = tempData;
+            // Parallel completion order is not GPU order. Every independent view rebuilds its inputs.
+            data._invalidated = independentView;
         }
 
         if ( needRebuild )
         {
-            data._invalidated = false;
-
             GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Renderer Rebuild Light Grid";
 
             GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
@@ -249,9 +261,9 @@ void Renderer::prepareLighting(const RenderStage stage,
 
             GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);
             PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
-            pushConstants.data[0] = data._gridData._invProjectionMatrix;
-            pushConstants.data[1]._vec[0] = data._gridData._viewport;
-            pushConstants.data[1]._vec[1].xy = data._gridData._zPlanes;
+            pushConstants.data[0] = tempData._invProjectionMatrix;
+            pushConstants.data[1]._vec[0] = tempData._viewport;
+            pushConstants.data[1]._vec[1].xy = tempData._zPlanes;
             GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(bufferInOut)->_workGroupSize =
             { 
                 Config::Lighting::ClusteredForward::CLUSTERS_X,

@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/glResources.h"
 #include "Headers/glHardwareQuery.h"
@@ -71,6 +71,20 @@ namespace Divide
 
     namespace GLUtil
     {
+        namespace
+        {
+            gl46core::GLint s_maxLabelLength = 0;
+        }
+
+        void SetObjectLabel( const gl46core::GLenum identifier, const gl46core::GLuint handle, const std::string_view label )
+        {
+            if ( s_maxLabelLength <= 0 )
+            {
+                return;
+            }
+            const size_t length = ObjectLabelLength( label, to_size( s_maxLabelLength ) );
+            gl46core::glObjectLabel( identifier, handle, to_I32( length ), label.data() );
+        }
 
         /*-----------Object Management----*/
         gl46core::GLuint s_lastQueryResult = GL_NULL_HANDLE;
@@ -87,13 +101,34 @@ namespace Divide
         std::array<gl46core::GLenum, to_base( FillMode::COUNT )> glFillModeTable;
         std::array<gl46core::GLenum, to_base( TextureType::COUNT )> glTextureTypeTable;
         std::array<gl46core::GLenum, to_base( PrimitiveTopology::COUNT )> glPrimitiveTypeTable;
-        std::array<gl46core::GLenum, to_base( GFXDataFormat::COUNT )> glDataFormatTable;
+        constinit const std::array<gl46core::GLenum, to_base( GFXDataFormat::COUNT )> glDataFormatTable = []
+        {
+            std::array<gl46core::GLenum, to_base( GFXDataFormat::COUNT )> table{};
+            table[to_base( GFXDataFormat::UNSIGNED_BYTE )] = gl46core::GL_UNSIGNED_BYTE;
+            table[to_base( GFXDataFormat::UNSIGNED_SHORT )] = gl46core::GL_UNSIGNED_SHORT;
+            table[to_base( GFXDataFormat::UNSIGNED_INT )] = gl46core::GL_UNSIGNED_INT;
+            table[to_base( GFXDataFormat::SIGNED_BYTE )] = gl46core::GL_BYTE;
+            table[to_base( GFXDataFormat::SIGNED_SHORT )] = gl46core::GL_SHORT;
+            table[to_base( GFXDataFormat::SIGNED_INT )] = gl46core::GL_INT;
+            table[to_base( GFXDataFormat::FLOAT_16 )] = gl46core::GL_HALF_FLOAT;
+            table[to_base( GFXDataFormat::FLOAT_32 )] = gl46core::GL_FLOAT;
+            return table;
+        }();
         std::array<gl46core::GLenum, to_base( TextureWrap::COUNT )> glWrapTable;
         std::array<gl46core::GLenum, to_base( ShaderType::COUNT )> glShaderStageTable;
         std::array<gl46core::GLenum, to_base( QueryType::COUNT )> glQueryTypeTable;
 
         void OnStartup()
         {
+            if constexpr ( Config::ENABLE_GPU_VALIDATION )
+            {
+                gl46core::glGetIntegerv( gl46core::GL_MAX_LABEL_LENGTH, &s_maxLabelLength );
+                if ( s_maxLabelLength <= 0 )
+                {
+                    Console::errorfn( "OpenGL reported an invalid maximum object-label length: {}.", s_maxLabelLength );
+                }
+            }
+
             glBlendTable[to_base( BlendProperty::ZERO )] = gl46core::GL_ZERO;
             glBlendTable[to_base( BlendProperty::ONE )] = gl46core::GL_ONE;
             glBlendTable[to_base( BlendProperty::SRC_COLOR )] = gl46core::GL_SRC_COLOR;
@@ -160,15 +195,6 @@ namespace Divide
             glPrimitiveTypeTable[to_base( PrimitiveTopology::PATCH )] = gl46core::GL_PATCHES;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::MESHLET)] = gl46core::GL_NONE;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::COMPUTE )] = gl46core::GL_NONE;
-
-            glDataFormatTable[to_base( GFXDataFormat::UNSIGNED_BYTE )] = gl46core::GL_UNSIGNED_BYTE;
-            glDataFormatTable[to_base( GFXDataFormat::UNSIGNED_SHORT )] = gl46core::GL_UNSIGNED_SHORT;
-            glDataFormatTable[to_base( GFXDataFormat::UNSIGNED_INT )] = gl46core::GL_UNSIGNED_INT;
-            glDataFormatTable[to_base( GFXDataFormat::SIGNED_BYTE )] = gl46core::GL_BYTE;
-            glDataFormatTable[to_base( GFXDataFormat::SIGNED_SHORT )] = gl46core::GL_SHORT;
-            glDataFormatTable[to_base( GFXDataFormat::SIGNED_INT )] = gl46core::GL_INT;
-            glDataFormatTable[to_base( GFXDataFormat::FLOAT_16 )] = gl46core::GL_HALF_FLOAT;
-            glDataFormatTable[to_base( GFXDataFormat::FLOAT_32 )] = gl46core::GL_FLOAT;
 
             glWrapTable[to_base( TextureWrap::MIRROR_REPEAT )] = gl46core::GL_MIRRORED_REPEAT;
             glWrapTable[to_base( TextureWrap::REPEAT )] = gl46core::GL_REPEAT;
@@ -430,11 +456,9 @@ namespace Divide
                     case TextureType::TEXTURE_CUBE_MAP:
                     case TextureType::TEXTURE_1D_ARRAY:
                     case TextureType::TEXTURE_CUBE_ARRAY:
-
+                    case TextureType::COUNT:
                     default:
-                    case TextureType::COUNT: 
                         DIVIDE_UNEXPECTED_CALL();
-                        break;
                 }
             }
 
@@ -740,7 +764,6 @@ namespace Divide
             }
 
             DIVIDE_UNEXPECTED_CALL();
-            return std::make_pair( 0u, false );
         }
 
         void glTextureViewCache::deallocate( const gl46core::GLuint handle, const U32 frameDelay )
@@ -889,27 +912,24 @@ namespace Divide
                                                                   fullScope,
                                                                   message );
 
-            const bool isConsoleImmediate = Console::IsFlagSet( Console::Flags::PRINT_IMMEDIATE );
-            const bool severityDecoration = Console::IsFlagSet( Console::Flags::DECORATE_SEVERITY );
-            Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, true );
-            Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, false );
+            const Console::ScopedFlags consoleFlags{
+                to_U32(to_base(Console::Flags::PRINT_IMMEDIATE)),
+                to_U32(to_base(Console::Flags::DECORATE_SEVERITY))
+            };
 
             if ( severity == gl46core::GL_DEBUG_SEVERITY_NOTIFICATION )
             {
-                Console::printfn( outputError.c_str() );
+                Console::printfn( "{}", outputError.c_str() );
             }
             else if ( severity == gl46core::GL_DEBUG_SEVERITY_LOW || severity == gl46core::GL_DEBUG_SEVERITY_MEDIUM )
             {
-                Console::warnfn( outputError.c_str() );
+                Console::warnfn( "{}", outputError.c_str() );
             }
             else
             {
-                Console::errorfn( outputError.c_str() );
+                Console::errorfn( "{}", outputError.c_str() );
                 DIVIDE_GPU_ASSERT( GL_API::GetStateTracker()._assertOnAPIError && !(*GL_API::GetStateTracker()._assertOnAPIError), outputError.c_str());
             }
-            Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, severityDecoration );
-            Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, isConsoleImmediate );
-
         }
 
     }  // namespace GLUtil

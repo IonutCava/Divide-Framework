@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -51,10 +51,6 @@ class SSRPreRenderOperator final : public PreRenderOperator {
 
     [[nodiscard]] bool ready() const noexcept override;
 
-   protected:
-       void onToggle(const bool state) override { PreRenderOperator::onToggle(state); _stateChanged = true; }
-       void prepare(PlayerIndex idx, GFX::CommandBuffer& bufferInOut) override;
-
    private:
      Handle<ShaderProgram> _ssrShader = INVALID_HANDLE<ShaderProgram>;
      GFX::BindPipelineCommand _pipelineCmd;
@@ -62,7 +58,6 @@ class SSRPreRenderOperator final : public PreRenderOperator {
      mat4<F32> _projToPixelBasis;
      float2 _cachedZPlanes = VECTOR2_UNIT;
      bool _constantsDirty = true;
-     bool _stateChanged = false;
 };
 
 }  // namespace Divide

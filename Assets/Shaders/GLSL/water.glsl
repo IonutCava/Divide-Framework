@@ -1,5 +1,7 @@
 -- Vertex
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 #define COMPUTE_TBN
 #include "vbInputData.vert"
 #include "lightingDefaults.vert"
@@ -35,20 +37,17 @@ layout(location = ATTRIB_FREE_START + 1) in vec4 _vertexWVP;
 #endif //PRE_PASS
 
 #include "bumpMapping.frag"
-
-const float Eta = 0.15f; //water
-
-float Fresnel(in vec3 viewDir, in vec3 normal) {
-    const float fresnel = Eta + (1.f - Eta) * pow(max(0.f, 1.f - dot(viewDir, normal)), 5.f);
-    return Saturate(fresnel);
-}
+#include "waterComposite.cmn"
 
 void main()
 {
-
-#if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS)
+#if !defined(PRE_PASS)
+    const vec4 positionDx = dFdx(VAR._vertexW);
+    const vec4 positionDy = dFdy(VAR._vertexW);
+#endif
+#if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS) && !defined(OIT_PASS) && !defined(TRANSPARENCY_PASS)
     const vec3 normalWV = normalize(unpackNormal(sampleTexSceneNormals().rg));
-#else //MAIN_DISPLAY_PASS && !PRE_PASS
+#else
     const float time2 = MSToSeconds(dvd_GameTimeMS) * 0.05f;
     const vec2 uvNormal0 = (VAR._texCoord * _noiseTile) + vec2( time2, time2);
     const vec2 uvNormal1 = (VAR._texCoord * _noiseTile) + vec2(-time2, time2);
@@ -63,15 +62,33 @@ void main()
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
 
 #if !defined(PRE_PASS)
+    const vec3 viewWV = computeViewDirectionWV();
+    const float NdotV = max(dot(normalWV, viewWV), 0.f);
+    const IBLGradients gradients = IBL_GRADIENTS(vec3(0.f), vec2(0.f));
+#if defined(MAIN_DISPLAY_PASS)
+#if defined(OIT_PASS) || defined(TRANSPARENCY_PASS)
+    const float waterRoughness = getRoughness(data, VAR._texCoord, 0.f);
+#else
+    const float waterRoughness = sampleTexSceneNormals().b;
+#endif
+#endif
     const vec3 normalW = normalize(mat3(dvd_InverseViewMatrix) * normalWV);
     const vec3 incident = normalize(dvd_CameraPosition - VAR._vertexW.xyz);
 
     const vec2 waterUV = clamp(0.5f * Homogenize(_vertexWVP).xy + 0.5f, vec2(0.001f), vec2(0.999f));
-#if defined(SKIP_REFLECT_REFRACT)
+#if !defined(SKIP_REFLECT_REFRACT) && (defined(USE_PLANAR_REFLECTOR) || defined(USE_PLANAR_REFRACTOR))
+    const vec2 waveOffset = WATER_WAVE_OFFSET(normalWV.xy, normalize(VAR._normalWV).xy, _noiseFactor);
+    const vec2 distortedUV = clamp(waterUV + waveOffset, vec2(0.001f), vec2(0.999f));
+#endif
+#if !defined(SKIP_REFLECT_REFRACT) && defined(USE_PLANAR_REFLECTOR)
+    const vec2 reflectionUVDx = dFdx(distortedUV);
+    const vec2 reflectionUVDy = dFdy(distortedUV);
+#endif
+#if !defined(SKIP_REFLECT_REFRACT) && defined(USE_PLANAR_REFRACTOR)
+    const vec3 refractColour = texture(texRefract, distortedUV).rgb;
+#else
     const vec3 refractColour = vec3(0.f);
-#else //SKIP_REFLECT_REFRACT
-    const vec3 refractColour = texture(texRefract, waterUV).rgb;
-#endif //SKIP_REFLECT_REFRACT
+#endif
     const vec3 refractionColour = overlayVec( refractColour, _refractionTint);
 
 #if defined(MAIN_DISPLAY_PASS)
@@ -80,26 +97,71 @@ void main()
             writeScreenColour(vec4(refractionColour, 1.f), vec3( 0.f ), normalWV );
             return;
         case DEBUG_REFLECTIONS:
-#if defined(SKIP_REFLECT_REFRACT)
-            writeScreenColour(vec4(0.f, 0.f, 0.f ,1.f), vec3( 0.f ), vec3( 0.f ), );
-#else //SKIP_REFLECT_REFRACT
-            writeScreenColour(texture(texReflect, waterUV), vec3( 0.f ), normalWV );
-#endif //SKIP_REFLECT_REFRACT
+#if !defined(SKIP_REFLECT_REFRACT) && defined(USE_PLANAR_REFLECTOR)
+            writeScreenColour(textureGrad(texReflect, distortedUV, reflectionUVDx, reflectionUVDy), vec3( 0.f ), normalWV );
+#else
+            writeScreenColour(vec4(0.f, 0.f, 0.f, 1.f), vec3( 0.f ), normalWV );
+#endif
             return;
     }
 #endif //MAIN_DISPLAY_PASS
 
-    // Get a modified viewing direction of the camera that only takes into account height.
-    // ref: https://www.rastertek.com/terdx10tut16.html
-    const vec3 texColour = (_underwater == 1 ? refractionColour : mix(refractionColour,
-#if defined(SKIP_REFLECT_REFRACT)
-                                                                      vec4(0.f, 0.f, 0.f, 1.f)
-#else
-                                                                      texture(texReflect, waterUV).rgb,
+    vec3 surfaceColour = dvd_BaseColour(data).rgb;
+#if !defined(SKIP_REFLECT_REFRACT) && defined(USE_PLANAR_REFRACTOR)
+    surfaceColour = refractionColour;
+#if defined(USE_PLANAR_REFLECTOR)
+    if (_underwater == 0)
+    {
+        vec3 reflectionColour = textureGrad(texReflect, distortedUV, reflectionUVDx, reflectionUVDy).rgb;
+#if defined(MAIN_DISPLAY_PASS)
+        reflectionColour = ApplySSR(waterRoughness, reflectionColour);
 #endif
-                                                                      Fresnel(incident, normalW)));
-    
-    vec4 outColour = getPixelColour(vec4(texColour, 1.f), data, normalWV);
+        const float cosine = Saturate(dot(incident, normalW));
+        const float fresnel = WATER_FRESNEL(cosine);
+        surfaceColour = WATER_COMPOSITE(refractionColour, reflectionColour, fresnel);
+    }
+#endif
+#elif !defined(SKIP_REFLECT_REFRACT) && defined(USE_PLANAR_REFLECTOR)
+    if (_underwater == 1)
+    {
+        const vec4 baseColour = dvd_BaseColour(data);
+        const PBRMaterial material = initMaterialProperties(data, baseColour.rgb, VAR._texCoord, normalWV, NdotV);
+        writeScreenColour(getPixelColour(baseColour, data, normalWV, material, viewWV, gradients, positionDx, positionDy), vec3(0.f), normalWV);
+        return;
+    }
+    surfaceColour = textureGrad(texReflect, distortedUV, reflectionUVDx, reflectionUVDy).rgb;
+#if defined(MAIN_DISPLAY_PASS)
+    surfaceColour = ApplySSR(waterRoughness, surfaceColour);
+#endif
+#else
+    const vec4 baseColour = dvd_BaseColour(data);
+    const PBRMaterial material = initMaterialProperties(data, baseColour.rgb, VAR._texCoord, normalWV, NdotV);
+    writeScreenColour(getPixelColour(baseColour, data, normalWV, material, viewWV, gradients, positionDx, positionDy), vec3(0.f), normalWV);
+    return;
+#endif
+
+#if defined(MAIN_DISPLAY_PASS)
+    if (dvd_MaterialDebugFlag != DEBUG_NONE)
+    {
+        const PBRMaterial material = initMaterialProperties(data, surfaceColour, VAR._texCoord, normalWV, NdotV);
+        vec3 debugColour;
+        if (getDebugColour(material, data, VAR._texCoord, normalWV, positionDx, positionDy, gradients, debugColour))
+        {
+            writeScreenColour(vec4(debugColour, 1.f), vec3(0.f), normalWV);
+            return;
+        }
+    }
+    if (VAR._SelectionFlag != SELECTION_FLAG_NONE)
+    {
+        const vec3 selectionColours[4] = vec3[](
+            vec3(1.f, 0.f, 0.f), vec3(0.75f, 0.25f, 0.f),
+            vec3(0.f, 1.f, 0.f), vec3(0.f, 0.75f, 0.25f)
+        );
+        surfaceColour = mix(selectionColours[VAR._SelectionFlag - 1u], surfaceColour, smoothstep(0.25f, 0.45f, NdotV));
+    }
+#endif
+
+    vec4 outColour = vec4(ApplyFog(surfaceColour), 1.f);
 
     // Add some distance based fog to the water to hide reflection/refraction artifacts where no geometry is rendered
     const float fogDensity = smoothstep(_fogStartEndDistances.x, _fogStartEndDistances.y, length(VAR._vertexWV));
@@ -118,11 +180,11 @@ void main()
     // Increase the specular light by the shininess value and add the specular to the final color.
     // Check to make sure the specular was positive so we aren't adding black spots to the water.
 
-   
-    writeScreenColour(outColour + (specular > 0.f ? pow(specular, _specularShininess) : 0.f), vec3( 0.f ), normalWV );
+    outColour.rgb += specular > 0.f ? pow(specular, _specularShininess) : 0.f;
+    writeScreenColour(outColour, vec3( 0.f ), normalWV );
 
 #else //!PRE_PASS
-    const float roughness = getRoughness(data, VAR._texCoord, 0.f);
+    const float roughness = dvd_OMR(data).b;
     writeGBuffer(normalWV, roughness);
 #endif //PRE_PASS
 }

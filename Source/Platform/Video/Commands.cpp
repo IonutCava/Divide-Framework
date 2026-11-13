@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/Commands.h"
 #include "Headers/Pipeline.h"
@@ -298,11 +298,12 @@ static string ToString(const SetCameraCommand& cmd, [[maybe_unused]] U16 indent)
 
 static string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
 {
+    const DescriptorSet bindings = cmd.effectiveBindings();
     U8 bufferCount = 0u;
     U8 imageCount = 0u;
-    for (U8 i = 0u; i < cmd._set._bindingCount; ++i)
+    for (U8 i = 0u; i < bindings._bindingCount; ++i)
     {
-        const DescriptorSetBinding& binding = cmd._set._bindings[i];
+        const DescriptorSetBinding& binding = bindings._bindings[i];
 
         if ( binding._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC ||
              binding._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC ||
@@ -321,9 +322,9 @@ static string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
 
     string ret = Util::StringFormat(" [ Buffers: {}, Images: {} ]\n", bufferCount, imageCount);
 
-    for ( U8 i = 0u; i < cmd._set._bindingCount; ++i )
+    for ( U8 i = 0u; i < bindings._bindingCount; ++i )
     {
-        const DescriptorSetBinding& binding = cmd._set._bindings[i];
+        const DescriptorSetBinding& binding = bindings._bindings[i];
 
         if ( binding._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC ||
              binding._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC ||
@@ -346,9 +347,9 @@ static string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
         }
     }
 
-    for ( U8 i = 0u; i < cmd._set._bindingCount; ++i )
+    for ( U8 i = 0u; i < bindings._bindingCount; ++i )
     {
-        const DescriptorSetBinding& binding = cmd._set._bindings[i];
+        const DescriptorSetBinding& binding = bindings._bindings[i];
 
         if ( binding._data._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER ||
              binding._data._type == DescriptorSetBindingType::IMAGE )

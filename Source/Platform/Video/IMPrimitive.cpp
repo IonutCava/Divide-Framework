@@ -1,4 +1,4 @@
-
+// Copyright (c) 2018-2026 DIVIDE-Studio
 
 #include "Headers/IMPrimitive.h"
 
@@ -40,7 +40,6 @@ namespace
         }
 
         DIVIDE_UNEXPECTED_CALL();
-        return 0u;
     }
 
     inline PrimitiveTopology GetTopology(const NS_GLIM::GLIM_BUFFER_TYPE type)
@@ -302,8 +301,8 @@ void IMPrimitive::endBatch() noexcept
             case NS_GLIM::GLIM_BUFFER_TYPE::POINTS:    updateRange(batchData.m_IndexBuffer_Points,    range); break;
             case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: updateRange(batchData.m_IndexBuffer_Triangles, range); break;
             case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: updateRange(batchData.m_IndexBuffer_Wireframe, range); break;
-            default:
-            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:     DIVIDE_UNEXPECTED_CALL();                              break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:
+            default:                                   DIVIDE_UNEXPECTED_CALL();
         }
     }
 
@@ -329,8 +328,8 @@ void IMPrimitive::endBatch() noexcept
             case NS_GLIM::GLIM_BUFFER_TYPE::POINTS:    insert(_indices, batchData.m_IndexBuffer_Points);    break;
             case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: insert(_indices, batchData.m_IndexBuffer_Triangles); break;
             case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: insert(_indices, batchData.m_IndexBuffer_Wireframe); break;
-            default:
-            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:     DIVIDE_UNEXPECTED_CALL();                            break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:
+            default:                                   DIVIDE_UNEXPECTED_CALL();
         }
     }
 
@@ -762,68 +761,71 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
         return;
     }
 
-    const bool useTexture = TargetType( _texture ) != TextureType::COUNT;
-
-    _basePipelineDescriptor._shaderProgramHandle = useTexture ? _context.imShaders()->imWorldShader()
-                                                              : _context.imShaders()->imWorldShaderNoTexture();
-
-    DIVIDE_ASSERT(_basePipelineDescriptor._shaderProgramHandle != INVALID_HANDLE<ShaderProgram>, "IMPrimitive error: Draw call received without a valid shader defined!");
-
-    _additionalUniforms.set(_ID("dvd_WorldMatrix"), PushConstantType::MAT4, worldMatrix);
-    _additionalUniforms.set(_ID("useTexture"),      PushConstantType::BOOL, useTexture);
-
-    GenericDrawCommand drawCmd{};
-    drawCmd._drawCount = 1u;
-    drawCmd._cmd.instanceCount = 1u;
-    drawCmd._sourceBuffers = _bufferHandles.data();
-    drawCmd._sourceBuffersCount = _bufferHandles.size();
-
-    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(commandBufferInOut)->_scopeName = _name.c_str();
+    _drawSnapshots.record(GFXDevice::FrameCount(), _additionalUniforms, [&](UniformData& uniforms)
     {
-        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(commandBufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_DRAW;
-        DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
+        const bool useTexture = TargetType( _texture ) != TextureType::COUNT;
 
-        if ( TargetType( _texture ) == TextureType::COUNT )
-        {
-            Set( binding._data, Texture::DefaultTexture2D(), Texture::DefaultSampler());
-        }
-        else
-        {
-            Set( binding._data, _texture, _sampler );
-        }
+        _basePipelineDescriptor._shaderProgramHandle = useTexture ? _context.imShaders()->imWorldShader()
+                                                                  : _context.imShaders()->imWorldShaderNoTexture();
 
-        for (U8 i = 0u; i < to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT); ++i)
+        DIVIDE_ASSERT(_basePipelineDescriptor._shaderProgramHandle != INVALID_HANDLE<ShaderProgram>, "IMPrimitive error: Draw call received without a valid shader defined!");
+
+        uniforms.set(_ID("dvd_WorldMatrix"), PushConstantType::MAT4, worldMatrix);
+        uniforms.set(_ID("useTexture"),      PushConstantType::BOOL, useTexture);
+
+        GenericDrawCommand drawCmd{};
+        drawCmd._drawCount = 1u;
+        drawCmd._cmd.instanceCount = 1u;
+        drawCmd._sourceBuffers = _bufferHandles.data();
+        drawCmd._sourceBuffersCount = _bufferHandles.size();
+
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(commandBufferInOut)->_scopeName = _name.c_str();
         {
-            if (_drawFlags[i])
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(commandBufferInOut);
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
+
+            if ( !useTexture )
             {
-                const NS_GLIM::GLIM_BUFFER_TYPE glimType = static_cast<NS_GLIM::GLIM_BUFFER_TYPE>(i);
-                if ((glimType == NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES && _forceWireframe) ||
-                    (glimType == NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME && !_forceWireframe))
+                Set( binding._data, Texture::DefaultTexture2D(), Texture::DefaultSampler());
+            }
+            else
+            {
+                Set( binding._data, _texture, _sampler );
+            }
+
+            for (U8 i = 0u; i < to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT); ++i)
+            {
+                if (_drawFlags[i])
                 {
-                    continue;
+                    const NS_GLIM::GLIM_BUFFER_TYPE glimType = static_cast<NS_GLIM::GLIM_BUFFER_TYPE>(i);
+                    if ((glimType == NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES && _forceWireframe) ||
+                        (glimType == NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME && !_forceWireframe))
+                    {
+                        continue;
+                    }
+
+                    GFX::EnqueueCommand<GFX::BindPipelineCommand>(commandBufferInOut)->_pipeline = _pipelines[i];
+                    auto pushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(commandBufferInOut);
+                    pushConstantsCmd->_uniformData = &uniforms;
+                    pushConstantsCmd->_fastData = _fastData;
+
+                    const ElementRange<U32>& idxRange = _indexRange[i];
+                    drawCmd._cmd.indexCount = idxRange._length;
+                    drawCmd._cmd.firstIndex = idxRange._startOffset;
+                    GFX::EnqueueCommand(commandBufferInOut, GFX::DrawCommand{ drawCmd });
                 }
-
-                GFX::EnqueueCommand<GFX::BindPipelineCommand>(commandBufferInOut)->_pipeline = _pipelines[i];
-                auto pushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(commandBufferInOut);
-                pushConstantsCmd->_uniformData = &_additionalUniforms;
-                pushConstantsCmd->_fastData = _fastData;
-
-                const ElementRange<U32>& idxRange = _indexRange[i];
-                drawCmd._cmd.indexCount = idxRange._length;
-                drawCmd._cmd.firstIndex = idxRange._startOffset;
-                GFX::EnqueueCommand(commandBufferInOut, GFX::DrawCommand{ drawCmd });
             }
         }
-    }
 
-    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(commandBufferInOut);
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(commandBufferInOut);
 
-    if ( !_memCmd._bufferLocks.empty() )
-    {
-        memCmdInOut._bufferLocks.insert( memCmdInOut._bufferLocks.cend(), _memCmd._bufferLocks.cbegin(), _memCmd._bufferLocks.cend() );
-        _memCmd._bufferLocks.resize(0);
-    }
+        if ( !_memCmd._bufferLocks.empty() )
+        {
+            memCmdInOut._bufferLocks.insert( memCmdInOut._bufferLocks.cend(), _memCmd._bufferLocks.cbegin(), _memCmd._bufferLocks.cend() );
+            _memCmd._bufferLocks.resize(0);
+        }
+    });
 }
 
 } //namespace Divide

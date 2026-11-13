@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -40,22 +40,40 @@ namespace Divide
 class Terrain;
 class Vegetation;
 
+constexpr size_t MAX_VEGETATION_TREE_MESHES = 4u;
+
 template<>
 struct PropertyDescriptor<Vegetation>
 {
     std::shared_ptr<ImageTools::ImageData> grassMap;
+    std::shared_ptr<ImageTools::ImageData> grassMapSecondary;
     std::shared_ptr<ImageTools::ImageData> treeMap;
+    U8 grassMapChannelMask = 15u;
+    U8 grassMapSecondaryChannelMask = 15u;
     vector<Str<256>> treeMeshes;
     Str<256> name = "";
     string billboardTextureArray = "";
-    std::array<float3, 4> treeRotations;
+    std::array<float3, MAX_VEGETATION_TREE_MESHES> treeRotations;
     float4 grassScales = VECTOR4_UNIT;
     float4 treeScales = VECTOR4_UNIT;
+    float4 treeDensities = VECTOR4_UNIT;
     Terrain* parentTerrain = nullptr;
     U32 chunkSize = 0u;
 };
 
 using VegetationDescriptor = PropertyDescriptor<Vegetation>;
+
+[[nodiscard]] inline UColour4 GrassPlacementColour( const UColour4& primary, const U8 primaryMask,
+                                                   const UColour4& secondary, const U8 secondaryMask ) noexcept
+{
+    UColour4 colour{ 0u, 0u, 0u, 0u };
+    for ( U8 channel = 0u; channel < 4u; ++channel )
+    {
+        colour[channel] = std::max( (primaryMask & (1u << channel)) != 0u ? primary[channel] : U8{ 0u },
+                                    (secondaryMask & (1u << channel)) != 0u ? secondary[channel] : U8{ 0u } );
+    }
+    return colour;
+}
 
 template<>
 inline size_t GetHash( const VegetationDescriptor& descriptor ) noexcept;

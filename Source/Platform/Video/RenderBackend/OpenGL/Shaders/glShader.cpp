@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/glShader.h"
 #include "Headers/glShaderProgram.h"
@@ -71,6 +72,8 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
 {
     if (!_valid)
     {
+        PROFILE_SCOPE( "OpenGL shader upload", Profiler::Category::Graphics );
+
         const auto getTimerAndReset = [](Time::ProfileTimer& timer)
         {
             timer.stop();
@@ -299,10 +302,8 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
             if constexpr(Config::ENABLE_GPU_VALIDATION)
             {
                 Console::printfn(LOCALE_STR("GLSL_LINK_PROGRAM_LOG_OK"), _name.c_str(), "[OK]", getGUID(), _handle);
-                gl46core::glObjectLabel( gl46core::GL_PROGRAM,
-                                         _handle,
-                                         -1,
-                                         _name.c_str() );
+                GLUtil::SetObjectLabel( gl46core::GL_PROGRAM, _handle,
+                                        std::string_view{ _name.c_str(), _name.size() } );
             }
             _valid = true;
         }

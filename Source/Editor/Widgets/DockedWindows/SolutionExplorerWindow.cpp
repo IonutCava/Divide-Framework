@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/SolutionExplorerWindow.h"
 #include "Editor/Headers/Utils.h"
@@ -394,7 +395,8 @@ namespace Divide {
         }
         ImGui::PopItemWidth();
 
-        static bool performanceStatsWereEnabled = false;
+        // True only while this panel is the one that turned GPU stats on, so collapsing it never disables stats requested elsewhere.
+        static bool s_panelEnabledPerformanceStats = false;
         static U32 s_maxLocksInFlight = 0u;
         if (ImGui::CollapsingHeader(ICON_FK_TACHOMETER" Performance Stats"))
         {
@@ -419,8 +421,11 @@ namespace Divide {
                 ImGui::EndDisabled();
             }
             PROFILE_SCOPE("Get/Print Performance Stats", Profiler::Category::GUI);
-            performanceStatsWereEnabled = context().gfx().queryPerformanceStats();
-            context().gfx().queryPerformanceStats(true);
+            if (!context().gfx().queryPerformanceStats())
+            {
+                s_panelEnabledPerformanceStats = true;
+                context().gfx().queryPerformanceStats(true);
+            }
             const auto& rpm = _context.kernel().renderPassManager();
 
             static std::array<I32, to_base(RenderStage::COUNT)> maxDrawCallCount{};
@@ -449,8 +454,8 @@ namespace Divide {
                 perfMetrics._scratchBufferQueueUsage[0] = perfMetricsSource._scratchBufferQueueUsage[0];
                 perfMetrics._scratchBufferQueueUsage[1] = perfMetricsSource._scratchBufferQueueUsage[1];
                 perfMetrics._uniformBufferVRAMUsage = perfMetricsSource._uniformBufferVRAMUsage;
-                perfMetrics._bufferVRAMUsage = perfMetricsSource._bufferVRAMUsage;
-                perfMetrics._gpuBufferCount = perfMetricsSource._gpuBufferCount;
+                perfMetrics._bufferVRAMUsage.store( perfMetricsSource._bufferVRAMUsage.load( std::memory_order_relaxed ), std::memory_order_relaxed );
+                perfMetrics._gpuBufferCount.store( perfMetricsSource._gpuBufferCount.load( std::memory_order_relaxed ), std::memory_order_relaxed );
             }
             const uint4& cullCount = context().gfx().lastCullCount();
             static U32 cachedSyncCount[3]{};
@@ -542,6 +547,15 @@ namespace Divide {
             ImGui::NewLine();
             ImGui::Text("GPU Frame Time: %.2f ms", perfMetrics._gpuTimeInMS);
             ImGui::NewLine();
+            bool pipelineStats = context().gfx().queryPipelineStatistics();
+            if (ImGui::Checkbox("Pipeline Statistics", &pipelineStats))
+            {
+                context().gfx().queryPipelineStatistics(pipelineStats);
+            }
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::SetTooltip("Query vertex/primitive/tessellation counts (OpenGL only). Very expensive: can multiply GPU frame time.");
+            }
             ImGui::Text("Submitted Vertices: %s", Util::commaprint(perfMetrics._verticesSubmitted));
             ImGui::NewLine();
             ImGui::Text("Primitves Generated: %s", Util::commaprint(perfMetrics._primitivesGenerated));
@@ -554,11 +568,11 @@ namespace Divide {
             ImGui::NewLine();
             ImGui::Text("Queued GPU Frames: %d", perfMetrics._queuedGPUFrames);
             ImGui::NewLine();  
-            ImGui::Text("Per Frame shader uniforms VRAM usage: %.2f Kb", (perfMetrics._uniformBufferVRAMUsage / 1024.f));
+            ImGui::Text("Shader uniform upload arena allocation: %.2f KiB", (perfMetrics._uniformBufferVRAMUsage / 1024.f));
             ImGui::NewLine();
-            ImGui::Text("Total buffers VRAM usage: %.2f Mb", (perfMetrics._bufferVRAMUsage / 1024.f / 1024.f));
+            ImGui::Text("Total buffers VRAM usage: %.2f Mb", (perfMetrics._bufferVRAMUsage.load( std::memory_order_relaxed ) / 1024.f / 1024.f));
             ImGui::NewLine();
-            ImGui::Text("Buffer objects in flight: %d", perfMetrics._gpuBufferCount);
+            ImGui::Text("Buffer objects in flight: %zu", perfMetrics._gpuBufferCount.load( std::memory_order_relaxed ));
             ImGui::NewLine();
             ImGui::Text("Sync objects in flight : %d / %d / %d   Max: %d", cachedSyncCount[0], cachedSyncCount[1], cachedSyncCount[2], s_maxLocksInFlight);
 
@@ -579,8 +593,9 @@ namespace Divide {
         }
         else
         {
-            if (!performanceStatsWereEnabled && context().gfx().queryPerformanceStats())
+            if (s_panelEnabledPerformanceStats)
             {
+                s_panelEnabledPerformanceStats = false;
                 context().gfx().queryPerformanceStats(false);
             }
             s_maxLocksInFlight = 0u;
@@ -1042,9 +1057,8 @@ namespace Divide {
             case SceneNodeType::TYPE_TRANSFORM:
             case SceneNodeType::TYPE_SKY:
             case SceneNodeType::TYPE_VEGETATION: break;
-
-            default:
-            case SceneNodeType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+            case SceneNodeType::COUNT:
+            default: DIVIDE_UNEXPECTED_CALL();
         }
 
         return;

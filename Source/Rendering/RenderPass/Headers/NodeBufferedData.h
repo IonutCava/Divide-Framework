@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -34,13 +34,49 @@
 #define DVD_RENDER_PASS_NODE_BUFFERED_DATA_H_
 
 namespace Divide {
+    struct RenderPackage;
+
     static constexpr U8 TRANSFORM_IDX = 0u;
     static constexpr U8 MATERIAL_IDX = 1u;
     static constexpr U8 TEXTURES_IDX = 2u;
 
-    static_assert(sizeof(quatf) == sizeof(float4) && sizeof(float4) == 4 * sizeof(F32));
+    class NodePreparationState
+    {
+    public:
+        [[nodiscard]] bool claim( const U8 dataType, const U64 epoch ) noexcept
+        {
+            if ( dataType >= _epochs.size() || epoch == 0u )
+            {
+                DIVIDE_UNEXPECTED_CALL_MSG( "Invalid node preparation type or epoch" );
+            }
 
-#pragma pack(push, 1)
+            auto& stamp = _epochs[dataType];
+            // Claims select a writer; the stage join, not this stamp, publishes its output.
+            return stamp.load( std::memory_order_relaxed ) != epoch &&
+                   stamp.exchange( epoch, std::memory_order_relaxed ) != epoch;
+        }
+
+    private:
+        std::array<std::atomic<U64>, 2u> _epochs{};
+    };
+
+    [[nodiscard]] constexpr bool RequiresInstancedIndirection( const bool alreadyInstanced,
+                                                               const bool materialInstanced,
+                                                               const U32 instanceCount ) noexcept
+    {
+        return alreadyInstanced || materialInstanced || instanceCount > 1u;
+    }
+
+    [[nodiscard]] constexpr bool RequiresUniformIndirection( const bool instanced, const bool instanceDataFromBuffer ) noexcept
+    {
+        return instanced && !instanceDataFromBuffer;
+    }
+
+    [[nodiscard]] constexpr U32 IndirectionBaseInstance( const bool uniformIndirection, const U32 indirectionIndex ) noexcept
+    {
+        return uniformIndirection ? 0u : indirectionIndex + 1u;
+    }
+
     struct TransformData
     {
         float4 _position; //(w - unused)
@@ -55,8 +91,6 @@ namespace Divide {
         float4        _boundingSphere;
         float4        _data; //x = animation frame, y = bone count, z = LoDLevel, w = 4x8u: occlusion cull flag, selection flag, unused, unused
     };
-
-    static_assert(sizeof(NodeTransformData) == sizeof(mat4<F32>) * 2, "Wrong Node Transform Data entry size!");
 
     struct NodeMaterialData
     {
@@ -86,11 +120,23 @@ namespace Divide {
 
         U32 _transformIDX = INVALID_IDX;
         U32 _materialIDX = INVALID_IDX;
-        U32 _padding__0 = 0u;
+        U32 _instanceDataOffset = 0u;
         U32 _padding__1 = 0u;
+
+        constexpr bool setInstanceDataOffset( const U32 offset ) noexcept
+        {
+            if ( _instanceDataOffset == offset )
+            {
+                return false;
+            }
+            _instanceDataOffset = offset;
+            return true;
+        }
     };
+
     [[nodiscard]] size_t HashMaterialData(const NodeMaterialData& dataIn);
-#pragma pack(pop)
+
+    void SetNodeIndirectionIndex( RenderPackage& package, bool uniformIndirection, U32 indirectionIndex ) noexcept;
 
 } //namespace Divide
 

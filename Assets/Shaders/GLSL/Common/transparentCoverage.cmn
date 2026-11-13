@@ -1,0 +1,8 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
+#ifndef _TRANSPARENT_COVERAGE_CMN_
+#define _TRANSPARENT_COVERAGE_CMN_
+
+#define TRANSPARENT_HAS_COVERAGE(ALPHA) ((ALPHA) > 0.f)
+
+#endif

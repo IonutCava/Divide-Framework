@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/BoundingSphere.h"
 #include "Headers/OBB.h"
@@ -19,23 +20,6 @@ BoundingSphere::BoundingSphere(const vector<float3>& points) noexcept
 BoundingSphere::BoundingSphere(const std::array<float3, 8>& points) noexcept
 {
     createFromPoints(points);
-}
-
-bool BoundingSphere::containsBoundingBox(const BoundingBox& AABB) const noexcept
-{
-    bool inside = true;
-    std::array<float3, 8> points = AABB.getPoints();
-
-    for (U8 i = 0; i < 8u; ++i)
-    {
-        if (containsPoint(points[i]))
-        {
-            inside = false;
-            break;
-        }
-    }
-
-    return inside;
 }
 
 bool BoundingSphere::containsPoint(const float3& point) const noexcept

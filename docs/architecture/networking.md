@@ -27,8 +27,12 @@ CTest runs discovered cases in separate
 processes: initialization in another test does not carry over. Keep loopback
 fixtures independent of external servers and exercise cancellation and
 per-client startup when changing heartbeat behavior.
-The fixture drains its peer in nonblocking mode: an incomplete packet raises an
-Asio error instead of hanging the test while waiting for a missing body.
+The fixture receives the expected packet count with asynchronous exact-length
+header/body reads while advancing the client context. A shared one-second
+deadline bounds the receive, and a timed-out read is cancelled and its completion
+drained before local buffers are released. Do not assume queued writes or TCP
+delivery complete within a fixed short delay, or that a readable header implies
+the entire body has arrived.
 
 ## Known limitations
 

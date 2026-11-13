@@ -1,6 +1,9 @@
 --Compute
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "HiZCullingAlgorithm.cmn"
+#include "hizDispatchIndex.cmn"
 #include "nodeDataDefinition.cmn"
 
 #define INVS_SQRT_3 0.57735026919f
@@ -51,28 +54,38 @@ void CullItem(in uint idx)
 layout(local_size_x = WORK_GROUP_SIZE) in;
 void main()
 {
-    if (dvd_numEntities < WORK_GROUP_SIZE)
+    const uint groupIndex = HIZ_CULL_GROUP_INDEX(gl_WorkGroupID.x, gl_WorkGroupID.y, gl_NumWorkGroups.x);
+    // Padded workgroups must return before their entity index can wrap.
+    if (groupIndex >= HIZ_CULL_GROUP_COUNT(dvd_numEntities, uint(WORK_GROUP_SIZE)))
     {
+        if (dvd_countCulledItems == 1u && gl_LocalInvocationID.x == 0u)
+        {
+            atomicAdd(culledCount[1], uint(WORK_GROUP_SIZE));
+        }
         return;
     }
 
-    const uint ident = gl_GlobalInvocationID.x;
+    const uint ident = HIZ_CULL_ENTITY_INDEX(groupIndex, gl_LocalInvocationID.x, uint(WORK_GROUP_SIZE));
 
     if (ident >= dvd_numEntities)
     {
-        atomicAdd(culledCount[1], 1);
-        CullItem(ident);
+        if (dvd_countCulledItems == 1u)
+        {
+            atomicAdd(culledCount[1], 1);
+        }
         return;
     }
 
     const uint DVD_BASE_INSTANCE = dvd_drawCommands[ident].baseInstance;
 
-    // We don't currently handle instanced nodes with this. We might need to in the future
-    // Usually this is just terrain, vegetation and the skybox. So not that bad all in all since those have
-    // their own culling routines
+    // Vertex-attribute instancing keeps baseInstance zero. Storage-buffer instances carry
+    // a node identity and use the node's occlusion flag to opt out of this whole-draw cull.
     if (DVD_BASE_INSTANCE == 0u)
     {
-        atomicAdd(culledCount[2], 1);
+        if (dvd_countCulledItems == 1u)
+        {
+            atomicAdd(culledCount[2], 1);
+        }
         return;
     }
 
@@ -80,7 +93,10 @@ void main()
     // Skip occlusion cull if the flag is set
     if (!dvd_CullNode(transformData))
     {
-        atomicAdd(culledCount[3], 1);
+        if (dvd_countCulledItems == 1u)
+        {
+            atomicAdd(culledCount[3], 1);
+        }
         return;
     }
 
@@ -90,4 +106,3 @@ void main()
         CullItem(ident);
     }
 }
-

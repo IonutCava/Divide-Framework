@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -34,12 +34,19 @@
 #define DVD_LIGHT_POOL_H_
 
 #include "Light.h"
+#include "LightUploadState.h"
+#include "ShadowPassState.h"
 
 #include "Scenes/Headers/SceneComponent.h"
 #include "Core/Headers/PlatformContextComponent.h"
 #include "Managers/Headers/FrameListenerManager.h"
 
 namespace Divide {
+
+namespace Attorney
+{
+    struct LightPoolTestAccess;
+}
 
 namespace Time {
     class ProfileTimer;
@@ -57,6 +64,10 @@ FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 class LightPool final : public FrameListener, 
                         public SceneComponent,
                         public PlatformContextComponent {
+#if defined(ENABLE_UNIT_TESTING)
+    friend struct Attorney::LightPoolTestAccess;
+#endif
+
   protected:
       struct LightProperties {
           /// rgb = diffuse
@@ -66,16 +77,15 @@ class LightPool final : public FrameListener,
           /// w = range
           float4 _position = { 0.0f, 0.0f, 0.0f, 0.0f };
           /// xyz = light direction (spot and directional lights only. (0,0,0) for point)
-          /// w = spot angle
+          /// w = cosInnerConeAngle
           float4 _direction = { 0.0f, 0.0f, 0.0f, 45.0f };
           /// x = light type: 0 - directional, 1 - point, 2 - spot, 3 - none
           /// y = shadow index (-1 = no shadows)
-          /// z = reserved
+          /// z = spot cone slant height, stored as raw float bits (std::bit_cast). Read with intBitsToFloat in shaders.
           /// w = reserved
           int4 _options = { 3, -1, 0, 0 };
       };
 
-#pragma pack(push, 1)
       struct PointShadowProperties
       {
           float4 _details;
@@ -97,10 +107,11 @@ class LightPool final : public FrameListener,
           std::array<PointShadowProperties, Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS> _pointLights{};
           std::array<SpotShadowProperties, Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS> _spotLights{};
           std::array<CSMShadowProperties, Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS> _dirLights{};
+          float4 _cameraViewDepthRow{};
+          mat4<F32> _worldAOVPMatrix = MAT4_IDENTITY;
 
           [[nodiscard]] bufferPtr data() const noexcept { return (bufferPtr)_pointLights.data(); }
       };
-#pragma pack(pop)
 
   public:
     struct ShadowLightList
@@ -111,6 +122,16 @@ class LightPool final : public FrameListener,
     struct MovingVolume {
         BoundingSphere _volume;
         bool _staticSource = false;
+        U32 _layerMask = 0u; // Zero denotes an ordinary full-cache geometry change.
+        LightType _lightType = LightType::COUNT;
+        std::optional<BoundingSphere> _influenceBounds;
+
+        [[nodiscard]] bool affectsLight(const LightType type, const BoundingSphere& lightBounds) const noexcept
+        {
+            return (_lightType == LightType::COUNT || _lightType == type) &&
+                   ShadowVolumeAffectsLight(type == LightType::DIRECTIONAL, _volume, lightBounds) &&
+                   (!_influenceBounds.has_value() || _influenceBounds->collision(lightBounds));
+        }
     };
     using LightList = fixed_vector<Light*, 32u, true>;
 
@@ -138,19 +159,25 @@ class LightPool final : public FrameListener,
         return _lights[to_U32(type)];
     }
 
-    [[nodiscard]] Light* getLight(I64 lightGUID, LightType type) const;
-
     void sortLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot);
-    void uploadLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut);
+    [[nodiscard]] LightDataBinding uploadLightData(RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut);
+    /// Main thread, after every stage finished recording: writes this frame's shadow slot indices into the
+    /// light lists uploaded by uploadLightData (stages record in parallel with the shadow pass that assigns them).
+    void patchShadowIndices(GFX::MemoryBarrierCommand& memCmdInOut);
 
     void drawLightImpostors(GFX::CommandBuffer& bufferInOut) const;
 
     void preRenderAllPasses(const Camera* playerCamera);
 
     void onVolumeMoved(const BoundingSphere& volume, bool staticSource);
+    void invalidateShadowLayers(const BoundingSphere& volume, U32 layerMask, LightType lightType,
+                                const std::optional<BoundingSphere>& influenceBounds = std::nullopt);
+    void onVolumeChanged(const BoundingSphere& previous, bool previousStatic,
+                         const BoundingSphere& current, bool currentStatic);
 
     /// nullptr = disabled
     void debugLight(Light* light);
+    [[nodiscard]] Light* debugLight() const noexcept;
 
     /// Get the appropriate shadow bind slot for every light's shadow
     [[nodiscard]] static U8 GetShadowBindSlotOffset(const ShadowType type) noexcept {
@@ -158,7 +185,6 @@ class LightPool final : public FrameListener,
     }
 
     PROPERTY_RW(bool, lightImpostorsEnabled, false);
-    POINTER_R(Light, debugLight, nullptr);
 
   protected:
     [[nodiscard]] bool frameStarted(const FrameEvent& evt) override;
@@ -171,11 +197,6 @@ class LightPool final : public FrameListener,
     void generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
 
     friend class ProjectManager;
-    [[nodiscard]] LightList::const_iterator findLight(const I64 GUID, const LightType type) const {
-        SharedLock<SharedMutex> r_lock(_lightLock);
-        return findLightLocked(GUID, type);
-    }
-
     [[nodiscard]] LightList::const_iterator findLightLocked(const I64 GUID, const LightType type) const {
         return eastl::find_if(cbegin(_lights[to_U32(type)]), cend(_lights[to_U32(type)]),
                               [GUID](Light* const light) noexcept {
@@ -183,7 +204,7 @@ class LightPool final : public FrameListener,
                               });
     }
 
-    [[nodiscard]] bool isShadowCacheInvalidated(const float3& cameraPosition, Light* light);
+    [[nodiscard]] bool isShadowCacheInvalidated(Light* light, size_t movedVolumeCount);
 
 
     [[nodiscard]] static bool IsLightInViewFrustum(const Frustum& frustum, const Light* light) noexcept;
@@ -192,16 +213,8 @@ class LightPool final : public FrameListener,
     friend class ShadowMap;
     static ShaderBuffer* ShadowBuffer() { return s_shadowBuffer.get(); }
 
-    friend class Renderer;
-    [[nodiscard]] static ShaderBuffer* LightBuffer() { return s_lightBuffer.get(); }
-    [[nodiscard]] static ShaderBuffer* SceneBuffer() { return s_sceneBuffer.get(); }
-
-    [[nodiscard]] U32           sortedLightCount(const RenderStage stage) const { return _sortedLightPropertiesCount[to_base(stage)]; }
-
   private:
-      U32 uploadLightList(RenderStage stage,
-                          const LightList& lights,
-                          const mat4<F32>& viewMatrix);
+      void setDebugLightLocked(Light* light);
 
   private:
      struct SceneData {
@@ -212,24 +225,49 @@ class LightPool final : public FrameListener,
          mat4<F32> _padding0[3]; float4 _padding1[2];
      };
 
-    using LightData = std::array<LightProperties, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME>;
-
     using LightCountPerType = std::array<U32, to_base(LightType::COUNT)>;
+
+    struct ViewLightData
+    {
+        ViewLightData();
+        ~ViewLightData();
+        ViewLightData(ViewLightData&&) noexcept;
+        ViewLightData& operator=(ViewLightData&&) noexcept;
+        ViewLightData(const ViewLightData&) = delete;
+        ViewLightData& operator=(const ViewLightData&) = delete;
+
+        vector<LightProperties> _properties;
+        vector<Light*> _lights;
+        SceneData _scene;
+        ShaderBuffer_uptr _lightBuffer;
+        ShaderBuffer_uptr _sceneBuffer;
+    };
+    using ViewLightDataList = vector<ViewLightData>;
+
+    [[nodiscard]] static ViewLightData& AcquireViewLightData(ViewLightDataList& views, size_t& usedCount);
+    [[nodiscard]] static U32 LightBufferCapacity(size_t lightCount) noexcept;
+    U32 uploadLightList(RenderStage stage, const LightList& lights, const mat4<F32>& viewMatrix, ViewLightData& view);
 
     std::array<LightCountPerType, to_base(RenderStage::COUNT)> _activeLightCount{};
     std::array<LightList,         to_base(RenderStage::COUNT)> _sortedLights{};
-    std::array<LightData,         to_base(RenderStage::COUNT)> _sortedLightProperties{};
-    std::array<U32,               to_base(RenderStage::COUNT)> _sortedLightPropertiesCount{};
-    std::array<SceneData,         to_base(RenderStage::COUNT)> _sortedSceneProperties{};
+    std::array<ViewLightDataList, to_base(RenderStage::COUNT)> _viewLightData{};
+    std::array<size_t,            to_base(RenderStage::COUNT)> _usedViewLightData{};
 
     std::array<LightList,         to_base(LightType::COUNT)>   _lights{};
     std::array<bool,              to_base(LightType::COUNT)>   _lightTypeState{};
     ShadowProperties _shadowBufferData;
+    ShadowCameraState<mat4<F32>> _directionalShadowCamera;
+    U32 _shadowRenderMask = 0u;
+    std::array<F32, 2> _shadowVisibilityDistances{};
+    std::array<F32, 3> _shadowRangeCameraEye{};
+    std::array<U8, 3> _shadowSampleCounts{};
 
     mutable SharedMutex _movedSceneVolumesLock;
     fixed_vector<MovingVolume, Config::MAX_VISIBLE_NODES, true> _movedSceneVolumes;
+    ShadowMovementBatch _shadowMovementBatch;
 
     mutable SharedMutex _lightLock{};
+    Light* _debugLight = nullptr;
     Time::ProfileTimer& _shadowPassTimer;
     U32                 _totalLightCount = 0u;
     bool                _shadowBufferDirty = false;
@@ -237,8 +275,6 @@ class LightPool final : public FrameListener,
     static std::array<U8, to_base(ShadowType::COUNT)> s_shadowLocation;
     static Handle<Texture>       s_lightIconsTexture;
     static Handle<ShaderProgram> s_lightImpostorShader;
-    static ShaderBuffer_uptr s_lightBuffer;
-    static ShaderBuffer_uptr s_sceneBuffer;
     static ShaderBuffer_uptr s_shadowBuffer;
 };
 

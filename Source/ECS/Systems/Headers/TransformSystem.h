@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -45,7 +45,6 @@ namespace Divide {
       public:
         TransformSystem(ECS::ECSEngine& parentEngine, PlatformContext& context);
 
-        void PreUpdate(F32 dt) override;
         void Update(F32 dt) override;
         void PostUpdate(F32 dt) override;
 
@@ -55,6 +54,9 @@ namespace Divide {
 
        protected:
          void computeWorldMatrix(TransformComponent* comp) const;
+
+       private:
+         U64 _worldUpdateEpoch = 0u;
     };
 }
 

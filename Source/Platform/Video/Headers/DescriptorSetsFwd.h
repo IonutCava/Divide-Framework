@@ -67,6 +67,7 @@ namespace Divide
         DescriptorSet* _set{ nullptr };
         DescriptorSetUsage _usage{ DescriptorSetUsage::COUNT };
         bool _isDirty{ false };
+        const std::array<U64, MAX_BINDINGS_PER_DESCRIPTOR_SET>* _stableBindingRevisions{ nullptr };
     };
 
     using DescriptorSetEntries = std::array<DescriptorSetEntry, to_base( DescriptorSetUsage::COUNT )>;

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -54,6 +54,7 @@ namespace Divide {
 
 namespace Attorney {
     class MaterialRenderBin;
+    struct MaterialTestAccess;
 }
 
 class RenderBin;
@@ -134,6 +135,7 @@ namespace TypeUtil {
 
 class Material final : public CachedResource {
     friend class Attorney::MaterialRenderBin;
+    friend struct Attorney::MaterialTestAccess;
 
   public:
     static constexpr F32 MAX_SHININESS = 255.f;
@@ -250,7 +252,8 @@ class Material final : public CachedResource {
     static void OnShutdown();
     static void RecomputeShaders();
     static void Update(U64 deltaTimeUS);
-    static bool Clone(Handle<Material> src, Handle<Material>& dst, const std::string_view nameSuffix);
+    [[nodiscard]] U64 coverageRevision() const noexcept { return _coverageRevision.load(std::memory_order_relaxed); }
+    static bool Clone(Handle<Material> src, Handle<Material>& dst, std::string_view nameSuffix, bool allowXMLOverrides = false);
 
     /// Return a new instance of this material with the name composed of the base material's name and the give name suffix (clone calls CreateResource internally!).
     [[nodiscard]] bool load(PlatformContext& context) override;
@@ -267,6 +270,7 @@ class Material final : public CachedResource {
     bool setSampler(TextureSlot textureUsageSlot,
                     SamplerDescriptor sampler);
 
+    /// A valid handle transfers one resource reference to the material.
     bool setTexture(TextureSlot textureUsageSlot,
                     Handle<Texture> texture,
                     SamplerDescriptor sampler,
@@ -305,18 +309,25 @@ class Material final : public CachedResource {
     [[nodiscard]] const TextureInfo& getTextureInfo(TextureSlot usage) const;
     [[nodiscard]] const RenderStateBlock& getOrCreateRenderStateBlock(RenderStagePass renderStagePass);
     [[nodiscard]] Handle<Texture> getTexture(TextureSlot textureUsage) const;
-    [[nodiscard]] DescriptorSet& getDescriptorSet(const RenderStagePass& renderStagePass);
+    [[nodiscard]] bool getDescriptorSet(const RenderStagePass& renderStagePass,
+                                        const ShaderProgramDescriptor& shaderDescriptor,
+                                        DescriptorSet& descriptorOut);
+    [[nodiscard]] ResourceBindingHandle getResourceBindings( const RenderStagePass& renderStagePass,
+                                                            const ShaderProgramDescriptor& shaderDescriptor );
     [[nodiscard]] Handle<ShaderProgram> getProgramHandle(RenderStagePass renderStagePass) const;
     [[nodiscard]] Handle<ShaderProgram> computeAndGetProgramHandle(RenderStagePass renderStagePass);
     [[nodiscard]] bool hasTransparency() const noexcept;
     [[nodiscard]] bool isReflective() const noexcept;
     [[nodiscard]] bool isRefractive() const noexcept;
     [[nodiscard]] bool canDraw(RenderStagePass renderStagePass, bool& shaderJustFinishedLoading);
+    [[nodiscard]] bool shaderPending(RenderStagePass renderStagePass) const;
     [[nodiscard]] const ModuleDefines& shaderDefines(ShaderType type) const;
 
     // type == ShaderType::Count = add to all stages
     void addShaderDefine(ShaderType type, const string& define, bool addPrefix = true);
     void addShaderDefine(const string& define, bool addPrefix = true);
+    /// Adds or removes an extra define (ShaderType::COUNT = all stages). Requests new shaders only if the set changed.
+    bool setShaderDefine(ShaderType type, const string& define, bool enabled, bool addPrefix = true);
     void saveToXML( const std::string& entryName, boost::property_tree::ptree& pt) const;
     void loadFromXML( const std::string& entryName, const boost::property_tree::ptree& pt);
 
@@ -336,16 +347,41 @@ class Material final : public CachedResource {
     PROPERTY_R_IW(AttributeMap, shaderAttributes);
     PROPERTY_R_IW(PrimitiveTopology, topology, PrimitiveTopology::COUNT);
    private:
+    struct TransparencyInputs
+    {
+        F32 _baseAlpha{ 1.f };
+        TextureOperation _albedoOperation{ TextureOperation::NONE };
+        TextureOperation _opacityOperation{ TextureOperation::NONE };
+        bool _enabled{ true };
+        bool _ignoreAlbedoAlpha{ false };
+        bool _hasAlbedo{ false };
+        bool _albedoHasTransparency{ false };
+        bool _hasOpacity{ false };
+        bool _opacityUsesAlpha{ false };
+    };
+
     void getSortKeys(RenderStagePass renderStagePass, I64& shaderKey, I64& textureKey, bool& transparencyFlag) const;
     void addShaderDefineInternal(ShaderType type, const string& define, bool addPrefix);
 
+    [[nodiscard]] static TranslucencySource SelectTranslucencySource(const TransparencyInputs& inputs) noexcept;
     void updateTransparency();
+    void invalidateDescriptorSets() noexcept;
+    void setTextureOperationLocked( TextureSlot slot, TextureOperation operation );
+    [[nodiscard]] bool getDescriptorSetLocked( const RenderStagePass& renderStagePass,
+                                               const ShaderProgramDescriptor& shaderDescriptor,
+                                               DescriptorSet& descriptorOut );
 
     void recomputeShaders();
 
-    void setShaderProgramInternal(ShaderProgramDescriptor shaderDescriptor, RenderStagePass stagePass);
+    void setShaderProgramInternal(RenderStagePass stagePass);
+    void reportShaderFailure(ShaderProgramInfo& info, RenderStagePass stagePass, ResourceState state);
+    [[nodiscard]] bool prepareShader(RenderStagePass stagePass, bool& shaderJustFinishedLoading, bool consumeNotification);
 
     void computeAndAppendShaderDefines( ShaderProgramDescriptor& shaderDescriptor, RenderStagePass renderStagePass) const;
+    void appendTextureShaderDefines(ShaderProgramDescriptor& shaderDescriptor, bool isPrePass, bool isShadowPass) const;
+    [[nodiscard]] static bool UsesStandardMaterialStages(const ShaderProgramDescriptor& shaderDescriptor) noexcept;
+    [[nodiscard]] static bool HasCommonMaterialInputs(const ShaderProgramDescriptor& shaderDescriptor) noexcept;
+    static void AddMissingCommonMaterialBindings(DescriptorSet& descriptor, const ImageView& fallback, SamplerDescriptor sampler);
 
     [[nodiscard]] ShaderProgramInfo& shaderInfo(RenderStagePass renderStagePass);
 
@@ -390,10 +426,12 @@ class Material final : public CachedResource {
     vector<Handle<Material>> _instances{};
 
     std::array<TextureInfo, to_base(TextureSlot::COUNT)> _textures;
+    std::array<std::array<std::array<ResourceBindingHandle, 2u>, 2u>, 4u> _resourceBindings{};
 
     size_t _shaderAttributesHash{ 0u };
 
     static bool s_shadersDirty;
+    std::atomic<U64> _coverageRevision{1u};
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Material);

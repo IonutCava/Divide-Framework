@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/UndoManager.h"
 
@@ -36,6 +37,20 @@ bool UndoManager::Redo() {
         return ret;
     }
     return false;
+}
+
+void UndoManager::removeEntriesForOwner(const I64 ownerGUID)
+{
+    if (ownerGUID == -1)
+    {
+        return;
+    }
+    const auto belongsToOwner = [ownerGUID](const std::shared_ptr<IUndoEntry>& entry)
+    {
+        return entry != nullptr && entry->_ownerGUID == ownerGUID;
+    };
+    std::erase_if(_undoStack, belongsToOwner);
+    std::erase_if(_redoStack, belongsToOwner);
 }
 
 bool UndoManager::apply(const std::shared_ptr<IUndoEntry>& entry) {

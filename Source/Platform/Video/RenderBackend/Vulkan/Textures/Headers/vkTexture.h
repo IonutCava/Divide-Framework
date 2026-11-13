@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -161,6 +161,14 @@ namespace Divide
             VkImageView _view{VK_NULL_HANDLE};
         };
 
+        struct InitialClearPlan
+        {
+            VkImageSubresourceRange _range{};
+            VkClearColorValue _colour{};
+            VkClearDepthStencilValue _depthStencil{ 1.f, 0u };
+            bool _isDepthStencil{ false };
+        };
+
         vkTexture( PlatformContext& context, const ResourceDescriptor<Texture>& descriptor );
         virtual ~vkTexture() override;
 
@@ -174,11 +182,34 @@ namespace Divide
         PROPERTY_R_IW( VkFormat, vkFormat, VK_FORMAT_MAX_ENUM );
         PROPERTY_R_IW( VkSampleCountFlagBits, sampleFlagBits, VK_SAMPLE_COUNT_1_BIT );
 
+        [[nodiscard]] static constexpr VmaAllocationCreateInfo ImageAllocationInfo() noexcept
+        {
+            VmaAllocationCreateInfo info{};
+            info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+            info.priority = 1.f;
+            return info;
+        }
+
+        [[nodiscard]] static constexpr bool SupportsSmokeReadback( const VkFormat format,
+                                                                   const VkSampleCountFlagBits samples,
+                                                                   const U32 layers,
+                                                                   const U32 depth ) noexcept
+        {
+            return samples == VK_SAMPLE_COUNT_1_BIT && layers == 1u && depth == 1u &&
+                   ( format == VK_FORMAT_R8G8B8A8_UNORM || format == VK_FORMAT_R8G8B8A8_SRGB ||
+                     format == VK_FORMAT_B8G8R8A8_UNORM || format == VK_FORMAT_B8G8R8A8_SRGB );
+        }
+
         [[nodiscard]] ImageReadbackData readData(U16 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept override;
         [[nodiscard]] ImageReadbackData readData( VkCommandBuffer cmdBuffer, U16 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept;
+        [[nodiscard]] ImageReadbackData readDataForSmoke() const noexcept;
         [[nodiscard]] VkImageView getImageView( const CachedImageView::Descriptor& descriptor ) const;
 
         [[nodiscard]] static VkImageAspectFlags GetAspectFlags( const TextureDescriptor& descriptor ) noexcept;
+        [[nodiscard]] static VkImageSubresourceRange GetViewSubresourceRange( TextureType targetType, const ImageSubRange& range,
+                                                                             VkImageAspectFlags aspect ) noexcept;
+        [[nodiscard]] static ImageUsage InitialUsage( const TextureDescriptor& descriptor ) noexcept;
+        [[nodiscard]] static InitialClearPlan MakeInitialClearPlan( const TextureDescriptor& descriptor ) noexcept;
 
         static void Copy( VkCommandBuffer cmdBuffer, const vkTexture* source, const U8 sourceSamples, const vkTexture* destination, const U8 destinationSamples, CopyTexParams params );
 
@@ -196,7 +227,7 @@ namespace Divide
     private:
         void loadDataInternal( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment ) override;
         void loadDataInternal( const std::span<const Byte> data, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
-        ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable ) override;
+        ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable, U16 suppliedMipCount ) override;
         void clearDataInternal( const UColour4& clearColour, U16 level, bool clearRect, const int4& rectToClear, int2 depthRange ) const;
         void clearImageViewCache();
         void submitTextureData(ImageUsage& crtUsageInOut) override;

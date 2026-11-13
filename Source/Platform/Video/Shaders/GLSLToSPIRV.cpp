@@ -1,4 +1,5 @@
-
+// Copyright (c) 2018-2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/GLSLToSPIRV.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
@@ -25,10 +26,8 @@ namespace
             case Divide::ShaderType::COMPUTE:           return EShLangCompute;
             case Divide::ShaderType::MESH:              return EShLangMesh;
             case Divide::ShaderType::TASK:              return EShLangTask;
-            default: DIVIDE_UNEXPECTED_CALL();          break;
+            default:                                    DIVIDE_UNEXPECTED_CALL();
         }
-
-        return EShLangVertex;
     }
 };
 
@@ -167,6 +166,8 @@ void SpirvHelper::InitResources( TBuiltInResource& Resources )
 
 bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* pshader, std::vector<unsigned int>& spirv, const Divide::RenderAPI renderAPI )
 {
+    PROFILE_SCOPE( "Shader GLSL to SPIR-V", Divide::Profiler::Category::Streaming );
+
     const EShLanguage stage = FindLanguage( shader_type );
     glslang::TShader shader( stage );
     glslang::TProgram program;
@@ -183,7 +184,7 @@ bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* p
     if ( renderAPI == Divide::RenderAPI::Vulkan )
     {
         shader.setEnvInput( glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, 100 );
-        shader.setEnvClient( glslang::EShClientVulkan, glslang::EShTargetVulkan_1_3 );
+        shader.setEnvClient( glslang::EShClientVulkan, glslang::EShTargetVulkan_1_4 );
         shader.setEnvTarget( glslang::EShTargetSpv, glslang::EShTargetSpv_1_6 );
     }
     else
@@ -197,28 +198,20 @@ bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* p
     {
         using namespace Divide;
 
-        Console::errorfn( shader.getInfoLog() );
-        Console::errorfn( shader.getInfoDebugLog() );
-        const bool decorations[] = {
-            Console::IsFlagSet( Console::Flags::DECORATE_TIMESTAMP ),
-            Console::IsFlagSet( Console::Flags::DECORATE_THREAD_ID ),
-            Console::IsFlagSet( Console::Flags::DECORATE_FRAME ),
-            Console::IsFlagSet( Console::Flags::DECORATE_SEVERITY )
+        Console::errorfn( "{}", shader.getInfoLog() );
+        Console::errorfn( "{}", shader.getInfoDebugLog() );
+        const Console::ScopedFlags consoleFlags{
+            0u,
+            to_U32(to_base(Console::Flags::DECORATE_TIMESTAMP) |
+                   to_base(Console::Flags::DECORATE_THREAD_ID) |
+                   to_base(Console::Flags::DECORATE_FRAME) |
+                   to_base(Console::Flags::DECORATE_SEVERITY))
         };
-
-        Console::ToggleFlag( Console::Flags::DECORATE_TIMESTAMP, false );
-        Console::ToggleFlag( Console::Flags::DECORATE_THREAD_ID, false );
-        Console::ToggleFlag( Console::Flags::DECORATE_FRAME,     false );
-        Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY,  false );
 
         Console::errorfn( "-------------------------------------------------------\n\n" );
         Console::errorfn( "{}", pshader );
         Console::errorfn( "\n\n-------------------------------------------------------" );
 
-        Console::ToggleFlag( Console::Flags::DECORATE_TIMESTAMP, decorations[0] );
-        Console::ToggleFlag( Console::Flags::DECORATE_THREAD_ID, decorations[1] );
-        Console::ToggleFlag( Console::Flags::DECORATE_FRAME,     decorations[2] );
-        Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY,  decorations[3] );
     };
 
     if ( !shader.parse( &Resources, 100, false, messages ) )
@@ -266,6 +259,71 @@ bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* p
     return !spirv.empty();
 }
 
+bool SpirvHelper::UsesDrawIndex( const std::vector<unsigned int>& spirv, bool& usesDrawIndexOut ) noexcept
+{
+    usesDrawIndexOut = false;
+    if ( spirv.size() < 5u || spirv[0] != 0x07230203u )
+    {
+        return false;
+    }
+
+    bool hasEntryPoint = false;
+    for ( size_t index = 5u; index < spirv.size(); )
+    {
+        const unsigned int instruction = spirv[index];
+        const size_t wordCount = instruction >> 16u;
+        const unsigned int opcode = instruction & 0xFFFFu;
+        if ( wordCount == 0u || wordCount > spirv.size() - index )
+        {
+            return false;
+        }
+
+        if ( opcode == SpvOpEntryPoint )
+        {
+            if ( wordCount < 4u )
+            {
+                return false;
+            }
+            hasEntryPoint = true;
+        }
+        else if ( opcode == SpvOpDecorate || opcode == SpvOpDecorateId || opcode == SpvOpDecorateString )
+        {
+            if ( wordCount < 3u )
+            {
+                return false;
+            }
+            if ( spirv[index + 2u] == SpvDecorationBuiltIn )
+            {
+                if ( wordCount < 4u )
+                {
+                    return false;
+                }
+                usesDrawIndexOut = usesDrawIndexOut || opcode != SpvOpDecorate ||
+                                   spirv[index + 3u] == SpvBuiltInDrawIndex;
+            }
+        }
+        else if ( opcode == SpvOpMemberDecorate || opcode == SpvOpMemberDecorateString )
+        {
+            if ( wordCount < 4u )
+            {
+                return false;
+            }
+            if ( spirv[index + 3u] == SpvDecorationBuiltIn )
+            {
+                if ( wordCount < 5u )
+                {
+                    return false;
+                }
+                usesDrawIndexOut = usesDrawIndexOut || opcode != SpvOpMemberDecorate ||
+                                   spirv[index + 4u] == SpvBuiltInDrawIndex;
+            }
+        }
+        index += wordCount;
+    }
+
+    return hasEntryPoint;
+}
+
 namespace
 {
     using namespace Divide;
@@ -282,24 +340,97 @@ namespace
             case ShaderType::MESH:              return ShaderStageVisibility::MESH;
             case ShaderType::TASK:              return ShaderStageVisibility::TASK;
 
-            default:
-            case ShaderType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+            case ShaderType::COUNT:
+            default:                            DIVIDE_UNEXPECTED_CALL();
         };
+    }
 
-        return ShaderStageVisibility::NONE;
+    [[nodiscard]] bool CollectVertexInputs( const SpvReflectShaderModule& module, AttributeFlags& inputs )
+    {
+        U32 count = 0u;
+        if ( spvReflectEnumerateInputVariables( &module, &count, nullptr ) != SPV_REFLECT_RESULT_SUCCESS )
+        {
+            return false;
+        }
+
+        std::vector<SpvReflectInterfaceVariable*> variables( count );
+        if ( count > 0u && spvReflectEnumerateInputVariables( &module, &count, variables.data() ) != SPV_REFLECT_RESULT_SUCCESS )
+        {
+            return false;
+        }
+
+        inputs.fill( false );
+        for ( const SpvReflectInterfaceVariable* variable : variables )
+        {
+            if ( variable == nullptr )
+            {
+                Console::errorfn( "SPIR-V reflection returned a null vertex input." );
+                return false;
+            }
+            if ( variable->built_in != -1 )
+            {
+                continue;
+            }
+
+            const size_t firstLocation = to_size( variable->location );
+            if ( variable->member_count != 0u || variable->numeric.scalar.width == 0u ||
+                 variable->numeric.scalar.width > 32u || firstLocation >= inputs.size() )
+            {
+                Console::errorfn( "Unsupported vertex shader input '{}' at location {}.",
+                                  variable->name != nullptr ? variable->name : "<unnamed>", variable->location );
+                return false;
+            }
+
+            size_t locationCount = std::max( size_t{ 1u }, to_size( variable->numeric.matrix.column_count ) );
+            const size_t availableLocations = inputs.size() - firstLocation;
+            for ( U32 i = 0u; i < variable->array.dims_count; ++i )
+            {
+                const size_t dimension = to_size( variable->array.dims[i] );
+                if ( dimension == 0u || locationCount > availableLocations / dimension )
+                {
+                    Console::errorfn( "Vertex shader input '{}' exceeds the supported attribute locations.",
+                                      variable->name != nullptr ? variable->name : "<unnamed>" );
+                    return false;
+                }
+                locationCount *= dimension;
+            }
+            if ( locationCount > availableLocations )
+            {
+                Console::errorfn( "Vertex shader input '{}' exceeds the supported attribute locations.",
+                                  variable->name != nullptr ? variable->name : "<unnamed>" );
+                return false;
+            }
+            for ( size_t location = firstLocation; location < firstLocation + locationCount; ++location )
+            {
+                inputs[location] = true;
+            }
+        }
+        return true;
     }
 }
 
 bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, const std::vector<unsigned int>& spirv, const Divide::RenderAPI renderAPI, Divide::Reflection::Data& reflectionDataInOut )
 {
+    PROFILE_SCOPE( "Shader SPIR-V reflection", Divide::Profiler::Category::Streaming );
+
     SpvReflectShaderModule module;
     SpvReflectResult result = spvReflectCreateShaderModule( spirv.size() * sizeof( unsigned int ), spirv.data(), &module );
     if ( result != SPV_REFLECT_RESULT_SUCCESS )
     {
         return false;
     }
+    const std::unique_ptr<SpvReflectShaderModule, decltype( &spvReflectDestroyShaderModule )> moduleScope{
+        &module, &spvReflectDestroyShaderModule
+    };
     uint32_t count = 0u;
-    if ( shader_type == ShaderType::FRAGMENT )
+    if ( shader_type == ShaderType::VERTEX )
+    {
+        if ( !CollectVertexInputs( module, reflectionDataInOut._vertexInputs ) )
+        {
+            return false;
+        }
+    }
+    else if ( shader_type == ShaderType::FRAGMENT )
     {
         result = spvReflectEnumerateOutputVariables( &module, &count, nullptr );
         if ( result != SPV_REFLECT_RESULT_SUCCESS )
@@ -372,7 +503,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
             case SpvDim2D: target._textureType = target._isArray ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D; break;
             case SpvDim3D: target._textureType = TextureType::TEXTURE_3D; break;
             case SpvDimCube: target._textureType = target._isArray ? TextureType::TEXTURE_CUBE_ARRAY : TextureType::TEXTURE_CUBE_MAP; break;
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
         if ( binding.name != nullptr && strlen( binding.name ) > 0 )
         {
@@ -575,8 +706,6 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
             }
         }
     }
-
-    spvReflectDestroyShaderModule( &module );
 
     return true;
 }

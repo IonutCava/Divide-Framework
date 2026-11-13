@@ -32,13 +32,26 @@
 ## Conventions and safe changes
 
 - Start with a data-oriented design: favor batch processing, cache-friendly access, parallelism, and minimal overhead. Keep OOP, virtual dispatch, and large objects minimal; they are acceptable for high-level orchestration, not the default for performance-sensitive engine code.
+- Keep cross-system contracts generic. Scene/game features own their policy and translate it into bounds, masks, capabilities or invalidation requests; rendering infrastructure must not know feature names such as trees or wind. See [Rendering](docs/architecture/rendering.md#cross-system-boundaries).
 - Avoid unnecessary memory allocations. Prefer appropriately sized arrays, reusable capacity/high-water-mark allocations, and existing arena allocators. Keep `new`/`delete` and `malloc`/`free` out of the main rendering loop except where unavoidable and explicitly justified; reuse or preallocate storage instead.
+- Prefer value/POD-like records in pre-sized contiguous storage over a separate `unique_ptr` allocation per render record. Stable addresses alone do not justify per-record heap allocation when the capacity is bounded. Create executors and reserve predictable view storage during subsystem/scene initialization; document any remaining first-use or capacity-growth allocations rather than calling a high-water-mark path allocation-free.
+- For genuinely dynamic storage, prefer the existing `MemoryPool`, `ObjectPool`, uniform upload arena and backend allocators when suitable; do not introduce a custom allocator unnecessarily. Pool allocation still has block-growth, bookkeeping and possible synchronization costs, so preserve alignment, lifetime and thread ownership and measure the hot path.
+- Use the existing `Attorney` pattern for access to private/protected members, including test access. Expose only the required operations through the attorney; do not add direct caller/test friendship or make implementation details public to bypass encapsulation.
+- Prefer EASTL containers and algorithms over suitable STL equivalents, using existing engine aliases where available. Use a faster suitable alternative, such as a concurrent queue or flat hash map, when appropriate; preserve the required ordering, lifetime, and thread-safety guarantees. Evaluate performance-sensitive choices in the intended Debug configuration as well.
 - Keep code cross-platform across Windows, Linux, and macOS on both x64 and arm64. Avoid unguarded platform APIs or architecture-specific assumptions; provide appropriate portable paths for SIMD, alignment, and platform functionality.
 - Reuse target variables in `Source/CMakeLists.txt`: `APP_LIB_DIVIDE`, `APP_EXE_DIVIDE`, `APP_EXE_PROJECT_MANAGER`.
 - Keep compile flags centralized in `DIVIDE_COMPILE_OPTIONS` / `THIRD_PARTY_COMPILE_OPTIONS`; reuse shared lists instead of duplicating warning flags. Preserve third-party warning suppressions.
+- Preserve intentional formatting-only expressions used to align related code, even when they are functionally redundant (for example, `x * 1`, `y * 2`, `z * 3`). Do not simplify or remove these alignment anchors when editing nearby code.
+- Put copyright headers before include guards; files using `#pragma once` may keep that directive first, with the copyright header immediately after it.
+- Put opening braces for scopes on their own line.
+- End every source, configuration, and documentation file with a newline.
+- Prefer engine numeric aliases (`U8`, `U16`, `U32`, `U64`, `I8`, `I16`, `I32`, `I64`, `F32`, `D64`) over standard fixed-width aliases. Use `size_t` for container sizes and indices.
+- Keep common or heavy headers in `Source/EngineIncludes_pch.h` rather than adding them to individual implementation files or broadly included headers.
+- Name `static constexpr` functions in PascalCase.
 - Preserve CMake variables/presets; expose new feature flags through `CMakePresets.json`.
 - For platform changes, inspect `Source/Platform/` and platform cache variables in `CMakePresets.json`, such as `WINDOWS_OS_BUILD` and `MAC_OS_BUILD`.
 - Editing `Source/EngineIncludes_pch.h` or `Source/CEGUIIncludes_pch.h` can trigger a full rebuild.
+- In code that includes engine headers, use the engine's numeric conversion helpers (`to_U32`, `to_I32`, `to_U64`, `to_F32`, `to_size`, ...) from `Source/Platform/Headers/PlatformDataTypes.h` instead of `static_cast` to numeric types; they validate conversions at runtime. Sources that deliberately avoid engine headers (for example `Source/UnitTests/ShaderMathRunner.cpp` and `Source/Rendering/Lighting/Headers/ShadowPassState.h`) keep standard casts.
 
 ## Build and agent/CI validation
 
@@ -50,10 +63,31 @@
 - Internal Catch2 tests live in `Source/UnitTests`; `BUILD_TESTING_INTERNAL` and `RUN_TESTING_INTERNAL` control them.
 - Consult `.github/workflows/Windows.yml`, `.github/workflows/Linux.yml`, `.github/workflows/MacOS.yml`, and their referenced actions for CI build configuration.
 - Start with the smallest relevant build/test selection; expand when results require it.
-- Unit tests are for engine code only. Do not add or retain automated tests for
-  CMake helpers, build-timing tools, CI orchestration, or the build environment.
+- Add Catch2 unit tests in `Source/UnitTests` for new engine functionality.
+  Unit tests are for engine code only.
+  Do not add or retain Python-based or other external-tool-driven automated test harnesses.
+  Do not add or retain automated tests for CMake helpers, build-timing tools, CI orchestration, or the build environment.
 - Distinguish checks actually run from checks not run or blocked. Local success does not establish success on other platforms or in CI.
+- On runtime failures (asserts, crashes, GPU/device-loss, startup issues), inspect `Logs/errors.log` and `Logs/console.log` before concluding root cause. If files are locked while debugging, stop the process and re-read them immediately after exit.
 - Documentation-only changes require no build unless they affect an executable example or have a dedicated documentation check.
+
+### Local framework smoke diagnosis
+
+The opt-in Windows runner and its safety contract are described in
+[Rendering](docs/architecture/rendering.md#framework-smoke-diagnosis). Run
+`powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tools\FrameworkSmokeTest.ps1 -OutputRoot <absolute-directory-outside-checkout>`
+for one build/test/renderer attempt; use `-PreflightOnly` to check the local
+probe, debugger and process watchdog without launching the renderer. The runner
+chooses build parallelism from available CPU and memory; `-BuildJobs` overrides it.
+It reuses a verified instrumented CMake configuration when preset/dependency
+inputs are unchanged; Ninja still regenerates modified build files.
+Diagnose and repair the recorded failure before the next invocation. Device
+loss or a suspected GPU hang requires the same-GPU recovery probe before a
+new renderer run. Use `-ApproveStalledDeviceLoss` only after the user explicitly
+approves the pending no-progress pause. Artifacts and dumps remain local.
+The user approved logging, without aborting, the single best-practices advisory
+for `VK_EXT_custom_border_color`; every other Vulkan warning and every error
+remains fatal. A successful run can therefore contain that recorded advisory.
 
 ### Canonical validation and dependency provisioning
 
@@ -85,7 +119,8 @@ and overlays. vcpkg checks package ABIs before reuse. Per-run keys save new arch
 after configuration, before engine compilation, even if compilation/tests later fail.
 Installed trees and engine outputs are not cached. Compare archive counts and
 package-restoration logs across two runs to distinguish cold and warm builds.
-Checkout and cache actions use Node.js 24-compatible releases (v5); keep nested
+Platform CI checkout and shared cache actions use Node.js 24-compatible v5
+releases; other workflows may pin different checkout versions. Keep nested
 composite-action references aligned to avoid deprecated Node.js 20 runtimes.
 
 Actions-backed Copilot setup installs Ubuntu prerequisites and configures
@@ -93,6 +128,12 @@ Actions-backed Copilot setup installs Ubuntu prerequisites and configures
 checkout cleanup. It shares matching Linux CI caches, not Windows binaries. Cold
 setup can exceed the 59-minute limit; prime caches in regular CI if needed. Setup
 must reach the default branch to affect future sessions.
+
+Copilot code review uses the separate `copilot-code-review.yml` setup workflow
+to avoid falling back to the cloud agent's full dependency provisioning.
+Keep it lightweight and manual-only (`workflow_dispatch`). It must still be a
+valid Actions workflow with a trigger and job steps; otherwise GitHub reports
+workflow-validation failures on pushes even without a push trigger.
 
 On configured Ubuntu agents, supplementary checks are:
 
@@ -111,6 +152,13 @@ ASan/UBSan configuration applies to project targets, not preinstalled vcpkg
 dependencies. `ConfigureSanitizers.cmake` runs after manifest provisioning;
 its late `VCPKG_BUILD_TYPE` cache assignment does not rebuild or instrument
 dependencies. Do not report sanitizer runs as dependency instrumentation.
+
+The `test-*-asan-ubsan` presets inherit `test-sanitizer-common`: unlike
+`test-common`, it keeps running after a failing test, so one CTest pass lists
+every failure, and it sets `UBSAN_OPTIONS`/`ASAN_OPTIONS` for stack traces,
+error-type names and `addr2line` symbolization. `-fno-sanitize-recover=all` still
+aborts each test process at its first finding, and any failing test still fails
+the job.
 
 Windows matrix steps invoke CMake/CTest presets directly after MSVC setup.
 Do not reinitialize MSVC through `run-cmake`: its automatic `vcpkg env` lookup
@@ -147,6 +195,8 @@ NVTT remains available for DDS cache compression until a replacement
 covers that functionality as well.
 The NVTT overlay removes upstream `-march=native`: cached dependency archives
 must use the target toolchain's baseline, not the cache producer's CPU ISA.
+It also accepts 48-bit user addresses in NVTT's debug pointer checks (see
+[Asset pipeline](docs/architecture/asset-pipeline.md)).
 
 Boost.Asio uses monotonic `steady_timer` deadlines, without its optional
 deadline-timer and coroutine/spawn features. Scene registration uses a local
@@ -186,11 +236,16 @@ override is the exception to strict rejection of unsupported x86 requests.
 | Task | Read |
 |---|---|
 | Command submission, render stages, lighting, PostFX, feature integration | [Rendering](docs/architecture/rendering.md) |
+| Instrumented renderer profiling and frame-time investigations | [Performance diagnosis](docs/architecture/rendering.md#performance-diagnosis) |
+| Supervised GL/Vulkan smoke tests, validation, captures, GPU recovery | [Rendering](docs/architecture/rendering.md#framework-smoke-diagnosis), [GPU resources](docs/architecture/gpu-resources.md#vulkan-smoke-readback-and-recovery) |
 | GLSL/SPIR-V, reflection, shader caches, descriptor bindings | [Shaders and descriptors](docs/architecture/shader-descriptors.md) |
 | GL/Vulkan allocation, uploads, device capabilities, presentation conventions | [GPU resources](docs/architecture/gpu-resources.md) |
 | Mesh import, LoD, vertex layout, texture decode/cache | [Asset pipeline](docs/architecture/asset-pipeline.md) |
+| Project/scene selection, scene graph, transforms, bounds, XML and saves | [Scene loading](docs/architecture/scene-loading.md) |
+| Editor windows, docking, properties, undo, gizmos and output | [Editor windows](docs/architecture/editor.md) |
 | Task pools, dirty ranges, asynchronous work, queue synchronization | [Threading](docs/architecture/threading.md) |
 | Client connections, heartbeat timers, networking test fixtures | [Networking](docs/architecture/networking.md) |
+| Assertions and fatal unexpected calls | [Assertion contract](docs/architecture/index.md#assertions-and-fatal-calls) |
 
 ## Continuous integration
 

@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -36,7 +36,9 @@
 #include "ParticleSource.h"
 #include "ParticleUpdater.h"
 #include "Graphs/Headers/SceneNode.h"
+#include "Platform/Threading/Headers/SharedMutex.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
+#include "Platform/Video/Headers/GenericDrawCommand.h"
 
 /// original source code:
 /// https://github.com/fenbf/particles/blob/public/particlesCode
@@ -80,20 +82,26 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
     }
 
     [[nodiscard]] U32 getAliveParticleCount() const noexcept;
+    [[nodiscard]] bool boundsInWorldSpace() const noexcept override { return true; }
 
    protected:
-    static constexpr U8 s_MaxPlayerBuffers = 4;
-    using ParticleBufferHandles = std::array<GPUBuffer::Handle, 4u>; // index, geometry, position, colour
-    using ParticleBuffers = std::array<GPUBuffer_ptr, 4u>; // index, geometry, position, colour
-    using BuffersPerStage = std::array<ParticleBuffers, to_base(RenderStage::COUNT)>;
-    using BuffersPerPlayer = std::array<BuffersPerStage, s_MaxPlayerBuffers>;
-    using HandlesPerStage = std::array<ParticleBufferHandles, to_base(RenderStage::COUNT)>;
-    using HandlesPerPlayer = std::array<HandlesPerStage, s_MaxPlayerBuffers>;
-
-    struct ParticleBufferRet
+    using ParticleBufferHandles = std::array<GPUBuffer::Handle, 4u>; // geometry, position, colour, index
+    struct ParticleUpload
     {
-        GPUBuffer_ptr* _buffers{nullptr};
-        GPUBuffer::Handle* _handles{nullptr};
+        GPUBuffer_ptr _positions;
+        GPUBuffer_ptr _colours;
+        ParticleBufferHandles _handles{};
+        GenericDrawCommandContainer _commands;
+        std::array<BufferLock, 2> _locks{};
+        float3 _eye{};
+        bool _uploaded = false;
+    };
+
+    struct ParticleFrameUploads
+    {
+        vector<std::unique_ptr<ParticleUpload>> _slots;
+        U64 _frame = U64_MAX;
+        size_t _used = 0u;
     };
 
     /// preprocess particles here
@@ -103,10 +111,12 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
 
     void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
-    [[nodiscard]] ParticleBufferRet getDataBuffer(RenderStage stage, PlayerIndex idx);
+    [[nodiscard]] ParticleUpload& getUpload(U64 frame, const float3& eye);
 
    private:
+    friend struct ParticleEmitterTestAccess;
     std::shared_ptr<ParticleData> _particles;
+    U32 _geometryIndexCount = 0u;
 
     vector<std::shared_ptr<ParticleSource>> _sources;
     vector<std::shared_ptr<ParticleUpdater>> _updaters;
@@ -116,12 +126,11 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
     /// draw the impostor?
     bool _drawImpostor = false;
 
-    BuffersPerPlayer _particleGPUBuffers{};
-    HandlesPerPlayer _particleGPUBufferHandles{};
-    std::array<bool, to_base(RenderStage::COUNT)> _buffersDirty{};
+    GPUBuffer_ptr _geometryBuffer;
+    GPUBuffer_ptr _indexBuffer;
+    std::array<ParticleFrameUploads, Config::MAX_FRAMES_IN_FLIGHT> _frameUploads;
+    Mutex _particleRenderLock;
 
-    Task* _bufferUpdate = nullptr;
-    Task* _bbUpdate = nullptr;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(ParticleEmitter);

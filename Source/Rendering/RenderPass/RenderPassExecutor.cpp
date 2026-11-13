@@ -1,10 +1,12 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/RenderPassExecutor.h"
 #include "Headers/RenderQueue.h"
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Editor/Headers/Editor.h"
 
@@ -23,10 +25,12 @@
 #include "Platform/Video/Headers/RenderStateBlock.h"
 
 #include "Rendering/Headers/Renderer.h"
+#include "Rendering/Lighting/Headers/ShadowCasterBounds.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
 #include "Rendering/Camera/Headers/Camera.h"
 
 #include "Scenes/Headers/SceneState.h"
+#include "Scenes/Headers/Scene.h"
 
 #include "ECS/Components/Headers/AnimationComponent.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
@@ -41,6 +45,7 @@ namespace Divide
     {
         // Use to partition parallel jobs
         constexpr U32 g_nodesPerPrepareDrawPartition = 16u;
+        U64 g_nodePreparationEpoch = 0u;
 
         template<typename DataContainer>
         using ExecutorBuffer = RenderPassExecutor::ExecutorBuffer<DataContainer>;
@@ -68,56 +73,45 @@ namespace Divide
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-            RenderPassExecutor::BufferUpdateRange crtRange, prevRange;
+            RenderPassExecutor::BufferUpdateRange uploadRange;
             {
-                SharedLock<SharedMutex> w_lock( executorBuffer._rangeLock );
-                crtRange = executorBuffer._updateRange;
-                prevRange = executorBuffer._prevUpdateRange;
+                LockGuard<SharedMutex> w_lock( executorBuffer._rangeLock );
+                const size_t slotCount = executorBuffer._gpuBuffer->queueLength();
+                uploadRange = RenderPassExecutor::TakeBufferUpdateRange(
+                    executorBuffer._updateRange,
+                    std::span{ executorBuffer._slotUpdateRanges }.first( slotCount ),
+                    executorBuffer._gpuBuffer->queueIndex() );
             }
 
-            if (crtRange.range() > 0u)
+            if ( uploadRange.range() > 0u )
             {
-                if (executorBuffer._gpuBuffer->getPrimitiveSize() < executorBuffer._gpuBuffer->alignmentRequirement())
-                {
-                    // We need this due to alignment concerns
-                    if (crtRange._firstIDX % 2u != 0)
-                    {
-                        crtRange._firstIDX -= 1u;
-                    }
-                    if (crtRange._lastIDX % 2u == 0)
-                    {
-                        crtRange._lastIDX += 1u;
-                    }
-                }
+                uploadRange.alignStart( executorBuffer._gpuBuffer->getPrimitiveSize(),
+                                        executorBuffer._gpuBuffer->alignmentRequirement() );
 
-                executorBuffer._gpuBuffer->incQueue();
-                if (prevRange.range() > 0)
-                {
-                    crtRange._firstIDX = std::min(crtRange._firstIDX, prevRange._firstIDX);
-                    crtRange._lastIDX = std::max(crtRange._lastIDX, prevRange._lastIDX);
-                }
-
-                bufferPtr data = &executorBuffer._data._gpuData[crtRange._firstIDX];
-                memCmdInOut._bufferLocks.push_back(executorBuffer._gpuBuffer->writeData({ crtRange._firstIDX, crtRange.range() }, data));
+                bufferPtr data = &executorBuffer._data._gpuData[uploadRange._firstIDX];
+                memCmdInOut._bufferLocks.push_back( executorBuffer._gpuBuffer->writeData( { uploadRange._firstIDX, uploadRange.range() }, data ) );
             }
-
-            {
-                LockGuard<SharedMutex> w_lock(executorBuffer._rangeLock);
-                executorBuffer._updateRange.reset();
-                executorBuffer._prevUpdateRange = crtRange;
-            }
-
-            LockGuard<Mutex> w_lock(executorBuffer._nodeProcessedLock);
-            executorBuffer._nodeProcessedThisFrame.clear();
         }
 
         template<typename DataContainer>
-        bool NodeNeedsUpdate( ExecutorBuffer<DataContainer>& executorBuffer, const U32 indirectionIDX )
+        void MarkFullBufferUpload( ExecutorBuffer<DataContainer>& executorBuffer )
         {
-            PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
-            LockGuard<Mutex> w_lock( executorBuffer._nodeProcessedLock );
-            // Returns true if and only if the insertion took place! Since this is a set, we can only have unique instances of the ID
-            return executorBuffer._nodeProcessedThisFrame.insert(indirectionIDX).second;
+            LockGuard<SharedMutex> w_lock( executorBuffer._rangeLock );
+            std::ranges::fill( executorBuffer._slotUpdateRanges, RenderPassExecutor::BufferUpdateRange{} );
+            executorBuffer._updateRange.reset();
+            if ( !executorBuffer._data._gpuData.empty() )
+            {
+                executorBuffer._updateRange._firstIDX = 0u;
+                executorBuffer._updateRange._lastIDX = to_U32( executorBuffer._data._gpuData.size() - 1u );
+            }
+        }
+
+        void MarkMaterialUsed( RenderPassExecutor::MaterialLookupInfo& material ) noexcept
+        {
+            static_assert( alignof( RenderPassExecutor::MaterialLookupInfo ) >= std::atomic_ref<size_t>::required_alignment );
+            static_assert( offsetof( RenderPassExecutor::MaterialLookupInfo, _framesSinceLastUsed ) %
+                           std::atomic_ref<size_t>::required_alignment == 0u );
+            std::atomic_ref<size_t>{ material._framesSinceLastUsed }.store( 0u, std::memory_order_relaxed );
         }
 
         template<typename DataContainer>
@@ -132,10 +126,7 @@ namespace Divide
             {
                 LockGuard<SharedMutex> w_lock(executorBuffer._rangeLock);
                 executorBuffer._updateRange.reset();
-            }
-            {
-                LockGuard<Mutex> w_lock(executorBuffer._nodeProcessedLock);
-                executorBuffer._nodeProcessedThisFrame.clear();
+                std::ranges::fill( executorBuffer._slotUpdateRanges, RenderPassExecutor::BufferUpdateRange{} );
             }
         }
     }
@@ -147,8 +138,7 @@ namespace Divide
     ExecutorBuffer<RenderPassExecutor::BufferTransformData>   RenderPassExecutor::s_transformBuffer;
     ExecutorBuffer<RenderPassExecutor::BufferIndirectionData> RenderPassExecutor::s_indirectionBuffer;
     
-    Pipeline* RenderPassExecutor::s_OITCompositionPipeline = nullptr;
-    Pipeline* RenderPassExecutor::s_OITCompositionMSPipeline = nullptr;
+    std::array<Pipeline*, to_base( RenderPassExecutor::OITCompositionVariant::COUNT )> RenderPassExecutor::s_OITCompositionPipelines{};
     Pipeline* RenderPassExecutor::s_ResolveGBufferPipeline = nullptr;
 
 
@@ -163,21 +153,103 @@ namespace Divide
         _lastIDX = 0u;
     }
 
-    RenderPassExecutor::RenderPassExecutor( RenderPassManager& parent, GFXDevice& context, const RenderStage stage )
+    void RenderPassExecutor::BufferUpdateRange::alignStart( const size_t elementSize, const size_t alignment ) noexcept
+    {
+        if ( !DIVIDE_ASSERT( alignment > 0u && range() > 0u, "Invalid per-node buffer alignment or range" ) )
+        {
+            return;
+        }
+        while ( (to_size( _firstIDX ) * elementSize) % alignment != 0u )
+        {
+            --_firstIDX;
+        }
+    }
+
+    RenderPassExecutor::BufferUpdateRange RenderPassExecutor::TakeBufferUpdateRange( BufferUpdateRange& pending,
+                                                                                    const std::span<BufferUpdateRange> slots,
+                                                                                    const size_t slotIndex ) noexcept
+    {
+        DIVIDE_ASSERT( slotIndex < slots.size() );
+        if ( pending.range() > 0u )
+        {
+            for ( BufferUpdateRange& slot : slots )
+            {
+                slot._firstIDX = std::min( slot._firstIDX, pending._firstIDX );
+                slot._lastIDX = std::max( slot._lastIDX, pending._lastIDX );
+            }
+            pending.reset();
+        }
+
+        BufferUpdateRange result = slots[slotIndex];
+        slots[slotIndex].reset();
+        return result;
+    }
+
+    U16 RenderPassExecutor::BufferQueueLengthForPlayers( const U8 playerCount ) noexcept
+    {
+        DIVIDE_ASSERT( playerCount <= Config::MAX_LOCAL_PLAYER_COUNT );
+        return to_U16( (Config::MAX_FRAMES_IN_FLIGHT + 1u) * std::max( playerCount, U8_ONE ) );
+    }
+
+    RenderPassExecutor::RenderPassExecutor( RenderPassManager& parent, GFXDevice& context, const RenderStage stage, const U8 lane, const U8 laneCount )
         : _parent( parent )
         , _context( context )
         , _stage( stage )
+        , _lane( lane )
+        , _laneCount( laneCount )
+        , _occlusionSnapshots( TotalPassCountForStage( stage ) * Config::MAX_LOCAL_PLAYER_COUNT )
     {
+        if ( laneCount == 0u || lane >= laneCount )
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG( "Invalid render executor lane" );
+        }
         _renderQueue = std::make_unique<RenderQueue>( parent.parent(), stage );
+    }
 
+    ShaderBuffer_uptr RenderPassExecutor::createCommandBuffer( const PlayerIndex index, const size_t pageIndex, const U32 overflowCapacity ) const
+    {
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
         bufferDescriptor._usageType = BufferUsageType::COMMAND_BUFFER;
-        bufferDescriptor._elementCount = Config::MAX_VISIBLE_NODES * TotalPassCountForStage( stage );
+        const U32 passCount = (TotalPassCountForStage( _stage ) + _laneCount - 1u) / _laneCount;
+        bufferDescriptor._elementCount = overflowCapacity > 0u ? overflowCapacity : Config::MAX_VISIBLE_NODES * passCount;
         bufferDescriptor._elementSize = sizeof( IndirectIndexedDrawCommand );
-        bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
-        Util::StringFormatTo( bufferDescriptor._name, "CMD_DATA_{}", TypeUtil::RenderStageToString( stage ) );
-        _cmdBuffer = _context.newShaderBuffer( bufferDescriptor );
+        bufferDescriptor._ringBufferLength = IndirectCommandBufferTracker::QUEUE_LENGTH;
+        if ( overflowCapacity > 0u )
+        {
+            Util::StringFormatTo( bufferDescriptor._name, "CMD_DATA_{}_PLAYER_{}_OVERFLOW_{}",
+                                  TypeUtil::RenderStageToString( _stage ), index, pageIndex );
+        }
+        else if ( index == 0u && pageIndex == 0u )
+        {
+            Util::StringFormatTo( bufferDescriptor._name, "CMD_DATA_{}", TypeUtil::RenderStageToString( _stage ) );
+        }
+        else
+        {
+            Util::StringFormatTo( bufferDescriptor._name, "CMD_DATA_{}_PLAYER_{}_PAGE_{}",
+                                  TypeUtil::RenderStageToString( _stage ), index, pageIndex );
+        }
+        if ( _laneCount > 1u )
+        {
+            bufferDescriptor._name.append( Util::StringFormat( "_LANE_{}", _lane ).c_str() );
+        }
+        ShaderBuffer_uptr buffer = _context.newShaderBuffer( bufferDescriptor );
+        if ( buffer == nullptr )
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG( "Failed to create indirect command buffer" );
+        }
+        return buffer;
+    }
+
+    void RenderPassExecutor::prepareCommandBuffers( const PlayerIndex index )
+    {
+        _lightDataBinding = {};
+        if ( index >= _commandBuffers.size() )
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG( "Invalid indirect command buffer player" );
+        }
+        PlayerCommandBuffers& buffers = _commandBuffers[index];
+        buffers._tracker.beginFrame();
     }
 
     void RenderPassExecutor::OnStartup( GFXDevice& gfx )
@@ -190,14 +262,14 @@ namespace Divide
         s_transformBuffer._data._freeList.resize(Config::MAX_VISIBLE_NODES, true);
         s_materialBuffer._data._gpuData.resize(Config::MAX_CONCURRENT_MATERIALS);
         s_materialBuffer._data._freeList.resize(Config::MAX_CONCURRENT_MATERIALS);
-        ResizeGPUBuffers(gfx, Config::MAX_VISIBLE_NODES, Config::MAX_VISIBLE_NODES, Config::MAX_CONCURRENT_MATERIALS);
+        ResizeGPUBuffers(gfx, Config::MAX_VISIBLE_NODES, Config::MAX_VISIBLE_NODES, Config::MAX_CONCURRENT_MATERIALS,
+                         BufferQueueLengthForPlayers( 1u ));
     }
 
     void RenderPassExecutor::OnShutdown( [[maybe_unused]] GFXDevice& gfx )
     {
         s_globalDataInit = false;
-        s_OITCompositionPipeline = nullptr;
-        s_OITCompositionMSPipeline = nullptr;
+        s_OITCompositionPipelines.fill( nullptr );
         s_ResolveGBufferPipeline = nullptr;
         Reset(s_materialBuffer);
         Reset(s_transformBuffer);
@@ -206,19 +278,31 @@ namespace Divide
         Material::OnShutdown();
     }
 
-    void RenderPassExecutor::PrepareGPUBuffers(GFXDevice& context)
+    void RenderPassExecutor::PrepareGPUBuffers(GFXDevice& context, const U8 playerCount)
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
-        if (s_resizeBufferQueued)
+        if ( g_nodePreparationEpoch == U64_MAX )
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG( "Node preparation epoch exhausted" );
+        }
+        ++g_nodePreparationEpoch;
+
+        const U16 requiredRingLength = BufferQueueLengthForPlayers( playerCount );
+        const U16 ringLength = std::max( requiredRingLength, s_indirectionBuffer._gpuBuffer->queueLength() );
+        if (s_resizeBufferQueued || ringLength != s_indirectionBuffer._gpuBuffer->queueLength())
         {
             const size_t indirectionCount = s_indirectionBuffer._data._gpuData.size();
             const size_t transformCount = s_transformBuffer._data._gpuData.size();
             const size_t materialCount = s_materialBuffer._data._gpuData.size();
 
-            ResizeGPUBuffers(context, indirectionCount, transformCount, materialCount);
+            ResizeGPUBuffers(context, indirectionCount, transformCount, materialCount, ringLength);
             s_resizeBufferQueued = false;
         }
+
+        s_materialBuffer._gpuBuffer->incQueue();
+        s_transformBuffer._gpuBuffer->incQueue();
+        s_indirectionBuffer._gpuBuffer->incQueue();
     }
 
     void RenderPassExecutor::FlushBuffersToGPU(GFX::MemoryBarrierCommand& memCmdInOut)
@@ -246,53 +330,58 @@ namespace Divide
         }
     }
 
-    void RenderPassExecutor::ResizeGPUBuffers(GFXDevice& context, const size_t indirectionCount, const size_t transformCount, const size_t materialCount)
+    void RenderPassExecutor::ResizeGPUBuffers(GFXDevice& context, const size_t indirectionCount, const size_t transformCount, const size_t materialCount, const U16 ringLength)
     {
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
         bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
-        bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
+        bufferDescriptor._ringBufferLength = ringLength;
 
-        if (s_materialBuffer._gpuBuffer == nullptr || s_materialBuffer._gpuBuffer->getPrimitiveCount() != to_U32(materialCount))
+        if (s_materialBuffer._gpuBuffer == nullptr || s_materialBuffer._gpuBuffer->getPrimitiveCount() != to_U32(materialCount) ||
+            s_materialBuffer._gpuBuffer->queueLength() != ringLength)
         {
             bufferDescriptor._elementCount = to_U32(materialCount);
             bufferDescriptor._elementSize = sizeof(NodeMaterialData);
             bufferDescriptor._name = "NODE_MATERIAL_DATA";
             if (!s_materialBuffer._data._gpuData.empty())
             {
-                bufferDescriptor._initialData = { s_materialBuffer._data._gpuData.data(), s_materialBuffer._data._gpuData.size() };
+                bufferDescriptor._initialData = { s_materialBuffer._data._gpuData.data(), s_materialBuffer._data._gpuData.size() * sizeof(NodeMaterialData) };
             }
 
             s_materialBuffer._gpuBuffer = context.newShaderBuffer(bufferDescriptor);
+            MarkFullBufferUpload( s_materialBuffer );
         }
-        if (s_transformBuffer._gpuBuffer == nullptr || s_transformBuffer._gpuBuffer->getPrimitiveCount() != to_U32(transformCount))
+        if (s_transformBuffer._gpuBuffer == nullptr || s_transformBuffer._gpuBuffer->getPrimitiveCount() != to_U32(transformCount) ||
+            s_transformBuffer._gpuBuffer->queueLength() != ringLength)
         {
             bufferDescriptor._elementCount = to_U32(transformCount);
             bufferDescriptor._elementSize = sizeof(NodeTransformData);
             bufferDescriptor._name = "NODE_TRANSFORM_DATA";
             if (!s_transformBuffer._data._gpuData.empty())
             {
-                bufferDescriptor._initialData = { s_transformBuffer._data._gpuData.data(), s_transformBuffer._data._gpuData.size() };
+                bufferDescriptor._initialData = { s_transformBuffer._data._gpuData.data(), s_transformBuffer._data._gpuData.size() * sizeof(NodeTransformData) };
             }
 
             s_transformBuffer._gpuBuffer = context.newShaderBuffer(bufferDescriptor);
+            MarkFullBufferUpload( s_transformBuffer );
         }
-        if (s_indirectionBuffer._gpuBuffer == nullptr || s_indirectionBuffer._gpuBuffer->getPrimitiveCount() != to_U32(indirectionCount))
+        if (s_indirectionBuffer._gpuBuffer == nullptr || s_indirectionBuffer._gpuBuffer->getPrimitiveCount() != to_U32(indirectionCount) ||
+            s_indirectionBuffer._gpuBuffer->queueLength() != ringLength)
         {
             bufferDescriptor._elementCount = to_U32(indirectionCount);
             bufferDescriptor._elementSize = sizeof(NodeIndirectionData);
             bufferDescriptor._name = "NODE_INDIRECTION_DATA";
             if (!s_indirectionBuffer._data._gpuData.empty())
             {
-                bufferDescriptor._initialData = { s_indirectionBuffer._data._gpuData.data(), s_indirectionBuffer._data._gpuData.size() };
+                bufferDescriptor._initialData = { s_indirectionBuffer._data._gpuData.data(), s_indirectionBuffer._data._gpuData.size() * sizeof(NodeIndirectionData) };
             }
             s_indirectionBuffer._gpuBuffer = context.newShaderBuffer(bufferDescriptor);
+            MarkFullBufferUpload( s_indirectionBuffer );
         }
     }
 
     void RenderPassExecutor::PostInit( GFXDevice& context,
-                                       const Handle<ShaderProgram> OITCompositionShader,
-                                       const Handle<ShaderProgram> OITCompositionShaderMS,
+                                       const OITCompositionShaders& OITShaders,
                                        const Handle<ShaderProgram> ResolveGBufferShaderMS )
     {
         if ( !s_globalDataInit )
@@ -312,13 +401,35 @@ namespace Divide
             state0.blendOp( BlendOperation::ADD );
             state0.blendSrc( BlendProperty::INV_SRC_ALPHA );
             state0.blendDest( BlendProperty::ONE );
+            state0.blendOpAlpha( BlendOperation::ADD );
+            state0.blendSrcAlpha( BlendProperty::ZERO );
+            state0.blendDestAlpha( BlendProperty::ONE );
 
-            pipelineDescriptor._shaderProgramHandle = OITCompositionShader;
-            s_OITCompositionPipeline = context.newPipeline( pipelineDescriptor );
+            BlendingSettings& normalState = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::NORMALS )];
+            normalState.blendOp( BlendOperation::ADD );
+            normalState.blendSrc( BlendProperty::SRC_ALPHA );
+            normalState.blendDest( BlendProperty::INV_SRC_ALPHA );
+            normalState.blendOpAlpha( BlendOperation::ADD );
+            normalState.blendSrcAlpha( BlendProperty::ZERO );
+            normalState.blendDestAlpha( BlendProperty::ONE );
 
-            pipelineDescriptor._shaderProgramHandle = OITCompositionShaderMS;
-            s_OITCompositionMSPipeline = context.newPipeline( pipelineDescriptor );
+            for ( const bool writeNormals : { false, true } )
+            {
+                normalState.enabled( writeNormals );
+                for ( const bool useMSAA : { false, true } )
+                {
+                    const auto variant = SelectOITCompositionVariant( writeNormals, useMSAA );
+                    pipelineDescriptor._shaderProgramHandle = OITShaders[to_base( variant )];
+                    s_OITCompositionPipelines[to_base( variant )] = context.newPipeline( pipelineDescriptor );
+                }
+            }
         }
+    }
+
+    bool RenderPassExecutor::NodeNeedsUpdate( RenderingComponent* const rComp, const U8 dataType )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+        return Attorney::RenderingCompRenderPassExecutor::claimNodePreparation( rComp, dataType, g_nodePreparationEpoch );
     }
 
     RenderPassExecutor::ParseResult RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp, const D64 interpolationFactor, U32& transformIDXOut)
@@ -327,8 +438,7 @@ namespace Divide
 
         ParseResult ret{};
 
-        const U32 indirectionIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry( rComp );
-        if ( !NodeNeedsUpdate( s_transformBuffer, indirectionIDX ) )
+        if ( !NodeNeedsUpdate( rComp, TRANSFORM_IDX ) )
         {
             return ret;
         }
@@ -434,13 +544,14 @@ namespace Divide
 
         ParseResult ret{};
         indirectionIDXOut = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry(rComp);
-        U32 materialIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionNodeData(rComp)._materialIDX;
 
-        if (!NodeNeedsUpdate(s_materialBuffer, indirectionIDXOut))
+        if ( !NodeNeedsUpdate( rComp, MATERIAL_IDX ) )
         {
-            materialIDXOut = materialIDX;
             return ret;
         }
+        const NodeIndirectionData& nodeData = Attorney::RenderingCompRenderPassExecutor::getIndirectionNodeData( rComp );
+        U32 materialIDX = nodeData._materialIDX;
+        ret._updateIndirection = s_indirectionBuffer._data._gpuData[indirectionIDXOut].setInstanceDataOffset( nodeData._instanceDataOffset );
 
         NodeMaterialData tempData{};
         // Get the colour matrix (base colour, metallic, etc)
@@ -457,6 +568,7 @@ namespace Divide
             if (materialIDX != NodeIndirectionData::INVALID_IDX &&
                 s_materialBuffer._data._freeList[materialIDX]._hash == materialHash)
             {
+                MarkMaterialUsed( s_materialBuffer._data._freeList[materialIDX] );
                 materialIDXOut = materialIDX;
                 return ret;
             }
@@ -465,11 +577,12 @@ namespace Divide
             // Otherwise, we have an updated material, so try to match against a different one first
             for ( size_t idx = 0u; idx < infoContainer.size(); ++idx )
             {
-                auto& [hash, framesSinceLastUsed ] = infoContainer[idx];
-                if ( hash == materialHash )
+                auto& entry = infoContainer[idx];
+                if ( entry._hash == materialHash )
                 {
-                    framesSinceLastUsed = 0u;
-                    Attorney::RenderingCompRenderPassExecutor::setMaterialIDX(rComp, to_U32(idx));
+                    MarkMaterialUsed( entry );
+                    materialIDX = to_U32( idx );
+                    Attorney::RenderingCompRenderPassExecutor::setMaterialIDX(rComp, materialIDX);
                     materialIDXOut = materialIDX;
 
                     ret._updateIndirection = true;
@@ -620,15 +733,13 @@ namespace Divide
         return N == 0u ? L : N;
     }
 
-    size_t RenderPassExecutor::buildDrawCommands( const PlayerIndex index, const RenderPassParams& params, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+    RenderPassExecutor::PreparedNodeData RenderPassExecutor::buildDrawCommands( const PlayerIndex index, const RenderPassParams& params, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         constexpr bool doMainPass = true;
 
-        RenderPass::PassData passData = _parent.getPassForStage( _stage ).getPassData();
-
-        _drawCommands.clear();
+        RenderPass::PassData passData = this->passData();
 
         for ( RenderBin::SortedQueue& sQueue : _sortedQueues )
         {
@@ -648,12 +759,11 @@ namespace Divide
                       } );
         }
 
-        bool updateTaskDirty = false;
 
         const D64 interpFactor = GFXDevice::FrameInterpolationFactor();
 
         TaskPool& pool = _context.context().taskPool( TaskPoolType::RENDERER );
-        Task* updateTask = CreateTask( TASK_NOP );
+        TaskGroup updateTasks( pool );
         {
             PROFILE_SCOPE( "buildDrawCommands - process nodes: Transforms", Profiler::Category::Scene );
 
@@ -665,15 +775,14 @@ namespace Divide
                 if ( queueSize > g_nodesPerPrepareDrawPartition )
                 {
                     const U32 midPoint = queueSize / 2;
-                    pool.enqueue( *CreateTask( updateTask, [this, index, interpFactor, &queue, midPoint]( const Task& )
+                    updateTasks.enqueue( [this, index, interpFactor, &queue, midPoint]( const Task& )
                                         {
                                             parseTransformRange( queue, 0u, midPoint, index, interpFactor );
-                                        } ) );
-                    pool.enqueue( *CreateTask( updateTask, [this, index, interpFactor, &queue, midPoint, queueSize]( const Task& )
+                                        } );
+                    updateTasks.enqueue( [this, index, interpFactor, &queue, midPoint, queueSize]( const Task& )
                                         {
                                             parseTransformRange(queue, midPoint, queueSize, index, interpFactor );
-                                        } ) );
-                    updateTaskDirty = true;
+                                        } );
                 }
                 else
                 {
@@ -691,15 +800,14 @@ namespace Divide
                 if ( queueSize > g_nodesPerPrepareDrawPartition )
                 {
                     const U32 midPoint = queueSize / 2;
-                    pool.enqueue( *CreateTask( updateTask, [this, &queue, midPoint]( const Task& )
+                    updateTasks.enqueue( [this, &queue, midPoint]( const Task& )
                                         {
                                             parseMaterialRange( queue, 0u, midPoint );
-                                        } ) );
-                    pool.enqueue( *CreateTask( updateTask, [this, &queue, midPoint, queueSize]( const Task& )
+                                        } );
+                    updateTasks.enqueue( [this, &queue, midPoint, queueSize]( const Task& )
                                         {
                                             parseMaterialRange( queue, midPoint, queueSize );
-                                        } ) );
-                    updateTaskDirty = true;
+                                        } );
                 }
                 else
                 {
@@ -707,75 +815,121 @@ namespace Divide
                 }
             }
         }
-        if (updateTaskDirty) 
+        if ( !updateTasks.empty() )
         {
             PROFILE_SCOPE( "buildDrawCommands - process nodes: Waiting for tasks to finish", Profiler::Category::Scene );
-            pool.enqueue( *updateTask );
-            pool.wait( *updateTask );
+            updateTasks.wait();
         }
 
         RenderStagePass stagePass = params._stagePass;
-        const U32 startOffset = Config::MAX_VISIBLE_NODES * IndexForStage( stagePass );
-        const auto retrieveCommands = [&]()
+        const U16 passIndex = IndexForStage( stagePass );
+        if ( passIndex >= TotalPassCountForStage( _stage ) || passIndex % _laneCount != _lane )
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG( "Indirect command pass index exceeds its stage buffer" );
+        }
+        const U16 stageIndex = passIndex / _laneCount;
+        const auto retrieveCommands = [&]( const U32 startOffset )
         {
             for ( RenderBin::SortedQueue& queue : _sortedQueues )
             {
                 for ( RenderingComponent* rComp : queue )
                 {
+                    const size_t firstCommand = _drawCommands.size();
                     Attorney::RenderingCompRenderPass::retrieveDrawCommands( *rComp, stagePass, startOffset, _drawCommands );
+                    const auto [countSource, countElement] = Attorney::RenderingCompRenderPass::instanceCountSource( *rComp );
+                    if ( countSource != nullptr )
+                    {
+                        for ( size_t i = firstCommand; i < _drawCommands.size(); ++i )
+                        {
+                            _instanceCountPatches.push_back( { countSource, to_U32( i ), countElement } );
+                        }
+                    }
                 }
             }
         };
 
+        const auto retrieveAllCommands = [&]( const U32 startOffset )
         {
             const RenderPassType prevType = stagePass._passType;
+            _instanceCountPatches.clear();
             if ( doPrePass )
             {
                 PROFILE_SCOPE( "buildDrawCommands - retrieve draw commands: PRE_PASS", Profiler::Category::Scene );
                 stagePass._passType = RenderPassType::PRE_PASS;
-                retrieveCommands();
+                retrieveCommands( startOffset );
             }
             if ( doMainPass )
             {
                 PROFILE_SCOPE( "buildDrawCommands - retrieve draw commands: MAIN_PASS", Profiler::Category::Scene );
                 stagePass._passType = RenderPassType::MAIN_PASS;
-                retrieveCommands();
+                retrieveCommands( startOffset );
             }
             if ( doOITPass )
             {
                 PROFILE_SCOPE( "buildDrawCommands - retrieve draw commands: OIT_PASS", Profiler::Category::Scene );
                 stagePass._passType = RenderPassType::OIT_PASS;
-                retrieveCommands();
+                retrieveCommands( startOffset );
             }
             else
             {
                 PROFILE_SCOPE( "buildDrawCommands - retrieve draw commands: TRANSPARENCY_PASS", Profiler::Category::Scene );
                 stagePass._passType = RenderPassType::TRANSPARENCY_PASS;
-                retrieveCommands();
+                retrieveCommands( startOffset );
             }
             stagePass._passType = prevType;
-        }
+        };
+        const U32 startOffset = IndirectCommandBufferTracker::CollectCommands( stageIndex, _drawCommands, retrieveAllCommands );
 
         const U32 cmdCount = to_U32( _drawCommands.size() );
         *passData._lastCommandCount = cmdCount;
+        const U32 totalCount = appendInstanceCountRecords( cmdCount );
 
+        PlayerCommandBuffers& commandBuffers = _commandBuffers[index];
+        const IndirectCommandBufferTracker::Allocation allocation = commandBuffers._tracker.acquire( stageIndex, totalCount );
+        vector<ShaderBuffer_uptr>& pages = allocation._overflow ? commandBuffers._overflowPages : commandBuffers._pages;
+        U32 overflowCapacity = 0u;
+        if ( allocation._overflow )
+        {
+            const auto& deviceInfo = GFXDevice::GetDeviceInformation();
+            if ( !IndirectCommandBufferTracker::TryOverflowCapacity( totalCount,
+                                                                     deviceInfo._offsetAlignmentBytesSSBO,
+                                                                     deviceInfo._maxSizeBytesSSBO,
+                                                                     overflowCapacity ) )
+            {
+                DIVIDE_UNEXPECTED_CALL_MSG( "Indirect command list cannot fit an aligned storage buffer on this device" );
+            }
+        }
+        if ( allocation._pageIndex == pages.size() )
+        {
+            pages.push_back( createCommandBuffer( index, allocation._pageIndex, overflowCapacity ) );
+        }
+        else if ( allocation._overflow && pages[allocation._pageIndex]->getPrimitiveCount() < overflowCapacity )
+        {
+            pages[allocation._pageIndex] = createCommandBuffer( index, allocation._pageIndex, overflowCapacity );
+        }
+        ShaderBuffer* const cmdBuffer = pages[allocation._pageIndex].get();
+        const U32 bindingCount = allocation._overflow ? totalCount : Config::MAX_VISIBLE_NODES;
 
         if ( cmdCount > 0u )
         {
             PROFILE_SCOPE( "buildDrawCommands - update command buffer", Profiler::Category::Graphics );
-            _cmdBuffer->incQueue();
-            memCmdInOut._bufferLocks.push_back( _cmdBuffer->writeData( { startOffset, cmdCount }, _drawCommands.data() ) );
+            memCmdInOut._bufferLocks.push_back( cmdBuffer->writeBytes(
+                { to_size( startOffset ) * sizeof( IndirectIndexedDrawCommand ),
+                  to_size( totalCount ) * sizeof( IndirectIndexedDrawCommand ) },
+                _drawCommands.data(), allocation._queueIndex ) );
         }
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_BATCH;
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::NONE ); //Indirect draw arguments only
-            SetIndirectBuffer( binding._data, _cmdBuffer.get(), { startOffset, Config::MAX_VISIBLE_NODES});
+            SetIndirectBuffer( binding._data, cmdBuffer, { startOffset, bindingCount } );
+            binding._data._buffer._queueReadIndex = allocation._queueIndex;
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::COMPUTE );
-            Set( binding._data, _cmdBuffer.get(), { startOffset, Config::MAX_VISIBLE_NODES } );
+            Set( binding._data, cmdBuffer, { startOffset, bindingCount } );
+            binding._data._buffer._queueReadIndex = allocation._queueIndex;
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 3u, ShaderStageVisibility::ALL );
@@ -790,42 +944,114 @@ namespace Divide
             Set( binding._data, s_materialBuffer._gpuBuffer.get(), { 0u, s_materialBuffer._data._gpuData.size() });
         }
 
-        return queueTotalSize;
+        return { queueTotalSize, cmdBuffer };
     }
 
-    size_t RenderPassExecutor::prepareNodeData( const PlayerIndex index,
-                                                const RenderPassParams& params,
-                                                const CameraSnapshot& cameraSnapshot,
-                                                const bool hasInvalidNodes,
-                                                const bool doPrePass,
-                                                const bool doOITPass,
-                                                GFX::CommandBuffer& bufferInOut,
-                                                GFX::MemoryBarrierCommand& memCmdInOut )
+    U32 RenderPassExecutor::appendInstanceCountRecords( const U32 cmdCount )
+    {
+        _instanceCountPatchRanges.clear();
+        if ( _instanceCountPatches.empty() )
+        {
+            return cmdCount;
+        }
+
+        const size_t totalCount = to_size( cmdCount ) + _instanceCountPatches.size();
+        // Regular pages have a fixed size; overflow pages are sized for the commands and their patch records.
+        if ( cmdCount <= Config::MAX_VISIBLE_NODES && totalCount > Config::MAX_VISIBLE_NODES )
+        {
+            if ( !_instanceCountPatchOverflowLogged )
+            {
+                _instanceCountPatchOverflowLogged = true;
+                Console::warnfn( "RenderPassExecutor: Skipping GPU instance count patching because the indirect command page is full. Culled instances will still be drawn as degenerate geometry." );
+            }
+            _instanceCountPatches.clear();
+            return cmdCount;
+        }
+
+        std::sort( _instanceCountPatches.begin(), _instanceCountPatches.end(), []( const InstanceCountPatch& lhs, const InstanceCountPatch& rhs )
+        {
+            return std::less<ShaderBuffer*>{}( lhs._source, rhs._source );
+        } );
+
+        for ( const InstanceCountPatch& patch : _instanceCountPatches )
+        {
+            if ( _instanceCountPatchRanges.empty() || _instanceCountPatchRanges.back()._source != patch._source )
+            {
+                _instanceCountPatchRanges.push_back( { patch._source, to_U32( _drawCommands.size() ), 0u } );
+            }
+            ++_instanceCountPatchRanges.back()._recordCount;
+
+            IndirectIndexedDrawCommand& record = _drawCommands.emplace_back();
+            record.indexCount = patch._commandIndex;
+            record.instanceCount = patch._element;
+            record.firstIndex = 0u;
+            record.baseVertex = 0u;
+            record.baseInstance = 0u;
+        }
+        _instanceCountPatches.clear();
+
+        return to_U32( _drawCommands.size() );
+    }
+
+    void RenderPassExecutor::patchInstanceCounts( ShaderBuffer& commandBuffer, GFX::CommandBuffer& bufferInOut )
+    {
+        if ( _instanceCountPatchRanges.empty() )
+        {
+            return;
+        }
+
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        auto beforePatch = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut );
+        beforePatch->_bufferLocks.emplace_back( BufferLock
+        {
+            ._range = { 0u, U32_MAX },
+            ._type = BufferSyncUsage::GPU_READ_TO_GPU_WRITE,
+            ._buffer = commandBuffer.getBufferImpl()
+        } );
+        beforePatch->_bufferLocks.emplace_back( BufferLock
+        {
+            ._range = { 0u, U32_MAX },
+            ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE,
+            ._buffer = commandBuffer.getBufferImpl()
+        } );
+
+        for ( const InstanceCountPatchRange& range : _instanceCountPatchRanges )
+        {
+            _context.patchInstanceCounts( range._source, range._recordOffset, range._recordCount, bufferInOut );
+        }
+
+        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
+        {
+            ._range = { 0u, U32_MAX },
+            ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+            ._buffer = commandBuffer.getBufferImpl()
+        } );
+    }
+    RenderPassExecutor::PreparedNodeData RenderPassExecutor::prepareNodeData( const PlayerIndex index,
+                                                                              const RenderPassParams& params,
+                                                                              const CameraSnapshot& cameraSnapshot,
+                                                                              const bool hasInvalidNodes,
+                                                                              const bool doPrePass,
+                                                                              const bool doOITPass,
+                                                                              GFX::CommandBuffer& bufferInOut,
+                                                                              GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         if ( hasInvalidNodes )
         {
-            bool nodeRemoved = true;
-            while ( nodeRemoved )
+            _visibleNodesCache.removeIf( []( const VisibleNode& node )
             {
-                nodeRemoved = false;
-                for ( size_t i = 0; i < _visibleNodesCache.size(); ++i )
-                {
-                    if ( !_visibleNodesCache.node( i )._materialReady )
-                    {
-                        _visibleNodesCache.remove( i );
-                        nodeRemoved = true;
-                        break;
-                    }
-                }
-            }
+                return !node._materialReady;
+            } );
         }
 
         RenderStagePass stagePass = params._stagePass;
         const SceneRenderState& sceneRenderState = _parent.parent().projectManager()->activeProject()->getActiveScene()->state()->renderState();
         {
             Mutex memCmdLock;
+            std::atomic_bool pendingShader{ false };
 
             _renderQueue->clear();
 
@@ -834,11 +1060,20 @@ namespace Divide
                 GFX::MemoryBarrierCommand postDrawMemCmd{};
                 for ( U32 i = start; i < end; ++i )
                 {
-                    const VisibleNode& node = _visibleNodesCache.node( i );
+                    VisibleNode& node = _visibleNodesCache.node( i );
                     RenderingComponent* rComp = node._node->get<RenderingComponent>();
-                    if ( Attorney::RenderingCompRenderPass::prepareDrawPackage( *rComp, cameraSnapshot, sceneRenderState, stagePass, postDrawMemCmd, true ) )
+                    if ( node.prepareDraw( [&]
+                         {
+                             return Attorney::RenderingCompRenderPass::prepareDrawPackage( *rComp, cameraSnapshot, sceneRenderState, stagePass, postDrawMemCmd, true );
+                         } ) )
                     {
                         _renderQueue->addNodeToQueue( node._node, stagePass, node._distanceToCameraSq );
+                    }
+                    else if ( params._pendingShaderOut != nullptr &&
+                              rComp->renderOptionEnabled( RenderingComponent::RenderOptions::IS_VISIBLE ) &&
+                              rComp->shaderPending( stagePass ) )
+                    {
+                        pendingShader.store( true, std::memory_order_relaxed );
                     }
                 }
 
@@ -855,7 +1090,17 @@ namespace Divide
             };
 
             Parallel_For( _parent.parent().platformContext().taskPool( TaskPoolType::RENDERER ), descriptor, cbk );
-            
+
+            _visibleNodesCache.removeIf( []( const VisibleNode& node )
+            {
+                return !node._drawPrepared;
+            } );
+
+            if ( params._pendingShaderOut != nullptr && pendingShader.load( std::memory_order_relaxed ) )
+            {
+                *params._pendingShaderOut = true;
+            }
+
             _renderQueue->sort( stagePass );
         }
 
@@ -867,7 +1112,33 @@ namespace Divide
         queueParams._filterByBinType = false;
         _renderQueue->populateRenderQueues( queueParams, _renderQueuePackages );
 
-        return buildDrawCommands( index, params, doPrePass, doOITPass, bufferInOut, memCmdInOut );
+        const PreparedNodeData prepared = buildDrawCommands( index, params, doPrePass, doOITPass, bufferInOut, memCmdInOut );
+        _preparationOwners.clear();
+        _preparedPackages.clear();
+        for ( const auto& [rComp, pkg] : _renderQueuePackages )
+        {
+            RenderingComponent* owner = Attorney::RenderingCompRenderPass::preparationOwner( *rComp );
+            if ( owner == nullptr )
+            {
+                _preparedPackages.push_back( pkg );
+            }
+            else
+            {
+                _preparationOwners.emplace_back( owner, owner == rComp ? pkg : nullptr );
+            }
+        }
+        VisitPreparationOwners( _preparationOwners, [&]( RenderingComponent& owner, RenderPackage* prepared )
+        {
+            if ( prepared == nullptr )
+            {
+                prepared = &Attorney::RenderingCompRenderPass::prepareDependency( owner, cameraSnapshot, stagePass, memCmdInOut );
+            }
+            _preparedPackages.push_back( prepared );
+        } );
+        AppendPreparationCommands( { _preparedPackages.data(), _preparedPackages.size() }, bufferInOut, _computeBatchRanges );
+        patchInstanceCounts( *prepared._commandBuffer, bufferInOut );
+
+        return prepared;
     }
 
     void RenderPassExecutor::prepareRenderQueues( const RenderPassParams& params,
@@ -886,19 +1157,27 @@ namespace Divide
         _renderQueue->clear( targetBin );
 
         Mutex memCmdLock;
-        GFX::MemoryBarrierCommand postDrawMemCmd{};
 
         const U32 nodeCount = to_U32( _visibleNodesCache.size() );
+        const RenderQueue::PopulateQueueParams queueParams = RenderQueue::PopulateQueueParams::ForPass( stagePass, transparencyPass );
 
         const auto cbk = [&]( const Task* /*parentTask*/, const U32 start, const U32 end )
         {
+            GFX::MemoryBarrierCommand postDrawMemCmd{};
             for ( U32 i = start; i < end; ++i )
             {
                 const VisibleNode& node = _visibleNodesCache.node( i );
                 SceneGraphNode* sgn = node._node;
-                if ( sgn->getNode().renderState().drawState( stagePass ) )
+                RenderingComponent* rComp = sgn->get<RenderingComponent>();
+                const RenderBinType binType = RenderQueue::getBinForNode( sgn, rComp->getMaterialInstance() );
+                DIVIDE_ASSERT( binType != RenderBinType::COUNT );
+                if ( !queueParams.includes( binType ) )
                 {
-                    if ( Attorney::RenderingCompRenderPass::prepareDrawPackage( *sgn->get<RenderingComponent>(), cameraSnapshot, sceneRenderState, stagePass, postDrawMemCmd, false ) )
+                    continue;
+                }
+                if ( rComp->drawState( stagePass ) )
+                {
+                    if ( Attorney::RenderingCompRenderPass::prepareDrawPackage( *rComp, cameraSnapshot, sceneRenderState, stagePass, postDrawMemCmd, false ) )
                     {
                         _renderQueue->addNodeToQueue( sgn, stagePass, node._distanceToCameraSq, targetBin );
                     }
@@ -924,27 +1203,34 @@ namespace Divide
 
         _renderQueuePackages.clear();
 
-        // Draw everything in the depth pass but only draw stuff from the translucent bin in the OIT Pass and everything else in the colour pass
-        RenderQueue::PopulateQueueParams queueParams{};
-
-        queueParams._stagePass = stagePass;
-        if ( IsDepthPass( stagePass ) )
-        {
-            queueParams._binType = RenderBinType::COUNT;
-            queueParams._filterByBinType = false;
-        }
-        else
-        {
-            queueParams._binType = RenderBinType::TRANSLUCENT;
-            queueParams._filterByBinType = !transparencyPass;
-        }
-
         _renderQueue->populateRenderQueues( queueParams, _renderQueuePackages );
 
 
+        Handle<ShaderProgram> timedShader = INVALID_HANDLE<ShaderProgram>;
+        const bool timeShaders = stagePass._passType == RenderPassType::OIT_PASS && _context.queryGPUScopeTimings();
+        bool shaderScopeOpen = false;
         for ( const auto& [rComp, pkg] : _renderQueuePackages )
         {
+            if ( timeShaders )
+            {
+                const Handle<ShaderProgram> shader = pkg->pipelineCmd()._pipeline->descriptor()._shaderProgramHandle;
+                if ( !shaderScopeOpen || shader != timedShader )
+                {
+                    if ( shaderScopeOpen )
+                    {
+                        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
+                    }
+                    auto scope = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut );
+                    Util::StringFormatTo( scope->_scopeName, "OIT Shader {}", Get( shader )->resourceName() );
+                    timedShader = shader;
+                    shaderScopeOpen = true;
+                }
+            }
             Attorney::RenderingCompRenderPassExecutor::getCommandBuffer( rComp, pkg, bufferInOut );
+        }
+        if ( shaderScopeOpen )
+        {
+            GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
         }
 
         if ( params._stagePass._passType != RenderPassType::PRE_PASS )
@@ -983,12 +1269,12 @@ namespace Divide
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 
-    void RenderPassExecutor::occlusionPass( [[maybe_unused]] const PlayerIndex idx,
+    void RenderPassExecutor::occlusionPass( ShaderBuffer& commandBuffer,
                                             const CameraSnapshot& cameraSnapshot,
                                             [[maybe_unused]] const size_t visibleNodeCount,
                                             const RenderTargetID& sourceDepthBuffer,
                                             const RenderTargetID& targetHiZBuffer,
-                                            GFX::CommandBuffer& bufferInOut ) const
+                                            GFX::CommandBuffer& bufferInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -998,24 +1284,37 @@ namespace Divide
         {
             ._range = {0u, U32_MAX },
             ._type = BufferSyncUsage::GPU_READ_TO_GPU_WRITE,
-            ._buffer = _cmdBuffer->getBufferImpl()
+            ._buffer = commandBuffer.getBufferImpl()
         });
 
         // Update HiZ Target
         const auto [hizTexture, hizSampler] = _context.constructHIZ( sourceDepthBuffer, targetHiZBuffer, bufferInOut );
+        {
+            auto bindHiZ = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
+            bindHiZ->_usage = DescriptorSetUsage::PER_DRAW;
+            Set( AddBinding( bindHiZ->_set, 0u, ShaderStageVisibility::COMPUTE )._data, hizTexture, hizSampler );
+            AppendOcclusionCommands( { _preparedPackages.data(), _preparedPackages.size() }, bufferInOut, _computeBatchRanges );
+        }
         // Run occlusion culling CS
-        _context.occlusionCull( _parent.getPassForStage( _stage ).getPassData(),
-                                hizTexture,
-                                hizSampler,
-                                cameraSnapshot,
-                                _stage == RenderStage::DISPLAY,
-                                bufferInOut );
+        RenderPass::PassData passData = this->passData();
+        _occlusionSnapshots.record( GFXDevice::FrameCount(), *passData._uniforms, [&]( UniformData& uniforms )
+        {
+            passData._uniforms = &uniforms;
+            _context.occlusionCull( passData,
+                                   hizTexture,
+                                   hizSampler,
+                                   cameraSnapshot,
+                                   _stage == RenderStage::DISPLAY,
+                                   bufferInOut );
+        } );
+        // Occlusion recompaction of GPU-driven instance lists happened in AppendOcclusionCommands.
+        patchInstanceCounts( commandBuffer, bufferInOut );
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
         {
             ._range = {0u, U32_MAX },
             ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
-            ._buffer = _cmdBuffer->getBufferImpl()
+            ._buffer = commandBuffer.getBufferImpl()
         });
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
@@ -1027,7 +1326,17 @@ namespace Divide
 
         assert( params._stagePass._passType == RenderPassType::MAIN_PASS );
 
-        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = " - MainPass";
+        auto mainScope = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut );
+        if ( IsShadowPass( params._stagePass ) )
+        {
+            Util::StringFormatTo( mainScope->_scopeName, "MainPass V{} L{} P{}",
+                                 to_base( params._stagePass._variant ), params._stagePass._index,
+                                 to_base( params._stagePass._pass ) );
+        }
+        else
+        {
+            mainScope->_scopeName = " - MainPass";
+        }
 
         if ( params._target != INVALID_RENDER_TARGET_ID ) [[likely]]
         {
@@ -1042,6 +1351,13 @@ namespace Divide
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
+            PostFX& postFX = _context.getRenderer().postFX();
+            {
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 3u, ShaderStageVisibility::FRAGMENT );
+                const bool useSSR = UsesScreenSpaceReflections(
+                    params._stagePass._stage, postFX.getFilterState( FilterType::FILTER_SS_REFLECTIONS ) );
+                Set( binding._data, postFX.getFilterBatch().ssrTexture( useSSR ), Texture::DefaultSampler() );
+            }
             if ( params._stagePass._stage == RenderStage::DISPLAY )
             {
                 const RenderTarget* MSSource = _context.renderTargetPool().getRenderTarget( params._target );
@@ -1079,16 +1395,15 @@ namespace Divide
 
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = " - W-OIT Pass";
 
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "OIT Accumulation";
         // Step1: Draw translucent items into the accumulation and revealage buffers
         GFX::BeginRenderPassCommand* beginRenderPassOitCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
         beginRenderPassOitCmd->_name = "OIT PASS 1";
         beginRenderPassOitCmd->_target = params._targetOIT;
         beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::ACCUMULATION )] = { VECTOR4_ZERO, true };
-        beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::REVEALAGE )]    = { VECTOR4_UNIT, true };
-        beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::NORMALS )]      = { VECTOR4_ZERO, true };
+        beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::NORMALS )]      = { float4( 0.f, 0.f, 0.f, 1.f ), true };
         beginRenderPassOitCmd->_clearDescriptor[to_base( GFXDevice::ScreenTargets::MODULATE )]     = { VECTOR4_ZERO, false };
         beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::ACCUMULATION )] = true;
-        beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::REVEALAGE )] = true;
         beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::NORMALS )]  = true;
         beginRenderPassOitCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::MODULATE )]  = true;
         beginRenderPassOitCmd->_descriptor._autoResolveMSAA = params._targetDescriptorMainPass._autoResolveMSAA;
@@ -1096,25 +1411,29 @@ namespace Divide
 
         prepareRenderQueues( params, cameraSnapshot, true, RenderingOrder::COUNT, bufferInOut, memCmdInOut );
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut )->_transitionMask[to_base( GFXDevice::ScreenTargets::MODULATE )] = false;
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
         RenderTarget* oitRT = _context.renderTargetPool().getRenderTarget( params._targetOIT );
         const auto& accumAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ACCUMULATION );
-        const auto& revAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::REVEALAGE );
         const auto& normalsAtt = oitRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
+        const RenderTarget* target = _context.renderTargetPool().getRenderTarget( params._target );
+        const bool writeNormals = target->hasAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
 
         // Step2: Composition pass
         // Don't clear depth & colours and do not write to the depth buffer
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "OIT Composition";
         GFX::BeginRenderPassCommand* beginRenderPassCompCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut);
         beginRenderPassCompCmd->_name = "OIT PASS 2";
         beginRenderPassCompCmd->_target = params._target;
         beginRenderPassCompCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::ALBEDO )] = true;
         beginRenderPassCompCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::VELOCITY )] = false;
-        beginRenderPassCompCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::NORMALS )] = true;
+        beginRenderPassCompCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::NORMALS )] = writeNormals;
         beginRenderPassCompCmd->_descriptor._autoResolveMSAA = params._targetDescriptorMainPass._autoResolveMSAA;
         beginRenderPassCompCmd->_descriptor._keepMSAADataAfterResolve = params._targetDescriptorMainPass._keepMSAADataAfterResolve;
 
         GFX::EnqueueCommand<GFX::SetCameraCommand>( bufferInOut )->_cameraSnapshot = Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot();
-        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = params._useMSAA ? s_OITCompositionMSPipeline : s_OITCompositionPipeline;
+        const auto variant = SelectOITCompositionVariant( writeNormals, params._useMSAA );
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = s_OITCompositionPipelines[to_base( variant )];
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -1124,15 +1443,12 @@ namespace Divide
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, revAtt->texture(), revAtt->_descriptor._sampler );
-            }
-            {
-                DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, normalsAtt->texture(), normalsAtt->_descriptor._sampler );
             }
         }
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 
@@ -1185,7 +1501,7 @@ namespace Divide
         }
     }
 
-    bool RenderPassExecutor::validateNodesForStagePass( const RenderStagePass stagePass )
+    bool RenderPassExecutor::validateNodesForStagePass( const RenderStagePass stagePass, bool* const pendingShaderOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -1194,10 +1510,39 @@ namespace Divide
         for ( I32 i = nodeCount - 1; i >= 0; i-- )
         {
             VisibleNode& node = _visibleNodesCache.node( i );
-            if ( node._node == nullptr || (node._materialReady && !Attorney::SceneGraphNodeRenderPassManager::canDraw( node._node, stagePass )) )
+            if ( node._node != nullptr && stagePass._passType != RenderPassType::MAIN_PASS )
             {
-                node._materialReady = false;
+                const RenderingComponent* rComp = node._node->get<RenderingComponent>();
+                if ( rComp != nullptr )
+                {
+                    const RenderBinType binType = RenderQueue::getBinForNode( node._node, rComp->getMaterialInstance() );
+                    DIVIDE_ASSERT( binType != RenderBinType::COUNT );
+                    if ( !RenderQueue::PopulateQueueParams::RequiresMaterialForPreparation(
+                             stagePass, binType, rComp->drawState( stagePass ) ) )
+                    {
+                        continue;
+                    }
+                }
+            }
+
+            if ( !node.checkMaterialReadiness( [&]
+                 {
+                     return node._node != nullptr &&
+                            Attorney::SceneGraphNodeRenderPassManager::canDraw( node._node, stagePass );
+                 } ) )
+            {
                 ret = true;
+                if ( pendingShaderOut != nullptr && !*pendingShaderOut && node._node != nullptr )
+                {
+                    const RenderingComponent* rComp = node._node->get<RenderingComponent>();
+                    if ( rComp != nullptr && rComp->renderOptionEnabled( RenderingComponent::RenderOptions::IS_VISIBLE ) )
+                    {
+                        if ( rComp->shaderPending( stagePass ) )
+                        {
+                            *pendingShaderOut = true;
+                        }
+                    }
+                }
             }
         }
         return ret;
@@ -1205,15 +1550,25 @@ namespace Divide
 
     void RenderPassExecutor::doCustomPass( const PlayerIndex playerIdx, Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
-
-        assert( params._stagePass._stage == _stage );
-
-        if ( !camera->updateLookAt() )
-        {
-            NOP();
-        }
+        (void)camera->updateLookAt();
         const CameraSnapshot& camSnapshot = camera->snapshot();
+        if ( params._refreshLightData )
+        {
+            _lightDataBinding = Attorney::ProjectManagerRenderPass::prepareLightData( _parent.parent().projectManager().get(), _stage, camSnapshot, memCmdInOut );
+        }
+        doCustomPass( playerIdx, camSnapshot, camera->getFrustum(), params, _lightDataBinding, bufferInOut, memCmdInOut, false );
+    }
+
+    void RenderPassExecutor::doCustomPass( const PlayerIndex playerIdx, const CameraSnapshot& camSnapshot, const Frustum& frustum,
+                                          RenderPassParams params, const LightDataBinding lightData,
+                                          GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut,
+                                          const bool independentView )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+        assert( params._stagePass._stage == _stage );
+        _lightDataBinding = lightData;
+        const CameraSnapshot& activeCameraSnapshot =
+            _parent.parent().projectManager()->activeProject()->getActiveScene()->playerCamera( playerIdx )->snapshot();
 
         GFX::BeginDebugScopeCommand* beginDebugScopeCmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut );
         if ( params._passName.empty() )
@@ -1244,15 +1599,32 @@ namespace Divide
             Attorney::ProjectManagerRenderPass::initDefaultCullValues( _parent.parent().projectManager().get(), _stage, cullParams );
 
             cullParams._clippingPlanes = params._clippingPlanes;
-            cullParams._stage = _stage;
+            cullParams._stagePass = params._stagePass;
+            cullParams._stagePass._passType = RenderPassType::COUNT;
             cullParams._minExtents = params._minExtents;
             cullParams._ignoredGUIDS = { &ignoreGUID, 1 };
             cullParams._cameraEyePos = camSnapshot._eye;
-            cullParams._frustum = &camera->getFrustum();
-            cullParams._cullMaxDistance = std::min( cullParams._cullMaxDistance, camSnapshot._zPlanes.y );
+            cullParams._rangeCameraEyePos = _stage == RenderStage::NODE_PREVIEW ? camSnapshot._eye : activeCameraSnapshot._eye;
+            cullParams._frustum = &frustum;
             cullParams._maxLoD = params._maxLoD;
 
-            U16 cullFlags = to_base( CullOptions::DEFAULT_CULL_OPTIONS );
+            U16 cullFlags = params._cullFlags;
+            if ( _stage == RenderStage::REFLECTION )
+            {
+                const auto& reflection = _context.context().config().rendering.reflection;
+                if ( !reflection.includeGrass )
+                {
+                    cullFlags |= to_base( CullOptions::CULL_REFLECTION_GRASS );
+                }
+                if ( !reflection.includeTrees )
+                {
+                    cullFlags |= to_base( CullOptions::CULL_REFLECTION_TREES );
+                }
+                if ( !reflection.includeDynamicObjects )
+                {
+                    cullFlags |= to_base( CullOptions::CULL_REFLECTION_DYNAMIC_OBJECTS );
+                }
+            }
             if ( !( params._drawMask & to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_DYNAMIC_NODES ) ) ) )
             {
                 cullFlags |= to_base( CullOptions::CULL_DYNAMIC_NODES );
@@ -1265,7 +1637,7 @@ namespace Divide
         }
         else
         {
-            Attorney::ProjectManagerRenderPass::findNode( _parent.parent().projectManager().get(), camera->snapshot()._eye, params._singleNodeRenderGUID, _visibleNodesCache );
+            Attorney::ProjectManagerRenderPass::findNode( _parent.parent().projectManager().get(), camSnapshot._eye, params._singleNodeRenderGUID, _visibleNodesCache );
         }
 
         const bool drawTranslucents = (params._drawMask & to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_TRANSLUCENT_NODES))) && _stage != RenderStage::SHADOW;
@@ -1284,53 +1656,47 @@ namespace Divide
             if ( doPrePass )
             {
                 params._stagePass._passType = RenderPassType::PRE_PASS;
-                hasInvalidNodes = validateNodesForStagePass( params._stagePass ) || hasInvalidNodes;
+                hasInvalidNodes = validateNodesForStagePass( params._stagePass, params._pendingShaderOut ) || hasInvalidNodes;
             }
             if ( doMainPass )
             {
                 params._stagePass._passType = RenderPassType::MAIN_PASS;
-                hasInvalidNodes = validateNodesForStagePass( params._stagePass ) || hasInvalidNodes;
+                hasInvalidNodes = validateNodesForStagePass( params._stagePass, params._pendingShaderOut ) || hasInvalidNodes;
             }
             if ( doOITPass )
             {
                 params._stagePass._passType = RenderPassType::OIT_PASS;
-                hasInvalidNodes = validateNodesForStagePass( params._stagePass ) || hasInvalidNodes;
+                hasInvalidNodes = validateNodesForStagePass( params._stagePass, params._pendingShaderOut ) || hasInvalidNodes;
             }
             else if ( drawTranslucents )
             {
                 params._stagePass._passType = RenderPassType::TRANSPARENCY_PASS;
-                hasInvalidNodes = validateNodesForStagePass( params._stagePass ) || hasInvalidNodes;
+                hasInvalidNodes = validateNodesForStagePass( params._stagePass, params._pendingShaderOut ) || hasInvalidNodes;
             }
         }
 
-        if ( params._feedBackContainer != nullptr )
+        if ( params._shadowBoundsFeedback != nullptr )
         {
-            params._feedBackContainer->resize( _visibleNodesCache.size() );
-            std::memcpy( params._feedBackContainer->data(), _visibleNodesCache.data(), _visibleNodesCache.size() * sizeof( VisibleNode ) );
-            if ( hasInvalidNodes )
+            for ( size_t i = 0u; i < _visibleNodesCache.size(); ++i )
             {
-                // This may hurt ... a lot ... -Ionut
-                dvd_erase_if( *params._feedBackContainer, []( VisibleNode& node )
-                              {
-                                  return node._node == nullptr || !node._materialReady;
-                              } );
-            };
+                const VisibleNode& node = _visibleNodesCache.node( i );
+                if ( node._node != nullptr && node._materialReady &&
+                     node._node->getNode().type() == SceneNodeType::TYPE_SUBMESH )
+                {
+                    params._shadowBoundsFeedback->add( node._node->get<BoundsComponent>()->getBoundingBox() );
+                }
+            }
         }
 
         // Tell the Rendering API to draw from our desired PoV
         GFX::SetCameraCommand* camCmd = GFX::EnqueueCommand<GFX::SetCameraCommand>( bufferInOut );
         camCmd->_cameraSnapshot = camSnapshot;
 
-        if ( params._refreshLightData )
-        {
-            Attorney::ProjectManagerRenderPass::prepareLightData( _parent.parent().projectManager().get(), _stage, camSnapshot, memCmdInOut );
-        }
-
         GFX::EnqueueCommand<GFX::SetClipPlanesCommand>( bufferInOut )->_clippingPlanes =  params._clippingPlanes;
 
         // We prepare all nodes for the MAIN_PASS rendering. PRE_PASS and OIT_PASS are support passes only. Their order and sorting are less important.
         params._stagePass._passType = RenderPassType::MAIN_PASS;
-        const size_t visibleNodeCount = prepareNodeData( playerIdx, params, camSnapshot, hasInvalidNodes, doPrePass, doOITPass, bufferInOut, memCmdInOut );
+        const PreparedNodeData prepared = prepareNodeData( playerIdx, params, camSnapshot, hasInvalidNodes, doPrePass, doOITPass, bufferInOut, memCmdInOut );
 
 #   pragma region PRE_PASS
         // We need the pass to be PRE_PASS even if we skip the prePass draw stage as it is the default state subsequent operations expect
@@ -1351,12 +1717,12 @@ namespace Divide
             assert( params._stagePass._passType == RenderPassType::PRE_PASS );
 
             // This also renders into our HiZ texture that we may want to use later in PostFX
-            occlusionPass( playerIdx, camSnapshot, visibleNodeCount, RenderTargetNames::SCREEN, params._targetHIZ, bufferInOut );
+            occlusionPass( *prepared._commandBuffer, camSnapshot, prepared._visibleNodeCount, params._target, params._targetHIZ, bufferInOut );
         }
 #   pragma endregion
 
 #   pragma region LIGHT_PASS
-        _context.getRenderer().prepareLighting( _stage, { 0, 0, target->getWidth(), target->getHeight() }, camSnapshot, bufferInOut );
+        _context.getRenderer().prepareLighting( _stage, { 0, 0, target->getWidth(), target->getHeight() }, camSnapshot, _lightDataBinding, bufferInOut, independentView );
 #   pragma endregion
 
 #   pragma region MAIN_PASS
@@ -1364,7 +1730,16 @@ namespace Divide
         params._stagePass._passType = RenderPassType::MAIN_PASS;
         if ( _stage == RenderStage::DISPLAY )
         {
+            if ( !doPrePass )
+            {
+                _context.invalidatePreviousDepthHistory( playerIdx );
+            }
             _context.getRenderer().postFX().prePass( playerIdx, camSnapshot, bufferInOut );
+            if ( doPrePass )
+            {
+                // Preserve current depth after temporal effects have consumed the previous frame.
+                _context.storePreviousDepthHistory( playerIdx, params._target, bufferInOut );
+            }
         }
         if ( doMainPass ) [[likely]]
         {

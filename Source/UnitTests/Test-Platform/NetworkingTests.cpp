@@ -47,16 +47,16 @@ namespace Divide::Networking
             U8 heartbeatCount() const { return _heartbeatCounter; }
             U64 generation() const { return _heartbeatGeneration; }
 
-            vector<OPCodes> receivedOpcodes()
+            vector<OPCodes> receivedOpcodes(const size_t packetCount)
             {
-                _peer.non_blocking(true);
                 vector<OPCodes> codes;
-                while (_peer.available() >= NetworkPacket::HEADER_SIZE)
+                const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+                while (codes.size() < packetCount)
                 {
                     NetworkPacket::Header header;
-                    boost::asio::read(_peer, boost::asio::buffer(&header, sizeof(header)));
+                    readPeer(boost::asio::buffer(&header, sizeof(header)), deadline);
                     vector<Byte> body(header._byteLength);
-                    boost::asio::read(_peer, boost::asio::buffer(body.data(), body.size()));
+                    readPeer(boost::asio::buffer(body.data(), body.size()), deadline);
                     codes.push_back(header._opCode);
                 }
                 return codes;
@@ -65,6 +65,33 @@ namespace Divide::Networking
             void start() { _contextThread = std::thread([this]() { _context.run(); }); }
 
         private:
+            void readPeer(const boost::asio::mutable_buffer buffer, const std::chrono::steady_clock::time_point deadline)
+            {
+                bool completed = false;
+                boost::system::error_code error;
+                boost::asio::async_read(_peer, buffer, [&](const boost::system::error_code ec, const size_t)
+                {
+                    error = ec;
+                    completed = true;
+                });
+                _context.restart();
+                while (!completed && _context.run_one_until(deadline) != 0u)
+                {
+                }
+                const bool timedOut = !completed;
+                if (timedOut)
+                {
+                    _peer.cancel();
+                    _context.restart();
+                    while (!completed)
+                    {
+                        _context.run_one();
+                    }
+                }
+                REQUIRE_FALSE(timedOut);
+                REQUIRE_FALSE(error);
+            }
+
             boost::asio::ip::tcp::socket _peer;
         };
     }
@@ -120,11 +147,20 @@ namespace Divide::Networking
         {
             client.sendHeartbeat();
         }
-        client.runFor(std::chrono::milliseconds(20));
+        SECTION("Receive after advancing the context")
+        {
+            client.runFor(std::chrono::milliseconds(20));
+        }
+        SECTION("Receive while sends are still queued")
+        {
+        }
+        const auto codes = client.receivedOpcodes(4u);
         CHECK(client.heartbeatCount() == 0u);
         CHECK(client.generation() == 4u);
-        const auto codes = client.receivedOpcodes();
         REQUIRE(codes.size() == 4u);
+        CHECK(codes[0] == OPCodes::CMSG_HEARTBEAT);
+        CHECK(codes[1] == OPCodes::CMSG_HEARTBEAT);
+        CHECK(codes[2] == OPCodes::CMSG_HEARTBEAT);
         CHECK(codes.back() == OPCodes::CMSG_PING);
     }
 }

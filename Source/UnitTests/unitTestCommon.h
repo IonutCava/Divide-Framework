@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2026 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -33,12 +33,24 @@
 #ifndef DVD_UNIT_TEST_COMMON_H
 #define DVD_UNIT_TEST_COMMON_H
 
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4426) // Catch2 headers can alter optimization state via nested includes
+#endif
 #include <catch2/catch_all.hpp>
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 namespace Divide::Time
 {
     class ProfileTimer;
 };
+
+namespace Divide::UnitTests
+{
+    extern const char* g_testExecutablePath;
+}
 
 class platformInitRunListener : public Catch::EventListenerBase
 {

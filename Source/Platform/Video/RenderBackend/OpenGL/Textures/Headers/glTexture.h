@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -57,17 +57,15 @@ class glTexture final : public Texture {
     static void Copy(const glTexture* source, U8 sourceSamples, const glTexture* destination, U8 destinationSamples, const CopyTexParams& params);
 
    protected:
-    bool postLoad() override;
     void reserveStorage(bool makeImmutable);
     void loadDataInternal(const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment ) override;
     void loadDataInternal( const std::span<const Byte> data, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
-    ImageUsage prepareTextureData(const vec3<U16>& dimensions, U16 layers, bool makeImmutable) override;
+    ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable, U16 suppliedMipCount ) override;
     void submitTextureData(ImageUsage& crtUsageInOut) override;
 
    private:
     gl46core::GLenum _type{ gl46core::GL_NONE};
     gl46core::GLuint _loadingHandle{ GL_NULL_HANDLE };
-    gl46core::GLsync _loadSync{ nullptr };
     bool _hasStorage{ false };
 };
 

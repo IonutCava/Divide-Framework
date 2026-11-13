@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -161,11 +161,17 @@ namespace Divide
 
         using RenderTargets = std::array<bool, to_base( RTColourAttachmentSlot::COUNT )>;
         using ShaderLoadData = std::array<LoadData, to_base( ShaderType::COUNT )>;
+        using UniformBlockLayouts = std::array<Reflection::UniformsSet, 2u>;
 
         using ShaderProgramMap = fixed_vector<ShaderProgram*, U16_MAX, true>;
 
-        using AtomMap = hashMap<U64 /*name hash*/, string>;
-        using AtomInclusionMap = hashMap<U64 /*name hash*/, eastl::set<U64>>;
+        struct ShaderAtom
+        {
+            string _source;
+            eastl::set<U64> _includes;
+            size_t _maxIncludeDepth{ 0u };
+        };
+        using AtomMap = hashMap<U64 /*name hash*/, ShaderAtom>;
         using ShaderQueue = eastl::stack<ShaderQueueEntry, vector<ShaderQueueEntry>>;
 
         struct BindingsPerSet
@@ -197,7 +203,9 @@ namespace Divide
 
         virtual ShaderResult validatePreBind( const Configuration& config, bool rebind = true );
 
-        [[nodiscard]] bool uploadUniformData( const UniformData& data, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut );
+        void uploadUniformData( const UniformData& data ) noexcept;
+        [[nodiscard]] bool commitUniformData( DescriptorSet& set );
+        // On false, the caller must use entry._set rather than resolvedSet.
         [[nodiscard]] bool resolveSampledImages( const DescriptorSetEntry& entry, DescriptorSet& resolvedSet ) const;
 
         //==================== static methods ===============================//
@@ -207,8 +215,6 @@ namespace Divide
 
         [[nodiscard]] static ErrorCode OnStartup( PlatformContext& context);
         [[nodiscard]] static bool OnShutdown();
-        static void OnBeginFrame( GFXDevice& gfx );
-        static void OnEndFrame( GFXDevice& gfx );
 
         /// Queue a shaderProgram recompile request
         static bool RecompileShaderProgram( const std::string_view name );
@@ -247,6 +253,7 @@ namespace Divide
         PROPERTY_RW( bool, useShaderCache, true );
         PROPERTY_R_IW( BindingsPerSetArray, perDrawDescriptorSetLayout );
         PROPERTY_R_IW( RenderTargets, fragmentOutputs );
+        PROPERTY_R_IW( AttributeFlags, vertexInputs );
         PROPERTY_R_IW( SetUsageData, setUsage );
 
         static Mutex g_cacheLock;
@@ -256,13 +263,13 @@ namespace Divide
         vector<Reflection::ImageEntry> _sampledImages;
         static bool SaveToCache( LoadData::ShaderCacheType cache, const LoadData& dataIn, const eastl::set<U64>& atomIDsIn );
         static bool LoadFromCache( LoadData::ShaderCacheType cache, LoadData& dataInOut, eastl::set<U64>& atomIDsOut );
+        static bool ReadCachedSPIRV( std::istream& stream, std::vector<SpvWord>& spirvOut );
 
     protected:
         static ShaderQueue s_recompileQueue;
         static ShaderQueue s_recompileFailedQueue;
         /// Shader program cache
         static ShaderProgramMap s_shaderPrograms;
-        static fixed_vector<ShaderProgram*, U16_MAX> s_usedShaderPrograms;
 
         struct LastRequestedShader
         {
@@ -278,31 +285,52 @@ namespace Divide
         bool loadSourceCode( const ModuleDefines& defines,
                              bool reloadExisting,
                              LoadData& loadDataInOut,
-                             Reflection::UniformsSet& previousUniformsInOut,
-                             U8& blockIndexInOut );
+                             UniformBlockLayouts& uniformBlocksInOut );
 
-        void loadAndParseGLSL( const ModuleDefines& defines,
-                               LoadData& loadDataInOut,
-                               Reflection::UniformsSet& previousUniformsInOut,
-                               U8& blockIndexInOut,
-                               eastl::set<U64>& atomIDsInOut );
+        static U8 FindUniformBlockIndex( const UniformBlockLayouts& uniformBlocks,
+                                         const Reflection::UniformsSet& uniforms ) noexcept;
+        static bool CachedUniformBlockMatches( const UniformBlockLayouts& uniformBlocks,
+                                               const LoadData& data, U8& blockIndexOut ) noexcept;
+
+        static void loadAndParseGLSL( std::string_view programName,
+                                      RenderAPI renderAPI,
+                                      const ModuleDefines& defines,
+                                      LoadData& loadDataInOut,
+                                      UniformBlockLayouts& uniformBlocksInOut,
+                                      eastl::set<U64>& atomIDsInOut );
 
         void initDrawDescriptorSetLayout( const PerFileShaderData& loadData );
         void initUniformUploader( const PerFileShaderData& loadData );
 
 
     private:
+        friend struct ShaderProgramTestAccess;
+
+        struct BindingSlotCounters
+        {
+            U8 _texture{ 0u };
+            U8 _image{ 0u };
+            U8 _uniformBuffer{ 0u };
+            U8 _storageBuffer{ 0u };
+        };
+        static BindingSlotCounters s_bindingSlots;
+
+        [[nodiscard]] static constexpr bool IsStorageBindingWithinLimit( const RenderAPI api, const U8 binding, const U32 limit ) noexcept
+        {
+            return api != RenderAPI::OpenGL || binding < limit;
+        }
+
+        static bool InitGLSW( RenderAPI renderingAPI, const Configuration& config );
+        static bool InitShaderThread( RenderAPI renderingAPI, const Configuration& config );
+        static void InitAtomLocations();
+        [[nodiscard]] static Reflection::PushConstantsState DetectPushConstantsUsage( const string& source, RenderAPI renderAPI ) noexcept;
+
         static void EraseAtom(const U64 atomHash);
         static void EraseAtomLocked(const U64 atomHash);
 
-        static const string& ShaderFileRead( const ResourcePath& filePath, std::string_view atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
-        static const string& ShaderFileReadLocked( const ResourcePath& filePath, std::string_view atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
-
         static void PreprocessIncludes( std::string_view name,
                                         string& sourceInOut,
-                                        I32 level,
-                                        eastl::set<U64>& foundAtomIDsInOut,
-                                        bool lock );
+                                        eastl::set<U64>& foundAtomIDsInOut );
     protected:
         template <typename T>
         friend class ImplResourceLoader;
@@ -325,7 +353,6 @@ namespace Divide
         /// Shaders loaded from files are kept as atoms
         static Mutex s_atomLock;
         static AtomMap s_atoms;
-        static AtomInclusionMap s_atomIncludes;
 
         //extra entry for "common" location
         static ResourcePath shaderAtomLocationPrefix[to_base( ShaderType::COUNT ) + 1];

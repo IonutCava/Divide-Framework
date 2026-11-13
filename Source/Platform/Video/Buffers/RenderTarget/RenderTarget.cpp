@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/RenderTarget.h"
 
@@ -76,7 +76,8 @@ bool RenderTarget::create()
                 _attachments[to_base(attDesc._slot)] = std::make_unique<RTAttachment>(*this, attDesc);
                 att = _attachments[to_base(attDesc._slot)].get();
             } break;
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default:
+                DIVIDE_UNEXPECTED_CALL();
         };
 
         if (printWarning)
@@ -103,18 +104,18 @@ bool RenderTarget::create()
                                                                                  : ImageUsage::RT_DEPTH_ATTACHMENT);
 
         const bool needsMSAAResolve = autoResolveAttachment(att);
+        attDesc._texDescriptor._msaaSamples = _descriptor._msaaSamples;
 
         Handle<Texture> renderTexture = INVALID_HANDLE<Texture>;
         Handle<Texture> resolveTexture = INVALID_HANDLE<Texture>;
         const MipMappingState mipMapState = attDesc._texDescriptor._mipMappingState;
         
-        if ( needsMSAAResolve )
+        if ( _descriptor._msaaSamples > 0u )
         {
             RemoveImageUsageFlag(attDesc._texDescriptor, ImageUsage::SHADER_READ );
             attDesc._texDescriptor._mipMappingState = MipMappingState::OFF;
-            attDesc._texDescriptor._msaaSamples = _descriptor._msaaSamples;
         }
-        else
+        if ( !needsMSAAResolve )
         {
             RemoveImageUsageFlag(attDesc._texDescriptor, ImageUsage::RT_RESOLVE_TARGET);
         }
@@ -214,7 +215,6 @@ RTAttachment* RenderTarget::getAttachment(const RTAttachmentType type, const RTC
     }
 
     DIVIDE_UNEXPECTED_CALL();
-    return nullptr;
 }
 
 U8 RenderTarget::getAttachmentCount(const RTAttachmentType type) const noexcept
@@ -241,7 +241,6 @@ U8 RenderTarget::getAttachmentCount(const RTAttachmentType type) const noexcept
     }
 
     DIVIDE_UNEXPECTED_CALL();
-    return 0u;
 }
 
 U16 RenderTarget::getWidth() const noexcept

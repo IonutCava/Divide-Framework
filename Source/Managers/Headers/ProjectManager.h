@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -40,6 +40,7 @@
 #include "Core/Headers/KernelComponent.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 #include "Rendering/RenderPass/Headers/RenderPassCuller.h"
+#include "Rendering/Lighting/Headers/LightUploadState.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
 
@@ -124,6 +125,11 @@ namespace Divide
         bool _createIfNotExist = false;
     };
 
+    struct ProjectStartupSceneConfig
+    {
+        string startupScene{ Config::DEFAULT_SCENE_NAME };
+    };
+
     struct SwitchProjectTarget
     {
         ProjectID _targetProject = {};
@@ -160,6 +166,7 @@ namespace Divide
         [[nodiscard]] bool switchScene( const SwitchSceneTarget& scene );
 
         [[nodiscard]] inline const SceneEntries& getSceneEntries() const noexcept { return _sceneEntries; }
+        [[nodiscard]] inline const ProjectStartupSceneConfig& startupSceneConfig() const noexcept { return _startupSceneConfig; }
 
         [[nodiscard]] inline ProjectManager& parent() noexcept { return _parentManager; }
 
@@ -182,6 +189,7 @@ namespace Divide
         ProjectManager& _parentManager;
 
         vector<SceneEntry> _sceneEntries;
+        ProjectStartupSceneConfig _startupSceneConfig;
     };
 
     FWD_DECLARE_MANAGED_CLASS( Project );
@@ -229,9 +237,9 @@ namespace Divide
         /// init default culling values like max cull distance and other scene related states
         void initDefaultCullValues( RenderStage stage, NodeCullParams& cullParamsInOut ) noexcept;
         /// get the full list of reflective nodes
-        void getSortedReflectiveNodes( const Camera* camera, RenderStage stage, bool inView, VisibleNodeList<>& nodesOut ) const;
+        void getSortedReflectiveNodes( const Camera* camera, bool inView, VisibleNodeList<>& nodesOut ) const;
         /// get the full list of refractive nodes
-        void getSortedRefractiveNodes( const Camera* camera, RenderStage stage, bool inView, VisibleNodeList<>& nodesOut ) const;
+        void getSortedRefractiveNodes( const Camera* camera, bool inView, VisibleNodeList<>& nodesOut ) const;
 
         const VisibleNodeList<>& getRenderedNodeList() const noexcept;
 
@@ -314,7 +322,7 @@ namespace Divide
         void drawCustomUI( const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
         void postRender( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
         void debugDraw( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
-        void prepareLightData( RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut );
+        [[nodiscard]] LightDataBinding prepareLightData( RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut );
         [[nodiscard]] Camera* playerCamera( bool skipOverride = false ) const noexcept;
         [[nodiscard]] Camera* playerCamera( PlayerIndex idx, bool skipOverride = false ) const noexcept;
         void editorPreviewNode( const I64 editorPreviewNode ) noexcept;
@@ -532,9 +540,9 @@ namespace Divide
                 mgr->initDefaultCullValues( stage, cullParamsInOut );
             }
 
-            static void prepareLightData( Divide::ProjectManager* mgr, const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
+            [[nodiscard]] static LightDataBinding prepareLightData( Divide::ProjectManager* mgr, const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
             {
-                mgr->prepareLightData( stage, cameraSnapshot, memCmdInOut );
+                return mgr->prepareLightData( stage, cameraSnapshot, memCmdInOut );
             }
 
             static void debugDraw( Divide::ProjectManager* mgr, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )

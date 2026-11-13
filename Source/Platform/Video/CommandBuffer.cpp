@@ -128,13 +128,23 @@ namespace
 
     void CommandBuffer::add( const CommandBuffer& other )
     {
+        add( other, 0u, other._commands.size() );
+    }
+
+    void CommandBuffer::add( const CommandBuffer& other, const size_t first, const size_t count )
+    {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        _commands.reserve( _commands.size() + other._commands.size() );
-
-        for ( CommandBase* cmd : other._commands )
+        if ( !DIVIDE_ASSERT( this != &other && first <= other._commands.size() &&
+                            count <= other._commands.size() - first, "Invalid command-buffer range" ) )
         {
-            cmd->addToBuffer( this );
+            return;
+        }
+        _commands.reserve( _commands.size() + count );
+
+        for ( size_t i = first; i < first + count; ++i )
+        {
+            other._commands[i]->addToBuffer( this );
         }
         _batched = false;
     }
@@ -149,6 +159,18 @@ namespace
                 add( *buf );
             }
         }
+    }
+
+    void CommandBuffer::insert( CommandBuffer&& other, const size_t position )
+    {
+        if ( this == &other || position > _commands.size() )
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG( "Invalid command-buffer insertion" );
+        }
+        _commands.insert( _commands.begin() + position, other._commands.begin(), other._commands.end() );
+        other._commands.clear();
+        _batched = false;
+        other._batched = false;
     }
 
     void CommandBuffer::batch()
@@ -291,7 +313,7 @@ namespace
         const Pipeline* prevPipeline = nullptr;
         const Rect<I32>* prevScissorRect = nullptr;
         const Rect<I32>* prevViewportRect = nullptr;
-        const DescriptorSet* prevDescriptorSet = nullptr;
+        const BindShaderResourcesCommand* prevDescriptorSet = nullptr;
 
         bool ret = false;
 
@@ -348,9 +370,9 @@ namespace
                     PROFILE_SCOPE( "Clean Descriptor Sets", Profiler::Category::Graphics );
 
                     auto bindCmd = cmd->As<BindShaderResourcesCommand>();
-                    if ( bindCmd->_usage != DescriptorSetUsage::COUNT && (prevDescriptorSet == nullptr || *prevDescriptorSet != bindCmd->_set) )
+                    if ( bindCmd->_usage != DescriptorSetUsage::COUNT && (prevDescriptorSet == nullptr || !prevDescriptorSet->sameBindings( *bindCmd )) )
                     {
-                        prevDescriptorSet = &bindCmd->_set;
+                        prevDescriptorSet = bindCmd;
                     }
                     else
                     {
@@ -613,9 +635,10 @@ namespace
                     {
                         return { ErrorType::INVALID_DESCRIPTOR_SET, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                     }
-                    for ( U8 i = 0u; i < resCmd->_set._bindingCount; ++i )
+                    const DescriptorSet bindings = resCmd->effectiveBindings();
+                    for ( U8 i = 0u; i < bindings._bindingCount; ++i )
                     {
-                        const DescriptorSetBinding& binding = resCmd->_set._bindings[i];
+                        const DescriptorSetBinding& binding = bindings._bindings[i];
                         if ( binding._shaderStageVisibility == to_base( ShaderStageVisibility::COUNT ) )
                         {
                             return { ErrorType::INVALID_DESCRIPTOR_SET, cmdIndex, Names::commandType[to_base(cmd->_type)] };
@@ -725,6 +748,171 @@ namespace
         out.append( "\n\n\n\n" );
 
         return out;
+    }
+
+    namespace
+    {
+        [[nodiscard]] bool SamePushData( const SendPushConstantsCommand& lhs,
+                                         const SendPushConstantsCommand& rhs ) noexcept
+        {
+            if ( lhs._fastData.dataFlags() != rhs._fastData.dataFlags() ||
+                 std::memcmp( lhs._fastData.data, rhs._fastData.data, PushConstantsStruct::MaxSize() ) != 0 )
+            {
+                return false;
+            }
+            if ( lhs._uniformData == rhs._uniformData )
+            {
+                return true;
+            }
+            if ( lhs._uniformData == nullptr || rhs._uniformData == nullptr )
+            {
+                return false;
+            }
+
+            const auto& lhsEntries = lhs._uniformData->entries();
+            const auto& rhsEntries = rhs._uniformData->entries();
+            if ( lhsEntries.size() != rhsEntries.size() )
+            {
+                return false;
+            }
+            for ( size_t i = 0u; i < lhsEntries.size(); ++i )
+            {
+                const UniformData::Entry& a = lhsEntries[i];
+                const UniformData::Entry& b = rhsEntries[i];
+                if ( a._bindingHash != b._bindingHash || a._type != b._type ||
+                     a._range._length != b._range._length )
+                {
+                    return false;
+                }
+                if ( a._range._length > 0u &&
+                     std::memcmp( lhs._uniformData->data( a._range._startOffset ),
+                                  rhs._uniformData->data( b._range._startOffset ), a._range._length ) != 0 )
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        [[nodiscard]] bool CanBatchIndirectDraw( const GenericDrawCommand& draw ) noexcept
+        {
+            return ClassifyIndirectDraw( draw ) == IndirectDrawCandidate::CANDIDATE;
+        }
+    }
+
+    IndirectDrawCandidate ClassifyIndirectDraw( const GenericDrawCommand& draw ) noexcept
+    {
+        constexpr U16 requiredOptions = to_base( CmdRenderOptions::RENDER_GEOMETRY ) |
+                                        to_base( CmdRenderOptions::RENDER_INDIRECT );
+        if ( draw._renderOptions != requiredOptions )
+        {
+            return IndirectDrawCandidate::OPTIONS;
+        }
+        if ( draw._cmd.indexCount == 0u )
+        {
+            return IndirectDrawCandidate::NO_INDICES;
+        }
+        if ( draw._sourceBuffersCount != 2u || draw._sourceBuffers == nullptr )
+        {
+            return IndirectDrawCandidate::BUFFERS;
+        }
+        if ( draw._drawCount != 1u )
+        {
+            return IndirectDrawCandidate::MULTI_RECORD;
+        }
+        if ( draw._cmd.instanceCount != 1u )
+        {
+            return IndirectDrawCandidate::INSTANCED;
+        }
+        return IndirectDrawCandidate::CANDIDATE;
+    }
+
+    size_t CollectIndirectDrawBatch( const CommandBuffer::CommandList& commands,
+                                     const size_t drawIndex,
+                                     const bool shaderCompatible,
+                                     const U32 maxDrawCount,
+                                     GenericDrawCommand& batchOut,
+                                     IndirectBatchStop* stopOut ) noexcept
+    {
+        IndirectBatchStop stop = IndirectBatchStop::NOT_STARTED;
+        size_t consumed = 0u;
+
+        if ( shaderCompatible && maxDrawCount > 2u && drawIndex > 0u &&
+             drawIndex < commands.size() && commands[drawIndex] != nullptr &&
+             commands[drawIndex - 1u] != nullptr &&
+             commands[drawIndex]->type() == CommandType::DRAW_COMMANDS &&
+             commands[drawIndex - 1u]->type() == CommandType::SEND_PUSH_CONSTANTS )
+        {
+            const DrawCommand* firstDraw = commands[drawIndex]->As<DrawCommand>();
+            if ( firstDraw->_drawCommands.size() == 1u && CanBatchIndirectDraw( firstDraw->_drawCommands.front() ) )
+            {
+                const SendPushConstantsCommand* firstPush = commands[drawIndex - 1u]->As<SendPushConstantsCommand>();
+                GenericDrawCommand batch = firstDraw->_drawCommands.front();
+                while ( true )
+                {
+                    if ( commands.size() - drawIndex - consumed <= 2u )
+                    {
+                        stop = IndirectBatchStop::END_OF_BUFFER;
+                        break;
+                    }
+                    if ( batch._drawCount >= maxDrawCount - 1u )
+                    {
+                        stop = IndirectBatchStop::DRAW_LIMIT;
+                        break;
+                    }
+
+                    const CommandBase* pushBase = commands[drawIndex + consumed + 1u];
+                    const CommandBase* drawBase = commands[drawIndex + consumed + 2u];
+                    if ( pushBase == nullptr || drawBase == nullptr ||
+                         pushBase->type() != CommandType::SEND_PUSH_CONSTANTS ||
+                         drawBase->type() != CommandType::DRAW_COMMANDS )
+                    {
+                        stop = IndirectBatchStop::NEXT_COMMANDS;
+                        break;
+                    }
+
+                    const auto* push = static_cast<const SendPushConstantsCommand*>( pushBase );
+                    const auto* draw = static_cast<const DrawCommand*>( drawBase );
+                    if ( draw->_drawCommands.size() != 1u || !CanBatchIndirectDraw( draw->_drawCommands.front() ) )
+                    {
+                        stop = IndirectBatchStop::NEXT_DRAW;
+                        break;
+                    }
+
+                    const GenericDrawCommand& next = draw->_drawCommands.front();
+                    if ( !Compatible( batch, next ) )
+                    {
+                        stop = IndirectBatchStop::BUFFERS;
+                        break;
+                    }
+                    if ( next._commandOffset <= batch._commandOffset ||
+                         next._commandOffset - batch._commandOffset != batch._drawCount )
+                    {
+                        stop = IndirectBatchStop::OFFSET_GAP;
+                        break;
+                    }
+                    if ( !SamePushData( *firstPush, *push ) )
+                    {
+                        stop = IndirectBatchStop::PUSH_DATA;
+                        break;
+                    }
+
+                    ++batch._drawCount;
+                    consumed += 2u;
+                }
+
+                if ( consumed > 0u )
+                {
+                    batchOut = batch;
+                }
+            }
+        }
+
+        if ( stopOut != nullptr )
+        {
+            *stopOut = stop;
+        }
+        return consumed;
     }
 
     bool BatchDrawCommands( GenericDrawCommand& previousGDC, GenericDrawCommand& currentGDC ) noexcept

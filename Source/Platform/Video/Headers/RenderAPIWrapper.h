@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -57,6 +57,7 @@ class ResourceCache;
 class DisplayWindow;
 
 struct Configuration;
+struct GenericDrawCommand;
 struct TextElementBatch;
 struct RenderTargetDescriptor;
 struct ShaderBufferDescriptor;
@@ -65,6 +66,18 @@ FWD_DECLARE_MANAGED_CLASS( Renderer );
 FWD_DECLARE_MANAGED_CLASS( GPUBuffer );
 FWD_DECLARE_MANAGED_CLASS( RenderTarget );
 FWD_DECLARE_MANAGED_CLASS( ShaderBuffer );
+
+struct BufferReadbackRequest
+{
+    ShaderBuffer* _buffer{ nullptr };
+    U32 _offsetElementCount{ 0u };
+    U32 _elementCount{ 0u };
+    /// The caller-owned destination must remain valid until completion is reported.
+    std::pair<bufferPtr, size_t> _target{ nullptr, 0u };
+    U16 _queueIndex{ U16_MAX };
+    I64 _windowGUID{ I64_LOWEST };
+    std::function<void( bool )> _completion;
+};
 
 struct VideoModes {
     // Video resolution
@@ -80,6 +93,29 @@ struct VideoModes {
 /// Queries are expensive, so this result MAY BE SEVERAL frames out of date!
 struct PerformanceMetrics
 {
+    PerformanceMetrics() = default;
+    PerformanceMetrics( const PerformanceMetrics& other ) noexcept
+    {
+        *this = other;
+    }
+
+    PerformanceMetrics& operator=( const PerformanceMetrics& other ) noexcept
+    {
+        _gpuTimeInMS = other._gpuTimeInMS;
+        _verticesSubmitted = other._verticesSubmitted;
+        _primitivesGenerated = other._primitivesGenerated;
+        _tessellationPatches = other._tessellationPatches;
+        _tessellationInvocations = other._tessellationInvocations;
+        _generatedRenderTargetCount = other._generatedRenderTargetCount;
+        _queuedGPUFrames = other._queuedGPUFrames;
+        std::copy( std::begin( other._syncObjectsInFlight ), std::end( other._syncObjectsInFlight ), std::begin( _syncObjectsInFlight ) );
+        std::copy( std::begin( other._scratchBufferQueueUsage ), std::end( other._scratchBufferQueueUsage ), std::begin( _scratchBufferQueueUsage ) );
+        _uniformBufferVRAMUsage = other._uniformBufferVRAMUsage;
+        _bufferVRAMUsage.store( other._bufferVRAMUsage.load( std::memory_order_relaxed ), std::memory_order_relaxed );
+        _gpuBufferCount.store( other._gpuBufferCount.load( std::memory_order_relaxed ), std::memory_order_relaxed );
+        return *this;
+    }
+
     F32 _gpuTimeInMS{ 0.f };
     /// Returns the time in milliseconds that it took to render one frame
     U64 _verticesSubmitted{ 0u };
@@ -97,12 +133,12 @@ struct PerformanceMetrics
     U32 _syncObjectsInFlight[3]{};
     /// Scratch buffer queue usage
     U32 _scratchBufferQueueUsage[2]{};
-    /// Total VRAM used for shader uniform storage across all used shader programs
+    /// Total retained bytes allocated for shader uniform upload pages
     size_t _uniformBufferVRAMUsage{0u};
     /// Total VRAM usage for all shader buffers
-    size_t _bufferVRAMUsage{ 0u };
+    std::atomic_size_t _bufferVRAMUsage{ 0u };
     /// Total buffers created
-    size_t _gpuBufferCount{ 0u };
+    std::atomic_size_t _gpuBufferCount{ 0u };
 };
 
 struct DeviceInformation
@@ -125,6 +161,7 @@ struct DeviceInformation
     size_t _offsetAlignmentBytesIBO = sizeof(U32);
     size_t _offsetAlignmentBytesUBO = 256u;
     size_t _offsetAlignmentBytesSSBO = 16u;
+    size_t _nonCoherentAtomSize = 1u;
     U32 _maxVertAttributeBindings = 16u;
     U32 _maxVertAttributes = 16u;
     U32 _maxVertOutputComponents = 16u;
@@ -194,12 +231,45 @@ struct DeviceInformation
     } _meshShading;
 };
 
+/// True if a compute workgroup with the given local size can run on this device. Device limits are inclusive maxima.
+[[nodiscard]] constexpr bool SupportsComputeWorkgroup( const DeviceInformation& info, const U32 x, const U32 y, const U32 z ) noexcept
+{
+    return x > 0u && y > 0u && z > 0u &&
+           x <= info._maxWorkgroupSize[0] &&
+           y <= info._maxWorkgroupSize[1] &&
+           z <= info._maxWorkgroupSize[2] &&
+           to_U64( x ) * y * z <= info._maxWorkgroupInvocations;
+}
+
+/// Largest 1D compute workgroup size that does not exceed `preferred`, fits the device limits and is a multiple of `granularity` (e.g. a wave size) when the limits allow it.
+[[nodiscard]] constexpr U32 FitComputeWorkgroup1D( const DeviceInformation& info, const U32 preferred, const U32 granularity ) noexcept
+{
+    U32 size = preferred;
+    if ( size > info._maxWorkgroupSize[0] )
+    {
+        size = info._maxWorkgroupSize[0];
+    }
+    if ( size > info._maxWorkgroupInvocations )
+    {
+        size = info._maxWorkgroupInvocations;
+    }
+    if ( granularity > 1u && size >= granularity )
+    {
+        size -= size % granularity;
+    }
+
+    return size > 0u ? size : 1u;
+}
+
 
 struct DebugScope
 {
     const char* _name = nullptr;
     U32 _id{ U32_MAX };
 };
+
+/// Maximum GPU timestamps per frame for per-command-buffer GPU timing (one before each submitted command buffer plus one after the last).
+constexpr U32 GPU_PASS_TIMESTAMP_CAPACITY = 512u;
 
 /// Renderer Programming Interface
 NOINITVTABLE_CLASS(RenderAPIWrapper) : NonCopyable
@@ -213,12 +283,14 @@ protected:
     [[nodiscard]] virtual bool drawToWindow(DisplayWindow& window) = 0;
                   virtual void onRenderThreadLoopStart() = 0;
                   virtual void onRenderThreadLoopEnd() = 0;
-                  virtual void prepareFlushWindow(DisplayWindow& window) = 0;
+    [[nodiscard]] virtual bool prepareFlushWindow(DisplayWindow& window) = 0;
                   virtual void flushWindow(DisplayWindow& window) = 0;
     [[nodiscard]] virtual bool frameStarted() = 0;
     [[nodiscard]] virtual bool frameEnded() = 0;
+    [[nodiscard]] virtual bool waitForGPUIdle() noexcept = 0;
 
     virtual void idle(bool fast) = 0;
+    [[nodiscard]] virtual bool queueBufferReadback( BufferReadbackRequest&& request ) = 0;
 
     virtual ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) = 0;
     virtual void closeRenderingAPI() = 0;
@@ -226,6 +298,13 @@ protected:
     virtual void preFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) = 0;
     virtual void flushCommand(GFX::CommandBase* cmd) = 0;
     virtual void postFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) = 0;
+    [[nodiscard]] virtual bool supportsIndirectDrawBatching( const GenericDrawCommand& ) const noexcept { return false; }
+
+    /// Records GPU timestamp `index` (< GPU_PASS_TIMESTAMP_CAPACITY) at the current submission point of the main window's frame.
+    virtual void writePassTimestamp( [[maybe_unused]] U32 index ) {}
+    /// Copies the most recent resolved set of pass timestamps, in milliseconds relative to the first one, and the frame number they were written in.
+    /// Call before any writePassTimestamp() in the frame. Returns the number of timestamps copied (0 if unavailable).
+    [[nodiscard]] virtual U32 readPassTimestamps( [[maybe_unused]] std::span<F32> outMS, [[maybe_unused]] U64& frameNumberOut ) { return 0u; }
 
     virtual bool setViewportInternal(const Rect<I32>& newViewport) = 0;
     virtual bool setScissorInternal(const Rect<I32>& newScissor) = 0;

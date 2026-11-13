@@ -1,5 +1,7 @@
 ﻿
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "Headers/NRIWrapper.h"
 
 #include "Core/Headers/Application.h"
@@ -31,12 +33,17 @@ namespace Divide
 #           endif
             case RenderAPI::NRI_Vulkan: _nriAPI = nri::GraphicsAPI::VK; break;
             case RenderAPI::NRI_None:   _nriAPI = nri::GraphicsAPI::NONE;   break;
-            default:                    DIVIDE_UNEXPECTED_CALL();           break;
+            default:                    DIVIDE_UNEXPECTED_CALL();
         }
     }
 
     void NVIDIA_RENDER_INTERFACE_API::idle( [[maybe_unused]] const bool fast ) noexcept
     {
+    }
+
+    bool NVIDIA_RENDER_INTERFACE_API::queueBufferReadback( [[maybe_unused]] BufferReadbackRequest&& request ) noexcept
+    {
+        return false;
     }
 
     bool NVIDIA_RENDER_INTERFACE_API::drawToWindow( [[maybe_unused]] DisplayWindow& window )
@@ -52,9 +59,10 @@ namespace Divide
     {
     }
 
-    void NVIDIA_RENDER_INTERFACE_API::prepareFlushWindow( [[maybe_unused]] DisplayWindow& window )
+    bool NVIDIA_RENDER_INTERFACE_API::prepareFlushWindow( [[maybe_unused]] DisplayWindow& window )
     {
         SDL_RenderClear( _renderer );
+        return true;
     }
 
     void NVIDIA_RENDER_INTERFACE_API::flushWindow( DisplayWindow& window )
