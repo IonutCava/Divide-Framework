@@ -312,8 +312,6 @@ inline float3 BoundingBox::cornerPoint(const U8 cornerIndex) const noexcept
 {
     switch (cornerIndex)
     {
-        default: DIVIDE_UNEXPECTED_CALL(); break;
-
         case 0: return float3{ _min.x, _min.y, _min.z};
         case 1: return float3{ _min.x, _min.y, _max.z };
         case 2: return float3{ _min.x, _max.y, _min.z };
@@ -322,10 +320,12 @@ inline float3 BoundingBox::cornerPoint(const U8 cornerIndex) const noexcept
         case 5: return float3{ _max.x, _min.y, _max.z };
         case 6: return float3{ _max.x, _max.y, _min.z };
         case 7: return float3{ _max.x, _max.y, _max.z };
+        default: break;
     }
 
-    return VECTOR3_ZERO;
+    DIVIDE_UNEXPECTED_CALL();
 }
+
 inline std::array<float3, 8> BoundingBox::getPoints() const noexcept
 {
     return std::array<float3, 8>

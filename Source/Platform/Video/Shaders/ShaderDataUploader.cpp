@@ -52,7 +52,7 @@ namespace Divide
                     case _ID( "uint" ):               //  4 bytes
                     case _ID( "float" )  : return 10; //  4 bytes
                     case _ID( "bool" )   : return 11; //  4 bytes (converted to uint)
-                    default: DIVIDE_UNEXPECTED_CALL();
+                    default:               DIVIDE_UNEXPECTED_CALL();
                 }
             };
 

@@ -55,7 +55,8 @@ namespace Divide
                     reset = syncObject._ptr->_frameNumber < frameNumber;
                 } break;
 
-                default : DIVIDE_UNEXPECTED_CALL();
+                default:
+                    DIVIDE_UNEXPECTED_CALL();
             }
 
             if (reset)

@@ -53,10 +53,11 @@ namespace Divide
                 case ImageUsage::UNDEFINED:
                 case ImageUsage::SHADER_READ:
                 case ImageUsage::RT_RESOLVE_TARGET:
-                case ImageUsage::CPU_READ:  break;
-
+                case ImageUsage::CPU_READ:
+                    break;
+                case ImageUsage::COUNT:
                 default:
-                case ImageUsage::COUNT: DIVIDE_UNEXPECTED_CALL();
+                    DIVIDE_UNEXPECTED_CALL();
             }
 
             if ( descriptor._allowRegionUpdates )
@@ -282,7 +283,8 @@ namespace Divide
             {
                 FlushPipelineBarrier(cmdBuffer, TransitionType::SHADER_READ_WRITE_TO_COPY_READ, fullRange, namedImage );
             } break;
-            default: DIVIDE_UNEXPECTED_CALL();
+            default:
+                DIVIDE_UNEXPECTED_CALL();
         }
 
         VkImageSubresourceRange subResourceRange = {
@@ -2053,9 +2055,7 @@ namespace Divide
                 memBarrier.newLayout     = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
             } break;
             default:
-            {
                 DIVIDE_UNEXPECTED_CALL();
-            }
         }
 
     }

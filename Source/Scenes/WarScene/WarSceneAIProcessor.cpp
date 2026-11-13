@@ -308,9 +308,10 @@ void WarSceneAIProcessor::requestOrders() {
                     }
                 }
             } break;
-            case WarSceneOrder::WarOrder::COUNT: break;
-
-            default: DIVIDE_UNEXPECTED_CALL();
+            case WarSceneOrder::WarOrder::COUNT:
+                break;
+            default:
+                DIVIDE_UNEXPECTED_CALL();
         }
         priority[order->getID()] = to_U8(priorityLevel);
     }
@@ -410,10 +411,9 @@ bool WarSceneAIProcessor::preAction(const ActionType type, const WarSceneAction*
             PRINT("Starting recover flag action");
             DIVIDE_EXPECTED_CALL(_entity->updateDestination(_globalWorkingMemory._teamFlagPosition[enemyTeamID].value()));
         } break;
+        case ActionType::COUNT:
         default: 
-        case ActionType::COUNT: {
             DIVIDE_UNEXPECTED_CALL();
-        }
     }
 
     return true;
@@ -505,10 +505,9 @@ bool WarSceneAIProcessor::postAction(ActionType type,
             }
             _messageCallback(1, _entity->name());
         } break;
+        case ActionType::COUNT:
         default: 
-        case ActionType::COUNT: {
             DIVIDE_UNEXPECTED_CALL();
-        }
     }
 
     GOAPAction::operationsIterator o;
@@ -590,10 +589,9 @@ bool WarSceneAIProcessor::checkCurrentActionComplete(const GOAPAction& planStep)
                 DIVIDE_EXPECTED_CALL( _entity->updateDestination(_globalWorkingMemory._teamFlagPosition[ownTeamID].value()));
             }
         } break;
+        case ActionType::COUNT:
         default:
-        case ActionType::COUNT: {
             DIVIDE_UNEXPECTED_CALL();
-        }
     }
 
     if (state) {

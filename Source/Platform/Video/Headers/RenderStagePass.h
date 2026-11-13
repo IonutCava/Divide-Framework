@@ -140,7 +140,6 @@ namespace Divide
         }
 
         DIVIDE_UNEXPECTED_CALL();
-        return U8_ONE;
     }
 
 }; //namespace Divide

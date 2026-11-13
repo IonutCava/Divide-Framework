@@ -2019,10 +2019,12 @@ namespace Divide
             case GFX::CommandType::SET_CLIP_PLANES:
             case GFX::CommandType::BIND_SHADER_RESOURCES:
             case GFX::CommandType::READ_BUFFER_DATA:
-            case GFX::CommandType::CLEAR_BUFFER_DATA: break;
+            case GFX::CommandType::CLEAR_BUFFER_DATA:
+                break;
 
             case GFX::CommandType::COUNT:
-            default: DIVIDE_UNEXPECTED_CALL();
+            default:
+                DIVIDE_UNEXPECTED_CALL();
         }
     }
 
@@ -2405,9 +2407,9 @@ namespace Divide
                             case ImageUsage::RT_COLOUR_ATTACHMENT:
                             case ImageUsage::RT_DEPTH_ATTACHMENT:
                             case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
-
+                            case ImageUsage::COUNT:
                             default:
-                            case ImageUsage::COUNT: DIVIDE_UNEXPECTED_CALL();
+                                DIVIDE_UNEXPECTED_CALL();
                         }
 
                         DIVIDE_GPU_ASSERT( imageView._image._subRange._mipLevels._count == 1u );

@@ -867,7 +867,8 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                     case DDSCache::WriteStatus::CONVERSION_ERROR:
                         Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DDS_CONVERSION_ERROR" ), fullPath, cacheFilePath );
                         break;
-                    default: DIVIDE_UNEXPECTED_CALL();
+                    default:
+                        DIVIDE_UNEXPECTED_CALL();
                 }
             });
 
@@ -1000,7 +1001,8 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         dataLDR = stbi__hdr_to_ldr( dataHDR, width, height, comp );
                         dataHDR = nullptr;
                     } break;
-                    default: DIVIDE_UNEXPECTED_CALL();
+                    default:
+                        DIVIDE_UNEXPECTED_CALL();
                 };
                 _sourceDataType = SourceDataType::BYTE;
             } break;
@@ -1019,7 +1021,8 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         data16Bit = stbi__hdr_to_16( dataHDR, width, height, comp );
                         dataHDR = nullptr;
                     } break;
-                    default: DIVIDE_UNEXPECTED_CALL();
+                    default:
+                        DIVIDE_UNEXPECTED_CALL();
                 };
                 _sourceDataType = SourceDataType::SHORT;
             } break;
@@ -1044,7 +1047,8 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         dataUINT = stbi_convert<U32, stbi__uint16>( data16Bit, width, height, comp );
                         data16Bit = nullptr;
                     } break;
-                    default: DIVIDE_UNEXPECTED_CALL();
+                    default:
+                        DIVIDE_UNEXPECTED_CALL();
                 };
                 _sourceDataType = SourceDataType::UINT;
             } break;
@@ -1073,7 +1077,8 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         dataHalf = stbi__hdr_to_half( dataHDR, width, height, comp );
                         dataHDR = nullptr;
                     }break;
-                    default: DIVIDE_UNEXPECTED_CALL();
+                    default:
+                        DIVIDE_UNEXPECTED_CALL();
                 };
                 _sourceDataType = SourceDataType::HALF;
             } break;
@@ -1092,7 +1097,8 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         data16Bit = nullptr;
                     }break;
                     case SourceDataType::FLOAT: break;
-                    default: DIVIDE_UNEXPECTED_CALL();
+                    default:
+                        DIVIDE_UNEXPECTED_CALL();
                 }
                 _sourceDataType = SourceDataType::FLOAT;
             } break;
@@ -1109,8 +1115,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         case 1 : _format = GFXImageFormat::RED;  break;
         case 2 : _format = GFXImageFormat::RG;   break;
         case 4 : _format = GFXImageFormat::RGBA; break;
-        default:
-            DIVIDE_UNEXPECTED_CALL();
+        default: DIVIDE_UNEXPECTED_CALL();
     }
 
     if (refWidth != 0 && refHeight != 0 && (refWidth != width || refHeight != height))

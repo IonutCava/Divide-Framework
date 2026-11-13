@@ -411,8 +411,8 @@ namespace Divide
                     }
                 } break;
 
-                default:
                 case LightType::COUNT:
+                default:
                     DIVIDE_UNEXPECTED_CALL();
             }
 

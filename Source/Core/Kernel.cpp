@@ -44,20 +44,18 @@ size_t Kernel::TotalThreadCount( const TaskPoolType type ) noexcept
 {
     switch ( type )
     {
+        default:                          DIVIDE_UNEXPECTED_CALL();
         case TaskPoolType::ASSET_LOADER:  return g_threadPoolSizes._asset;
         case TaskPoolType::RENDERER:      return g_threadPoolSizes._render;
-        case TaskPoolType::LOW_PRIORITY: return g_threadPoolSizes._lowPriority;
+        case TaskPoolType::LOW_PRIORITY:  return g_threadPoolSizes._lowPriority;
         case TaskPoolType::HIGH_PRIORITY: return g_threadPoolSizes._highPriority;
-
-        default: 
-            DIVIDE_UNEXPECTED_CALL();
-            //fallthrough
-        case TaskPoolType::COUNT: 
-            break;
+        case TaskPoolType::COUNT:         break;
     }
 
-    return g_threadPoolSizes._asset + g_threadPoolSizes._render +
-           g_threadPoolSizes._lowPriority + g_threadPoolSizes._highPriority;
+    return g_threadPoolSizes._asset +
+           g_threadPoolSizes._render +
+           g_threadPoolSizes._lowPriority +
+           g_threadPoolSizes._highPriority;
 }
 
 Kernel::Kernel(const I32 argc, char** argv, Application& parentApp)
@@ -896,7 +894,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     }
 
     Str<256> startupProject = config.startupProject.c_str();
-    if ( Config::Build::IS_EDITOR_BUILD && config.runtime.enableEditor)
+    if ( Config::Build::IS_EDITOR_BUILD && RenderSmokeTest::Enabled() && config.runtime.enableEditor)
     {
         startupProject = RenderSmokeTest::Project().empty() ? Config::DEFAULT_PROJECT_NAME : RenderSmokeTest::Project().c_str();
         Console::printfn(LOCALE_STR("START_FRAMEWORK_EDITOR"), startupProject.c_str() );
@@ -923,7 +921,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         }
     }
 
-    if ( targetProject._guid == 0 && !RenderSmokeTest::Project().empty() )
+    if ( RenderSmokeTest::Enabled() && targetProject._guid == 0 && !RenderSmokeTest::Project().empty() )
     {
         Console::errorfn( "Render smoke test project [ {} ] not found.", startupProject.c_str() );
         return ErrorCode::MISSING_PROJECT_DATA;
