@@ -26,12 +26,12 @@ uniform uint dvd_grassInstanceCount;
 #endif
 
 uniform vec3 dvd_cameraPosition;
-uniform float dvd_globalWaterHeight;
 
 #include "frustumCulling.cmn"
 #include "vegetationData.cmn"
 #include "grassInstanceMetadata.cmn"
 #include "sceneData.cmn"
+#include "waterData.cmn"
 #include "treeWind.cmn"
 #if defined(OCCLUSION_PASS)
 uniform mat4 dvd_occlusionViewProjection;
@@ -118,7 +118,7 @@ void main(void) {
             }
 #else
             instance = Data[drawBase + idx];
-            if (instance.positionAndScale.y >= dvd_globalWaterHeight) {
+            if (!IsUnderWater(instance.positionAndScale.xyz)) {
 #if defined(CULL_TREES)
                 const float treeRadius = instance.data.y * abs(instance.positionAndScale.w);
                 const float radius = treeRadius + TREE_WIND_PADDING(treeRadius, length(dvd_windDetails.xz));

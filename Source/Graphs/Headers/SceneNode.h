@@ -56,6 +56,7 @@ class BoundsSystem;
 class BoundsComponent;
 class RenderingComponent;
 class NetworkingComponent;
+struct WaterBodyData;
 
 class Light;
 class SpotLightComponent;
@@ -98,6 +99,22 @@ class SceneNode : public CachedResource
     friend class Attorney::SceneNodeNetworkComponent;
 
   public:
+    enum class DirtyFlushType : U8
+    {
+        NONE = 0u,
+        REBUILD_WATER_BODIES = 1u << 0u,
+        FINALIZE_NODE = 1u << 1u
+    };
+
+    enum class DirtyEventType : U8
+    {
+        NONE = 0u,
+        NODE_ADDED = 1u << 0u,
+        NODE_MOVED = 1u << 1u,
+        SPATIAL_CHANGE = 1u << 2u,
+        NODE_DESTROYED = 1u << 3u
+    };
+
     explicit SceneNode( const ResourceDescriptorBase& descriptor, SceneNodeType type, U32 requiredComponentMask );
 
     virtual ~SceneNode() override;
@@ -130,6 +147,11 @@ class SceneNode : public CachedResource
 
     virtual bool saveCache(ByteBuffer& outputBuffer) const;
     virtual bool loadCache(ByteBuffer& inputBuffer);
+
+    [[nodiscard]] virtual U8 dirtyFlushMask() const noexcept;
+    [[nodiscard]] virtual U8 dirtyFlushMaskForEvent( U8 eventMask ) const noexcept;
+    virtual void flushSceneData( SceneGraphNode* sgn, SceneState& sceneState );
+    [[nodiscard]] virtual bool extractWaterBodyData( const SceneGraphNode* sgn, WaterBodyData& dataOut ) const;
 
     virtual void saveToXML(boost::property_tree::ptree& pt) const;
     virtual void loadFromXML(const boost::property_tree::ptree& pt);

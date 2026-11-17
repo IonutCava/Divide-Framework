@@ -559,6 +559,7 @@ namespace Divide
             {
                 if ( stagePass._passType == RenderPassType::OIT_PASS )
                 {
+                    // ToDo: OIT sorting is not fully correct for vegetation transparency; far tree canopies can still bleed through near canopies.
                     fragModule._variant = "Colour.OIT";
                     shaderDescriptor._name = "grassColourOIT";
                 }
@@ -590,10 +591,19 @@ namespace Divide
         }
     }
 
+    U8 Vegetation::dirtyFlushMask() const noexcept
+    {
+        return to_base( DirtyFlushType::FINALIZE_NODE );
+    }
+
+    void Vegetation::flushSceneData( SceneGraphNode* sgn, SceneState& sceneState )
+    {
+        finalizeInstance( sgn, sceneState );
+    }
+
     void Vegetation::finalizeInstance( SceneGraphNode* sgn, const SceneState& sceneState )
     {
-        DIVIDE_ASSERT( !sceneState.waterBodies().empty(), "Vegetation requires the global water body" );
-        _globalWaterHeight = sceneState.waterBodies().front()._positionW.y;
+        DIVIDE_UNUSED( sceneState );
         applyWindAnimation();
         VegetationInstance* instance = findInstance( sgn->dataFlag() );
         if ( instance == nullptr || instance->_initialized )
@@ -954,7 +964,6 @@ namespace Divide
                 uniforms->set( _ID( "dvd_grassVisibilityDistance" ), PushConstantType::FLOAT, _grassDistance );
                 uniforms->set( _ID( "dvd_treeVisibilityDistance" ), PushConstantType::FLOAT, _treeDistance );
                 uniforms->set( _ID( "dvd_grassExtents" ), PushConstantType::VEC4, _grassExtents );
-                uniforms->set( _ID( "dvd_globalWaterHeight" ), PushConstantType::FLOAT, _globalWaterHeight );
                 uniforms->set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, sgn->dataFlag() );
                 uniforms->set( _ID( "dvd_grassInstanceCount" ), PushConstantType::UINT, instance->_drawState._grassInstanceCount );
                 uniforms->set( _ID( "dvd_treeInstanceCount" ), PushConstantType::UINT, instance->_drawState._treeInstanceCount );
@@ -1282,14 +1291,12 @@ namespace Divide
     vector<VegetationData> VegetationInstance::computeTransforms( const bool treeData )
     {
         const U32 ID = _chunk->id();
-        const F32 waterHeight = GetVariableF( _chunk->parent().descriptor(), "globalWaterHeight" );
-        const U32 waterHeightKey = std::bit_cast<U32>( waterHeight == 0.f ? 0.f : waterHeight );
 
         ResourcePtr<Vegetation> parent = Get(_parent);
         const VegetationDescriptor& descriptor = parent->_descriptor;
         const string cacheFileName = treeData
-            ? Util::StringFormat( "{}_{}_trees_{}_{:08x}_mix5_{:016x}.cache", _chunk->parent().resourceName().c_str(), parent->resourceName().c_str(), ID, waterHeightKey, TreePlacementHash( descriptor ) )
-            : Util::StringFormat( "{}_{}_grass_{}_{:08x}_{:016x}.cache", _chunk->parent().resourceName().c_str(), parent->resourceName().c_str(), ID, waterHeightKey, GetHash( descriptor ) );
+            ? Util::StringFormat( "{}_{}_trees_{}_mix6_{:016x}.cache", _chunk->parent().resourceName().c_str(), parent->resourceName().c_str(), ID, TreePlacementHash( descriptor ) )
+            : Util::StringFormat( "{}_{}_grass_{}_{:016x}.cache", _chunk->parent().resourceName().c_str(), parent->resourceName().c_str(), ID, GetHash( descriptor ) );
         Console::printfn( Locale::Get( treeData ? _ID( "CREATE_TREE_START" ) : _ID( "CREATE_GRASS_BEGIN" ) ), ID );
 
         const U16 cacheVersion = treeData ? TREE_CACHE_VERSION : GRASS_CACHE_VERSION;
@@ -1299,7 +1306,7 @@ namespace Divide
 
         ByteBuffer chunkCache;
         bool cacheValid = false;
-        constexpr size_t headerSize = sizeof( U16 ) + sizeof( F32 ) + sizeof( size_t );
+        constexpr size_t headerSize = sizeof( U16 ) + sizeof( size_t );
         if ( cacheEnabled && fileExists( Paths::g_terrainCacheLocation, cacheFileName ) )
         {
             const ResourcePath cachePath = Paths::g_terrainCacheLocation / cacheFileName;
@@ -1311,12 +1318,10 @@ namespace Divide
                  chunkCache.storageSize() >= headerSize && chunkCache.storageSize() <= maxCacheSize )
             {
                 U16 version = 0u;
-                F32 cachedWaterHeight = 0.f;
                 size_t containerSize = 0u;
                 chunkCache >> version;
-                chunkCache >> cachedWaterHeight;
                 chunkCache >> containerSize;
-                if ( version == cacheVersion && cachedWaterHeight == waterHeight && containerSize <= maxInstances )
+                if ( version == cacheVersion && containerSize <= maxInstances )
                 {
                     const size_t dataSize = headerSize + containerSize * sizeof( VegetationData );
                     const size_t storedSize = chunkCache.storageSize();
@@ -1331,7 +1336,7 @@ namespace Divide
                         if ( !container.empty() )
                         {
                             chunkCache.read( reinterpret_cast<Byte*>( container.data() ), sizeof( VegetationData ) * container.size() );
-                            cacheValid = eastl::all_of( cbegin( container ), cend( container ), [waterHeight, treeData, &descriptor]( const VegetationData& entry )
+                            cacheValid = eastl::all_of( cbegin( container ), cend( container ), [treeData, &descriptor]( const VegetationData& entry )
                             {
                                 const bool validTransform = std::isfinite( entry._positionAndScale.x ) &&
                                                             std::isfinite( entry._positionAndScale.y ) &&
@@ -1341,7 +1346,7 @@ namespace Divide
                                                             std::isfinite( entry._orientationQuat.y ) &&
                                                             std::isfinite( entry._orientationQuat.z ) &&
                                                             std::isfinite( entry._orientationQuat.w ) &&
-                                                            entry._positionAndScale.y >= waterHeight && entry._positionAndScale.w > 0.f;
+                                                            entry._positionAndScale.w > 0.f;
                                 if ( !validTransform || !treeData )
                                 {
                                     return validTransform;
@@ -1418,10 +1423,6 @@ namespace Divide
                 const F32 y_fac = std::clamp( (pos.y - terrainBounds._min.z) / (terrainBounds._max.z - terrainBounds._min.z), 0.f, 1.f );
 
                 const Terrain::Vert vert = terrain.getVert( x_fac, y_fac, true );
-                if ( vert._position.y < waterHeight )
-                {
-                    continue;
-                }
 
                 // terrain slope should be taken into account
                 const F32 dot = Dot( vert._normal, WORLD_Y_AXIS );
@@ -1502,7 +1503,6 @@ namespace Divide
             {
                 chunkCache.clear();
                 chunkCache << cacheVersion;
-                chunkCache << waterHeight;
                 chunkCache << container.size();
                 if ( !container.empty() )
                 {

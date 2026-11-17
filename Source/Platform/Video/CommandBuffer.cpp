@@ -32,7 +32,11 @@ namespace
 
     [[nodiscard]] inline bool RemoveEmptyDrawCommands( GenericDrawCommandContainer& commands )
     {
-        return dvd_erase_if( commands, []( const GenericDrawCommand& cmd ) noexcept { return cmd._drawCount == 0u; } );
+        return dvd_erase_if( commands, []( const GenericDrawCommand& cmd ) noexcept
+        {
+            return cmd._drawCount == 0u ||
+                   (!isEnabledOption( cmd, CmdRenderOptions::RENDER_INDIRECT ) && cmd._cmd.instanceCount == 0u);
+        } );
     }
 
     [[nodiscard]] inline bool EraseEmptyCommands( CommandBuffer::CommandList& commands )

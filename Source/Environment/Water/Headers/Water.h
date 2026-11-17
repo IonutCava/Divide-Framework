@@ -61,6 +61,10 @@ DEFINE_NODE_TYPE(WaterPlane, SceneNodeType::TYPE_WATER)
     // width, length, depth
     const vec3<U32>& getDimensions() const noexcept;
 
+    [[nodiscard]] U8 dirtyFlushMask() const noexcept override;
+    [[nodiscard]] U8 dirtyFlushMaskForEvent( U8 eventMask ) const noexcept override;
+    [[nodiscard]] bool extractWaterBodyData( const SceneGraphNode* sgn, WaterBodyData& dataOut ) const override;
+
     void saveToXML(boost::property_tree::ptree& pt) const override;
     void loadFromXML(const boost::property_tree::ptree& pt)  override;
 

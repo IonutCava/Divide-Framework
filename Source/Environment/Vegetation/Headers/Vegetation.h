@@ -177,6 +177,8 @@ DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
     bool load( PlatformContext & context ) override;
     bool unload() override;
     [[nodiscard]] bool boundsInWorldSpace() const noexcept override { return true; }
+    [[nodiscard]] U8 dirtyFlushMask() const noexcept override;
+    void flushSceneData( SceneGraphNode* sgn, SceneState& sceneState ) override;
 
     void finalizeInstance(SceneGraphNode* sgn, const SceneState& sceneState);
 
@@ -228,7 +230,6 @@ DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
 
     F32 _grassDistance = -1.0f;
     F32 _treeDistance = -1.0f;
-    F32 _globalWaterHeight = 0.f;
     F32 _instanceBoundsPadding = 0.f;
     U32 _maxGrassInstances = 0u;
     U32 _maxTreeInstances = 0u;

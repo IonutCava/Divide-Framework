@@ -50,7 +50,6 @@ namespace GFX
 
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 
-constexpr U8 GLOBAL_WATER_BODIES_COUNT = 2u;
 constexpr U16 GLOBAL_PROBE_COUNT = 512u;
 
 class SceneShaderData

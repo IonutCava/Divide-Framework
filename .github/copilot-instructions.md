@@ -10,3 +10,4 @@ Read and follow [`AGENTS.md`](../AGENTS.md) at the repository root for all share
 - For project config XML handling, use `PROJECT_CONFIG_FILE_NAME` instead of hardcoded filenames.
 - Require wrapped `config.*` paths (no legacy flat tags).
 - Parse/write fields using `GET_PARAM`/`PUT_PARAM` style consistent with main `XML/config.xml` handling.
+- Use default water body slot data that keeps shader culling as a no-op (inactive entries must not cull vegetation).

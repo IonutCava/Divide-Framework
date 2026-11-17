@@ -67,7 +67,8 @@ namespace Divide
                                   const VkCommandBuffer commandBuffer,
                                   const bool indexed )
         {
-            if (drawCommand._drawCount == 0u || drawCommand._cmd.instanceCount == 0u)
+            const bool useIndirectBuffer = isEnabledOption(drawCommand, CmdRenderOptions::RENDER_INDIRECT);
+            if (drawCommand._drawCount == 0u || (!useIndirectBuffer && drawCommand._cmd.instanceCount == 0u))
             {
                 // redundant command. Unexpected but not fatal. Should've been filtered out by now
                 DebugBreak();
@@ -79,8 +80,6 @@ namespace Divide
                 // We dispatch mesh shading calls sthe same as we do compute dispatches, so we should NEVER end up here.
                 DIVIDE_UNEXPECTED_CALL();
             }
-
-            const bool useIndirectBuffer = isEnabledOption(drawCommand, CmdRenderOptions::RENDER_INDIRECT);
 
             if ( !useIndirectBuffer && drawCommand._cmd.instanceCount > 1u && drawCommand._drawCount > 1u ) [[unlikely]]
             {

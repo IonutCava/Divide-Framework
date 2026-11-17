@@ -411,7 +411,7 @@ namespace Divide
         params._target = renderParams._renderTarget;
         params._clippingPlanes.set( 0, refractionPlane );
         params._passName = "Refraction";
-        params._clearDescriptorMainPass[to_base(RTColourAttachmentSlot::SLOT_0)] = { DefaultColours::BLUE, true };
+        params._clearDescriptorMainPass[to_base(RTColourAttachmentSlot::SLOT_0)] = { FColour4( 0.02f, 0.08f, 0.07f, 1.0f ), true };
 
         auto& passManager = renderParams._context.context().kernel().renderPassManager();
         passManager->doCustomPass( renderParams._camera, params, bufferInOut, memCmdInOut );
@@ -551,6 +551,37 @@ namespace Divide
     const vec3<U32>& WaterPlane::getDimensions() const noexcept
     {
         return _dimensions;
+    }
+
+    U8 WaterPlane::dirtyFlushMask() const noexcept
+    {
+        return to_base( DirtyFlushType::REBUILD_WATER_BODIES );
+    }
+
+    U8 WaterPlane::dirtyFlushMaskForEvent( const U8 eventMask ) const noexcept
+    {
+        constexpr U8 kWaterRelevantEventMask =
+            to_base( DirtyEventType::NODE_ADDED ) |
+            to_base( DirtyEventType::NODE_MOVED ) |
+            to_base( DirtyEventType::NODE_DESTROYED );
+
+        return (eventMask & kWaterRelevantEventMask) != 0u ? dirtyFlushMask() : to_base( DirtyFlushType::NONE );
+    }
+
+    bool WaterPlane::extractWaterBodyData( const SceneGraphNode* sgn, WaterBodyData& dataOut ) const
+    {
+        if ( sgn == nullptr || !sgn->hasFlag( SceneGraphNode::Flags::ACTIVE ) || sgn->hasFlag( SceneGraphNode::Flags::LOADING ) )
+        {
+            return false;
+        }
+
+        dataOut = WaterBodyData
+        {
+            ._positionW = sgn->get<TransformComponent>()->getWorldPosition(),
+            ._extents = { to_F32( _dimensions.width ), to_F32( _dimensions.depth ),
+                          to_F32( _dimensions.height ), 0.f }
+        };
+        return true;
     }
 
     void WaterPlane::updateGeometry()

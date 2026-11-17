@@ -491,13 +491,13 @@ namespace Divide
         {
             DIVIDE_GPU_ASSERT( GL_API::GetStateTracker()._activeTopology != PrimitiveTopology::MESHLET, "GLUtil::SubmitRenderCommand: We dispatch mesh shading calls sthe same as we do compute dispatches, so we should NEVER end up here.");
 
-            if ( drawCommand._drawCount == 0u || drawCommand._cmd.instanceCount == 0u)
+            const bool useIndirectBuffer = isEnabledOption( drawCommand, CmdRenderOptions::RENDER_INDIRECT );
+            if ( drawCommand._drawCount == 0u || (!useIndirectBuffer && drawCommand._cmd.instanceCount == 0u) )
             {
-                // redundant command. Unexpected but not fatal. Should've been filtered out by now
+                // Redundant command. Unexpected but not fatal. Should've been filtered out by now.
                 DebugBreak();
                 return;
             }
-            const bool useIndirectBuffer = isEnabledOption( drawCommand, CmdRenderOptions::RENDER_INDIRECT );
 
             if ( !useIndirectBuffer && drawCommand._cmd.instanceCount > 1u && drawCommand._drawCount > 1u ) [[unlikely]]
             {
