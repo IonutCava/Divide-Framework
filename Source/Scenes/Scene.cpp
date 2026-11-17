@@ -234,10 +234,6 @@ namespace Divide
 
             pt.put( "vegetation.grassVisibility", state()->renderState().grassVisibility() );
             pt.put( "vegetation.treeVisibility", state()->renderState().treeVisibility() );
-            pt.put( "water.global.<xmlattr>.node", _globalWaterNodeName.c_str() );
-            pt.put( "water.global.<xmlattr>.height", _globalWaterHeight );
-            pt.put( "water.global.<xmlattr>.size", _globalWaterSize );
-            pt.put( "water.global.<xmlattr>.depth", _globalWaterDepth );
 
             pt.put( "wind.windDirX", state()->windDirX() );
             pt.put( "wind.windDirZ", state()->windDirZ() );
@@ -343,15 +339,6 @@ namespace Divide
         state()->renderState().grassVisibility( pt.get( "vegetation.grassVisibility", state()->renderState().grassVisibility() ) );
         state()->renderState().treeVisibility( pt.get( "vegetation.treeVisibility", state()->renderState().treeVisibility() ) );
         state()->renderState().generalVisibility( pt.get( "options.visibility", state()->renderState().generalVisibility() ) );
-        _globalWaterNodeName = pt.get<std::string>( "water.global.<xmlattr>.node", _globalWaterNodeName.c_str() ).c_str();
-        _globalWaterHeight = pt.get( "water.global.<xmlattr>.height", _globalWaterHeight );
-        _globalWaterSize = pt.get( "water.global.<xmlattr>.size", _globalWaterSize );
-        _globalWaterDepth = pt.get( "water.global.<xmlattr>.depth", _globalWaterDepth );
-        if ( _globalWaterNodeName.empty() || !std::isfinite( _globalWaterHeight ) || _globalWaterSize == 0u || _globalWaterDepth == 0u )
-        {
-            Console::errorfn( "Invalid global water node, height, size or depth in scene {}", sceneName.c_str() );
-            return false;
-        }
 
         state()->windDirX( pt.get( "wind.windDirX", state()->windDirX() ) );
         state()->windDirZ( pt.get( "wind.windDirZ", state()->windDirZ() ) );
@@ -558,13 +545,6 @@ namespace Divide
                     case _ID( "WATER" ):
                     {
                         normalMask |= to_base( ComponentType::RENDERING );
-                        if ( parent == _sceneGraph->getRoot() && sceneNode.name == _globalWaterNodeName )
-                        {
-                            nodeTree.put( "dimensions.<xmlattr>.width", _globalWaterSize );
-                            nodeTree.put( "dimensions.<xmlattr>.length", _globalWaterSize );
-                            nodeTree.put( "dimensions.<xmlattr>.depth", _globalWaterDepth );
-                            nodeTree.put( "TRANSFORM.Transform.position.<xmlattr>.y", _globalWaterHeight );
-                        }
                         DIVIDE_UNUSED( addWater( parent, nodeTree, sceneNode.name ) );
                     } break;
                     case _ID( "MESH" ):
@@ -698,7 +678,6 @@ namespace Divide
             return;
         }
 
-        AddVariableF( ter, "globalWaterHeight", _globalWaterHeight );
         ResourceDescriptor<Terrain> descriptor( GetVariable( ter, "terrainName" ), ter );
         descriptor.flag( ter._active );
 
@@ -817,35 +796,6 @@ namespace Divide
         SceneGraphNode* waterNode = parentNode->addChildNode( waterNodeDescriptor );
         waterNode->loadFromXML( pt );
         return waterNode;
-    }
-
-    bool Scene::ensureGlobalWater()
-    {
-        if ( _globalWaterNode != nullptr )
-        {
-            return true;
-        }
-
-        SceneGraphNode* root = _sceneGraph->getRoot();
-        SceneGraphNode* node = root->findChild( _ID( _globalWaterNodeName ), false, false );
-        if ( node != nullptr && node->getNode().type() != SceneNodeType::TYPE_WATER )
-        {
-            Console::errorfn( "Scene {} has a non-water root node named {}", resourceName().c_str(), _globalWaterNodeName.c_str() );
-            return false;
-        }
-        if ( node == nullptr )
-        {
-            boost::property_tree::ptree settings;
-            settings.put( "static", true );
-            settings.put( "dimensions.<xmlattr>.width", _globalWaterSize );
-            settings.put( "dimensions.<xmlattr>.length", _globalWaterSize );
-            settings.put( "dimensions.<xmlattr>.depth", _globalWaterDepth );
-            settings.put( "TRANSFORM.Transform.position.<xmlattr>.y", _globalWaterHeight );
-            node = addWater( root, settings, _globalWaterNodeName );
-        }
-        _globalWaterNode = node;
-        _globalWaterNode->setFlag( SceneGraphNode::Flags::VISIBILITY_LOCKED );
-        return true;
     }
 
     SceneGraphNode* Scene::addInfPlane( SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName )
@@ -1312,11 +1262,6 @@ namespace Divide
 
         WAIT_FOR_CONDITION( _loadingTasks.load() == 0u );
 
-        if ( !ensureGlobalWater() )
-        {
-            return false;
-        }
-
         // We always add a sky
         const auto& skies = sceneGraph()->getNodesByType( SceneNodeType::TYPE_SKY );
         assert( !skies.empty() );
@@ -1383,7 +1328,14 @@ namespace Divide
         _xmlSceneGraphRootNode = {};
         _flashLight.fill( nullptr );
         _sceneGraph->unload();
-        _globalWaterNode = nullptr;
+
+        {
+            LockGuard<Mutex> w_lock( _dirtyNodeEventLock );
+            _dirtyNodeEvents.clear();
+        }
+        resetWaterBodySlots();
+        _waterBodiesDirty = true;
+        _vegetationFinalizeDirty = true;
 
         loadComplete( false );
         DIVIDE_ASSERT( playerCount() == 0u );
@@ -1659,58 +1611,182 @@ namespace Divide
         return updated;
     }
 
+    void Scene::queueDirtyNodeEvent( const SceneGraphNode& node, const U8 eventMask, const bool destroyed )
+    {
+        const U8 dirtyMask = node.getNode().dirtyFlushMaskForEvent( eventMask );
+        if ( dirtyMask == to_base( SceneNode::DirtyFlushType::NONE ) )
+        {
+            return;
+        }
+
+        const I64 guid = node.getGUID();
+        LockGuard<Mutex> w_lock( _dirtyNodeEventLock );
+        for ( DirtyNodeEvent& event : _dirtyNodeEvents )
+        {
+            if ( event._guid == guid )
+            {
+                event._eventMask |= eventMask;
+                event._dirtyMask |= dirtyMask;
+                event._destroyed = event._destroyed || destroyed;
+                return;
+            }
+        }
+
+        _dirtyNodeEvents.emplace_back( DirtyNodeEvent
+        {
+            ._guid = guid,
+            ._eventMask = eventMask,
+            ._dirtyMask = dirtyMask,
+            ._destroyed = destroyed
+        } );
+    }
+
+    void Scene::resetWaterBodySlots()
+    {
+        _state->waterBodies().fill( WaterBodyData{} );
+        _waterBodySlots.clear();
+        _freeWaterBodySlots.clear();
+        for ( U8 i = 0u; i < GLOBAL_WATER_BODIES_COUNT; ++i )
+        {
+            _freeWaterBodySlots.emplace_back( i );
+        }
+    }
+
+    void Scene::removeWaterBodySlot( const I64 guid )
+    {
+        for ( size_t i = 0u; i < _waterBodySlots.size(); ++i )
+        {
+            if ( _waterBodySlots[i].first == guid )
+            {
+                const U8 slot = _waterBodySlots[i].second;
+                _state->waterBodies()[slot] = WaterBodyData{};
+                _freeWaterBodySlots.emplace_back( slot );
+                _waterBodySlots.erase( _waterBodySlots.begin() + to_I32( i ) );
+                return;
+            }
+        }
+    }
+
+    void Scene::upsertWaterBodySlot( const SceneGraphNode& node )
+    {
+        WaterBodyData waterData{};
+        if ( !node.getNode().extractWaterBodyData( &node, waterData ) )
+        {
+            removeWaterBodySlot( node.getGUID() );
+            return;
+        }
+
+        U8 slot = GLOBAL_WATER_BODIES_COUNT;
+        for ( const auto& entry : _waterBodySlots )
+        {
+            if ( entry.first == node.getGUID() )
+            {
+                slot = entry.second;
+                break;
+            }
+        }
+
+        if ( slot == GLOBAL_WATER_BODIES_COUNT )
+        {
+            if ( _freeWaterBodySlots.empty() )
+            {
+                return;
+            }
+
+            slot = _freeWaterBodySlots.back();
+            _freeWaterBodySlots.pop_back();
+            _waterBodySlots.emplace_back( node.getGUID(), slot );
+        }
+
+        _state->waterBodies()[slot] = waterData;
+    }
+
+    void Scene::flushDirtySceneData()
+    {
+        fixed_vector<DirtyNodeEvent, 512u, true> dirtyEvents;
+        {
+            LockGuard<Mutex> w_lock( _dirtyNodeEventLock );
+            dirtyEvents.swap( _dirtyNodeEvents );
+        }
+
+        bool finalizeAllVegetation = _vegetationFinalizeDirty;
+        fixed_vector<I64, 256u, true> dirtyFinalizeNodes;
+
+        if ( _waterBodiesDirty )
+        {
+            resetWaterBodySlots();
+            for ( const SceneGraphNode* node : _sceneGraph->getNodesByType( SceneNodeType::TYPE_WATER ) )
+            {
+                if ( node != nullptr )
+                {
+                    upsertWaterBodySlot( *node );
+                }
+            }
+            _waterBodiesDirty = false;
+        }
+
+        for ( const DirtyNodeEvent& event : dirtyEvents )
+        {
+            if ( event._dirtyMask & to_base( SceneNode::DirtyFlushType::REBUILD_WATER_BODIES ) )
+            {
+                if ( event._destroyed )
+                {
+                    removeWaterBodySlot( event._guid );
+                }
+                else
+                {
+                    SceneGraphNode* node = _sceneGraph->findNode( event._guid );
+                    if ( node != nullptr )
+                    {
+                        upsertWaterBodySlot( *node );
+                    }
+                    else
+                    {
+                        removeWaterBodySlot( event._guid );
+                    }
+                }
+            }
+
+            if ( !event._destroyed && (event._dirtyMask & to_base( SceneNode::DirtyFlushType::FINALIZE_NODE )) &&
+                 std::find( cbegin( dirtyFinalizeNodes ), cend( dirtyFinalizeNodes ), event._guid ) == cend( dirtyFinalizeNodes ) )
+            {
+                dirtyFinalizeNodes.emplace_back( event._guid );
+            }
+        }
+
+        if ( finalizeAllVegetation )
+        {
+            for ( SceneGraphNode* node : _sceneGraph->getNodesByType( SceneNodeType::TYPE_VEGETATION ) )
+            {
+                node->getNode().flushSceneData( node, *_state );
+            }
+            _vegetationFinalizeDirty = false;
+        }
+        else
+        {
+            for ( const I64 guid : dirtyFinalizeNodes )
+            {
+                SceneGraphNode* node = _sceneGraph->findNode( guid );
+                if ( node == nullptr )
+                {
+                    continue;
+                }
+
+                node->getNode().flushSceneData( node, *_state );
+            }
+        }
+    }
+
     void Scene::updateSceneState( const U64 deltaTimeUS )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
         sceneRuntimeUS( sceneRuntimeUS() + deltaTimeUS );
 
-        if ( !ensureGlobalWater() )
-        {
-            return;
-        }
         updateSceneStateInternal( deltaTimeUS );
         _sceneGraph->sceneUpdate( deltaTimeUS, *_state );
+        flushDirtySceneData();
 
-        if ( _globalWaterNode == nullptr )
-        {
-            Console::errorfn( "Global water was removed during the scene update in {}", resourceName().c_str() );
-            return;
-        }
-        auto& waterBodies = _state->waterBodies();
-        waterBodies.clear();
-        const vec3<U32>& globalDimensions = _globalWaterNode->getNode<WaterPlane>().getDimensions();
-        const float3& globalPosition = _globalWaterNode->get<TransformComponent>()->getWorldPosition();
-        _globalWaterHeight = globalPosition.y;
-        waterBodies.emplace_back( WaterBodyData
-        {
-            ._positionW = globalPosition,
-            ._extents = { to_F32( globalDimensions.width ), to_F32( globalDimensions.depth ),
-                          to_F32( globalDimensions.height ), 0.f }
-        } );
-        for ( const SceneGraphNode* node : _sceneGraph->getNodesByType( SceneNodeType::TYPE_WATER ) )
-        {
-            if ( node == _globalWaterNode || !node->hasFlag( SceneGraphNode::Flags::ACTIVE ) ||
-                 node->hasFlag( SceneGraphNode::Flags::LOADING ) )
-            {
-                continue;
-            }
-            const vec3<U32>& dimensions = node->getNode<WaterPlane>().getDimensions();
-            waterBodies.emplace_back( WaterBodyData
-            {
-                ._positionW = node->get<TransformComponent>()->getWorldPosition(),
-                ._extents = { to_F32( dimensions.width ), to_F32( dimensions.depth ),
-                              to_F32( dimensions.height ), 0.f }
-            } );
-        }
-
-        for ( SceneGraphNode* node : _sceneGraph->getNodesByType( SceneNodeType::TYPE_VEGETATION ) )
-        {
-            if ( node->hasFlag( SceneGraphNode::Flags::ACTIVE ) && !node->hasFlag( SceneGraphNode::Flags::LOADING ) )
-            {
-                node->getNode<Vegetation>().finalizeInstance( node, *_state );
-            }
-        }
         _sceneGraph->updateStaticGeometryBounds();
         _aiManager->update( deltaTimeUS );
     }
@@ -2135,8 +2211,23 @@ namespace Divide
         _currentHoverTarget[idx] = -1;
     }
 
+    void Scene::onNodeAdd( SceneGraphNode* node, [[maybe_unused]] const bool reparented )
+    {
+        if ( node != nullptr )
+        {
+            queueDirtyNodeEvent( *node, to_base( SceneNode::DirtyEventType::NODE_ADDED ), false );
+        }
+    }
+
+    void Scene::onNodeMoved( const SceneGraphNode& node )
+    {
+        queueDirtyNodeEvent( node, to_base( SceneNode::DirtyEventType::NODE_MOVED ), false );
+    }
+
     void Scene::onNodeSpatialChange(const SceneGraphNode& node)
     {
+        queueDirtyNodeEvent( node, to_base( SceneNode::DirtyEventType::SPATIAL_CHANGE ), false );
+
         if constexpr (Config::Build::ENABLE_EDITOR)
         {
             if (_context.editor().running() )
@@ -2148,10 +2239,11 @@ namespace Divide
 
     void Scene::onNodeDestroy( SceneGraphNode* node )
     {
-        if ( node == _globalWaterNode )
+        if ( node != nullptr )
         {
-            _globalWaterNode = nullptr;
+            queueDirtyNodeEvent( *node, to_base( SceneNode::DirtyEventType::NODE_DESTROYED ), true );
         }
+
         const I64 guid = node->getGUID();
         for ( I64& target : _currentHoverTarget )
         {

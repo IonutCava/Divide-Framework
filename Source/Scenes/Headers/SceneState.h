@@ -53,6 +53,8 @@ enum class MusicType : U8 {
     COUNT
 };
 
+constexpr U8 GLOBAL_WATER_BODIES_COUNT = 5u;
+
 struct WaterBodyData
 {
     float4 _positionW = VECTOR4_ZERO;
@@ -209,7 +211,7 @@ struct SceneStatePerPlayer {
     const F32 _headHeight = DEFAULT_PLAYER_HEIGHT;
 };
 
-using WaterBodyDataContainer = fixed_vector<WaterBodyData, 5, true>;
+using WaterBodyDataContainer = std::array<WaterBodyData, GLOBAL_WATER_BODIES_COUNT>;
 
 class SceneState : public SceneComponent {
    public:

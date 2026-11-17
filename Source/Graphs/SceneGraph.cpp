@@ -317,6 +317,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
         invalidateStaticGeometryBounds( node );
         onNodeUpdated( node );
+        Attorney::SceneGraph::onNodeMoved( &parentScene(), node );
     }
 
     void SceneGraph::onNodeDestroy( SceneGraphNode* oldNode )
@@ -390,6 +391,8 @@ namespace Divide
             _nodesByGUID.emplace( newNode->getGUID(), newNode );
             invalidateStaticGeometryBounds( *newNode );
         }
+
+        Attorney::SceneGraph::onNodeAdd( &parentScene(), newNode, reparented );
         _nodeListChanged = true;
     }
 

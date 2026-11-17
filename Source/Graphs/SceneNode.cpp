@@ -197,6 +197,26 @@ bool SceneNode::loadCache(ByteBuffer& inputBuffer)
     return false;
 }
 
+U8 SceneNode::dirtyFlushMask() const noexcept
+{
+    return to_base( DirtyFlushType::NONE );
+}
+
+U8 SceneNode::dirtyFlushMaskForEvent( const U8 eventMask ) const noexcept
+{
+    DIVIDE_UNUSED( eventMask );
+    return dirtyFlushMask();
+}
+
+void SceneNode::flushSceneData( [[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] SceneState& sceneState )
+{
+}
+
+bool SceneNode::extractWaterBodyData( [[maybe_unused]] const SceneGraphNode* sgn, [[maybe_unused]] WaterBodyData& dataOut ) const
+{
+    return false;
+}
+
 void SceneNode::saveToXML(boost::property_tree::ptree& pt) const
 {
     if ( _editorComponent != nullptr )
