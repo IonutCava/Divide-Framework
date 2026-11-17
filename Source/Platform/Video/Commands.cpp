@@ -226,7 +226,7 @@ static string ToString(const BeginRenderPassCommand& cmd, U16 indent)
     {
         ret.append( "    " );
     }
-    ret.append(Util::StringFormat(" Name: [ {} ] Target: [ {} ] Mip Level: [ {} ]: \n", cmd._name.c_str(), to_base(cmd._target), cmd._descriptor._mipWriteLevel));
+    ret.append(Util::StringFormat(" Name: [ {} ] Target: [ {} ] Mip Level: [ {} ]: \n", cmd._name.c_str(), cmd._target, cmd._descriptor._mipWriteLevel));
 
     U8 k = 0u;
     for ( const bool draw : cmd._descriptor._drawMask )
