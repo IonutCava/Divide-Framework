@@ -216,11 +216,8 @@ namespace Divide
     template<typename Type>
     using BaseType = std::underlying_type_t<Type>;
 
-    template <typename Type> requires std::is_integral_v<Type>
-    constexpr Type to_base(const Type value) { return value; }
-
-    template <typename Type> requires std::is_enum_v<Type>
-    constexpr BaseType<Type> to_base(const Type value) { return static_cast<BaseType<Type>>(value); }
+    template <typename Type>
+    constexpr auto to_base(const Type value) noexcept { return std::to_underlying(value); }
 
     namespace detail
     {
