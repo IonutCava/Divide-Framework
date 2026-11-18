@@ -361,22 +361,25 @@ namespace Divide
         {
             DescriptorSetBinding& bindingEntry = _impl._bindings[i];
 
-            if ( bindingEntry._slot == newBindingData._slot )
+            if ( bindingEntry._slot != newBindingData._slot )
+            {
+                continue;
+            }
+
+            if ( bindingEntry != newBindingData )
             {
                 DIVIDE_ASSERT( bindingEntry._data._type != DescriptorSetBindingType::COUNT &&
                                newBindingData._data._type != DescriptorSetBindingType::COUNT );
 
-                DIVIDE_ASSERT( usage == DescriptorSetUsage::PER_DRAW || bindingEntry._data._type == newBindingData._data._type );
+                DIVIDE_ASSERT( usage == DescriptorSetUsage::PER_DRAW || 
+                               bindingEntry._data._type == newBindingData._data._type );
 
-                if ( bindingEntry != newBindingData )
-                {
-                    _bindingOwners[newBindingData._slot].reset();
-                    _stableBindingRevisions[newBindingData._slot] = 0u;
-                    bindingEntry = newBindingData;
-                    dirty( true );
-                }
-                return;
+                _bindingOwners[newBindingData._slot].reset();
+                _stableBindingRevisions[newBindingData._slot] = 0u;
+                bindingEntry = newBindingData;
+                dirty( true );
             }
+                return;
         }
 
         DIVIDE_ASSERT( _impl._bindingCount < MAX_BINDINGS_PER_DESCRIPTOR_SET );

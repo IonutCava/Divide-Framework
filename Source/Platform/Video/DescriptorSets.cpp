@@ -265,8 +265,7 @@ namespace Divide
 
     TextureType TargetType( const ImageView& imageView ) noexcept
     {
-        if (imageView._targetType == TextureType::COUNT &&
-            imageView._srcTexture != nullptr)
+        if (imageView._targetType == TextureType::COUNT && imageView._srcTexture != nullptr)
         {
             return imageView._srcTexture->descriptor()._texType;
         }
