@@ -238,6 +238,7 @@ inline void GFXDevice::GFXBuffers::reset( const bool camBuffer, const bool cullB
         if ( camBuffer )
         {
             _perFrameBuffers[i]._camDataBuffer.reset();
+            _perFrameBuffers[i]._camBufferWriteRanges.clear();
         }
 
         if ( cullBuffer )
@@ -248,6 +249,7 @@ inline void GFXDevice::GFXBuffers::reset( const bool camBuffer, const bool cullB
     }
     crtBuffers()._camWritesThisFrame = 0u;
     crtBuffers()._renderWritesThisFrame = 0u;
+    crtBuffers()._camBufferWriteRanges.clear();
 }
 
 inline void GFXDevice::GFXBuffers::onEndFrame() noexcept
@@ -255,6 +257,7 @@ inline void GFXDevice::GFXBuffers::onEndFrame() noexcept
     _perFrameBufferIndex = (_perFrameBufferIndex + 1u) % PER_FRAME_BUFFER_COUNT;
     crtBuffers()._camWritesThisFrame = 0u;
     crtBuffers()._renderWritesThisFrame = 0u;
+    crtBuffers()._camBufferWriteRanges.clear();
 }
 };  // namespace Divide
 

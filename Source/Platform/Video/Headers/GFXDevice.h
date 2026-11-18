@@ -683,7 +683,7 @@ private:
 
         struct PerFrameBuffers
         {
-            BufferRange<> _camBufferWriteRange;
+            fixed_vector<BufferRange<>, 64u, true> _camBufferWriteRanges;
             ShaderBuffer_uptr _camDataBuffer = nullptr;
             ShaderBuffer_uptr _cullCounter = nullptr;
             CullCounterReadbackState _cullCounterReadbacks;
