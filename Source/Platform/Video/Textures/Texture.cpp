@@ -311,8 +311,7 @@ namespace Divide
              : fullMipCount;
     }
 
-    bool Texture::GetViewLayerRange( const TextureType sourceType, TextureType targetType, const U16 textureLayers,
-                                     const SubRange requested, SubRange& rangeOut ) noexcept
+    bool Texture::GetViewLayerRange( const TextureType sourceType, TextureType targetType, const U16 textureLayers, const SubRange requested, SubRange& rangeOut ) noexcept
     {
         if ( targetType == TextureType::COUNT )
         {
@@ -919,12 +918,16 @@ namespace Divide
             SubRange range{};
             if ( !Texture::GetViewLayerRange( texture.descriptor()._texType, targetType, texture.layerCount(), requested, range ) )
             {
-                Console::errorfn( "Invalid texture view layers for '{}': offset {}, count {}, available {}",
-                                  texture.resourceName().c_str(), requested._offset, requested._count, texture.layerCount() );
-                Console::Flush();
-                std::abort();
+                DIVIDE_UNEXPECTED_CALL_MSG
+                (
+                    Divide::Util::StringFormat("Invalid texture view layers for '{}': offset {}, count {}, available {}",
+                                               texture.resourceName().c_str(),
+                                               requested._offset,
+                                               requested._count,
+                                               texture.layerCount() )
+                );
             }
-            return range;
+            return MOV(range);
         }
     }
 
