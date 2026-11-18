@@ -727,7 +727,7 @@ namespace Divide
             {
                 Util::StringFormatTo( bufferDescriptor._name, "DVD_GPU_CAM_DATA_{}", i );
                 _gfxBuffers._perFrameBuffers[i]._camDataBuffer = newShaderBuffer( bufferDescriptor );
-                _gfxBuffers._perFrameBuffers[i]._camBufferWriteRange = {};
+                _gfxBuffers._perFrameBuffers[i]._camBufferWriteRanges.clear();
             }
         }
 
@@ -2290,18 +2290,25 @@ namespace Divide
                 //We've wrapped around this buffer inside of a single frame so sync performance will degrade unless we increase our buffer size
                 _gfxBuffers._needsResizeCam = true;
                 //Because we are now overwriting existing data, we need to make sure that any fences that could possibly protect us have been flushed
-                DIVIDE_ASSERT( frameBuffers._camBufferWriteRange._length == 0u );
+                DIVIDE_ASSERT( frameBuffers._camBufferWriteRanges.empty() );
             }
 
             const BufferRange<> writtenRange = frameBuffers._camDataBuffer->writeData( &_gpuBlock._camData )._range;
 
-            if ( frameBuffers._camBufferWriteRange._length == 0u )
+            bool mergedWriteRange = false;
+            for ( BufferRange<>& range : frameBuffers._camBufferWriteRanges )
             {
-                frameBuffers._camBufferWriteRange = writtenRange;
+                if ( Overlaps( range, writtenRange ) )
+                {
+                    Merge( range, writtenRange );
+                    mergedWriteRange = true;
+                    break;
+                }
             }
-            else
+
+            if ( !mergedWriteRange )
             {
-                Merge( frameBuffers._camBufferWriteRange, writtenRange );
+                frameBuffers._camBufferWriteRanges.push_back( writtenRange );
             }
 
             DescriptorSetBinding binding{};
@@ -2781,15 +2788,19 @@ namespace Divide
         }
 
         GFXBuffers::PerFrameBuffers& frameBuffers = _gfxBuffers.crtBuffers();
-        if ( frameBuffers._camBufferWriteRange._length > 0u )
+        if ( !frameBuffers._camBufferWriteRanges.empty() )
         {
-            GFX::MemoryBarrierCommand writeMemCmd{};
-            BufferLock& lock = writeMemCmd._bufferLocks.emplace_back();
-            lock._buffer = frameBuffers._camDataBuffer->getBufferImpl();
-            lock._range = frameBuffers._camBufferWriteRange;
-            lock._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ;
-            _api->flushCommand( &writeMemCmd );
-            frameBuffers._camBufferWriteRange = {};
+            for ( const BufferRange<>& writeRange : frameBuffers._camBufferWriteRanges )
+            {
+                GFX::MemoryBarrierCommand writeMemCmd{};
+                BufferLock& lock = writeMemCmd._bufferLocks.emplace_back();
+                lock._buffer = frameBuffers._camDataBuffer->getBufferImpl();
+                lock._range = writeRange;
+                lock._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ;
+                _api->flushCommand( &writeMemCmd );
+            }
+
+            frameBuffers._camBufferWriteRanges.clear();
         }
 
         _api->postFlushCommandBuffer( commandBuffer );
