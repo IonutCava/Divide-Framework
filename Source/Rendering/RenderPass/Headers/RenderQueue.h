@@ -99,7 +99,11 @@ class RenderQueue final : public KernelComponent {
     void postRender(const SceneRenderState& renderState, RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut);
     void sort(RenderStagePass stagePass, RenderBinType targetBinType = RenderBinType::COUNT, RenderingOrder renderOrder = RenderingOrder::COUNT);
     void clear(RenderBinType targetBinType = RenderBinType::COUNT) noexcept;
-    void addNodeToQueue(const SceneGraphNode* sgn, RenderStagePass stagePass, F32 minDistToCameraSq, RenderBinType targetBinType = RenderBinType::COUNT);
+    void addNodeToQueue(const SceneGraphNode* sgn,
+                        RenderStagePass stagePass,
+                        F32 minDistToCameraSq,
+                        RenderBinType targetBinType = RenderBinType::COUNT,
+                        RenderBinType nodeBinType = RenderBinType::COUNT);
 
     [[nodiscard]] const RenderBin& getBin(const RenderBinType rbType) const noexcept { return _renderBins[to_base(rbType)]; }
     [[nodiscard]] RenderBinArray& getBins() noexcept { return _renderBins; }

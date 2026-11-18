@@ -46,6 +46,15 @@ namespace Divide
     {
         constexpr I16 g_renderRangeLimit = I16_MAX;
 
+        [[nodiscard]] U32 DrawPackageCacheKey( const RenderStagePass& renderStagePass ) noexcept
+        {
+            return to_U32( renderStagePass._index ) |
+                   (to_U32( to_base( renderStagePass._pass ) ) << 16u) |
+                   (to_U32( to_base( renderStagePass._variant ) ) << 19u) |
+                   (to_U32( to_base( renderStagePass._passType ) ) << 21u) |
+                   (to_U32( to_base( renderStagePass._stage ) ) << 24u);
+        }
+
         void SetInstanceBufferDefine( Material& material, const bool enabled )
         {
             const auto& bindings = material.shaderAttributes()._vertexBindings;
@@ -539,6 +548,7 @@ namespace Divide
         bool hasCommands = false;
         bool needsNewShader = false;
         U8 lodLevel = 0u;
+        ResourcePtr<Material> material = nullptr;
 
         if ( refreshData )
         {
@@ -579,12 +589,17 @@ namespace Divide
 
                 if ( hasCommands && _materialInstance != INVALID_HANDLE<Material> )
                 {
-                    ResourcePtr<Material> mat = Get(_materialInstance);
+                    material = Get( _materialInstance );
+                    if ( material == nullptr )
+                    {
+                        return false;
+                    }
+
                     if ( isInstanced() )
                     {
-                        mat->properties().isInstanced( true );
+                        material->properties().isInstanced( true );
                     }
-                    needsNewShader = mat->properties().needsNewShader();
+                    needsNewShader = material->properties().needsNewShader();
                 }
             }
 
@@ -617,8 +632,11 @@ namespace Divide
         {
             SharedLock<SharedMutex> r_lock( _drawCommands._dataLock );
             hasCommands = !_drawCommands._data.empty();
-            needsNewShader = hasCommands && _materialInstance != INVALID_HANDLE<Material> &&
-                             Get(_materialInstance)->properties().needsNewShader();
+            if ( hasCommands && _materialInstance != INVALID_HANDLE<Material> )
+            {
+                material = Get( _materialInstance );
+                needsNewShader = material != nullptr && material->properties().needsNewShader();
+            }
         }
 
         if ( hasCommands && !needsNewShader )
@@ -647,9 +665,17 @@ namespace Divide
 
                 if ( _materialInstance != INVALID_HANDLE<Material> )
                 {
-                    ResourcePtr<Material> mat = Get(_materialInstance);
-                    pipelineDescriptor._stateBlock = mat->getOrCreateRenderStateBlock( renderStagePass );
-                    pipelineDescriptor._shaderProgramHandle = mat->getProgramHandle( renderStagePass );
+                    if ( material == nullptr )
+                    {
+                        material = Get( _materialInstance );
+                    }
+                    if ( material == nullptr )
+                    {
+                        return false;
+                    }
+
+                    pipelineDescriptor._stateBlock = material->getOrCreateRenderStateBlock( renderStagePass );
+                    pipelineDescriptor._shaderProgramHandle = material->getProgramHandle( renderStagePass );
                     if ( pipelineDescriptor._shaderProgramHandle == INVALID_HANDLE<ShaderProgram> )
                     {
                         return false;
@@ -657,11 +683,11 @@ namespace Divide
                     const ShaderProgram* const program = Get( pipelineDescriptor._shaderProgramHandle );
                     if ( program == nullptr )
                     {
-                        Console::errorfn( LOCALE_STR( "MATERIAL_SHADER_RESOURCE_MISSING" ), mat->resourceName().c_str() );
+                        Console::errorfn( LOCALE_STR( "MATERIAL_SHADER_RESOURCE_MISSING" ), material->resourceName().c_str() );
                         return false;
                     }
-                    pipelineDescriptor._primitiveTopology = mat->topology();
-                    pipelineDescriptor._vertexFormat = mat->shaderAttributes();
+                    pipelineDescriptor._primitiveTopology = material->topology();
+                    pipelineDescriptor._vertexFormat = material->shaderAttributes();
                     pkg.descriptorSetCmd()._usage = DescriptorSetUsage::PER_DRAW;
                 }
                 else
@@ -689,13 +715,22 @@ namespace Divide
 
             if ( _materialInstance != INVALID_HANDLE<Material> )
             {
+                if ( material == nullptr )
+                {
+                    material = Get( _materialInstance );
+                }
+                if ( material == nullptr )
+                {
+                    return false;
+                }
+
                 const ShaderProgram* program = Get( pkg.pipelineCmd()._pipeline->descriptor()._shaderProgramHandle );
                 if ( program == nullptr )
                 {
                     Console::errorfn( "Material binding preparation failed: package shader is unavailable." );
                     return false;
                 }
-                pkg.descriptorSetCmd()._resources = Get( _materialInstance )->getResourceBindings( renderStagePass, program->descriptor() );
+                pkg.descriptorSetCmd()._resources = material->getResourceBindings( renderStagePass, program->descriptor() );
                 if ( pkg.descriptorSetCmd()._resources == nullptr )
                 {
                     return false;
@@ -846,13 +881,13 @@ namespace Divide
         bufferInOut.add( pkg->descriptorSetCmd() );
         bufferInOut.add( pkg->pushConstantsCmd() );
 
-        GFX::DrawCommand* drawCmd = nullptr;
+        GFX::DrawCommand* drawCmd = bufferInOut.add<GFX::DrawCommand>();
 
         {
             SharedLock<SharedMutex> r_lock( _drawCommands._dataLock );
-            drawCmd = GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
             drawCmd->_drawCommands = pkg->drawCommandsOverride() != nullptr
-                ? *pkg->drawCommandsOverride() : _drawCommands._data;
+                                                                  ? *pkg->drawCommandsOverride()
+                                                                  : _drawCommands._data;
         }
 
         U32 startOffset = pkg->drawCmdOffset();
@@ -864,6 +899,16 @@ namespace Divide
 
     RenderPackage& RenderingComponent::getDrawPackage( const RenderStagePass& renderStagePass )
     {
+        const U32 cacheKey = DrawPackageCacheKey( renderStagePass );
+        if ( _drawPackageCacheKey.load( std::memory_order_acquire ) == cacheKey ) [[likely]]
+        {
+            RenderPackage* cachedPackage = _drawPackageCache.load( std::memory_order_relaxed );
+            if ( cachedPackage != nullptr )
+            {
+                return *cachedPackage;
+            }
+        }
+
         PackagesPerPassType& packagesPerPassType = _renderPackages[to_base( renderStagePass._stage )];
         PackagesPerVariant& packagesPerVariant = packagesPerPassType[to_base( renderStagePass._passType )];
         PackagesPerPassIndex& packagesPerPassIndex = packagesPerVariant[to_base( renderStagePass._variant )];
@@ -875,6 +920,8 @@ namespace Divide
             {
                 if ( entry->_index == renderStagePass._index )
                 {
+                    _drawPackageCache.store( &entry->_package, std::memory_order_relaxed );
+                    _drawPackageCacheKey.store( cacheKey, std::memory_order_release );
                     return entry->_package;
                 }
             }
@@ -886,6 +933,8 @@ namespace Divide
         {
             if ( entry->_index == renderStagePass._index )
             {
+                _drawPackageCache.store( &entry->_package, std::memory_order_relaxed );
+                _drawPackageCacheKey.store( cacheKey, std::memory_order_release );
                 return entry->_package;
             }
         }
@@ -894,6 +943,10 @@ namespace Divide
         entry->_index = renderStagePass._index;
         RenderPackage& package = entry->_package;
         pacakgesPerIndex.emplace_back( MOV(entry) );
+
+        _drawPackageCache.store( &package, std::memory_order_relaxed );
+        _drawPackageCacheKey.store( cacheKey, std::memory_order_release );
+
         return package;
     }
 

@@ -927,33 +927,52 @@ namespace Divide
                                                texture.layerCount() )
                 );
             }
-            return MOV(range);
+            return range;
         }
     }
 
     ImageView Texture::getView() const noexcept
     {
+        const ImageViewDescriptor descriptor
+        {
+            ._msaaSamples = _descriptor._msaaSamples,
+            ._dataType    = _descriptor._dataType,
+            ._baseFormat  = _descriptor._baseFormat,
+            ._packing     = _descriptor._packing,
+        };
+
+        if ( _defaultViewCacheValid &&
+             _defaultViewCacheState._descriptor == descriptor &&
+             _defaultViewCacheState._texType == _descriptor._texType &&
+             _defaultViewCacheState._mipCount == _mipCount &&
+             _defaultViewCacheState._layerCount == _layerCount )
+        {
+            return _defaultViewCache;
+        }
+
         const SubRange layerRange = ResolveViewLayers( *this, _descriptor._texType, { 0u, ALL_LAYERS } );
 
-        return ImageView
+        _defaultViewCache = ImageView
         {
-            ._descriptor = 
-            {
-                ._msaaSamples = _descriptor._msaaSamples,
-                ._dataType    = _descriptor._dataType,
-                ._baseFormat  = _descriptor._baseFormat,
-                ._packing     = _descriptor._packing,
-            },
+            ._descriptor = descriptor,
             ._srcTexture = this,
-            ._subRange = 
+            ._subRange =
             {
-                ._mipLevels = 
+                ._mipLevels =
                 {
                     ._count = _mipCount
                 },
                 ._layerRange = layerRange
             }
         };
+
+        _defaultViewCacheState._descriptor = descriptor;
+        _defaultViewCacheState._texType = _descriptor._texType;
+        _defaultViewCacheState._mipCount = _mipCount;
+        _defaultViewCacheState._layerCount = _layerCount;
+        _defaultViewCacheValid = true;
+
+        return _defaultViewCache;
     }
 
     ImageView Texture::getView( const TextureType targetType ) const noexcept

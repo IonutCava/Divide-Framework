@@ -1179,7 +1179,7 @@ namespace Divide
                 {
                     if ( Attorney::RenderingCompRenderPass::prepareDrawPackage( *rComp, cameraSnapshot, sceneRenderState, stagePass, postDrawMemCmd, false ) )
                     {
-                        _renderQueue->addNodeToQueue( sgn, stagePass, node._distanceToCameraSq, targetBin );
+                        _renderQueue->addNodeToQueue( sgn, stagePass, node._distanceToCameraSq, targetBin, binType );
                     }
                 }
             }
