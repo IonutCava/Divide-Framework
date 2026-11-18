@@ -306,6 +306,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     std::pair<Handle<Texture>, SamplerDescriptor> _refractionCube{ INVALID_HANDLE<Texture>, {} };
 
     std::atomic_size_t _indexBufferOffsetCount{0u}; ///< Number of indices to skip in the batched index buffer
+    std::atomic<U32> _drawPackageCacheKey{ U32_MAX };
+    std::atomic<RenderPackage*> _drawPackageCache{ nullptr };
     std::array<std::pair<size_t, size_t>, MAX_LOD_LEVEL> _lodIndexOffsets{};
     std::array<U8, to_base(RenderStage::COUNT)> _lodLevels{};
     std::array<std::pair<bool, U8>, to_base(RenderStage::COUNT)> _lodLockLevels{};

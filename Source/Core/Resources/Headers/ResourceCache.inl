@@ -89,6 +89,7 @@ namespace Divide
         void printResources( bool error ) final;
 
         SharedMutex _lock;
+        std::atomic<U64> _mutationVersion{ 1u };
         fixed_vector<std::pair<bool, U8>, ResourcePoolSize, true> _freeList;
         fixed_vector<Entry, ResourcePoolSize, true> _resPool;
 
@@ -200,6 +201,7 @@ namespace Divide
     {
         _freeList.resize( size, std::make_pair( true, 0u ) );
         _resPool.resize( size, {} );
+        _mutationVersion.fetch_add( 1u, std::memory_order_release );
     }
 
     template<typename T>
@@ -215,6 +217,7 @@ namespace Divide
                 Entry& entry = _resPool[handleOut._index];
                 entry._descriptorHash = descriptorHash;
                 entry._refCount = 1u;
+                _mutationVersion.fetch_add( 1u, std::memory_order_release );
 
                 return MOV(handleOut);
             }
@@ -304,6 +307,7 @@ namespace Divide
                 entry = {};
                 ++_freeList[handle._index].second;
                 _freeList[handle._index].first = true;
+                _mutationVersion.fetch_add( 1u, std::memory_order_release );
             }
             else
             {
@@ -363,6 +367,7 @@ namespace Divide
     void ResourcePool<T>::commitLocked( const Handle<T> handle, ResourcePtr<T> ptr )
     {
         _resPool[handle._index]._ptr = ptr;
+        _mutationVersion.fetch_add( 1u, std::memory_order_release );
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
@@ -403,17 +408,44 @@ namespace Divide
     template <typename T> requires std::is_base_of_v<CachedResource, T>
     T* ResourceCache::Get( const Handle<T> handle )
     {
-        if ( handle != INVALID_HANDLE<T> ) [[likely]]
+        if ( handle == INVALID_HANDLE<T> ) [[unlikely]]
         {
-            ResourcePool<T>& pool = GetPool<T>( s_renderAPI );
+            return nullptr;
+        }
+
+        ResourcePool<T>& pool = GetPool<T>( s_renderAPI );
+
+        struct GetCacheEntry
+        {
+            Handle<T> _handle = INVALID_HANDLE<T>;
+            T* _ptr = nullptr;
+            U64 _mutationVersion = U64_MAX;
+        };
+
+        thread_local GetCacheEntry s_cache;
+
+        const U64 currentMutationVersion = pool._mutationVersion.load( std::memory_order_acquire );
+        if ( s_cache._handle == handle && s_cache._mutationVersion == currentMutationVersion ) [[likely]]
+        {
+            return s_cache._ptr;
+        }
+
+        T* ptr = nullptr;
+        {
             SharedLock<SharedMutex> r_lock( pool._lock );
-            if ( pool._freeList[handle._index].second == handle._generation )
+            if ( handle._index < pool._freeList.size() &&
+                 !pool._freeList[handle._index].first &&
+                  pool._freeList[handle._index].second == handle._generation )
             {
-                return pool._resPool[handle._index]._ptr;
+                ptr = pool._resPool[handle._index]._ptr;
             }
         }
 
-        return nullptr;
+        s_cache._handle = handle;
+        s_cache._ptr = ptr;
+        s_cache._mutationVersion = pool._mutationVersion.load( std::memory_order_relaxed );
+
+        return ptr;
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>

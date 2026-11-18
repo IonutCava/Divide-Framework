@@ -51,6 +51,7 @@ public:
                         void unregisterExisting(PoolHandle handle);
 
     [[nodiscard]] T* find(PoolHandle handle) const;
+    [[nodiscard]] T* findUnlocked(PoolHandle handle) const;
 
 protected:
     [[nodiscard]] PoolHandle registerExistingInternal( T& object, bool retry );

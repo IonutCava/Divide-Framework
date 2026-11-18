@@ -105,17 +105,22 @@ namespace Divide
     void RenderQueue::addNodeToQueue( const SceneGraphNode* sgn,
                                       const RenderStagePass stagePass,
                                       const F32 minDistToCameraSq,
-                                      const RenderBinType targetBinType )
+                                      const RenderBinType targetBinType,
+                                      const RenderBinType nodeBinType )
     {
-        const RenderingComponent* const renderingCmp = sgn->get<RenderingComponent>();
-        // We need a rendering component to render the node
-        assert( renderingCmp != nullptr );
-        RenderBinType rbType = getBinForNode( sgn, renderingCmp->getMaterialInstance() );
-        assert( rbType != RenderBinType::COUNT );
+        RenderBinType rbType = nodeBinType;
+        if ( rbType == RenderBinType::COUNT )
+        {
+            const RenderingComponent* const renderingCmp = sgn->get<RenderingComponent>();
+            // We need a rendering component to render the node
+            assert( renderingCmp != nullptr );
+            rbType = getBinForNode( sgn, renderingCmp->getMaterialInstance() );
+        }
 
+        assert( rbType != RenderBinType::COUNT );
         if ( targetBinType == RenderBinType::COUNT || rbType == targetBinType )
         {
-            getBin(rbType).addNodeToBin(sgn, stagePass, minDistToCameraSq);
+            getBin( rbType ).addNodeToBin( sgn, stagePass, minDistToCameraSq );
         }
     }
 

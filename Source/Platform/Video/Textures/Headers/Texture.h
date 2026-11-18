@@ -220,6 +220,19 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
 
     protected:
         void createDefaultData();
+
+        struct DefaultViewCacheState
+        {
+            ImageViewDescriptor _descriptor{};
+            TextureType _texType{ TextureType::COUNT };
+            U16 _mipCount{ U16_MAX };
+            U16 _layerCount{ U16_MAX };
+        };
+
+        mutable ImageView _defaultViewCache{};
+        mutable DefaultViewCacheState _defaultViewCacheState{};
+        mutable bool _defaultViewCacheValid{ false };
+
         static bool s_useDDSCache;
         static SamplerDescriptor s_defaultSampler;
         static Handle<Texture> s_defaultTexture2D;

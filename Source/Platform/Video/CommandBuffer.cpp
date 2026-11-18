@@ -124,7 +124,7 @@ namespace
     {
         clear();
         _name = name;
-        if ( _commands.max_size() < reservedCmdCount )
+        if ( _commands.capacity() < reservedCmdCount )
         {
             _commands.reserve( reservedCmdCount );
         }
