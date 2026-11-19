@@ -309,6 +309,9 @@ into reusable per-thread, per-usage scratch storage. The scratch set is consumed
 synchronously and must not escape the binding call. The fallback snapshot is
 refreshed for dirty sets, and a transition from a borrowed set to a fallback
 forces an update even if an older fallback snapshot happens to match.
+Snapshot comparison uses the free `DescriptorSet` `==`/`!=` operators, which
+compare only active bindings (`[0, _bindingCount)`); stale storage past the
+count is never bound and does not invalidate the snapshot.
 Standard two-stage material and depth programs with fragment-only texture access share albedo and opacity sampler declarations. `Material` supplies a real or default 2D-array texture at each of those slots for every draw package; their packed operations are `NONE` when the corresponding texture is absent. Material colour, prepass and shadow alpha keep the opacity-map, albedo-texture, base-colour priority, excluding disabled operations. Custom shader programs, raw shader text and programs with non-fragment texture access keep their existing texture defines and bindings. The cached material descriptor is copied and completed for the actual ready program rather than assuming all programs in a pass category share the same layout.
 The common texture-selection branches are uniform for the current per-material draw. A future multi-draw or instancing design that varies materials within a draw must also ensure valid texture-coordinate derivatives and per-draw resource indexing.
 When an OpenGL shader bind fails, ordinary descriptor updates still run without
