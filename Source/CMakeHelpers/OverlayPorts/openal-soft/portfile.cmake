@@ -10,6 +10,7 @@ vcpkg_from_github(
         002-fix-non-blocking.patch
         003-fix-fmt-header.patch
         004-fix-libcxx-compatibility.patch
+        005-fix-msvc-ranges-compatibility.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
