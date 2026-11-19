@@ -888,7 +888,11 @@ namespace Divide
         CHECK(cache.update(true, false));
         CHECK_FALSE(cache.update(true, false));
 
+        // Only active bindings are bound, so stale storage past _bindingCount must not invalidate the snapshot.
         cache._resolvedSet._bindings[15]._slot = 9u;
+        CHECK_FALSE(cache.update(true, false));
+        AddBinding(cache._resolvedSet, 9u, ShaderStageVisibility::FRAGMENT)._data._type =
+            DescriptorSetBindingType::UNIFORM_BUFFER_STATIC;
         CHECK(cache.update(true, false));
         cache._resolvedSet._bindings[0]._slot = 4u;
         CHECK_FALSE(cache.update(true, true));
@@ -1593,11 +1597,12 @@ namespace Divide
         queue.clear();
         constexpr U8 last = GLStateTracker::MAX_BOUND_TEXTURE_UNITS - 1u;
         REQUIRE( queue.queue( last, 0u, 0u ) );
-        U32 batches = 0u;
+        U32 reads = 0u, batches = 0u;
         queue.flush(
-            []( const U8, gl46core::GLuint&, gl46core::GLuint& )
+            // Must stay returnable: a non-returning lambda (e.g. FAIL) makes MSVC flag flush()'s post-read code as unreachable (C4702).
+            [&]( const U8, gl46core::GLuint&, gl46core::GLuint& )
             {
-                FAIL( "A single queued slot needs no previous binding lookup" );
+                ++reads;
             },
             [&]( const U8 first, const U32 count, const gl46core::GLuint* textures, const gl46core::GLuint* samplers )
             {
@@ -1608,6 +1613,7 @@ namespace Divide
                 CHECK( samplers[0] == 0u );
             } );
         CHECK( batches == 1u );
+        CHECK( reads == 0u );
     }
 
     TEST_CASE( "OpenGL texture queues turn pending binds of deleted names into unbinds", "[renderer][opengl][texture_bind_queue]" )
