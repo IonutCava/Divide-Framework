@@ -1,7 +1,8 @@
-// Copyright (c) 2026 DIVIDE-Studio
+﻿// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/GLWrapper.h"
 #include "Headers/glDescriptorUpdate.h"
+#include "Headers/glTextureBindQueue.h"
 
 #include "Platform/Headers/DisplayWindow.h"
 #include "Platform/Headers/PlatformRuntime.h"
@@ -47,7 +48,9 @@ namespace Divide
     SharedMutex GL_API::s_samplerMapLock;
     NO_DESTROY GL_API::SamplerObjectMap GL_API::s_samplerMap{};
     std::unique_ptr<glHardwareQueryPool> GL_API::s_hardwareQueryPool = nullptr;
-    NO_DESTROY fixed_vector<GL_API::TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> GL_API::s_TexBindQueue;
+    NO_DESTROY GLTextureBindQueue GL_API::s_TexBindQueue;
+    Mutex GL_API::s_pendingTextureDeletionLock;
+    NO_DESTROY vector<gl46core::GLuint> GL_API::s_pendingTextureDeletions{};
 
     NO_DESTROY std::array<GLUtil::GLMemory::DeviceAllocator, to_base( GLUtil::GLMemory::GLMemoryType::COUNT )> GL_API::s_memoryAllocators = 
     {
@@ -791,6 +794,7 @@ namespace Divide
             s_samplerMap.clear();
         }
 
+        ProcessPendingTextureDeletions();
         s_textureViewCache.destroy();
         if ( _passTimestampQueriesCreated )
         {
@@ -845,15 +849,6 @@ namespace Divide
         GLUtil::s_glMainRenderWindow = &window;
         pollBufferReadbacks( window.getGUID() );
         return true;
-    }
-
-    void GL_API::onRenderThreadLoopStart( )
-    {
-       //GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), nullptr );
-    }
-
-    void GL_API::onRenderThreadLoopEnd()
-    {
     }
 
     bool GL_API::prepareFlushWindow( DisplayWindow& window )
@@ -1036,6 +1031,7 @@ namespace Divide
         }
 
         PROFILE_SCOPE( "GL_API: Post-Swap cleanup", Profiler::Category::Graphics );
+        ProcessPendingTextureDeletions();
         s_textureViewCache.onFrameEnd();
         s_glFlushQueued.store( false );
         s_stateTracker.onFrameEnd();
@@ -1364,90 +1360,16 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        thread_local std::array<TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureCache;
-        thread_local std::array<gl46core::GLuint, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureHandles;
-        thread_local std::array<gl46core::GLuint, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureSamplers;
-
-        if ( s_TexBindQueue.empty() )
-        {
-            return;
-        }
-
-        if ( s_TexBindQueue.size() == 1u )
-        {
-            const TexBindEntry& texEntry = s_TexBindQueue.front();
-            DIVIDE_EXPECTED_CALL( s_stateTracker.bindTexture( texEntry._slot, texEntry._handle, texEntry._sampler ) != GLStateTracker::BindResult::FAILED );
-        }
-        else
-        {
-            constexpr bool s_useBatchBindTextures = true;
-
-            // Sort by slot number
-            eastl::sort( eastl::begin( s_TexBindQueue ),
-                         eastl::end( s_TexBindQueue ),
-                         []( const  TexBindEntry& lhs, const TexBindEntry& rhs )
-                         {
-                             return lhs._slot < rhs._slot;
-                         } );
-
-            if ( s_useBatchBindTextures )
+        s_TexBindQueue.flush(
+            []( const U8 slot, gl46core::GLuint& texture, gl46core::GLuint& sampler )
             {
-                // Reset our cache
-                for ( auto& it : s_textureCache )
-                {
-                    it._handle = GL_NULL_HANDLE;
-                }
-
-                // Grab min and max slot and fill in the cache with all of the available data
-                U8 minSlot = U8_MAX, maxSlot = 0u;
-                for ( const TexBindEntry& texEntry : s_TexBindQueue )
-                {
-                    s_textureCache[texEntry._slot] = texEntry;
-                    minSlot = std::min( texEntry._slot, minSlot );
-                    maxSlot = std::max( texEntry._slot, maxSlot );
-                }
-
-                U8 idx = 0u, bindOffset = minSlot, texCount = maxSlot - minSlot;
-                for ( U8 i = 0u; i < texCount + 1; ++i )
-                {
-                    const U8 slot = i + minSlot;
-                    const TexBindEntry& it = s_textureCache[slot];
-
-                    if ( it._handle != GL_NULL_HANDLE )
-                    {
-                        s_textureHandles[idx] = it._handle;
-                        s_textureSamplers[idx] = it._sampler;
-
-                        if ( idx++ == 0u )
-                        {
-                            // Start a new range so remember the starting offset
-                            bindOffset = slot;
-                        }
-                    }
-                    else if ( idx > 0u )
-                    {
-                        // We found a hole in the texture range. Flush the current range and start a new one
-                        DIVIDE_EXPECTED_CALL( s_stateTracker.bindTextures( bindOffset, idx, s_textureHandles.data(), s_textureSamplers.data() ) != GLStateTracker::BindResult::FAILED );
-
-                        idx = 0u;
-                    }
-                }
-                // Handle the final range (if any)
-                if ( idx > 0u )
-                {
-                    DIVIDE_EXPECTED_CALL( s_stateTracker.bindTextures( bindOffset, idx, s_textureHandles.data(), s_textureSamplers.data() ) != GLStateTracker::BindResult::FAILED );
-                }
-            }
-            else
+                texture = s_stateTracker.getBoundTextureHandle( slot );
+                sampler = s_stateTracker.getBoundSamplerHandle( slot );
+            },
+            []( const U8 firstSlot, const U32 count, const gl46core::GLuint* textures, const gl46core::GLuint* samplers )
             {
-                for ( const TexBindEntry& texEntry : s_TexBindQueue )
-                {
-                    DIVIDE_EXPECTED_CALL( s_stateTracker.bindTexture( texEntry._slot, texEntry._handle, texEntry._sampler ) != GLStateTracker::BindResult::FAILED );
-                }
-            }
-        }
-
-        s_TexBindQueue.clear();
+                DIVIDE_EXPECTED_CALL( s_stateTracker.bindTextures( firstSlot, count, textures, samplers ) != GLStateTracker::BindResult::FAILED );
+            } );
     }
 
     gl46core::GLuint GL_API::getGLTextureView( const ImageView srcView, const size_t srcViewHash, const U8 lifetimeInFrames ) const
@@ -2103,14 +2025,8 @@ namespace Divide
         NOP();
     }
 
-    void GL_API::onThreadCreated( [[maybe_unused]] const size_t threadIndex, [[maybe_unused]] const std::thread::id& threadID, const bool isMainRenderThread )
+    void GL_API::onThreadCreated( [[maybe_unused]] const size_t threadIndex, [[maybe_unused]] const std::thread::id& threadID )
     {
-        if ( isMainRenderThread )
-        {
-            // We'll try and use the same context from the main thread
-            return;
-        }
-
         // Double check so that we don't run into a race condition!
         LockGuard<Mutex> lock( GLUtil::s_glSecondaryContextMutex );
         assert( SDL_GL_GetCurrentContext() == NULL );
@@ -2149,6 +2065,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+        s_TexBindQueue.clear();
         DIVIDE_EXPECTED_CALL( stateTracker.unbindTextures() );
 
         DIVIDE_EXPECTED_CALL( stateTracker.setActiveBuffer( gl46core::GL_ELEMENT_ARRAY_BUFFER, 0 ) != GLStateTracker::BindResult::FAILED );
@@ -2325,11 +2242,13 @@ namespace Divide
                         }
 
                         const DescriptorCombinedImageSampler& imageSampler = srcBinding._data._sampledImage;
-                        if ( srcBinding._slot >= MAX_BINDINGS_PER_DESCRIPTOR_SET )
+                        // Active samplers have already been resolved to real or fallback textures.
+                        if ( imageSampler._image._srcTexture == nullptr )
                         {
-                            DIVIDE_UNEXPECTED_CALL_MSG( "OpenGL sampled image binding slot is out of range." );
                             continue;
                         }
+                        DIVIDE_GPU_ASSERT(srcBinding._slot < MAX_BINDINGS_PER_DESCRIPTOR_SET );
+
                         if ( measureBindings )
                         {
                             ++bindingCounters._glTextureVisits;
@@ -2462,25 +2381,21 @@ namespace Divide
 
         if ( imageView._srcTexture == nullptr )
         {
-            //unbind request
-            s_TexBindQueue.emplace_back(0u, 0u, bindingSlot);
-
-            return true;
+            return s_TexBindQueue.queue( bindingSlot, 0u, 0u );
         }
 
-        TexBindEntry entry{};
-        entry._slot = bindingSlot;
+        gl46core::GLuint handle = GL_NULL_HANDLE;
 
         if ( imageView._srcTexture != nullptr && imageView != imageView._srcTexture->getView())
         {
-            entry._handle = getGLTextureView(imageView, imageViewHash, 3u);
+            handle = getGLTextureView(imageView, imageViewHash, 3u);
         }
         else
         {
-            entry._handle = static_cast<const glTexture*>(imageView._srcTexture)->textureHandle();
+            handle = static_cast<const glTexture*>(imageView._srcTexture)->textureHandle();
         }
 
-        if ( entry._handle == GL_NULL_HANDLE )
+        if ( handle == GL_NULL_HANDLE )
         {
             return false;
         }
@@ -2490,19 +2405,7 @@ namespace Divide
             size_t tempSamplerHash = samplerHash;
             sampler = GetSamplerHandle( *samplerToResolve, tempSamplerHash );
         }
-        entry._sampler = sampler;
-
-        for ( TexBindEntry& it : s_TexBindQueue )
-        {
-            if ( it._slot == bindingSlot )
-            {
-                it = entry;
-                return true;
-            }
-        }
-        
-        s_TexBindQueue.push_back( MOV( entry ) );
-        return true;
+        return s_TexBindQueue.queue( bindingSlot, handle, sampler );
     }
 
     bool GL_API::setViewportInternal( const Rect<I32>& viewport )
@@ -2766,6 +2669,52 @@ namespace Divide
             return true;
         }
         return false;
+    }
+
+    bool GL_API::DeleteTextures( const gl46core::GLuint count, gl46core::GLuint* textures )
+    {
+        if ( count == 0u || textures == nullptr )
+        {
+            return false;
+        }
+
+        if ( Runtime::isMainThread() )
+        {
+            DeleteTexturesInTrackedContext( count, textures );
+        }
+        else
+        {
+            // Deleting in a worker context would free the name while the main context still has it bound and tracked,
+            // letting a reused name alias the stale tracked binding.
+            LockGuard<Mutex> lock( s_pendingTextureDeletionLock );
+            s_pendingTextureDeletions.insert( s_pendingTextureDeletions.end(), textures, textures + count );
+        }
+
+        memset( textures, 0, count * sizeof( gl46core::GLuint ) );
+        return true;
+    }
+
+    void GL_API::DeleteTexturesInTrackedContext( const gl46core::GLuint count, gl46core::GLuint* textures )
+    {
+        for ( gl46core::GLuint i = 0u; i < count; ++i )
+        {
+            s_stateTracker.invalidateTexture( textures[i] );
+            s_TexBindQueue.invalidate( textures[i] );
+        }
+
+        gl46core::glDeleteTextures( to_I32( count ), textures );
+    }
+
+    void GL_API::ProcessPendingTextureDeletions()
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        LockGuard<Mutex> lock( s_pendingTextureDeletionLock );
+        if ( !s_pendingTextureDeletions.empty() )
+        {
+            DeleteTexturesInTrackedContext( to_U32( s_pendingTextureDeletions.size() ), s_pendingTextureDeletions.data() );
+            s_pendingTextureDeletions.clear();
+        }
     }
 
     /// Return the OpenGL sampler object's handle for the given hash value

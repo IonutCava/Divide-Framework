@@ -73,6 +73,34 @@ combined and separate alpha blending, even if the colour settings are unchanged.
 Its reset marks the cached tessellation patch size unknown, so the first state
 block sets `GL_PATCH_VERTICES` instead of assuming OpenGL's three-vertex default
 matches the engine's four-control-point terrain patches.
+Texture and sampler unit ranges are half-open: `GLStateTracker::IsTextureUnitRangeValid`
+accepts a range ending exactly at the limit, which is the smaller of the device's
+`_maxTextureUnits` and the tracker's `MAX_BOUND_TEXTURE_UNITS` bind-map capacity.
+Out-of-range binds fail instead of indexing past the tracked maps;
+`unbindTextures` resets every tracked texture and sampler unit.
+`GLTextureBindQueue` separates pending updates from handle values: a pending
+nonzero handle binds a texture, a pending zero handle explicitly unbinds, and
+an unmentioned slot retains its tracked state. The last queued update wins.
+Each flush emits one range from the first through the last pending slot;
+holes inside that range use the state tracker's current texture and sampler
+handles, rather than zeroes or separate API calls. Tracked `GL_NULL_HANDLE`
+reset entries are submitted as zero names. Slots outside that range
+are untouched. `clearStates` discards pending updates and fully unbinds tracked
+units at frame end. Hole replay relies on tracked names still being valid, so
+OpenGL texture names (textures, recreated immutable storage and recycled
+texture views) are deleted only through `GL_API::DeleteTextures`. On the main
+thread, which owns the tracked context, `GLStateTracker::invalidateTexture`
+unbinds every tracked texture and image unit holding the name and records the
+unit as `0`, pending queue entries for it become explicit unbinds, and only then
+is the name deleted; sampler bindings are kept. Worker-thread deletions (for
+example asynchronous texture recreation or immediate resource destruction) are
+queued instead and deleted the same way at `GL_API::frameEnded` or
+`closeRenderingAPI`. A worker-context delete would free the name while the main
+context still had it bound and tracked, so a newly created texture reusing the
+name could be mistaken for the stale binding. The tracker covers the main
+context only. Cached texture views are keyed by the source texture's GUID, not
+its name, so recreating a texture's storage does not evict views created from
+the previous storage.
 Shared uniform pages use coherent persistent mappings. Before recycling a
 frame slot, `GL_API::frameStarted` waits for the main frame fence and the
 flushed completion fences of separately submitted window contexts. A failure

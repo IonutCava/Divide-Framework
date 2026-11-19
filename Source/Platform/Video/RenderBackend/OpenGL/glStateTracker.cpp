@@ -268,7 +268,7 @@ namespace Divide
 
         BindResult result = BindResult::FAILED;
 
-        if ( samplerCount > 0 && unitOffset + samplerCount < GFXDevice::GetDeviceInformation()._maxTextureUnits )
+        if ( IsTextureUnitRangeValid( unitOffset, samplerCount, GFXDevice::GetDeviceInformation()._maxTextureUnits ) )
         {
             if ( samplerCount == 1 )
             {
@@ -313,23 +313,35 @@ namespace Divide
         return result;
     }
 
-    bool GLStateTracker::unbindTexture( [[maybe_unused]] const TextureType type, const gl46core::GLuint handle )
+    void GLStateTracker::invalidateTexture( const gl46core::GLuint handle )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        if ( handle == 0u || handle == GL_NULL_HANDLE )
+        {
+            return;
+        }
 
         for ( U8 idx = 0u; idx < MAX_BOUND_TEXTURE_UNITS; ++idx )
         {
             if ( _textureBoundMap[idx] == handle )
             {
-                _textureBoundMap[idx] = GL_NULL_HANDLE;
                 gl46core::glBindTextureUnit( idx, 0u );
-                DIVIDE_EXPECTED_CALL( bindSamplers( idx, 1, nullptr ) != BindResult::FAILED );
-
-                return true;
+                _textureBoundMap[idx] = 0u;
             }
         }
 
-        return false;
+        const size_t imageUnitCount = _imageBoundMap.size();
+        for ( size_t idx = 0u; idx < imageUnitCount; ++idx )
+        {
+            ImageBindSettings& settings = _imageBoundMap[idx];
+            if ( settings._texture == handle )
+            {
+                // Format and access are validated even when unbinding, so reuse the unit's last valid values.
+                gl46core::glBindImageTexture( to_U32( idx ), 0u, 0, gl46core::GL_FALSE, 0, settings._access, settings._format );
+                settings = {};
+            }
+        }
     }
 
     bool GLStateTracker::unbindTextures()
@@ -339,8 +351,8 @@ namespace Divide
         _textureBoundMap.fill( GL_NULL_HANDLE );
         _samplerBoundMap.fill( GL_NULL_HANDLE );
 
-        gl46core::glBindTextures( 0u, GFXDevice::GetDeviceInformation()._maxTextureUnits - 1, nullptr );
-        gl46core::glBindSamplers( 0u, GFXDevice::GetDeviceInformation()._maxTextureUnits - 1, nullptr );
+        gl46core::glBindTextures( 0u, MAX_BOUND_TEXTURE_UNITS, nullptr );
+        gl46core::glBindSamplers( 0u, MAX_BOUND_TEXTURE_UNITS, nullptr );
 
         return true;
     }
@@ -350,8 +362,12 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        // Fail if we specified an invalid unit. Assert instead of returning false because this might be related to a bad algorithm
-        DIVIDE_GPU_ASSERT( unit < GFXDevice::GetDeviceInformation()._maxTextureUnits, "GLStates error: invalid texture unit specified as a texture binding slot!" );
+        // An invalid unit points to a bad binding algorithm. Assert, but also fail because Debug assertions may continue past the tracked bind maps.
+        if ( !IsTextureUnitRangeValid( unit, 1u, GFXDevice::GetDeviceInformation()._maxTextureUnits ) )
+        {
+            DIVIDE_GPU_ASSERT( false, "GLStates error: invalid texture unit specified as a texture binding slot!" );
+            return BindResult::FAILED;
+        }
 
         BindResult result = BindResult::ALREADY_BOUND;
 
@@ -389,7 +405,7 @@ namespace Divide
 
         BindResult result = BindResult::FAILED;
 
-        if ( textureCount > 0u && unitOffset + textureCount < GFXDevice::GetDeviceInformation()._maxTextureUnits )
+        if ( IsTextureUnitRangeValid( unitOffset, textureCount, GFXDevice::GetDeviceInformation()._maxTextureUnits ) )
         {
             // Update bound map
             bool newBinding = false;

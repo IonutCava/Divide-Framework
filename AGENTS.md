@@ -71,6 +71,10 @@
 - On runtime failures (asserts, crashes, GPU/device-loss, startup issues), inspect `Logs/errors.log` and `Logs/console.log` before concluding root cause. If files are locked while debugging, stop the process and re-read them immediately after exit.
 - Documentation-only changes require no build unless they affect an executable example or have a dedicated documentation check.
 
+Keep the Catch2 warning push/pop in `Source/UnitTests/unitTestCommon.h` native-MSVC-only.
+Applying it to clang-cl restores diagnostics that Catch2 intentionally suppresses
+across the translation unit for later `__COUNTER__` macro expansions.
+
 ### Local framework smoke diagnosis
 
 The opt-in Windows runner and its safety contract are described in

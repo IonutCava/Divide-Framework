@@ -679,7 +679,7 @@ namespace Divide
 
             if ( count > 0u )
             {
-                gl46core::glDeleteTextures( count, _tempBuffer.data() );
+                DIVIDE_EXPECTED_CALL( GL_API::DeleteTextures( count, _tempBuffer.data() ) );
                 gl46core::glGenTextures( count, _tempBuffer.data() );
 
                 U32 newIndex = 0u;
@@ -703,8 +703,10 @@ namespace Divide
         {
             LockGuard<SharedMutex> w_lock( _lock );
             const U32 entryCount = to_U32( _tempBuffer.size() );
-            gl46core::glDeleteTextures( static_cast<gl46core::GLsizei>(entryCount), _handles.data() );
-            memset( _handles.data(), 0, sizeof( gl46core::GLuint ) * entryCount );
+            if ( entryCount > 0u )
+            {
+                DIVIDE_EXPECTED_CALL( GL_API::DeleteTextures( entryCount, _handles.data() ) );
+            }
             memset( _lifeLeft.data(), 0, sizeof( U32 ) * entryCount );
             std::fill( begin( _usageMap ), end( _usageMap ), State::CLEAN );
             _cache.clear();

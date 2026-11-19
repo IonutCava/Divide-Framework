@@ -299,6 +299,11 @@ boundaries mark sets dirty, renewing cached texture-view lifetimes before the
 next buffer is submitted.
 
 Both OpenGL and Vulkan resolve null and omitted active combined image samplers through `ShaderProgram::resolveSampledImages`. Descriptor updates merge slots, including `PER_DRAW`, until the command buffer is flushed: a non-null omitted slot can retain a previous draw's binding, so callers must explicitly replace slots whose old contents are not valid.
+OpenGL skips null sampled-image descriptors left after fallback resolution:
+unused slots keep their current tracked bindings during rendering. An explicit
+null view passed to `GL_API::makeTextureViewResident` still requests an unbind.
+Batching and frame-end reset semantics are described in
+[GPU resources](gpu-resources.md#opengl-memory).
 Resolution borrows the source set when no fallback is needed; otherwise it copies
 into reusable per-thread, per-usage scratch storage. The scratch set is consumed
 synchronously and must not escape the binding call. The fallback snapshot is

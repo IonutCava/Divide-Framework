@@ -1013,14 +1013,6 @@ namespace Divide
         return true;
     }
 
-    void VK_API::onRenderThreadLoopStart( )
-    {
-    }
-
-    void VK_API::onRenderThreadLoopEnd()
-    {
-    }
-
     bool VK_API::prepareFlushWindow( DisplayWindow& window )
     {
         const VKPerWindowState& windowState = _perWindowState[window.getGUID()];
@@ -4172,7 +4164,7 @@ namespace Divide
         }
     }
 
-    void VK_API::onThreadCreated( [[maybe_unused]] const size_t threadIndex, [[maybe_unused]] const std::thread::id& threadID, [[maybe_unused]] const bool isMainRenderThread ) noexcept
+    void VK_API::onThreadCreated( [[maybe_unused]] const size_t threadIndex, [[maybe_unused]] const std::thread::id& threadID ) noexcept
     {
     }
 

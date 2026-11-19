@@ -9,6 +9,8 @@
 #include "Dynamics/Entities/Particles/Headers/ParticleEmitter.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glDescriptorUpdate.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
+#include "Platform/Video/RenderBackend/OpenGL/Headers/glStateTracker.h"
+#include "Platform/Video/RenderBackend/OpenGL/Headers/glTextureBindQueue.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkDescriptorState.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkInitializers.h"
@@ -1460,6 +1462,183 @@ namespace Divide
         const std::string_view substring{ storage.data() + 1u, 3u };
         CHECK( GLUtil::ObjectLabelLength( substring, 256u ) == 3u );
         CHECK( GLUtil::ObjectLabelLength( substring, 3u ) == 2u );
+    }
+
+    TEST_CASE( "OpenGL texture unit ranges fit tracked and device limits", "[renderer][opengl]" )
+    {
+        constexpr U32 trackedUnits = GLStateTracker::MAX_BOUND_TEXTURE_UNITS;
+
+        CHECK( GLStateTracker::IsTextureUnitRangeValid( 0u, trackedUnits, trackedUnits ) );
+        CHECK( GLStateTracker::IsTextureUnitRangeValid( trackedUnits - 2u, 2u, 255u ) );
+        CHECK( GLStateTracker::IsTextureUnitRangeValid( trackedUnits - 1u, 1u, trackedUnits ) );
+        CHECK_FALSE( GLStateTracker::IsTextureUnitRangeValid( 0u, 0u, trackedUnits ) );
+        CHECK_FALSE( GLStateTracker::IsTextureUnitRangeValid( trackedUnits - 1u, 2u, trackedUnits ) );
+        // Device units beyond the tracked bind maps cannot be bound through the tracker
+        CHECK_FALSE( GLStateTracker::IsTextureUnitRangeValid( trackedUnits, 1u, 255u ) );
+        CHECK( GLStateTracker::IsTextureUnitRangeValid( 14u, 2u, 16u ) );
+        CHECK_FALSE( GLStateTracker::IsTextureUnitRangeValid( 15u, 2u, 16u ) );
+        CHECK_FALSE( GLStateTracker::IsTextureUnitRangeValid( 1u, U32_MAX, trackedUnits ) );
+    }
+
+    TEST_CASE( "OpenGL texture batches preserve holes and explicit unbinds", "[renderer][opengl][texture_bind_queue]" )
+    {
+        GLTextureBindQueue queue;
+        REQUIRE( queue.queue( 5u, 50u, 500u ) );
+        REQUIRE( queue.queue( 1u, 10u, 100u ) );
+        REQUIRE( queue.queue( 4u, 40u, 400u ) );
+        REQUIRE( queue.queue( 2u, 20u, 200u ) );
+        bool unbind = false;
+        SECTION( "An untouched slot keeps its current texture and sampler within one batch" )
+        {
+        }
+        SECTION( "An explicit unbind contributes zero handles to the same batch" )
+        {
+            unbind = true;
+            REQUIRE( queue.queue( 3u, 0u, 0u ) );
+        }
+
+        U32 reads = 0u, batches = 0u;
+        queue.flush(
+            [&]( const U8 slot, gl46core::GLuint& texture, gl46core::GLuint& sampler )
+            {
+                CHECK( slot == 3u );
+                ++reads;
+                texture = 30u;
+                sampler = 300u;
+            },
+            [&]( const U8 first, const U32 count, const gl46core::GLuint* textures, const gl46core::GLuint* samplers )
+            {
+                ++batches;
+                REQUIRE( first == 1u );
+                REQUIRE( count == 5u );
+                const std::array<gl46core::GLuint, 5> expectedTextures{ { 10u, 20u, unbind ? 0u : 30u, 40u, 50u } };
+                const std::array<gl46core::GLuint, 5> expectedSamplers{ { 100u, 200u, unbind ? 0u : 300u, 400u, 500u } };
+                for ( size_t i = 0u; i < count; ++i )
+                {
+                    CHECK( textures[i] == expectedTextures[i] );
+                    CHECK( samplers[i] == expectedSamplers[i] );
+                }
+            } );
+        CHECK( batches == 1u );
+        CHECK( reads == (unbind ? 0u : 1u) );
+    }
+
+    TEST_CASE( "OpenGL texture queues coalesce updates across the full tracked range", "[renderer][opengl][texture_bind_queue]" )
+    {
+        GLTextureBindQueue queue;
+        constexpr U8 last = GLStateTracker::MAX_BOUND_TEXTURE_UNITS - 1u;
+        REQUIRE( queue.queue( 0u, 0u, 0u ) );
+        REQUIRE( queue.queue( 0u, 10u, 100u ) );
+        REQUIRE( queue.queue( last, 20u, 200u ) );
+        REQUIRE( queue.queue( last, 0u, 0u ) );
+        U32 reads = 0u, batches = 0u;
+        const auto readBinding = [&]( const U8, gl46core::GLuint& texture, gl46core::GLuint& sampler )
+        {
+            ++reads;
+            texture = 30u;
+            sampler = 300u;
+        };
+        const auto bindRange = [&]( const U8 first, const U32 count, const gl46core::GLuint* textures, const gl46core::GLuint* samplers )
+        {
+            ++batches;
+            REQUIRE( first == 0u );
+            REQUIRE( count == GLStateTracker::MAX_BOUND_TEXTURE_UNITS );
+            CHECK( textures[0] == 10u );
+            CHECK( samplers[0] == 100u );
+            CHECK( textures[last] == 0u );
+            CHECK( samplers[last] == 0u );
+            for ( size_t slot = 1u; slot < last; ++slot )
+            {
+                CHECK( textures[slot] == 30u );
+                CHECK( samplers[slot] == 300u );
+            }
+        };
+        queue.flush( readBinding, bindRange );
+        CHECK( reads == GLStateTracker::MAX_BOUND_TEXTURE_UNITS - 2u );
+        CHECK( batches == 1u );
+        queue.flush( readBinding, bindRange );
+        REQUIRE( queue.queue( 2u, 40u, 400u ) );
+        queue.clear();
+        queue.flush( readBinding, bindRange );
+        CHECK( batches == 1u );
+    }
+
+    TEST_CASE( "OpenGL texture batches bind reset holes as zero names", "[renderer][opengl][texture_bind_queue]" )
+    {
+        GLTextureBindQueue queue;
+        REQUIRE( queue.queue( 0u, 10u, 100u ) );
+        REQUIRE( queue.queue( 2u, 20u, 200u ) );
+        U32 batches = 0u;
+        queue.flush(
+            []( const U8, gl46core::GLuint& texture, gl46core::GLuint& sampler )
+            {
+                texture = GL_NULL_HANDLE;
+                sampler = GL_NULL_HANDLE;
+            },
+            [&]( const U8 first, const U32 count, const gl46core::GLuint* textures, const gl46core::GLuint* samplers )
+            {
+                ++batches;
+                CHECK( first == 0u );
+                REQUIRE( count == 3u );
+                CHECK( textures[1] == 0u );
+                CHECK( samplers[1] == 0u );
+            } );
+        CHECK( batches == 1u );
+    }
+
+    TEST_CASE( "OpenGL texture queues submit a lone unbind without replaying previous requests", "[renderer][opengl][texture_bind_queue]" )
+    {
+        GLTextureBindQueue queue;
+        REQUIRE( queue.queue( 0u, 10u, 100u ) );
+        queue.clear();
+        constexpr U8 last = GLStateTracker::MAX_BOUND_TEXTURE_UNITS - 1u;
+        REQUIRE( queue.queue( last, 0u, 0u ) );
+        U32 batches = 0u;
+        queue.flush(
+            []( const U8, gl46core::GLuint&, gl46core::GLuint& )
+            {
+                FAIL( "A single queued slot needs no previous binding lookup" );
+            },
+            [&]( const U8 first, const U32 count, const gl46core::GLuint* textures, const gl46core::GLuint* samplers )
+            {
+                ++batches;
+                CHECK( first == last );
+                REQUIRE( count == 1u );
+                CHECK( textures[0] == 0u );
+                CHECK( samplers[0] == 0u );
+            } );
+        CHECK( batches == 1u );
+    }
+
+    TEST_CASE( "OpenGL texture queues turn pending binds of deleted names into unbinds", "[renderer][opengl][texture_bind_queue]" )
+    {
+        GLTextureBindQueue queue;
+        REQUIRE( queue.queue( 1u, 10u, 100u ) );
+        REQUIRE( queue.queue( 3u, 30u, 300u ) );
+        REQUIRE( queue.queue( 4u, 10u, 400u ) );
+        queue.invalidate( 10u );
+        U32 batches = 0u;
+        queue.flush(
+            []( const U8 slot, gl46core::GLuint& texture, gl46core::GLuint& sampler )
+            {
+                CHECK( slot == 2u );
+                texture = 20u;
+                sampler = 200u;
+            },
+            [&]( const U8 first, const U32 count, const gl46core::GLuint* textures, const gl46core::GLuint* samplers )
+            {
+                ++batches;
+                REQUIRE( first == 1u );
+                REQUIRE( count == 4u );
+                const std::array<gl46core::GLuint, 4> expectedTextures{ { 0u, 20u, 30u, 0u } };
+                const std::array<gl46core::GLuint, 4> expectedSamplers{ { 100u, 200u, 300u, 400u } };
+                for ( size_t i = 0u; i < count; ++i )
+                {
+                    CHECK( textures[i] == expectedTextures[i] );
+                    CHECK( samplers[i] == expectedSamplers[i] );
+                }
+            } );
+        CHECK( batches == 1u );
     }
 
     TEST_CASE( "Vulkan tool enumeration handles changing counts and errors", "[render_smoke][vulkan_tools]" )
