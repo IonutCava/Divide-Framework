@@ -424,7 +424,7 @@ public:  // Accessors and Mutators
     [[nodiscard]] ResourceBindingMetrics& resourceBindingMetrics() noexcept { return _resourceBindingMetrics; }
     [[nodiscard]] DrawBatchingMetrics& drawBatchingMetrics() noexcept { return _drawBatchingMetrics; }
 
-    void onThreadCreated(const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread) const;
+    void onThreadCreated(const size_t threadIndex, const std::thread::id& threadID) const;
 
     static void FrameInterpolationFactor(const D64 interpolation) noexcept { s_interpolationFactor = interpolation; }
     [[nodiscard]] static D64 FrameInterpolationFactor() noexcept { return s_interpolationFactor; }
@@ -572,8 +572,6 @@ private:
     [[nodiscard]] ErrorCode createAPIInstance(RenderAPI api);
 
     void releaseRenderingResources();
-    void renderThread();
-    void addRenderWork(DELEGATE<void>&& work);
 
 private:
     RenderAPIWrapper_uptr _api;

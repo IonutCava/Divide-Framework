@@ -66,6 +66,10 @@ keep the indirect GPU layout unchanged when adjusting CPU command storage.
 - `GFXDevice::flushWindow()` executes queued buffers through `flushCommandBufferInternal()` before backend window flush.
 - `flushCommandBufferInternal()` walks commands, uploads descriptor state at submission boundaries, and dispatches backend operations.
 
+Window flushing and backend command translation run on the application main
+thread, not a dedicated submission thread. Parallel recording and worker-context
+initialization use the existing [task pools](threading.md#entry-points-and-task-pools).
+
 Vulkan submission can combine adjacent indexed indirect draws that use the same
 vertex/index buffer handles and consecutive records in the shared indirect
 buffer. Each draw must describe one non-instanced geometry command, with the

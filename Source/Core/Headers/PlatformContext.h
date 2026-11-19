@@ -172,7 +172,7 @@ class PlatformContext final : private NonCopyable, private NonMovable
     PROPERTY_RW(U32, componentMask, 0u);
 
   protected:
-    void onThreadCreated(const TaskPoolType type, const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread) const;
+    void onThreadCreated(const TaskPoolType type, const size_t threadIndex, const std::thread::id& threadID) const;
 
   private:
     /// Main application instance
@@ -206,9 +206,9 @@ namespace Attorney
 {
     class PlatformContextKernel
     {
-        static void onThreadCreated(const PlatformContext& context, const TaskPoolType poolType, const size_t threadIndex, const std::thread::id& threadID, const bool isMainRenderThread )
+        static void onThreadCreated(const PlatformContext& context, const TaskPoolType poolType, const size_t threadIndex, const std::thread::id& threadID )
         {
-            context.onThreadCreated(poolType, threadIndex, threadID, isMainRenderThread);
+            context.onThreadCreated(poolType, threadIndex, threadID);
         }
 
         friend class Divide::Kernel;

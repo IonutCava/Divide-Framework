@@ -24,12 +24,7 @@ bool glTexture::unload()
 {
     if ( _textureHandle > 0u && _textureHandle != GL_NULL_HANDLE )
     {
-        if (GL_API::GetStateTracker().unbindTexture(_descriptor._texType, _textureHandle))
-        {
-            NOP();
-        }
-
-        gl46core::glDeleteTextures(1, &_textureHandle);
+        DIVIDE_EXPECTED_CALL( GL_API::DeleteTextures( 1, &_textureHandle ) );
         _textureHandle = GL_NULL_HANDLE;
     }
 
@@ -169,7 +164,7 @@ void glTexture::submitTextureData(ImageUsage& crtUsageInOut)
     if ( _textureHandle > 0u && _textureHandle != GL_NULL_HANDLE )
     {
         // Immutable storage requires us to create a new texture object 
-        gl46core::glDeleteTextures(1, &_textureHandle);
+        DIVIDE_EXPECTED_CALL( GL_API::DeleteTextures( 1, &_textureHandle ) );
     }
 
     _textureHandle = _loadingHandle;

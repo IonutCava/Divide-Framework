@@ -51,14 +51,6 @@ namespace Divide
         return true;
     }
 
-    void NVIDIA_RENDER_INTERFACE_API::onRenderThreadLoopStart()
-    {
-    }
-
-    void NVIDIA_RENDER_INTERFACE_API::onRenderThreadLoopEnd()
-    {
-    }
-
     bool NVIDIA_RENDER_INTERFACE_API::prepareFlushWindow( [[maybe_unused]] DisplayWindow& window )
     {
         SDL_RenderClear( _renderer );
@@ -184,7 +176,7 @@ namespace Divide
         return true;
     }
 
-    void NVIDIA_RENDER_INTERFACE_API::onThreadCreated( [[maybe_unused]] const size_t threadIndex, [[maybe_unused]] const std::thread::id& threadID, [[maybe_unused]] const bool isMainRenderThread ) noexcept
+    void NVIDIA_RENDER_INTERFACE_API::onThreadCreated( [[maybe_unused]] const size_t threadIndex, [[maybe_unused]] const std::thread::id& threadID ) noexcept
     {
     }
 

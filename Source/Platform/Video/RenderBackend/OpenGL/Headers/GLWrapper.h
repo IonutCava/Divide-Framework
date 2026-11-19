@@ -59,6 +59,7 @@ class glHardwareQueryRing;
 class glHardwareQueryPool;
 
 struct BufferLockEntry;
+struct GLTextureBindQueue;
 
 FWD_DECLARE_MANAGED_STRUCT(SyncObject);
 
@@ -89,8 +90,6 @@ private:
     void closeRenderingAPI() override;
 
     [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
-                  void onRenderThreadLoopStart( ) override;
-                  void onRenderThreadLoopEnd() override;
     [[nodiscard]] bool prepareFlushWindow( DisplayWindow& window ) override;
                   void flushWindow( DisplayWindow& window) override;
     [[nodiscard]] bool frameStarted() override;
@@ -113,7 +112,7 @@ private:
     void writePassTimestamp( U32 index ) override;
     [[nodiscard]] U32 readPassTimestamps( std::span<F32> outMS, U64& frameNumberOut ) override;
 
-    void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) override;
+    void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID ) override;
 
     /// Reset as much of the GL default state as possible within the limitations given
     void clearStates(GLStateTracker& stateTracker) const;
@@ -151,6 +150,8 @@ public:
     [[nodiscard]] static bool DeleteSamplers( gl46core::GLuint count, gl46core::GLuint* samplers);
     [[nodiscard]] static bool DeleteBuffers( gl46core::GLuint count, gl46core::GLuint* buffers);
     [[nodiscard]] static bool DeleteFramebuffers( gl46core::GLuint count, gl46core::GLuint* framebuffers);
+    /// Main-thread deletions unbind tracked uses immediately; other threads defer deletion to the main thread's frame end.
+    [[nodiscard]] static bool DeleteTextures( gl46core::GLuint count, gl46core::GLuint* textures);
 
     [[nodiscard]] static gl46core::GLuint GetSamplerHandle(SamplerDescriptor sampler, size_t& samplerHashInOut);
 
@@ -189,21 +190,6 @@ private:
         U8 _index{ 0u };
     };
 
-    struct TexBindEntry
-    {
-        TexBindEntry() = default;
-        TexBindEntry(gl46core::GLuint handle, gl46core::GLuint sampler, gl46core::GLubyte slot) noexcept
-            : _handle(handle)
-            , _sampler(sampler)
-            , _slot(slot)
-        {
-        }
-
-        gl46core::GLuint  _handle{ GL_NULL_HANDLE };
-        gl46core::GLuint  _sampler{ GL_NULL_HANDLE };
-        gl46core::GLubyte _slot{ INVALID_TEXTURE_BINDING };
-    };
-
     struct StableSampledBinding
     {
         gl46core::GLubyte _bindingSlot{ INVALID_TEXTURE_BINDING };
@@ -223,8 +209,13 @@ private:
                                                  const SamplerDescriptor* samplerToResolve = nullptr,
                                                  size_t samplerHash = 0u ) const;
 
-    static fixed_vector<TexBindEntry, 32> s_TexBindQueue;
+    static GLTextureBindQueue s_TexBindQueue;
 
+    static void DeleteTexturesInTrackedContext( gl46core::GLuint count, gl46core::GLuint* textures );
+    static void ProcessPendingTextureDeletions();
+
+    static Mutex s_pendingTextureDeletionLock;
+    static vector<gl46core::GLuint> s_pendingTextureDeletions;
     using HardwareQueryContext = std::array<glHardwareQueryEntry, to_base(QueryType::COUNT)>;
     static constexpr size_t InitialSamplerMapSize = 64u;
 

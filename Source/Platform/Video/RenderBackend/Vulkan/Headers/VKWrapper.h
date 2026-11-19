@@ -90,8 +90,6 @@ protected:
     [[nodiscard]] bool queueBufferReadback( BufferReadbackRequest&& request ) noexcept override;
 
     [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
-                  void onRenderThreadLoopStart() override;
-                  void onRenderThreadLoopEnd() override;
     [[nodiscard]] bool prepareFlushWindow( DisplayWindow& window ) override;
                   void flushWindow( DisplayWindow& window ) override;
     [[nodiscard]] bool frameStarted() override;
@@ -108,7 +106,7 @@ protected:
     bool setViewportInternal(const Rect<I32>& newViewport) noexcept override;
     bool setScissorInternal(const Rect<I32>& newScissor) noexcept override;
 
-    void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) noexcept override;
+    void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID ) noexcept override;
     void initDescriptorSets() override;
 
     [[nodiscard]] RenderTarget_uptr newRenderTarget( const RenderTargetDescriptor& descriptor ) const override;

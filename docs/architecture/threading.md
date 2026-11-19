@@ -14,6 +14,11 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 `PlatformContext` owns `HIGH_PRIORITY`, `LOW_PRIORITY`, `RENDERER`, and `ASSET_LOADER` pools.
 Reuse these semantics for asynchronous asset/GPU preparation rather than introducing ad-hoc threads.
+`GFXDevice` has no dedicated submission thread: window flushing and backend
+command translation run on the application main thread. `Kernel` initializes
+renderer and asset-loader workers through `PlatformContext::onThreadCreated`
+and `GFXDevice::onThreadCreated`; OpenGL assigns these workers shared contexts,
+and asset-loader workers also initialize shader-thread state.
 Each thread lazily allocates its fixed-capacity, aligned task ring once and reuses
 it until thread exit. This keeps the ring out of static TLS, which otherwise
 can exhaust Linux worker stacks. Tasks allocated by a thread must finish before

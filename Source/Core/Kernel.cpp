@@ -810,7 +810,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
                 TotalThreadCount( poolType ),
                 [&threadCounter, poolType, &ctx = _platformContext](const size_t threadIndex, const std::thread::id& threadID)
                 {
-                    Attorney::PlatformContextKernel::onThreadCreated( ctx, poolType, threadIndex, threadID, false);
+                    Attorney::PlatformContextKernel::onThreadCreated( ctx, poolType, threadIndex, threadID);
                     threadCounter.fetch_sub(1);
                 }))
             {

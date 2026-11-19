@@ -48,6 +48,13 @@ namespace Divide {
     struct GLStateTracker {
         static constexpr U8 MAX_BOUND_TEXTURE_UNITS = 32u;
 
+        /// True if the non-empty unit range [unitOffset, unitOffset + count) fits the tracked bind maps and device limit.
+        [[nodiscard]] static constexpr bool IsTextureUnitRangeValid( const U32 unitOffset, const U32 count, const U32 deviceUnitCount ) noexcept
+        {
+            const U32 unitLimit = deviceUnitCount < MAX_BOUND_TEXTURE_UNITS ? deviceUnitCount : MAX_BOUND_TEXTURE_UNITS;
+            return count > 0u && count <= unitLimit && unitOffset <= unitLimit - count;
+        }
+
         using AttributeSettings = std::array<AttributeDescriptor, to_base(AttribLocation::COUNT)>;
 
         enum class BindResult : U8 {
@@ -93,8 +100,9 @@ namespace Divide {
         [[nodiscard]] BindResult setActiveProgram( gl46core::GLuint programHandle);
         /// Change the currently active shader pipeline. Returns false if the pipeline was already bound
         [[nodiscard]] BindResult setActiveShaderPipeline( gl46core::GLuint pipelineHandle);
-        /// Returns true if the texture was bound. If the texture was not bound, no state is changed.
-        [[nodiscard]] bool      unbindTexture(TextureType type, gl46core::GLuint handle);
+        /// Unbinds every tracked texture and image unit holding the handle and records those units as unbound (0).
+        /// Call with the tracked context current, before the texture name is deleted. Sampler bindings are kept.
+        void                    invalidateTexture( gl46core::GLuint handle );
         [[nodiscard]] bool      unbindTextures();
         /// Bind a texture specified by a GL handle and GL type to the specified unit
         /// using the sampler object defined by handle value
