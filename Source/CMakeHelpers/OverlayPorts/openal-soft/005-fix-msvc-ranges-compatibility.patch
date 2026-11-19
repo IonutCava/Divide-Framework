@@ -1,0 +1,8 @@
+diff --git a/alc/alc.cpp b/alc/alc.cpp
+--- a/alc/alc.cpp
++++ b/alc/alc.cpp
+@@ -1783,3 +1783,3 @@
+         std::ranges::for_each(context->mEffectSlotClusters
+-            | std::views::transform(&ContextBase::EffectSlotCluster::operator*)
++            | std::views::transform([](auto &cluster) -> auto& { return *cluster; })
+             | std::views::join, [](EffectSlotBase &slot)
