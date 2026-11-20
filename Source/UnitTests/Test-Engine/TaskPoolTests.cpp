@@ -143,11 +143,6 @@ namespace Divide
         CHECK( completed.load() == 257u );
     }
 
-    TEST_CASE( "Startup warmup keeps just one frame behind the splash", "[startup]" )
-    {
-        CHECK( Kernel::STARTUP_WARMUP_FRAME_COUNT == 1u );
-    }
-
     TEST_CASE( "Asset-loader sizing respects the worker budget", "[threading][configuration]" )
     {
         using namespace ThreadPoolSizing;

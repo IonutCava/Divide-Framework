@@ -54,7 +54,7 @@ namespace Divide {
 
 namespace Attorney {
     class MaterialRenderBin;
-    struct MaterialTestAccess;
+    class MaterialTestAccess;
 }
 
 class RenderBin;
@@ -135,7 +135,7 @@ namespace TypeUtil {
 
 class Material final : public CachedResource {
     friend class Attorney::MaterialRenderBin;
-    friend struct Attorney::MaterialTestAccess;
+    friend class Attorney::MaterialTestAccess;
 
   public:
     static constexpr F32 MAX_SHININESS = 255.f;

@@ -41,7 +41,7 @@ namespace Divide
 {
     namespace Attorney
     {
-        struct UniformBlockUploaderTestAccess;
+        class UniformBlockUploaderTestAccess;
     }
 
     class GFXDevice;
@@ -257,7 +257,7 @@ public:
     PROPERTY_R_IW( Reflection::BufferEntry, uniformBlock );
 
 private:
-    friend struct Attorney::UniformBlockUploaderTestAccess;
+    friend class Attorney::UniformBlockUploaderTestAccess;
 
     static void ApplyUniformData( const UniformData& uniforms, std::span<const BlockMember> members,
                                   std::span<Byte> destination, UniformUploadSnapshotState& snapshot ) noexcept;

@@ -45,7 +45,7 @@ namespace Divide {
 
 namespace Attorney
 {
-    struct LightPoolTestAccess;
+    class LightPoolTestAccess;
 }
 
 namespace Time {
@@ -65,7 +65,7 @@ class LightPool final : public FrameListener,
                         public SceneComponent,
                         public PlatformContextComponent {
 #if defined(ENABLE_UNIT_TESTING)
-    friend struct Attorney::LightPoolTestAccess;
+    friend class Attorney::LightPoolTestAccess;
 #endif
 
   protected:
