@@ -60,6 +60,7 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH, 1, std140) uniform dvd_CamBlock
     vec4  dvd_renderTargetInfo;
     vec4  dvd_clipPlanes[MAX_CLIP_PLANES];
     vec4 _padding_;
+    mat4 _paddingMatrix;
 };
 
 #define DEPTH_RANGE dvd_renderTargetInfo.xy

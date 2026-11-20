@@ -55,6 +55,7 @@ struct GFXShaderData
           float4    dvd_renderTargetInfo{0.f, 1.f, 1.f, 1.f};
           float4    dvd_clipPlanes[Config::MAX_CLIP_DISTANCES];
           float4    _padding_;
+          mat4<F32> _paddingMatrix = MAT4_IDENTITY;
       } _camData;
 
     struct PrevFrameData

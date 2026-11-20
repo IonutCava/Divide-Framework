@@ -711,8 +711,10 @@ surface.
 Node, camera (`GFXShaderData::CamData`), and shadow (`LightPool::ShadowProperties`)
 GPU records must keep their SIMD members naturally aligned, including when nested
 or stored in arrays. Do not pack their enclosing structs: this can make Clang
-emit aligned vector accesses to unaligned addresses. Renderer unit tests check
-their sizes and offsets against the existing shader-visible layouts.
+emit aligned vector accesses to unaligned addresses. The camera record also ends
+with a matrix-sized padding field so its 512-byte stride satisfies common UBO
+offset alignments; keep the GLSL block and C++ record in sync. Renderer unit tests
+check their sizes and offsets against the shader-visible layouts.
 
 Instanced nodes set the `INDIRECT_DATA_IDX` loose uniform through the render
 package's `pushConstantsCmd()._uniformData`; preprocessing packs it into a
@@ -1083,7 +1085,7 @@ Vulkan subtracts baseInstance from `gl_InstanceIndex`. Vegetation buffers accept
 CPU writes, and empty chunks do not issue zero-length uploads. A terrain can
 omit tree meshes when it only needs grass.
 
-Tree culling compacts visible instances. One workgroup per species writes visible entries into the species' range of `_treeDrawData` (`PER_PASS` 14, `COMPACTED_INSTANCE_DATA`) and the visible count to `_treeVisibleCounts` (`PER_PASS` 15, `VISIBLE_INSTANCE_COUNTS`, element `chunkID * MAX_VEGETATION_TREE_MESHES + speciesID`). Ranges come from the `dvd_treeRangeOffsets`/`dvd_treeRangeCounts` uniforms. Each tree `RenderingComponent` reads instances from the compacted buffer (`setInstanceShaderBuffer`) and names its count element with `setInstanceCountSource`.
+Tree culling compacts visible instances. One workgroup per species writes visible entries into the species' range of `_treeDrawData` (`PER_PASS` 14, `COMPACTED_INSTANCE_DATA`) and the visible count to `_treeVisibleCounts` (`PER_PASS` 15, `VISIBLE_INSTANCE_COUNTS`, element `chunkID * MAX_VEGETATION_TREE_MESHES + speciesID`). The `Vegetation` subsystem supplies `MAX_VEGETATION_TREE_MESHES` to the tree-cull shader as a module define, keeping the shader's species indexing tied to the C++ capacity. Ranges come from the `dvd_treeRangeOffsets`/`dvd_treeRangeCounts` uniforms. Each tree `RenderingComponent` reads instances from the compacted buffer (`setInstanceShaderBuffer`) and names its count element with `setInstanceCountSource`.
 
 Grass uses the same compaction loop, with one workgroup per chunk and separate
 `_grassDrawData`/`_grassVisibleCounts` buffers. Slots 14/15 are rebound before

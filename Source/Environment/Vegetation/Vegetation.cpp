@@ -505,6 +505,7 @@ namespace Divide
         _occlusionShaderGrass = CreateResource( occlusionGrass, loadTasks );
 
         compModule._defines.emplace_back( "CULL_TREES" );
+        compModule._defines.emplace_back( Util::StringFormat( "MAX_VEGETATION_TREE_MESHES {}", MAX_VEGETATION_TREE_MESHES ) );
         ResourceDescriptor<ShaderProgram> instanceCullShaderTrees( "instanceCullVegetation_Trees" );
         instanceCullShaderTrees.waitForReady( false );
         ShaderProgramDescriptor& shaderCompDescriptorTrees = instanceCullShaderTrees._propertyDescriptor;
