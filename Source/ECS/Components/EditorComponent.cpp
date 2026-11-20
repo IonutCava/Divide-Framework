@@ -50,7 +50,7 @@ namespace Divide {
         }
     }
 
-    EditorComponent::EditorComponent( PlatformContext& context, const ComponentType type, const std::string_view name)
+    EditorComponent::EditorComponent( PlatformContext& context, const ComponentType type, const std::string_view name )
         : PlatformContextComponent(context)
         , GUIDWrapper()
         , _name(name)

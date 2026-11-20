@@ -12,8 +12,9 @@ namespace Divide
 {
     namespace Attorney
     {
-        struct UniformBlockUploaderTestAccess
+        class UniformBlockUploaderTestAccess
         {
+        public:
             static void Apply( const UniformData& uniforms, const std::span<const UniformBlockUploader::BlockMember> members,
                                const std::span<Byte> destination, UniformUploadSnapshotState& snapshot )
             {

@@ -100,8 +100,9 @@ namespace Divide
         }
     };
 
-    struct KernelTestAccess
+    class KernelTestAccess
     {
+    public:
         static void ReleaseUninitializedManagers( Kernel& kernel )
         {
             kernel._projectManager.reset();
@@ -109,8 +110,9 @@ namespace Divide
         }
     };
 
-    struct MaterialTestAccess
+    class MaterialTestAccess
     {
+    public:
         using TransparencyInputs = Material::TransparencyInputs;
 
         [[nodiscard]] static ShaderProgramInfo& Slot( Material& material, const RenderStagePass pass )

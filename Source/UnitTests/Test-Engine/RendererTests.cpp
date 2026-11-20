@@ -419,8 +419,9 @@ namespace Divide
 
     namespace Attorney
     {
-        struct LightPoolTestAccess
+        class LightPoolTestAccess
         {
+        public:
             using PointShadowProperties = LightPool::PointShadowProperties;
             using SpotShadowProperties = LightPool::SpotShadowProperties;
             using CSMShadowProperties = LightPool::CSMShadowProperties;
