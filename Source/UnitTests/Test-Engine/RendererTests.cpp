@@ -591,9 +591,10 @@ namespace Divide
         STATIC_CHECK( offsetof(NodeMaterialData, _textureOperations) == 4u * sizeof(float4) );
         STATIC_CHECK( offsetof(NodeMaterialData, _textureOperations) == 64u );
         STATIC_CHECK( offsetof(NodeTransformData, _boundingSphere) == 96u );
-        STATIC_CHECK( offsetof(GFXShaderData::CamData, dvd_ViewPort) == 6u * sizeof(mat4<F32>) );
-        STATIC_CHECK( offsetof(GFXShaderData::CamData, dvd_ViewPort) == 384u );
-        STATIC_CHECK( offsetof(GFXShaderData::CamData, dvd_clipPlanes) == 6u * sizeof(mat4<F32>) + 4u * sizeof(float4) );
+        STATIC_CHECK( offsetof(GFXShaderData::CamData, dvd_ViewPort) == 5u * sizeof(mat4<F32>) );
+        STATIC_CHECK( offsetof(GFXShaderData::CamData, dvd_ViewPort) == 320u );
+        STATIC_CHECK( offsetof(GFXShaderData::CamData, dvd_clipPlanes) == 5u * sizeof(mat4<F32>) + 4u * sizeof(float4) );
+        STATIC_CHECK( offsetof(GFXShaderData::CamData, _paddingMatrix) == 7u * sizeof(mat4<F32>) );
 
         SECTION( "Prefixed node records and their arrays" )
         {

@@ -77,7 +77,7 @@ void main(void) {
 #if defined(CULL_TREES)
     const uint species = gl_WorkGroupID.x;
     const uint rangeOffset = dvd_treeRangeOffsets[species];
-    const uint countIndex = (dvd_terrainChunkOffset * VEGETATION_TREE_SPECIES_COUNT) + species;
+    const uint countIndex = (dvd_terrainChunkOffset * MAX_VEGETATION_TREE_MESHES) + species;
     const uint rangeCount = dvd_treeRangeCounts[species];
 #else
     const uint rangeOffset = 0u;
