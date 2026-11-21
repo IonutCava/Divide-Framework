@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/GUIInterface.h"
 
@@ -139,6 +139,7 @@ GUIButton* GUIInterface::addButton(const char* name,
                                    parent);
 
     btn->setEventSound(GUIButton::Event::MouseClick, onClickSound);
+    DestroyResource(onClickSound);
 
     addElement(guiID, btn);
 

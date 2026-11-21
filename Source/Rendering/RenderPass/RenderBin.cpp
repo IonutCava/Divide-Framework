@@ -1,4 +1,4 @@
-
+// Copyright (c) 2018-2026 DIVIDE-Studio
 
 #include "Headers/RenderBin.h"
 
@@ -29,6 +29,16 @@ namespace Divide
             return;
         }
    
+        const U16 binSize = _renderBinIndex.load();
+        if (renderOrder == RenderingOrder::BY_STATE)
+        {
+            for (U16 i = 0u; i < binSize; ++i)
+            {
+                RenderBinItem& item = _renderBinStack[i];
+                item._geometrySortKey = Attorney::RenderingCompRenderBin::getGeometrySortKey(item._renderable);
+            }
+        }
+
         const auto sortFunc = [renderOrder]( const RenderBinItem& a, const RenderBinItem& b ) {
             switch ( renderOrder )
             {
@@ -45,11 +55,12 @@ namespace Divide
                 }
                 case RenderingOrder::BY_STATE:
                 {
-                    // Sorting opaque items is a 3 step process:
+                    // Sorting items is a 5 step process:
                     // 1: sort by shaders
                     // 2: if the shader is identical, sort by state hash
                     // 3: if shader is identical and state hash is identical, sort by albedo ID
-                    // 4: finally, sort by distance to camera (front to back)
+                    // 4: sort matching states by geometry buffers to improve draw batching
+                    // 5: finally, sort by distance to camera (front to back)
 
                     // Sort by shader in all states The sort key is the shader id (for now)
                     if ( a._shaderKey != b._shaderKey )
@@ -68,6 +79,10 @@ namespace Divide
                     {
                         return a._textureKey < b._textureKey;
                     }
+                    if (a._geometrySortKey != b._geometrySortKey)
+                    {
+                        return RenderBinGeometrySortKeyLess(a._geometrySortKey, b._geometrySortKey);
+                    }
                     // ... and then finally fallback to front to back
                     return a._distanceToCameraSq < b._distanceToCameraSq;
                 }
@@ -78,7 +93,6 @@ namespace Divide
             return false;
         };
 
-        const U16 binSize = _renderBinIndex.load();
         if ( binSize > k_parallelSortThreshold )
         {
             UNSEQ_STD_SORT( begin( _renderBinStack ), begin( _renderBinStack ) + binSize, sortFunc );

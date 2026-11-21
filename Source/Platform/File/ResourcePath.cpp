@@ -1,6 +1,5 @@
 
 
-#include "Headers/ResourcePath.h"
 #include "Headers/FileManagement.h"
 
 namespace Divide {

@@ -7,6 +7,8 @@
 #include "Graphs/Headers/SceneGraphNode.h"
 
 namespace Divide {
+    DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(RigidBodyComponent);
+
     RigidBodyComponent::RigidBodyComponent(SceneGraphNode* parentSGN, PlatformContext& context)
         : Parent(parentSGN, context),
           _physicsCollisionGroup(PhysicsGroup::GROUP_STATIC)

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
 <!-- DEBUG: General purpose settings needed while the application is loading -->
 <config>
 	<debug>
@@ -6,6 +7,7 @@
 			<enableRenderAPIDebugging>true</enableRenderAPIDebugging>
 			<enableRenderAPIBestPractices>true</enableRenderAPIBestPractices>
 			<enableRenderAPIDebugGrouping>true</enableRenderAPIDebugGrouping>
+			<enableVMADebugLogging>false</enableVMADebugLogging>
 			<assertOnRenderAPIError>false</assertOnRenderAPIError>
 			<useSPIRVForOpenGL>false</useSPIRVForOpenGL>
 		</renderer>
@@ -13,7 +15,7 @@
 			<enabled>true</enabled>
 			<geometry>true</geometry>
 			<vegetation>true</vegetation>
-			<shaders>false</shaders>
+			<shaders>true</shaders>
 			<textureDDS>true</textureDDS>
 		</cache>
 		<renderFilter>
@@ -25,7 +27,7 @@
 			<sky>true</sky>
 			<particles>true</particles>
 			<decals>true</decals>
-			<treeInstances>false</treeInstances>
+			<treeInstances>true</treeInstances>
 			<grassInstances>true</grassInstances>
 		</renderFilter>
 	</debug>
@@ -41,8 +43,10 @@
 		<targetDisplay>1</targetDisplay>
 		<!-- 0 = NULL, 1 - OpenGL4, 2 - Vulkan-->
 		<targetRenderingAPI>1</targetRenderingAPI>
-		<!-- The maximum number of worker threads that we want to spawn. -1 = (CPU thread count - 1). We will always spawn a minimum of 5 threads-->
+		<!-- Worker budget; -1 uses the CPU's logical thread count. The existing minimum budget is 16. -->
 		<maxWorkerThreads>-1</maxWorkerThreads>
+		<!-- Asset-loader workers: 0 selects automatically; explicit values are limited to 4-8 and the available worker budget. -->
+		<assetLoaderThreads>0</assetLoaderThreads>
 		<!-- 0 = windowed, 1 = borderless window, 2 = fullscreen (has some issues)-->
 		<windowedMode>0</windowedMode>
 		<!-- do we allow window resizing if running in windowed mode? -->
@@ -95,6 +99,12 @@
 		<reflectionProbeResolution>128</reflectionProbeResolution>
 		<!-- Planar reflector resolution. Clamped between 16 and 4096 and rounded to a power of 2 -->
 		<reflectionPlaneResolution>256</reflectionPlaneResolution>
+		<!-- Scene content in planar reflections and environment probes. SSR remains independent. -->
+		<reflection>
+			<includeGrass>true</includeGrass>
+			<includeTrees>true</includeTrees>
+			<includeDynamicObjects>false</includeDynamicObjects>
+		</reflection>
 		<numLightsPerCluster>100</numLightsPerCluster>
 		<enableFog>true</enableFog>
 		<fogDensity>0.0700000003</fogDensity>
@@ -213,6 +223,7 @@
 			<!-- Resolution will be rounded up to the next POW_2. -->
 			<csm>
 				<enabled>true</enabled>
+				<staticCaching>true</staticCaching>
 				<shadowMapResolution>2048</shadowMapResolution>
 				<MSAASamples>2</MSAASamples>
 				<enableBlurring>true</enableBlurring>
@@ -222,6 +233,7 @@
 			</csm>
 			<spot>
 				<enabled>true</enabled>
+				<staticCaching>true</staticCaching>
 				<shadowMapResolution>512</shadowMapResolution>
 				<MSAASamples>0</MSAASamples>
 				<enableBlurring>false</enableBlurring>

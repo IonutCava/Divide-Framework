@@ -241,6 +241,7 @@ if( BUILD_TESTING_INTERNAL )
 
     include(Catch)
 
+
     # Disable automatic Catch2 test discovery when building with sanitizers on Windows with clang-cl
     if( CLANG_MSVC_FRONTEND AND (RUN_ASAN OR RUN_UBSAN) )
         message(WARNING "Skipping Catch2 test discovery on Windows with clang-cl and sanitizers enabled (RUN_ASAN/RUN_UBSAN). Tests must be run explicitly in CI or locally.")
@@ -256,6 +257,9 @@ if( BUILD_TESTING_INTERNAL )
 
     add_executable( ${APP_EXE_TEST_ENGINE} "UnitTests/main.cpp" ${TEST_ENGINE_SOURCE})
     target_compile_definitions( ${APP_EXE_TEST_ENGINE} PRIVATE ENGINE_TESTS )
+    if( TARGET Divide-Shader-Math-Runner )
+        add_dependencies( ${APP_EXE_TEST_ENGINE} Divide-Shader-Math-Runner )
+    endif()
     target_link_libraries( ${APP_EXE_TEST_ENGINE} PRIVATE divide_imgui_node_editor )
 
     foreach( APP_TEST_EXE ${APP_TEST_EXES} )
@@ -264,7 +268,7 @@ if( BUILD_TESTING_INTERNAL )
         target_compile_options(${APP_TEST_EXE} PRIVATE ${DIVIDE_VECTOR_EXTENSION_COMPILE_OPTIONS})
         target_precompile_headers(${APP_TEST_EXE} REUSE_FROM ${APP_LIB_DIVIDE})
         if (MSVC_COMPILER)
-            target_compile_options(${APP_TEST_EXE} PRIVATE /wd4866 /wd4868)
+            target_compile_options(${APP_TEST_EXE} PRIVATE /wd4866 /wd4868 /wd4426)
         endif()
         if (CATCH_DISCOVER_TESTS_ENABLED)
             catch_discover_tests( ${APP_TEST_EXE} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )

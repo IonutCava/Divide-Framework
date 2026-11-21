@@ -72,11 +72,16 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/Headers/PlatformContextComponent.h
                          Core/Headers/PoolHandle.h
                          Core/Headers/Profiler.h
+                         Core/Headers/RenderSmokeTest.h
                          Core/Headers/RingBuffer.h
+                         Core/Headers/SmokeOutput.h
+                         Core/Headers/SmokeRuntimeDialogs.h
                          Core/Headers/StringHelper.h
                          Core/Headers/StringHelper.inl
                          Core/Headers/TaskPool.h
                          Core/Headers/TaskPool.inl
+                         Core/Headers/ThreadPoolSizing.h
+                         Core/Headers/VulkanRecoveryPolicy.h
                          Core/Headers/WindowManager.h
                          Core/Headers/WindowManager.inl
                          Core/Math/BoundingVolumes/Headers/BoundingBox.h
@@ -133,6 +138,7 @@ set( CORE_SOURCE Core/Application.cpp
                  Core/LoopTimingData.cpp
                  Core/PlatformContext.cpp
                  Core/Profiler.cpp
+                 Core/RenderSmokeTest.cpp
                  Core/RingBuffer.cpp
                  Core/StringHelper.cpp
                  Core/TaskPool.cpp
@@ -204,6 +210,7 @@ set( DYNAMICS_SOURCE Dynamics/Entities/Particles/ParticleData.cpp
 
 set( ECS_SOURCE_HEADERS ECS/Components/Headers/AnimationComponent.h
                         ECS/Components/Headers/BoundsComponent.h
+                        ECS/Components/Headers/BoundsUpdateState.h
                         ECS/Components/Headers/DirectionalLightComponent.h
                         ECS/Components/Headers/EditorComponent.h
                         ECS/Components/Headers/EditorComponent.inl
@@ -235,6 +242,7 @@ set( ECS_SOURCE_HEADERS ECS/Components/Headers/AnimationComponent.h
                         ECS/Systems/Headers/RigidBodySystem.h
                         ECS/Systems/Headers/SelectionSystem.h
                         ECS/Systems/Headers/SpotLightSystem.h
+                        ECS/Systems/Headers/TransformHierarchy.h
                         ECS/Systems/Headers/TransformSystem.h
 )
 
@@ -272,6 +280,9 @@ set( ECS_SOURCE ECS/Components/AnimationComponent.cpp
 
 set( EDITOR_SOURCE_HEADERS Editor/Headers/Editor.h
                            Editor/Headers/Editor.inl
+                           Editor/Headers/GizmoSelectionRefresh.h
+                           Editor/Headers/OutputLogQueue.h
+                           Editor/Headers/PropertyEditState.h
                            Editor/Headers/Sample.h
                            Editor/Headers/UndoManager.h
                            Editor/Headers/Utils.h
@@ -383,6 +394,8 @@ set( GRAPHS_SOURCE_HEADERS Graphs/Headers/IntersectionRecord.h
                            Graphs/Headers/SceneGraphNode.h
                            Graphs/Headers/SceneGraphNode.inl
                            Graphs/Headers/SceneNode.h
+                           Graphs/Headers/SceneNodeEventQueue.h
+                           Graphs/Headers/SceneNodeRemovalQueue.h
                            Graphs/Headers/SceneNodeFwd.h
                            Graphs/Headers/SceneNodeRenderState.h
                            Graphs/Headers/SGNRelationshipCache.h
@@ -406,6 +419,7 @@ set( GUI_SOURCE_HEADERS GUI/CEGUIAddons/Headers/CEGUIFormattedListBox.h
                         GUI/CEGUIAddons/Renderer/Headers/DVDTexture.inl
                         GUI/CEGUIAddons/Renderer/Headers/DVDTextureTarget.h
                         GUI/CEGUIAddons/Renderer/Headers/DVDTextureTarget.inl
+                        GUI/Headers/FontVertexFormat.h
                         GUI/Headers/GUI.h
                         GUI/Headers/GUIButton.h
                         GUI/Headers/GUIConsole.h
@@ -568,6 +582,11 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/Headers/HardwareQuery.h
                              Platform/Video/Headers/IMPrimitive.h
                              Platform/Video/Headers/IMPrimitiveDescriptors.h
+                             Platform/Video/Headers/UniformDataSnapshots.h
+                             Platform/Video/Headers/ResourceBindingMetrics.h
+                             Platform/Video/Headers/DrawBatchingMetrics.h
+                             Platform/Video/Headers/ResolvedBindingCache.h
+                             Platform/Video/Headers/GPUCompletionGuard.h
                              Platform/Video/Headers/LockManager.h
                              Platform/Video/Headers/Pipeline.h
                              Platform/Video/Headers/PushConstants.h
@@ -587,11 +606,13 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glGenericVertexData.h
                              Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h
                              Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glShaderBuffer.h
+                             Platform/Video/RenderBackend/OpenGL/Headers/glDescriptorUpdate.h
                              Platform/Video/RenderBackend/OpenGL/Headers/glHardwareQuery.h
                              Platform/Video/RenderBackend/OpenGL/Headers/glLockManager.h
                              Platform/Video/RenderBackend/OpenGL/Headers/glResources.h
                              Platform/Video/RenderBackend/OpenGL/Headers/glResources.inl
                              Platform/Video/RenderBackend/OpenGL/Headers/glStateTracker.h
+                             Platform/Video/RenderBackend/OpenGL/Headers/glUniformFences.h
                              Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h
                              Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShader.h
                              Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShaderProgram.h
@@ -603,11 +624,13 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkShaderBuffer.h
                              Platform/Video/RenderBackend/Vulkan/Headers/vkDescriptors.h
                              Platform/Video/RenderBackend/Vulkan/Headers/vkDevice.h
+                             Platform/Video/RenderBackend/Vulkan/Headers/vkDescriptorState.h
                              Platform/Video/RenderBackend/Vulkan/Headers/vkIMPrimitive.h
                              Platform/Video/RenderBackend/Vulkan/Headers/vkInitializers.h
                              Platform/Video/RenderBackend/Vulkan/Headers/vkMemAllocatorInclude.h
                              Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h
                              Platform/Video/RenderBackend/Vulkan/Headers/vkSwapChain.h
+                             Platform/Video/RenderBackend/Vulkan/Headers/vkToolProperties.h
                              Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h
                              Platform/Video/RenderBackend/Vulkan/Shaders/Headers/vkShaderProgram.h
                              Platform/Video/RenderBackend/Vulkan/Textures/Headers/vkSamplerObject.h
@@ -616,10 +639,12 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/Shaders/glsw/Headers/bstrlib.h
                              Platform/Video/Shaders/glsw/Headers/glsw.h
                              Platform/Video/Shaders/Headers/GLSLToSPIRV.h
+                             Platform/Video/Shaders/Headers/SampledImageResolver.h
                              Platform/Video/Shaders/Headers/ShaderDataUploader.h
                              Platform/Video/Shaders/Headers/ShaderProgram.h
                              Platform/Video/Shaders/Headers/ShaderProgramFwd.h
                              Platform/Video/Shaders/Headers/ShaderProgramFwd.inl
+                             Platform/Video/Shaders/Headers/UniformUploadPageCursor.h
                              Platform/Video/Textures/Headers/SamplerDescriptor.h
                              Platform/Video/Textures/Headers/SamplerDescriptor.inl
                              Platform/Video/Textures/Headers/Texture.h
@@ -655,6 +680,7 @@ set( PLATFORM_SOURCE Platform/ConditionalWait.cpp
                      Platform/Video/CommandBufferPool.cpp
                      Platform/Video/Commands.cpp
                      Platform/Video/DescriptorSets.cpp
+                     Platform/Video/DrawBatchingMetrics.cpp
                      Platform/Video/GenericDrawCommand.cpp
                      Platform/Video/GFXDevice.cpp
                      Platform/Video/GFXRTPool.cpp
@@ -724,9 +750,14 @@ set( RENDERING_SOURCE_HEADERS Rendering/Camera/Headers/Camera.h
                               Rendering/Camera/Headers/Frustum.h
                               Rendering/Headers/ClipRegion.h
                               Rendering/Headers/Renderer.h
+                              Rendering/Lighting/Headers/ClusteredLighting.h
                               Rendering/Lighting/Headers/Light.h
                               Rendering/Lighting/Headers/Light.inl
                               Rendering/Lighting/Headers/LightPool.h
+                              Rendering/Lighting/Headers/LightUploadState.h
+                              Rendering/Lighting/Headers/ShadowCasterBounds.h
+                              Rendering/Lighting/Headers/ShadowPassState.h
+                              Rendering/Lighting/Headers/SpotLightGeometry.h
                               Rendering/Lighting/ShadowMapping/Headers/CascadedShadowMapsGenerator.h
                               Rendering/Lighting/ShadowMapping/Headers/CubeShadowMapGenerator.h
                               Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h
@@ -817,6 +848,7 @@ set( SCRIPTING_SOURCE Scripting/GameScript.cpp
 set ( UTILITY_SOURCE_HEADERS Utility/Headers/Colours.h
                              Utility/Headers/CommandParser.h
                              Utility/Headers/CRC.h
+                             Utility/Headers/DDSCache.h
                              Utility/Headers/ImageTools.h
                              Utility/Headers/ImageToolsFwd.h
                              Utility/Headers/Localization.h
@@ -837,13 +869,33 @@ set( UTILITY_SOURCE Utility/Colours.cpp
 
 set( TEST_ENGINE_SOURCE UnitTests/unitTestCommon.h
                         UnitTests/unitTestCommon.cpp
+                        UnitTests/Test-Engine/AnimationTests.cpp
+                        UnitTests/Test-Engine/BoundsTests.cpp
                         UnitTests/Test-Engine/ByteBufferTests.cpp
+                        UnitTests/Test-Engine/ConsoleTests.cpp
+                        UnitTests/Test-Engine/CullCounterReadbackTests.cpp
+                        UnitTests/Test-Engine/EditorTests.cpp
+                        UnitTests/Test-Engine/FrameListenerTests.cpp
+                        UnitTests/Test-Engine/GUIButtonTests.cpp
+                        UnitTests/Test-Engine/ImageToolsTests.cpp
+                        UnitTests/Test-Engine/LightingTests.cpp
+                        UnitTests/Test-Engine/MaterialReadinessTests.cpp
                         UnitTests/Test-Engine/MathMatrixTests.cpp
                         UnitTests/Test-Engine/MathVectorTests.cpp
+                        UnitTests/Test-Engine/MeshImportTests.cpp
                         UnitTests/Test-Engine/NodeEditorTests.cpp
+                        UnitTests/Test-Engine/RenderSmokeTests.cpp
                         UnitTests/Test-Engine/RendererTests.cpp
+                        UnitTests/Test-Engine/SceneNodeEventTests.cpp
+                        UnitTests/Test-Engine/ShaderCompilerTests.cpp
                         UnitTests/Test-Engine/ScriptingTests.cpp
+                        UnitTests/Test-Engine/TaskPoolTests.cpp
+                        UnitTests/Test-Engine/TerrainTests.cpp
+                        UnitTests/Test-Engine/UndoManagerTests.cpp
+                        UnitTests/Test-Engine/UniformUploadPageCursorTests.cpp
                         UnitTests/Test-Engine/SunTests.cpp
+                        UnitTests/Test-Engine/WaterTests.cpp
+                        UnitTests/Test-Engine/XMLParserTests.cpp
 )
 
 set( TEST_PLATFORM_SOURCE UnitTests/unitTestCommon.h

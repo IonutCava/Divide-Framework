@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/glStateTracker.h"
 #include "Headers/GLWrapper.h"
@@ -39,7 +39,6 @@ namespace Divide
             };
 
             DIVIDE_UNEXPECTED_CALL();
-            return -1;
         }
 
     }; //namespace 
@@ -52,6 +51,8 @@ namespace Divide
     void GLStateTracker::setDefaultState()
     {
         _activeState = {};
+        // Zero is not a valid patch size; force the first pipeline to set GL_PATCH_VERTICES.
+        _activeState._tessControlPoints = 0u;
         _attributeHash = 0u;
         _activePipeline = nullptr;
         _activeShaderProgram = nullptr;
@@ -81,7 +82,7 @@ namespace Divide
 
         _vaoBufferData = {};
         _endFrameFences = {};
-        _lastSyncedFrameNumber = 0u;
+        _lastSyncedFrameNumber.store( 0u, std::memory_order_relaxed );
 
         _blendPropertiesGlobal.blendSrc( BlendProperty::ONE );
         _blendPropertiesGlobal.blendDest( BlendProperty::ZERO );
@@ -267,7 +268,7 @@ namespace Divide
 
         BindResult result = BindResult::FAILED;
 
-        if ( samplerCount > 0 && unitOffset + samplerCount < GFXDevice::GetDeviceInformation()._maxTextureUnits )
+        if ( IsTextureUnitRangeValid( unitOffset, samplerCount, GFXDevice::GetDeviceInformation()._maxTextureUnits ) )
         {
             if ( samplerCount == 1 )
             {
@@ -312,23 +313,35 @@ namespace Divide
         return result;
     }
 
-    bool GLStateTracker::unbindTexture( [[maybe_unused]] const TextureType type, const gl46core::GLuint handle )
+    void GLStateTracker::invalidateTexture( const gl46core::GLuint handle )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        if ( handle == 0u || handle == GL_NULL_HANDLE )
+        {
+            return;
+        }
 
         for ( U8 idx = 0u; idx < MAX_BOUND_TEXTURE_UNITS; ++idx )
         {
             if ( _textureBoundMap[idx] == handle )
             {
-                _textureBoundMap[idx] = GL_NULL_HANDLE;
                 gl46core::glBindTextureUnit( idx, 0u );
-                DIVIDE_EXPECTED_CALL( bindSamplers( idx, 1, nullptr ) != BindResult::FAILED );
-
-                return true;
+                _textureBoundMap[idx] = 0u;
             }
         }
 
-        return false;
+        const size_t imageUnitCount = _imageBoundMap.size();
+        for ( size_t idx = 0u; idx < imageUnitCount; ++idx )
+        {
+            ImageBindSettings& settings = _imageBoundMap[idx];
+            if ( settings._texture == handle )
+            {
+                // Format and access are validated even when unbinding, so reuse the unit's last valid values.
+                gl46core::glBindImageTexture( to_U32( idx ), 0u, 0, gl46core::GL_FALSE, 0, settings._access, settings._format );
+                settings = {};
+            }
+        }
     }
 
     bool GLStateTracker::unbindTextures()
@@ -338,8 +351,8 @@ namespace Divide
         _textureBoundMap.fill( GL_NULL_HANDLE );
         _samplerBoundMap.fill( GL_NULL_HANDLE );
 
-        gl46core::glBindTextures( 0u, GFXDevice::GetDeviceInformation()._maxTextureUnits - 1, nullptr );
-        gl46core::glBindSamplers( 0u, GFXDevice::GetDeviceInformation()._maxTextureUnits - 1, nullptr );
+        gl46core::glBindTextures( 0u, MAX_BOUND_TEXTURE_UNITS, nullptr );
+        gl46core::glBindSamplers( 0u, MAX_BOUND_TEXTURE_UNITS, nullptr );
 
         return true;
     }
@@ -349,8 +362,12 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        // Fail if we specified an invalid unit. Assert instead of returning false because this might be related to a bad algorithm
-        DIVIDE_GPU_ASSERT( unit < GFXDevice::GetDeviceInformation()._maxTextureUnits, "GLStates error: invalid texture unit specified as a texture binding slot!" );
+        // An invalid unit points to a bad binding algorithm. Assert, but also fail because Debug assertions may continue past the tracked bind maps.
+        if ( !IsTextureUnitRangeValid( unit, 1u, GFXDevice::GetDeviceInformation()._maxTextureUnits ) )
+        {
+            DIVIDE_GPU_ASSERT( false, "GLStates error: invalid texture unit specified as a texture binding slot!" );
+            return BindResult::FAILED;
+        }
 
         BindResult result = BindResult::ALREADY_BOUND;
 
@@ -388,7 +405,7 @@ namespace Divide
 
         BindResult result = BindResult::FAILED;
 
-        if ( textureCount > 0u && unitOffset + textureCount < GFXDevice::GetDeviceInformation()._maxTextureUnits )
+        if ( IsTextureUnitRangeValid( unitOffset, textureCount, GFXDevice::GetDeviceInformation()._maxTextureUnits ) )
         {
             // Update bound map
             bool newBinding = false;
@@ -567,7 +584,8 @@ namespace Divide
             {
                 gl46core::glBindFramebuffer( gl46core::GL_DRAW_FRAMEBUFFER, ID );
             } break;
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default:
+                DIVIDE_UNEXPECTED_CALL();
         };
 
         // Remember the new binding state for future reference
@@ -727,9 +745,12 @@ namespace Divide
 
         if ( enable && _blendPropertiesGlobal != blendingProperties )
         {
+            const bool separateModeChanged = (blendingProperties.blendOpAlpha() == BlendOperation::COUNT) !=
+                                             (_blendPropertiesGlobal.blendOpAlpha() == BlendOperation::COUNT);
             if ( blendingProperties.blendOpAlpha() != BlendOperation::COUNT )
             {
-                if ( blendingProperties.blendSrc() != _blendPropertiesGlobal.blendSrc() ||
+                if ( separateModeChanged ||
+                     blendingProperties.blendSrc() != _blendPropertiesGlobal.blendSrc() ||
                      blendingProperties.blendDest() != _blendPropertiesGlobal.blendDest() ||
                      blendingProperties.blendSrcAlpha() != _blendPropertiesGlobal.blendSrcAlpha() ||
                      blendingProperties.blendDestAlpha() != _blendPropertiesGlobal.blendDestAlpha() )
@@ -751,13 +772,14 @@ namespace Divide
             }
             else
             {
-                if ( blendingProperties.blendSrc() != _blendPropertiesGlobal.blendSrc() ||
+                if ( separateModeChanged ||
+                     blendingProperties.blendSrc() != _blendPropertiesGlobal.blendSrc() ||
                      blendingProperties.blendDest() != _blendPropertiesGlobal.blendDest() )
                 {
                     gl46core::glBlendFunc( GLUtil::glBlendTable[to_base( blendingProperties.blendSrc() )],
                                            GLUtil::glBlendTable[to_base( blendingProperties.blendDest() )] );
                 }
-                if ( blendingProperties.blendOp() != _blendPropertiesGlobal.blendOp() )
+                if ( separateModeChanged || blendingProperties.blendOp() != _blendPropertiesGlobal.blendOp() )
                 {
                     gl46core::glBlendEquation( GLUtil::glBlendOpTable[blendingProperties.blendOp() != BlendOperation::COUNT
                                                                                                     ? to_base( blendingProperties.blendOp() )
@@ -794,9 +816,12 @@ namespace Divide
 
         if ( enable && crtProperties != blendingProperties )
         {
+            const bool separateModeChanged = (blendingProperties.blendOpAlpha() == BlendOperation::COUNT) !=
+                                             (crtProperties.blendOpAlpha() == BlendOperation::COUNT);
             if ( blendingProperties.blendOpAlpha() != BlendOperation::COUNT )
             {
-                if ( blendingProperties.blendSrc() != crtProperties.blendSrc() ||
+                if ( separateModeChanged ||
+                     blendingProperties.blendSrc() != crtProperties.blendSrc() ||
                      blendingProperties.blendDest() != crtProperties.blendDest() ||
                      blendingProperties.blendSrcAlpha() != crtProperties.blendSrcAlpha() ||
                      blendingProperties.blendDestAlpha() != crtProperties.blendDestAlpha() )
@@ -828,7 +853,8 @@ namespace Divide
             }
             else
             {
-                if ( blendingProperties.blendSrc() != crtProperties.blendSrc() ||
+                if ( separateModeChanged ||
+                     blendingProperties.blendSrc() != crtProperties.blendSrc() ||
                      blendingProperties.blendDest() != crtProperties.blendDest() )
                 {
                     gl46core::glBlendFunci( drawBufferIdx,
@@ -839,7 +865,7 @@ namespace Divide
                     _blendPropertiesGlobal.blendDest() = blendingProperties.blendDest();
                 }
 
-                if ( blendingProperties.blendOp() != crtProperties.blendOp() )
+                if ( separateModeChanged || blendingProperties.blendOp() != crtProperties.blendOp() )
                 {
                     gl46core::glBlendEquationi( drawBufferIdx,
                                                 GLUtil::glBlendOpTable[blendingProperties.blendOp() != BlendOperation::COUNT

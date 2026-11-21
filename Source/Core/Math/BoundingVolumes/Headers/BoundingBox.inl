@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -312,8 +312,6 @@ inline float3 BoundingBox::cornerPoint(const U8 cornerIndex) const noexcept
 {
     switch (cornerIndex)
     {
-        default: DIVIDE_UNEXPECTED_CALL(); break;
-
         case 0: return float3{ _min.x, _min.y, _min.z};
         case 1: return float3{ _min.x, _min.y, _max.z };
         case 2: return float3{ _min.x, _max.y, _min.z };
@@ -322,10 +320,12 @@ inline float3 BoundingBox::cornerPoint(const U8 cornerIndex) const noexcept
         case 5: return float3{ _max.x, _min.y, _max.z };
         case 6: return float3{ _max.x, _max.y, _min.z };
         case 7: return float3{ _max.x, _max.y, _max.z };
+        default: break;
     }
 
-    return VECTOR3_ZERO;
+    DIVIDE_UNEXPECTED_CALL();
 }
+
 inline std::array<float3, 8> BoundingBox::getPoints() const noexcept
 {
     return std::array<float3, 8>
@@ -381,7 +381,7 @@ inline void BoundingBox::transform(const float3& initialMin, const float3& initi
 }
 
 template<typename T> requires std::is_same_v<T, mat3<F32>> || std::is_same_v<T, mat4<F32>>
-void BoundingBox::transformInternal(const float3& initialMin, const float3& initialMax, const float3 translation, const T& rotation) noexcept
+void BoundingBox::transformInternal(const float3 initialMin, const float3 initialMax, const float3 translation, const T& rotation) noexcept
 {
     _min = _max = translation;
 

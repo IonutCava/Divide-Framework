@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -52,6 +52,7 @@ class DockedWindow : NonCopyable, NonMovable {
             string name = "";
             ImGuiWindowFlags flags = 0;
             bool showCornerButton = false;
+            bool focusOnFirstDraw = false;
         };
 
     public:
@@ -62,6 +63,8 @@ class DockedWindow : NonCopyable, NonMovable {
         void draw(bool readOnly);
         // Always called, even if the editor is not visible
         void backgroundUpdate();
+
+        static void FocusOnFirstDraw(bool& pending) noexcept;
 
         [[nodiscard]] virtual string name() const { return _descriptor.name; }
 

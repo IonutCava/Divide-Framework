@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -466,7 +466,9 @@ enum class ShaderStageVisibility : U16 {
     COUNT = 9,
     ALL_GEOMETRY = MESH | TASK | VERTEX | GEOMETRY | TESS_CONTROL | TESS_EVAL,
     ALL_DRAW = ALL_GEOMETRY | FRAGMENT,
-    COMPUTE_AND_DRAW = FRAGMENT | COMPUTE,
+    COMPUTE_AND_FRAGMENT = FRAGMENT | COMPUTE,
+    VERTEX_FRAGMENT_COMPUTE = VERTEX | COMPUTE_AND_FRAGMENT,
+    COMPUTE_AND_DRAW = COMPUTE_AND_FRAGMENT, // Legacy name; excludes vertex and other geometry stages.
     COMPUTE_AND_GEOMETRY = ALL_GEOMETRY | COMPUTE,
     ALL = ALL_DRAW | COMPUTE,
 };

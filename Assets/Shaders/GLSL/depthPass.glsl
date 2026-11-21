@@ -1,5 +1,7 @@
 -- Fragment.PrePass
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "prePass.frag"
 #if defined(USE_ALPHA_DISCARD)
 #include "materialData.frag"
@@ -39,6 +41,7 @@ void main() {
 layout(location = 0) out vec2 _colourOut;
 
 void main() {
+    const vec2 moments = computeMoments();
 #if defined(USE_ALPHA_DISCARD)
     const NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
     if (getAlpha(data, vec3(VAR._texCoord, 0)) < ALPHA_DISCARD_THRESHOLD) {
@@ -46,7 +49,7 @@ void main() {
     }
 #endif //USE_ALPHA_DISCARD
 
-    _colourOut = computeMoments();
+    _colourOut = moments;
 }
 
 --Fragment.LineariseDepthBuffer

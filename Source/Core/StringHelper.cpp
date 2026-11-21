@@ -1,6 +1,5 @@
 
 
-#include "Headers/StringHelper.h"
 
 #include "Platform/File/Headers/FileManagement.h"
 

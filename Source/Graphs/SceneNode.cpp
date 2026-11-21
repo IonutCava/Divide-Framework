@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/SceneNode.h"
 
@@ -63,10 +63,22 @@ void SceneNode::postLoad(SceneGraphNode* sgn)
     sgn->postLoad();
 }
 
+BoundingBox SceneNode::getBounds() const noexcept
+{
+    SharedLock<SharedMutex> r_lock(_boundsLock);
+    return _boundingBox;
+}
+
 void SceneNode::setBounds(const BoundingBox& aabb)
 {
-    _boundsChanged = true;
+    LockGuard<SharedMutex> w_lock(_boundsLock);
+    const bool changed = _boundingBox != aabb;
     _boundingBox.set(aabb);
+    if (changed)
+    {
+        _boundsRevision.fetch_add(1u, std::memory_order_release);
+    }
+    _boundsChanges.markChanged();
 }
 
 Handle<Material> SceneNode::getMaterialTemplate() const
@@ -182,6 +194,26 @@ bool SceneNode::loadCache(ByteBuffer& inputBuffer)
         return true;
     }
 
+    return false;
+}
+
+U8 SceneNode::dirtyFlushMask() const noexcept
+{
+    return to_base( DirtyFlushType::NONE );
+}
+
+U8 SceneNode::dirtyFlushMaskForEvent( const U8 eventMask ) const noexcept
+{
+    DIVIDE_UNUSED( eventMask );
+    return dirtyFlushMask();
+}
+
+void SceneNode::flushSceneData( [[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] SceneState& sceneState )
+{
+}
+
+bool SceneNode::extractWaterBodyData( [[maybe_unused]] const SceneGraphNode* sgn, [[maybe_unused]] WaterBodyData& dataOut ) const
+{
     return false;
 }
 

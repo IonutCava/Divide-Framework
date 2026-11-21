@@ -8,9 +8,6 @@
 #define GLIM_GLIMBATCHDATA_H
 
 #include "Declarations.h"
-#include "Core/TemplateLibraries/Headers/Vector.h"
-#include "Core/TemplateLibraries/Headers/HashMap.h"
-#include "Core/TemplateLibraries/Headers/String.h"
 
 namespace NS_GLIM
 {

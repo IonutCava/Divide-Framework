@@ -8,3 +8,4 @@ build/
 html
 /XML/Editor/Editor.xml.bak
 /XML/config.xml.bak
+vcpkg_installed/

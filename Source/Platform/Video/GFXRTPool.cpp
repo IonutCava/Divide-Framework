@@ -14,12 +14,15 @@ GFXRTPool::GFXRTPool(GFXDevice& parent)
 {
 }
 
-RenderTargetHandle GFXRTPool::allocateRT(const RenderTargetDescriptor& descriptor) {
+RenderTargetHandle GFXRTPool::allocateRT(const RenderTargetDescriptor& descriptor)
+{
     LockGuard<SharedMutex> w_lock(_renderTargetLock);
 
     RenderTargetID uid = 0u;
-    for (auto& target : _renderTargets) {
-        if (target == nullptr) {
+    for (auto& target : _renderTargets)
+    {
+        if (target == nullptr)
+        {
             target = MOV(Attorney::GFXDeviceGFXRTPool::newRenderTarget(_parent, descriptor));
             return { target.get(), uid };
         }
@@ -30,13 +33,16 @@ RenderTargetHandle GFXRTPool::allocateRT(const RenderTargetDescriptor& descripto
     return { rt, _renderTargetIndex++ };
 }
 
-bool GFXRTPool::deallocateRT(RenderTargetHandle& handle) {
-    if (handle._rt == nullptr) {
+bool GFXRTPool::deallocateRT(RenderTargetHandle& handle)
+{
+    if (handle._rt == nullptr)
+    {
         return true;
     }
 
     const RenderTargetID id = handle._targetID;
-    if (id != INVALID_RENDER_TARGET_ID) {
+    if (id != INVALID_RENDER_TARGET_ID)
+    {
         LockGuard<SharedMutex> w_lock(_renderTargetLock);
         handle._rt = nullptr;
         handle._targetID = INVALID_RENDER_TARGET_ID;
@@ -47,8 +53,9 @@ bool GFXRTPool::deallocateRT(RenderTargetHandle& handle) {
     return false;
 }
 
-RenderTarget* GFXRTPool::getRenderTarget(const RenderTargetID target) const {
-    DIVIDE_ASSERT(target != INVALID_RENDER_TARGET_ID && _renderTargets.size() > to_base(target));
+RenderTarget* GFXRTPool::getRenderTarget(const RenderTargetID target) const
+{
+    DIVIDE_ASSERT(target != INVALID_RENDER_TARGET_ID && _renderTargets.size() > target);
     SharedLock<SharedMutex> w_lock(_renderTargetLock);
     return _renderTargets[target].get();
 }

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #include "Headers/glFramebuffer.h"
 
 #include "Core/Resources/Headers/ResourceCache.h"
@@ -22,10 +25,7 @@ namespace Divide
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
             // label this FB to be able to tell that it's internally created and nor from a 3rd party lib
-            gl46core::glObjectLabel( gl46core::GL_FRAMEBUFFER,
-                                     _framebufferHandle,
-                                     -1,
-                                     (name() + "_RENDER").c_str());
+            GLUtil::SetObjectLabel( gl46core::GL_FRAMEBUFFER, _framebufferHandle, (name() + "_RENDER").c_str() );
         }
 
         // Everything disabled so that the initial "begin" will override this
@@ -200,10 +200,7 @@ namespace Divide
             gl46core::glCreateFramebuffers( 1, &_framebufferResolveHandle );
             if constexpr ( Config::ENABLE_GPU_VALIDATION )
             {
-                gl46core::glObjectLabel( gl46core::GL_FRAMEBUFFER,
-                                         _framebufferResolveHandle,
-                                         -1,
-                                         (name() + "_RESOLVE").c_str() );
+                GLUtil::SetObjectLabel( gl46core::GL_FRAMEBUFFER, _framebufferResolveHandle, (name() + "_RESOLVE").c_str() );
             }
         }
         else if ( !needsAutoResolve && _framebufferResolveHandle != GL_NULL_HANDLE )
@@ -290,6 +287,32 @@ namespace Divide
 
             const RTAttachment_uptr& inAtt = input->_attachments[entry._input._index];
             const RTAttachment_uptr& outAtt = output->_attachments[entry._output._index];
+            if (entry._copySamples)
+            {
+                const auto* src = static_cast<glTexture*>(Get(inAtt->renderTexture()));
+                const auto* dst = static_cast<glTexture*>(Get(outAtt->renderTexture()));
+                const auto srcFormat = GLUtil::InternalFormatAndDataType(
+                    src->descriptor()._baseFormat, src->descriptor()._dataType, src->descriptor()._packing)._format;
+                const auto dstFormat = GLUtil::InternalFormatAndDataType(
+                    dst->descriptor()._baseFormat, dst->descriptor()._dataType, dst->descriptor()._packing)._format;
+                if (inputDim != outputDim || input->getSampleCount() != output->getSampleCount() ||
+                    srcFormat != dstFormat ||
+                    src->descriptor()._texType != dst->descriptor()._texType ||
+                    src->depth() != dst->depth() || entry._layerCount == ALL_LAYERS ||
+                    entry._mipCount != 1u || entry._input._mipOffset != 0u || entry._output._mipOffset != 0u)
+                {
+                    DIVIDE_UNEXPECTED_CALL_MSG("Exact render-target copies require matching dimensions, format and samples at mip zero");
+                }
+                const U16 faces = IsCubeTexture(src->descriptor()._texType) ? 6u : 1u;
+                gl46core::glCopyImageSubData(
+                    src->textureHandle(), GLUtil::internalTextureType(src->descriptor()._texType, input->getSampleCount()),
+                    0, 0, 0, entry._input._layerOffset,
+                    dst->textureHandle(), GLUtil::internalTextureType(dst->descriptor()._texType, output->getSampleCount()),
+                    0, 0, 0, entry._output._layerOffset,
+                    inputDim.width, inputDim.height,
+                    src->descriptor()._texType == TextureType::TEXTURE_3D ? src->depth() : entry._layerCount * faces);
+                continue;
+            }
             const gl46core::GLenum readBuffer = static_cast<gl46core::GLenum>(inAtt->binding());
             const gl46core::GLenum writeBuffer = static_cast<gl46core::GLenum>(outAtt->binding());
 
@@ -775,4 +798,3 @@ namespace Divide
     }
 
 };  // namespace Divide
-

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
 <static>true</static>
 <model>flag_obj.obj</model>
 <MESH/>
 <TRANSFORM>
     <Transform>
-        <position x="150" y="14.826458" z="0"/>
+        <position x="148" y="14.75213" z="-1"/>
         <orientation x="0" y="-0" z="0"/>
         <scale x="0.00499999989" y="0.00499999989" z="0.00499999989"/>
     </Transform>

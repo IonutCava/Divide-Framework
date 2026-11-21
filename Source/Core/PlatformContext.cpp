@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/PlatformContext.h"
 #include "Headers/Configuration.h"
@@ -42,6 +42,7 @@ PlatformContext::PlatformContext(Application& app)
 
 PlatformContext::~PlatformContext()
 {
+    ShutdownConditionalWait(*this);
     assert(_gfx == nullptr);
 }
 
@@ -151,15 +152,15 @@ const Kernel& PlatformContext::kernel() const noexcept
     return *_kernel;
 }
 
-void PlatformContext::onThreadCreated(const TaskPoolType poolType, const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) const
+void PlatformContext::onThreadCreated(const TaskPoolType poolType, const size_t threadIndex, const std::thread::id& threadID ) const
 {
     if ( poolType == TaskPoolType::ASSET_LOADER || poolType == TaskPoolType::RENDERER )
     {
-        _gfx->onThreadCreated(threadIndex, threadID, isMainRenderThread);
+        _gfx->onThreadCreated(threadIndex, threadID);
 
         if ( poolType == TaskPoolType::ASSET_LOADER )
         {
-            ShaderProgram::OnThreadCreated(*_gfx, threadIndex, threadID, isMainRenderThread);
+            ShaderProgram::OnThreadCreated(*_gfx, threadIndex, threadID);
         }
     }
 }

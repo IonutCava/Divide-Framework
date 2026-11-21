@@ -1,6 +1,5 @@
 
 
-#include "Platform/Headers/PlatformDefines.h"
 
 void* operator new[](const size_t size, 
                      size_t alignment,

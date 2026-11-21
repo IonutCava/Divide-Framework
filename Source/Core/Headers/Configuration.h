@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -46,6 +46,7 @@ struct Configuration final : XML::IXMLSerializable {
             bool enableRenderAPIDebugging = false;
             bool enableRenderAPIBestPractices = false;
             bool enableRenderAPIDebugGrouping = false;
+            bool enableVMADebugLogging = false;
             bool assertOnRenderAPIError = false;
             bool useSPIRVForOpenGL = true;
         } renderer = {};
@@ -82,6 +83,7 @@ struct Configuration final : XML::IXMLSerializable {
         U8 targetDisplay = 0;
         U8 targetRenderingAPI = 0;
         I16 maxWorkerThreads = -1;
+        I16 assetLoaderThreads = 0;
         U8   windowedMode = 0;
         bool windowResizable = false;
         bool maximizeOnStart = true;
@@ -147,6 +149,12 @@ struct Configuration final : XML::IXMLSerializable {
         U8 maxAnisotropicFilteringLevel = 16;
         U16 reflectionProbeResolution = 256;
         U16 reflectionPlaneResolution = 512;
+        struct Reflection
+        {
+            bool includeGrass = true;
+            bool includeTrees = true;
+            bool includeDynamicObjects = false;
+        } reflection = {};
         I32 numLightsPerCluster = -1;
         bool enableFog = true;
         F32 fogDensity = 0.01f;
@@ -228,10 +236,14 @@ struct Configuration final : XML::IXMLSerializable {
             bool enabled = true;
             struct CSMSettings : public ShadowSettings
             {
+                bool staticCaching = true;
                 F32 splitLambda = 0.95f;
                 U8  splitCount = 3u;
             } csm;
-            ShadowSettings spot = {};
+            struct SpotSettings : public ShadowSettings
+            {
+                bool staticCaching = true;
+            } spot;
             ShadowSettings point = {};
         } shadowMapping = {};
     } rendering = {};

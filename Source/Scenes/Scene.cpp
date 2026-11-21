@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/Scene.h"
 #include "Headers/SceneInput.h"
@@ -24,6 +25,7 @@
 #include "Environment/Terrain/Headers/InfinitePlane.h"
 #include "Environment/Terrain/Headers/Terrain.h"
 #include "Environment/Terrain/Headers/TerrainDescriptor.h"
+#include "Environment/Vegetation/Headers/Vegetation.h"
 #include "Environment/Water/Headers/Water.h"
 
 #include "Geometry/Material/Headers/Material.h"
@@ -543,7 +545,7 @@ namespace Divide
                     case _ID( "WATER" ):
                     {
                         normalMask |= to_base( ComponentType::RENDERING );
-                        addWater( parent, nodeTree, sceneNode.name );
+                        DIVIDE_UNUSED( addWater( parent, nodeTree, sceneNode.name ) );
                     } break;
                     case _ID( "MESH" ):
                     {
@@ -565,14 +567,7 @@ namespace Divide
                     // SubMesh (change component properties, as the meshes should already be loaded)
                     case _ID( "SUBMESH" ):
                     {
-                        while ( parent->getNode().getState() != ResourceState::RES_LOADED )
-                        {
-                            if ( parentTask != nullptr && !idle() )
-                            {
-                                NOP();
-                            }
-                        }
-                        SceneGraphNode* subMesh = parent->findChild( _ID( sceneNode.name.c_str() ), false, false );
+                        SceneGraphNode* subMesh = parent->findChild( _ID( sceneNode.name.c_str() ), false, true );
                         if ( subMesh != nullptr )
                         {
                             subMesh->loadFromXML( nodeTree );
@@ -600,9 +595,23 @@ namespace Divide
         }
 
         const U32 childCount = to_U32( sceneNode.children.size() );
-        if ( childCount == 1u )
+        if ( childCount > 0u && crtNode->getNode().type() == SceneNodeType::TYPE_MESH )
         {
-            loadAsset( parentTask, sceneNode.children.front(), crtNode );
+            // Wait before dispatching siblings: waiting submesh tasks must not recursively steal each other.
+            WAIT_FOR_CONDITION( crtNode->getNode().getState() == ResourceState::RES_LOADED ||
+                                crtNode->getNode().getState() == ResourceState::RES_LOAD_FAILED );
+            DIVIDE_ASSERT( crtNode->getNode().getState() == ResourceState::RES_LOADED,
+                           "Cannot restore submeshes of a failed mesh resource!" );
+        }
+        if ( childCount == 1u ||
+             (childCount > 1u && eastl::any_of( sceneNode.children.begin(), sceneNode.children.end(),
+                 []( const XML::SceneNode& node ) { return node.typeHash == _ID( "SUBMESH" ); } )) )
+        {
+            // Synchronous material loads can contend on shared textures; do not enqueue sibling waiters.
+            for ( const XML::SceneNode& child : sceneNode.children )
+            {
+                loadAsset( parentTask, child, crtNode );
+            }
         }
         else if ( childCount > 1u )
         {
@@ -765,10 +774,10 @@ namespace Divide
         return skyNode;
     }
 
-    void Scene::addWater( SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName )
+    SceneGraphNode* Scene::addWater( SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName )
     {
 
-        ResourceDescriptor<WaterPlane> waterDescriptor( ("Water_" + nodeName).c_str() );
+        ResourceDescriptor<WaterPlane> waterDescriptor( Util::StringFormat( "Water_{}_{}_{}", resourceName().c_str(), parentNode->getGUID(), nodeName.c_str() ) );
         Handle<WaterPlane> water = CreateResource( waterDescriptor, _loadingTasks );
         Get(water)->loadFromXML( pt );
 
@@ -786,6 +795,7 @@ namespace Divide
 
         SceneGraphNode* waterNode = parentNode->addChildNode( waterNodeDescriptor );
         waterNode->loadFromXML( pt );
+        return waterNode;
     }
 
     SceneGraphNode* Scene::addInfPlane( SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName )
@@ -834,7 +844,7 @@ namespace Divide
 
         const auto increaseCameraSpeed = [this]( const InputParams params )
         {
-            Camera* cam = playerCamera( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) );
+            Camera* cam = cameraForInput( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) );
             if ( cam->mode() != Camera::Mode::STATIC &&
                 cam->mode() != Camera::Mode::SCRIPTED )
             {
@@ -851,7 +861,7 @@ namespace Divide
 
         const auto decreaseCameraSpeed = [this]( const InputParams params )
         {
-            Camera* cam = playerCamera( getPlayerIndexForDevice(params._deviceType, params._deviceIndex ) );
+            Camera* cam = cameraForInput( getPlayerIndexForDevice(params._deviceType, params._deviceIndex ) );
             if ( cam->mode() != Camera::Mode::STATIC &&
                  cam->mode() != Camera::Mode::SCRIPTED )
             {
@@ -1087,7 +1097,8 @@ namespace Divide
                         state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::NONE} );
                     }
                 } break;
-                default: DIVIDE_UNEXPECTED_CALL(); break;
+                default:
+                    DIVIDE_UNEXPECTED_CALL();
             }
         };
 
@@ -1318,6 +1329,14 @@ namespace Divide
         _flashLight.fill( nullptr );
         _sceneGraph->unload();
 
+        {
+            LockGuard<Mutex> w_lock( _dirtyNodeEventLock );
+            _dirtyNodeEvents.clear();
+        }
+        resetWaterBodySlots();
+        _waterBodiesDirty = true;
+        _vegetationFinalizeDirty = true;
+
         loadComplete( false );
         DIVIDE_ASSERT( playerCount() == 0u );
         for ( const Player_ptr& player : _scenePlayers )
@@ -1356,6 +1375,19 @@ namespace Divide
         updateCameraControls( idx );
         state()->renderState().renderPass( idx );
         state()->playerPass( idx );
+
+        Camera* activeCamera = playerCamera( idx );
+        activeCamera->updateLookAt();
+        state()->playerState( idx ).cameraUnderwater( checkCameraUnderwater( *activeCamera ) );
+
+        if constexpr ( Config::Build::ENABLE_EDITOR )
+        {
+            const Editor& editor = _context.editor();
+            if ( editor.inEditMode() && editor.stepQueue() == 0u && editor.nodePreviewWindowVisible() )
+            {
+                editor.nodePreviewCamera()->updateLookAt();
+            }
+        }
 
         if ( state()->playerState().cameraUnderwater() )
         {
@@ -1504,7 +1536,6 @@ namespace Divide
         }
 
         DIVIDE_UNEXPECTED_CALL();
-        return 0;
     }
 
     Player* Scene::getPlayerForIndex( const PlayerIndex idx ) const
@@ -1546,28 +1577,204 @@ namespace Divide
         return false;
     }
 
+    Camera* Scene::cameraForInput( const PlayerIndex idx ) const
+    {
+        if constexpr ( Config::Build::ENABLE_EDITOR )
+        {
+            const Editor& editor = _context.editor();
+            if ( editor.inEditMode() && editor.stepQueue() == 0u && editor.nodePreviewWindowVisible() &&
+                 editor.windowFocusState()._focusedNodePreview )
+            {
+                return editor.nodePreviewCamera();
+            }
+        }
+        return playerCamera( idx );
+    }
+
     bool Scene::updateCameraControls( const PlayerIndex idx ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-        Camera* cam = playerCamera( idx );
-        if ( cam->mode() == Camera::Mode::STATIC ||
-             cam->mode() == Camera::Mode::SCRIPTED )
-        {
-            return false;
-        }
-
         SceneStatePerPlayer& playerState = state()->playerState( idx );
-        const bool updated = cam->moveFromPlayerState(playerState);
-        playerState.cameraUpdated( updated );
+        Camera* activeCamera = playerCamera( idx );
+        Camera* inputCamera = cameraForInput( idx );
+        const bool canMove = inputCamera->mode() != Camera::Mode::STATIC &&
+                             inputCamera->mode() != Camera::Mode::SCRIPTED;
+        const bool updated = canMove && inputCamera->moveFromPlayerState( playerState );
+        playerState.cameraUpdated( updated && inputCamera == activeCamera );
 
         if ( updated )
         {
-            playerState.cameraUnderwater( checkCameraUnderwater( *cam ) );
             playerState._zoom.reset();
         }
 
         return updated;
+    }
+
+    void Scene::queueDirtyNodeEvent( const SceneGraphNode& node, const U8 eventMask, const bool destroyed )
+    {
+        const U8 dirtyMask = node.getNode().dirtyFlushMaskForEvent( eventMask );
+        if ( dirtyMask == to_base( SceneNode::DirtyFlushType::NONE ) )
+        {
+            return;
+        }
+
+        const I64 guid = node.getGUID();
+        LockGuard<Mutex> w_lock( _dirtyNodeEventLock );
+        for ( DirtyNodeEvent& event : _dirtyNodeEvents )
+        {
+            if ( event._guid == guid )
+            {
+                event._eventMask |= eventMask;
+                event._dirtyMask |= dirtyMask;
+                event._destroyed = event._destroyed || destroyed;
+                return;
+            }
+        }
+
+        _dirtyNodeEvents.emplace_back( DirtyNodeEvent
+        {
+            ._guid = guid,
+            ._eventMask = eventMask,
+            ._dirtyMask = dirtyMask,
+            ._destroyed = destroyed
+        } );
+    }
+
+    void Scene::resetWaterBodySlots()
+    {
+        _state->waterBodies().fill( WaterBodyData{} );
+        _waterBodySlots.clear();
+        _freeWaterBodySlots.clear();
+        for ( U8 i = 0u; i < GLOBAL_WATER_BODIES_COUNT; ++i )
+        {
+            _freeWaterBodySlots.emplace_back( i );
+        }
+    }
+
+    void Scene::removeWaterBodySlot( const I64 guid )
+    {
+        for ( size_t i = 0u; i < _waterBodySlots.size(); ++i )
+        {
+            if ( _waterBodySlots[i].first == guid )
+            {
+                const U8 slot = _waterBodySlots[i].second;
+                _state->waterBodies()[slot] = WaterBodyData{};
+                _freeWaterBodySlots.emplace_back( slot );
+                _waterBodySlots.erase( _waterBodySlots.begin() + to_I32( i ) );
+                return;
+            }
+        }
+    }
+
+    void Scene::upsertWaterBodySlot( const SceneGraphNode& node )
+    {
+        WaterBodyData waterData{};
+        if ( !node.getNode().extractWaterBodyData( &node, waterData ) )
+        {
+            removeWaterBodySlot( node.getGUID() );
+            return;
+        }
+
+        U8 slot = GLOBAL_WATER_BODIES_COUNT;
+        for ( const auto& entry : _waterBodySlots )
+        {
+            if ( entry.first == node.getGUID() )
+            {
+                slot = entry.second;
+                break;
+            }
+        }
+
+        if ( slot == GLOBAL_WATER_BODIES_COUNT )
+        {
+            if ( _freeWaterBodySlots.empty() )
+            {
+                return;
+            }
+
+            slot = _freeWaterBodySlots.back();
+            _freeWaterBodySlots.pop_back();
+            _waterBodySlots.emplace_back( node.getGUID(), slot );
+        }
+
+        _state->waterBodies()[slot] = waterData;
+    }
+
+    void Scene::flushDirtySceneData()
+    {
+        fixed_vector<DirtyNodeEvent, 512u, true> dirtyEvents;
+        {
+            LockGuard<Mutex> w_lock( _dirtyNodeEventLock );
+            dirtyEvents.swap( _dirtyNodeEvents );
+        }
+
+        bool finalizeAllVegetation = _vegetationFinalizeDirty;
+        fixed_vector<I64, 256u, true> dirtyFinalizeNodes;
+
+        if ( _waterBodiesDirty )
+        {
+            resetWaterBodySlots();
+            for ( const SceneGraphNode* node : _sceneGraph->getNodesByType( SceneNodeType::TYPE_WATER ) )
+            {
+                if ( node != nullptr )
+                {
+                    upsertWaterBodySlot( *node );
+                }
+            }
+            _waterBodiesDirty = false;
+        }
+
+        for ( const DirtyNodeEvent& event : dirtyEvents )
+        {
+            if ( event._dirtyMask & to_base( SceneNode::DirtyFlushType::REBUILD_WATER_BODIES ) )
+            {
+                if ( event._destroyed )
+                {
+                    removeWaterBodySlot( event._guid );
+                }
+                else
+                {
+                    SceneGraphNode* node = _sceneGraph->findNode( event._guid );
+                    if ( node != nullptr )
+                    {
+                        upsertWaterBodySlot( *node );
+                    }
+                    else
+                    {
+                        removeWaterBodySlot( event._guid );
+                    }
+                }
+            }
+
+            if ( !event._destroyed && (event._dirtyMask & to_base( SceneNode::DirtyFlushType::FINALIZE_NODE )) &&
+                 std::find( cbegin( dirtyFinalizeNodes ), cend( dirtyFinalizeNodes ), event._guid ) == cend( dirtyFinalizeNodes ) )
+            {
+                dirtyFinalizeNodes.emplace_back( event._guid );
+            }
+        }
+
+        if ( finalizeAllVegetation )
+        {
+            for ( SceneGraphNode* node : _sceneGraph->getNodesByType( SceneNodeType::TYPE_VEGETATION ) )
+            {
+                node->getNode().flushSceneData( node, *_state );
+            }
+            _vegetationFinalizeDirty = false;
+        }
+        else
+        {
+            for ( const I64 guid : dirtyFinalizeNodes )
+            {
+                SceneGraphNode* node = _sceneGraph->findNode( guid );
+                if ( node == nullptr )
+                {
+                    continue;
+                }
+
+                node->getNode().flushSceneData( node, *_state );
+            }
+        }
     }
 
     void Scene::updateSceneState( const U64 deltaTimeUS )
@@ -1577,8 +1784,10 @@ namespace Divide
         sceneRuntimeUS( sceneRuntimeUS() + deltaTimeUS );
 
         updateSceneStateInternal( deltaTimeUS );
-        _state->waterBodies().resize(0);
         _sceneGraph->sceneUpdate( deltaTimeUS, *_state );
+        flushDirtySceneData();
+
+        _sceneGraph->updateStaticGeometryBounds();
         _aiManager->update( deltaTimeUS );
     }
 
@@ -1869,15 +2078,9 @@ namespace Divide
             const auto& waterBodies = state()->waterBodies();
             for ( const WaterBodyData& water : waterBodies )
             {
-                const float3& extents = water._extents;
-                const float3& position = water._positionW;
-                const F32 halfWidth = (extents.x + position.x) * 0.5f;
-                const F32 halfLength = (extents.z + position.z) * 0.5f;
-                if ( eyePos.x >= -halfWidth && eyePos.x <= halfWidth &&
-                    eyePos.z >= -halfLength && eyePos.z <= halfLength )
+                if ( PointInsideWater( water, eyePos ) )
                 {
-                    const float depth = -extents.y + position.y;
-                    return eyePos.y < position.y&& eyePos.y > depth;
+                    return true;
                 }
             }
         }
@@ -2008,8 +2211,23 @@ namespace Divide
         _currentHoverTarget[idx] = -1;
     }
 
+    void Scene::onNodeAdd( SceneGraphNode* node, [[maybe_unused]] const bool reparented )
+    {
+        if ( node != nullptr )
+        {
+            queueDirtyNodeEvent( *node, to_base( SceneNode::DirtyEventType::NODE_ADDED ), false );
+        }
+    }
+
+    void Scene::onNodeMoved( const SceneGraphNode& node )
+    {
+        queueDirtyNodeEvent( node, to_base( SceneNode::DirtyEventType::NODE_MOVED ), false );
+    }
+
     void Scene::onNodeSpatialChange(const SceneGraphNode& node)
     {
+        queueDirtyNodeEvent( node, to_base( SceneNode::DirtyEventType::SPATIAL_CHANGE ), false );
+
         if constexpr (Config::Build::ENABLE_EDITOR)
         {
             if (_context.editor().running() )
@@ -2021,6 +2239,11 @@ namespace Divide
 
     void Scene::onNodeDestroy( SceneGraphNode* node )
     {
+        if ( node != nullptr )
+        {
+            queueDirtyNodeEvent( *node, to_base( SceneNode::DirtyEventType::NODE_DESTROYED ), true );
+        }
+
         const I64 guid = node->getGUID();
         for ( I64& target : _currentHoverTarget )
         {

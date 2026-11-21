@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/AnimationComponent.h"
 
@@ -11,6 +11,8 @@
 
 namespace Divide
 {
+
+DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(AnimationComponent);
 
 bool AnimationComponent::s_globalAnimationState = true;
 
@@ -57,6 +59,7 @@ AnimationComponent::AnimationComponent(SceneGraphNode* parentSGN, PlatformContex
     animationFrameIndexInfoField._type = EditorComponentFieldType::PUSH_TYPE;
     animationFrameIndexInfoField._basicType = PushConstantType::IVEC4;
     animationFrameIndexInfoField._readOnly = true;
+    animationFrameIndexInfoField._serialise = false;
     _editorComponent.registerField(MOV(animationFrameIndexInfoField));
 
     EditorComponentField resyncTimersField = {};
@@ -150,6 +153,7 @@ void AnimationComponent::resetTimers(const D64 parentTimeStamp) noexcept
     _currentTimeStamp = -1.0;
     _parentTimeStamp = parentTimeStamp;
     _frameIndex = {};
+    _frameTicked = false;
 }
 
 /// Select an animation by name
@@ -227,6 +231,10 @@ ShaderBuffer* AnimationComponent::getBoneBuffer() const
 
 I32 AnimationComponent::frameCount(const U32 animationID) const
 {
+    if ( animationID == U32_MAX )
+    {
+        return 0;
+    }
     assert(_animator != nullptr);
 
     return _animator->frameCount(animationID);
@@ -241,7 +249,7 @@ U8 AnimationComponent::boneCount() const
 
 bool AnimationComponent::frameTicked() const noexcept
 {
-    return _playAnimations ? _frameIndex._prev != _frameIndex._curr : false;
+    return _frameTicked;
 }
 
 AnimEvaluator& AnimationComponent::getAnimationByIndex(const U32 animationID) const

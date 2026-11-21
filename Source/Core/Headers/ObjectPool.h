@@ -34,7 +34,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DVD_OBJECT_POOL_H_
 
 #include "PoolHandle.h"
-#include "Platform/Threading/Headers/SharedMutex.h"
 
 namespace Divide {
 
@@ -51,6 +50,7 @@ public:
                         void unregisterExisting(PoolHandle handle);
 
     [[nodiscard]] T* find(PoolHandle handle) const;
+    [[nodiscard]] T* findUnlocked(PoolHandle handle) const;
 
 protected:
     [[nodiscard]] PoolHandle registerExistingInternal( T& object, bool retry );

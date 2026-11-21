@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "Headers/RenderPass.h"
 #include "Headers/NodeBufferedData.h"
 
@@ -211,6 +213,7 @@ namespace Divide
                 ProjectManager* mgr = _parent.parent().projectManager().get();
                 Camera* camera = Attorney::ProjectManagerCameraAccessor::playerCamera( mgr );
 
+                _parent.beginViewBatch( _stageFlag, idx, bufferInOut );
                 GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Reflection Pass";
                 {
                     PROFILE_SCOPE( "RenderPass - Probes", Profiler::Category::Scene );
@@ -234,7 +237,7 @@ namespace Divide
                     static VisibleNodeList<> s_Nodes;
                     //Update classic reflectors (e.g. mirrors, water, etc)
                     //Get list of reflective nodes from the scene manager
-                    mgr->getSortedReflectiveNodes( camera, RenderStage::REFLECTION, true, s_Nodes );
+                    mgr->getSortedReflectiveNodes( camera, true, s_Nodes );
 
                     // While in budget, update reflections
                     g_planarReflectBudget.resetBudget();
@@ -268,6 +271,7 @@ namespace Divide
                         }
                     }
                 }
+                _parent.finishViewBatch( _stageFlag, memCmdInOut );
                 GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
             } break;
@@ -276,6 +280,7 @@ namespace Divide
             {
                 static VisibleNodeList<> s_Nodes;
 
+                _parent.beginViewBatch( _stageFlag, idx, bufferInOut );
                 GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Refraction Pass";
 
                 PROFILE_SCOPE( "RenderPass - Refraction", Profiler::Category::Scene );
@@ -283,7 +288,7 @@ namespace Divide
                 const ProjectManager* mgr = _parent.parent().projectManager().get();
                 Camera* camera = Attorney::ProjectManagerCameraAccessor::playerCamera( mgr );
                 {
-                    mgr->getSortedRefractiveNodes( camera, RenderStage::REFRACTION, true, s_Nodes );
+                    mgr->getSortedRefractiveNodes( camera, true, s_Nodes );
                     // While in budget, update refractions
                     g_planarRefractBudget.resetBudget();
                     g_cubeRefractBudget.resetBudget();
@@ -300,7 +305,7 @@ namespace Divide
                                                                                   bufferInOut,
                                                                                   memCmdInOut ) )
                         {
-                            g_planarRefractBudget.resetBudget();
+                            g_planarRefractBudget.updateBudget();
                             continue;
                         }
                         if ( Attorney::RenderingCompRenderPass::updateRefraction( *rComp,
@@ -311,19 +316,19 @@ namespace Divide
                                                                                   bufferInOut,
                                                                                   memCmdInOut ) )
                         {
-                            g_cubeRefractBudget.resetBudget();
+                            g_cubeRefractBudget.updateBudget();
                         }
                     }
                 }
 
+                _parent.finishViewBatch( _stageFlag, memCmdInOut );
                 GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
             } break;
 
-            default:
             case RenderStage::COUNT:
+            default:
                 DIVIDE_UNEXPECTED_CALL();
-                break;
         };
     }
 

@@ -1,0 +1,9 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
+#ifndef _SPOT_SHADOW_PROJECTION_CMN_
+#define _SPOT_SHADOW_PROJECTION_CMN_
+
+#define SPOT_SHADOW_INSIDE_FRUSTUM(X, Y, Z, W) \
+    ((W) > 0.f && (X) >= 0.f && (X) <= (W) && (Y) >= 0.f && (Y) <= (W) && (Z) >= 0.f && (Z) <= (W))
+
+#endif //_SPOT_SHADOW_PROJECTION_CMN_

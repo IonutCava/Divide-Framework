@@ -79,7 +79,7 @@
         <texture>
             <UNIT0>
                 <name>terrain_water_caustics.jpg</name>
-                <path>assets/misc_images/</path>
+                <path>Assets/MiscImages</path>
                 <usage>REPLACE</usage>
                 <Sampler>
                     <id>1</id>

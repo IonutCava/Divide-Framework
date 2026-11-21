@@ -79,7 +79,6 @@ void NavMeshDebugDraw::begin(const duDebugDrawPrimitives prim, F32 size) {
         default:
         case DU_DRAW_QUADS:
             DIVIDE_UNEXPECTED_CALL();
-            break;
         case DU_DRAW_TRIS:
             _primType = PrimitiveTopology::TRIANGLES;
             break;

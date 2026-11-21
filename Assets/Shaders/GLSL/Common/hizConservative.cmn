@@ -1,0 +1,12 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
+#ifndef _HIZ_CONSERVATIVE_CMN_
+#define _HIZ_CONSERVATIVE_CMN_
+
+#define HIZ_PROJECTABLE_CORNER(W, Z) ((W) > 0.000001f && (Z) > 0.f)
+#define HIZ_OCCLUDED(NEAREST, DEPTH) ((NEAREST) > (DEPTH) + 0.00001f)
+#define HIZ_MIP_LEVEL(PIXELS) ceil(log2(max((PIXELS), 1.f)))
+#define HIZ_TEXEL(UV, SIZE) min(max(floor((UV) * (SIZE)), 0.f), (SIZE) - 1.f)
+#define HIZ_FOUR_TAP_COVERS(FIRST, LAST) ((LAST) - (FIRST) <= 1)
+
+#endif

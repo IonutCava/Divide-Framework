@@ -8,9 +8,7 @@
       "projectTarget": "Divide-Framework.exe (bin\\Debug\\Divide-Framework.exe)",
       "name": "Framework",
       "currentDir": "${workspaceRoot}",
-      "args": [
-        "--project=Default"
-      ]
+      "args": []
     },
     {
       "type": "default",
@@ -39,9 +37,7 @@
       "projectTarget": "Divide-Framework.exe (bin\\RelWithDebInfo\\Divide-Framework.exe)",
       "name": "Framework",
       "currentDir": "${workspaceRoot}",
-      "args": [
-        "--project=Default"
-      ]
+      "args": []
     },
     {
       "type": "default",
@@ -70,9 +66,7 @@
       "projectTarget": "Divide-Framework.exe (bin\\Release\\Divide-Framework.exe)",
       "name": "Framework",
       "currentDir": "${workspaceRoot}",
-      "args": [
-        "--project=Default"
-      ]
+      "args": []
     },
     {
       "type": "default",

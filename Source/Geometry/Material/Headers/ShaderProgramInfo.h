@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -33,6 +33,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_SHADER_PROGRAM_INFO_H_
 #define DVD_SHADER_PROGRAM_INFO_H_
 
+#include "Core/Resources/Headers/Resource.h"
+
 namespace Divide {
 
 class ShaderProgram;
@@ -46,16 +48,34 @@ enum class ShaderBuildStage : U8 {
     COUNT
 };
 
+enum class ShaderResourceStatus : U8
+{
+    PENDING,
+    READY,
+    FAILED
+};
+
+[[nodiscard]] ShaderResourceStatus ClassifyShaderResource( ResourceState state ) noexcept;
+
 struct ShaderProgramInfo
 {
+    ShaderProgramInfo() = default;
+    ShaderProgramInfo( const ShaderProgramInfo& ) = delete;
+    ShaderProgramInfo& operator=( const ShaderProgramInfo& ) = delete;
+    ShaderProgramInfo( ShaderProgramInfo&& other ) noexcept;
+    ShaderProgramInfo& operator=( ShaderProgramInfo&& other ) noexcept;
     ~ShaderProgramInfo();
 
-    ShaderProgramInfo clone() const;
+    [[nodiscard]] ShaderProgramInfo clone() const;
+    [[nodiscard]] ShaderResourceStatus updateReadiness( ResourceState state, I64 guid ) noexcept;
+    [[nodiscard]] bool takeReadyNotification() noexcept;
 
     I64 _shaderKeyCache = I64_LOWEST;
 
     Handle<ShaderProgram> _shaderRef = INVALID_HANDLE<ShaderProgram>;
     ShaderBuildStage _shaderCompStage = ShaderBuildStage::COUNT;
+    std::atomic_bool _shaderQueued{ false };
+    bool _readyNotificationPending{ false };
 };
 
 }; //namespace Divide

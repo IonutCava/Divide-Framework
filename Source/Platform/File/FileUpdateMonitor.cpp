@@ -50,10 +50,10 @@ void UpdateListener::handleFileAction([[maybe_unused]] const FW::WatchID watchid
         FileUpdateEvent evt = FileUpdateEvent::COUNT;
         switch (action)
         {
-            case FW::Actions::Add: evt = FileUpdateEvent::ADDED; break;
-            case FW::Actions::Delete: evt = FileUpdateEvent::DELETED; break;
+            case FW::Actions::Add:      evt = FileUpdateEvent::ADDED;    break;
+            case FW::Actions::Delete:   evt = FileUpdateEvent::DELETED;  break;
             case FW::Actions::Modified: evt = FileUpdateEvent::MODIFIED; break;
-            default: DIVIDE_UNEXPECTED_CALL();
+            default:                    DIVIDE_UNEXPECTED_CALL();
         }
 
         _cbk(dir.c_str(), filename.c_str(), evt);

@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/SceneGraphNode.h"
 #include "Headers/SceneGraph.h"
@@ -81,6 +82,10 @@ void SceneGraphNode::AddSGNComponentInternal(SGNComponent* comp)
     {   //Ewww x3
         Hacks._renderingComponent = (RenderingComponent*)comp;
     }
+    if (comp->type() == ComponentType::ANIMATION || comp->type() == ComponentType::RENDERING)
+    {
+        sceneGraph()->invalidateWorldAO();
+    }
 }
 
 void SceneGraphNode::RemoveSGNComponentInternal(SGNComponent* comp)
@@ -114,6 +119,10 @@ void SceneGraphNode::RemoveSGNComponentInternal(SGNComponent* comp)
     {
         Hacks._renderingComponent = nullptr;
     }
+    if (comp->type() == ComponentType::ANIMATION || comp->type() == ComponentType::RENDERING)
+    {
+        sceneGraph()->invalidateWorldAO();
+    }
 }
 
 void SceneGraphNode::RemoveComponents(const U32 componentMask)
@@ -138,20 +147,6 @@ bool SceneGraphNode::HasComponents(const U32 componentMaskIn) const
     return componentMask() & componentMaskIn;
 }
 
-void SceneGraphNode::setTransformDirty(const U32 transformMask)
-{
-    SharedLock<SharedMutex> r_lock(_children._lock);
-    const U32 childCount = _children._count;
-    for (U32 i = 0u; i < childCount; ++i)
-    {
-        TransformComponent* tComp = _children._data[i]->get<TransformComponent>();
-        if (tComp != nullptr)
-        {
-            Attorney::TransformComponentSGN::onParentTransformDirty(*tComp, transformMask);
-        }
-    }
-}
-
 SceneGraphNode::SceneGraphNode( PlatformContext& context, SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor )
     : PlatformContextComponent( context )
     , _relationshipCache( this )
@@ -162,11 +157,6 @@ SceneGraphNode::SceneGraphNode( PlatformContext& context, SceneGraph* sceneGraph
     , _usageContext( descriptor._usageContext )
     , _descriptor( descriptor )
 {
-    for ( auto& it : Events._eventsFreeList )
-    {
-        it.store( true );
-    }
-
     DIVIDE_ASSERT( descriptor._nodeHandle._handle != INVALID_HANDLE<SceneNode> );
     _node = descriptor._nodeHandle._nodePtr;
     DIVIDE_ASSERT( _node != nullptr );
@@ -237,7 +227,18 @@ SceneGraphNode::~SceneGraphNode()
 
 void SceneGraphNode::changeUsageContext(const NodeUsageContext& newContext)
 {
-    _usageContext = newContext;
+    if (_usageContext != newContext)
+    {
+        const bool previousStatic = _usageContext == NodeUsageContext::NODE_STATIC;
+        _sceneGraph->invalidateStaticGeometryBounds(*this);
+        _usageContext = newContext;
+        _sceneGraph->invalidateStaticGeometryBounds(*this);
+        const BoundsComponent* bounds = get<BoundsComponent>();
+        if (bounds != nullptr)
+        {
+            _sceneGraph->invalidateShadowBounds(*this, bounds->getBoundingSphere(), previousStatic);
+        }
+    }
 
     TransformComponent* tComp = get<TransformComponent>();
     if (tComp)
@@ -255,6 +256,11 @@ void SceneGraphNode::changeUsageContext(const NodeUsageContext& newContext)
 /// Change current SceneGraphNode's parent
 void SceneGraphNode::setParent(SceneGraphNode* parent, const bool defer)
 {
+    if (parent == nullptr)
+    {
+        Console::errorfn("Cannot reparent scene node {} to a null parent", name().c_str());
+        return;
+    }
     _queuedNewParent = parent->getGUID();
     if (!defer)
     {
@@ -278,25 +284,46 @@ void SceneGraphNode::setParentInternal()
 
     if (newParent == nullptr)
     {
+        Console::warnfn("Cannot reparent scene node {}: the requested parent no longer exists", name().c_str());
         return;
     }
 
-    assert(newParent->getGUID() != getGUID());
-    
-    { //Clear old parent
-        if (_parent != nullptr)
+    for (const SceneGraphNode* ancestor = newParent; ancestor != nullptr; ancestor = ancestor->parent())
+    {
+        if (ancestor == this)
         {
-            if (_parent->getGUID() == newParent->getGUID())
-            {
-                return;
-            }
-
-            // Remove us from the old parent's children map
-            _parent->removeChildNode(this, false, false);
+            Console::errorfn("Cannot reparent scene node {} to itself or one of its descendants", name().c_str());
+            return;
         }
     }
-    // Set the parent pointer to the new parent
+    if (_parent == newParent)
+    {
+        return;
+    }
+
+    TransformComponent* transform = get<TransformComponent>();
+    TransformValues localTransform;
+    const bool preserveTransform = Attorney::TransformComponentSGN::prepareParentChange(
+        *transform, _parent, newParent, localTransform);
+    if (!preserveTransform)
+    {
+        if (_parent != nullptr)
+        {
+            Console::errorfn("Cannot preserve the transform of scene node {} under parent {}",
+                             name().c_str(), newParent->name().c_str());
+            return;
+        }
+        Console::warnfn("Cannot preserve the initial transform of scene node {} under parent {}; keeping its local transform",
+                        name().c_str(), newParent->name().c_str());
+    }
+
     SceneGraphNode* oldParent = _parent;
+    if (oldParent != nullptr && !oldParent->removeChildNode(this, false, false))
+    {
+        Console::errorfn("Cannot reparent scene node {}: its current parent does not contain it", name().c_str());
+        return;
+    }
+    // Set the parent pointer to the new parent
     _parent = newParent;
     
     {// Add ourselves in the new parent's children map
@@ -305,7 +332,8 @@ void SceneGraphNode::setParentInternal()
             _parent->_children._data.push_back(this);
             _parent->_children._count += 1u;
         }
-        Attorney::SceneGraphSGN::onNodeAdd(_sceneGraph, this);
+        Attorney::SceneGraphSGN::onNodeAdd(_sceneGraph, this, oldParent != nullptr);
+        _parent->invalidateAggregateBounds();
         // That's it. Parent Transforms will be updated in the next render pass;
         _parent->invalidateRelationshipCache();
     }
@@ -329,9 +357,9 @@ void SceneGraphNode::setParentInternal()
             changeUsageContext(_parent->usageContext());
         }
     }
+    if (preserveTransform)
     {
-        //Update transforms to keep everything relative
-        Attorney::TransformComponentSGN::onParentChanged(*get<TransformComponent>(), oldParent, _parent);
+        transform->setTransform(localTransform);
     }
 }
 
@@ -382,7 +410,7 @@ bool SceneGraphNode::removeNodesByType(SceneNodeType nodeType)
     {
         if (_children._data[i]->getNode().type() == nodeType)
         {
-            _sceneGraph->addToDeleteQueue(this, i);
+            _sceneGraph->addToDeleteQueue(_children._data[i]->getGUID());
             ++removalCount;
         }
     }
@@ -397,25 +425,45 @@ bool SceneGraphNode::removeNodesByType(SceneNodeType nodeType)
 
 bool SceneGraphNode::removeChildNode(const SceneGraphNode* node, const bool recursive, bool deleteNode)
 {
+    if (node == nullptr)
+    {
+        return false;
+    }
+
     const I64 targetGUID = node->getGUID();
+    if (deleteNode)
     {
         SharedLock<SharedMutex> r_lock(_children._lock);
-        const U32 count = _children._count;
-        for (U32 i = 0u; i < count; ++i)
+        for (SceneGraphNode* child : _children._data)
         {
-            if (_children._data[i]->getGUID() == targetGUID)
+            if (child->getGUID() == targetGUID)
             {
-                if (deleteNode)
-                {
-                    _sceneGraph->addToDeleteQueue(this, i);
-                }
-                else
-                {
-                    _children._data.erase(_children._data.begin() + i);
-                    _children._count -= 1u;
-                }
+                _sceneGraph->addToDeleteQueue(targetGUID);
                 return true;
             }
+        }
+    }
+    else
+    {
+        bool removed = false;
+        {
+            LockGuard<SharedMutex> w_lock(_children._lock);
+            for (auto it = _children._data.begin(); it != _children._data.end(); ++it)
+            {
+                if ((*it)->getGUID() == targetGUID)
+                {
+                    _children._data.erase(it);
+                    _children._count = to_U32(_children._data.size());
+                    removed = true;
+                    break;
+                }
+            }
+        }
+        if (removed)
+        {
+            invalidateAggregateBounds();
+            invalidateRelationshipCache();
+            return true;
         }
     }
 
@@ -426,7 +474,7 @@ bool SceneGraphNode::removeChildNode(const SceneGraphNode* node, const bool recu
         {
             if (_children._data[i]->removeChildNode(node, true, deleteNode))
             {
-                return true;
+                return false;
             }
         }
 
@@ -442,21 +490,6 @@ void SceneGraphNode::postLoad()
     {
         ._type = ECS::CustomEvent::Type::EntityPostLoad
     });
-}
-
-bool SceneGraphNode::isChildOfType(const U16 typeMask) const
-{
-    SceneGraphNode* parentNode = parent();
-    while (parentNode != nullptr)
-    {
-        if (typeMask & to_base(parentNode->getNode<>().type()))
-        {
-            return true;
-        }
-        parentNode = parentNode->parent();
-    }
-
-    return false;
 }
 
 bool SceneGraphNode::isRelated(const SceneGraphNode* target) const
@@ -670,19 +703,38 @@ void SceneGraphNode::getAllNodes(vector<SceneGraphNode*>& nodeList)
     nodeList.push_back(this);
 }
 
-void SceneGraphNode::processDeleteQueue(vector<size_t>& childList)
+void SceneGraphNode::destroyChild(const I64 guid)
 {
-    // See if we have any children to delete
-    if (!childList.empty())
+    bool removed = false;
     {
         LockGuard<SharedMutex> w_lock(_children._lock);
-        for (const size_t childIdx : childList)
+        for (auto it = _children._data.begin(); it != _children._data.end(); ++it)
         {
-            _sceneGraph->destroySceneGraphNode(_children._data[childIdx]);
+            if ((*it)->getGUID() == guid)
+            {
+                _sceneGraph->destroySceneGraphNode(*it);
+                if (*it == nullptr)
+                {
+                    _children._data.erase(it);
+                    _children._count = to_U32(_children._data.size());
+                    removed = true;
+                }
+                break;
+            }
         }
-        EraseIndices(_children._data, childList);
-        _children._count = to_U32(_children._data.size());
     }
+    if (removed)
+    {
+        invalidateAggregateBounds();
+        invalidateRelationshipCache();
+    }
+}
+
+void SceneGraphNode::invalidateAggregateBounds()
+{
+    MarkAncestorBoundsChanged(this,
+        [](SceneGraphNode& node) { return node.parent(); },
+        [](SceneGraphNode& node) { Attorney::SceneNodeBoundsSystem::setBoundsChanged(node.getNode()); });
 }
 
 // Please call in MAIN THREAD! Nothing is thread safe here (for now) -Ionut
@@ -711,14 +763,8 @@ void SceneGraphNode::processEvents()
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-    for (size_t idx = 0u; idx < Events.EVENT_QUEUE_SIZE; ++idx)
+    _events.drain([this](const ECS::CustomEvent& evt)
     {
-        if (Events._eventsFreeList[idx])
-        {
-            continue;
-        }
-
-        const ECS::CustomEvent& evt = Events._events[idx];
         switch (evt._type)
         {
             case ECS::CustomEvent::Type::RelationshipCacheInvalidated:
@@ -731,6 +777,17 @@ void SceneGraphNode::processEvents()
             case ECS::CustomEvent::Type::EntityFlagChanged:
             {
                 PROFILE_SCOPE("EntityFlagChanged", Profiler::Category::Scene );
+                if ( static_cast<Flags>(evt._flag) == Flags::VEGETATION_TREE ||
+                     static_cast<Flags>(evt._flag) == Flags::IS_CONTAINER )
+                {
+                    sceneGraph()->invalidateWorldAO();
+                }
+                else if ( static_cast<Flags>(evt._flag) == Flags::ACTIVE ||
+                          static_cast<Flags>(evt._flag) == Flags::LOADING )
+                {
+                    sceneGraph()->invalidateWorldAO();
+                    Attorney::SceneGraphSGN::onNodeSpatialChange(sceneGraph(), *this);
+                }
                 if (static_cast<Flags>(evt._flag) == Flags::SELECTED)
                 {
                     RenderingComponent* rComp = get<RenderingComponent>();
@@ -752,6 +809,7 @@ void SceneGraphNode::processEvents()
             {
                 PROFILE_SCOPE("NewShaderReady", Profiler::Category::Scene );
                 Attorney::SceneGraphSGN::onNodeShaderReady(sceneGraph(), *this);
+                Attorney::SceneGraphSGN::onNodeSpatialChange(sceneGraph(), *this);
             } break;
             case ECS::CustomEvent::Type::TransformUpdated:
             {
@@ -788,9 +846,7 @@ void SceneGraphNode::processEvents()
             PROFILE_SCOPE("PassDataToAllComponents", Profiler::Category::Scene );
             PassDataToAllComponents(evt);
         }
-
-        Events._eventsFreeList[idx] = true;
-    }
+    });
 }
 
 void SceneGraphNode::prepareRender( RenderingComponent& rComp,
@@ -824,7 +880,7 @@ void SceneGraphNode::prepareRender( RenderingComponent& rComp,
 
             if (!boneEntry)
             {
-                boneEntry = &AddBinding( set, 13u, ShaderStageVisibility::COMPUTE_AND_DRAW );
+                boneEntry = &AddBinding( set, 13u, ShaderStageVisibility::VERTEX );
             }
 
             Set(boneEntry->_data, boneBuffer, {0u, boneBuffer->getPrimitiveCount()});
@@ -856,24 +912,6 @@ bool SceneGraphNode::canDraw(const RenderStagePass& stagePass) const
     RenderingComponent* rComp = get<RenderingComponent>();
     return rComp != nullptr && rComp->canDraw(stagePass);
 }
-
-namespace
-{
-    [[nodiscard]] inline bool castsShadows(const SceneGraphNode* const node)
-    {
-        const SceneNodeType nodeType = node->getNode().type();
-
-        if (nodeType == SceneNodeType::TYPE_SKY ||
-            nodeType == SceneNodeType::TYPE_WATER ||
-            nodeType == SceneNodeType::TYPE_INFINITEPLANE)
-        {
-            return false;
-        }
-
-        const RenderingComponent* rComp = node->get<RenderingComponent>();
-        return rComp != nullptr &&  rComp->renderOptionEnabled(RenderingComponent::RenderOptions::CAST_SHADOWS);
-    }
-};
 
 namespace
 {
@@ -987,8 +1025,21 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
         return FrustumCollision::FRUSTUM_OUT;
     }
 
-    // Drawing is disabled for this node
-    if (!_node->renderState().drawState(RenderStagePass{ params._stage, RenderPassType::COUNT }))
+    const RenderingComponent* rendering = get<RenderingComponent>();
+    if (params._stagePass._stage == RenderStage::SHADOW &&
+        (rendering == nullptr || !IsShadowCaster(_node->type(),
+            rendering->renderOptionEnabled(RenderingComponent::RenderOptions::CAST_SHADOWS))))
+    {
+        return FrustumCollision::FRUSTUM_OUT;
+    }
+
+    const bool translucent = (cullFlags & to_base(CullOptions::CULL_TRANSLUCENT_NODES)) != 0u &&
+                             rendering != nullptr && rendering->hasTransparency();
+    const bool defaultDrawState = !RenderPassCuller::CullGeometryCategory( cullFlags,
+        _node->type() == SceneNodeType::TYPE_VEGETATION || hasFlag(Flags::VEGETATION_TREE),
+        HasComponents(ComponentType::ANIMATION), _node->type() == SceneNodeType::TYPE_TERRAIN, translucent );
+    if ( rendering != nullptr ? !rendering->drawState(params._stagePass, defaultDrawState)
+                              : !_node->renderState().drawState(params._stagePass, defaultDrawState) )
     {
         return FrustumCollision::FRUSTUM_OUT;
     }
@@ -996,6 +1047,14 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
     if ( _node->type() == SceneNodeType::TYPE_SKY )
     {
         return FrustumCollision::FRUSTUM_IN;
+    }
+
+    if ( RenderPassCuller::CullReflectionCategory( cullFlags,
+                                                    _node->type() == SceneNodeType::TYPE_VEGETATION,
+                                                    hasFlag( Flags::VEGETATION_TREE ),
+                                                    usageContext() == NodeUsageContext::NODE_DYNAMIC ) )
+    {
+        return FrustumCollision::FRUSTUM_OUT;
     }
 
     if (usageContext() == NodeUsageContext::NODE_STATIC)
@@ -1013,12 +1072,6 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
         }
     }
 
-    // This one should be obvious. Should we really exclude them from the top-down world AO too? Yes for now, but needs actually testing in-game
-    if (params._stage == RenderStage::SHADOW && !castsShadows(this))
-    {
-        return FrustumCollision::FRUSTUM_OUT;
-    }
-
     if ((cullFlags & to_base(CullOptions::CULL_AGAINST_LOD)) && !hasFlag(Flags::IS_CONTAINER))
     {
         PROFILE_SCOPE("cullNode - LoD check", Profiler::Category::Scene );
@@ -1028,13 +1081,29 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
         const F32 minDistanceSQ = SQUARED(renderRange.min) * (renderRange.min < 0.f ? -1.f : 1.f); //Keep the sign. Might need it for rays or shadows.
         const F32 maxDistanceSQ = SQUARED(renderRange.max);
 
-        if (!IS_IN_RANGE_INCLUSIVE(distanceToClosestPointSQ, minDistanceSQ, maxDistanceSQ))
+        F32 rangeDistanceSQ = distanceToClosestPointSQ;
+        if ( params._rangeCameraEyePos != params._cameraEyePos && !hasFlag( Flags::VISIBILITY_LOCKED ) )
+        {
+            const BoundsComponent* bComp = get<BoundsComponent>();
+            if ( bComp != nullptr )
+            {
+                rangeDistanceSQ = bComp->getBoundingBox().nearestPoint( params._rangeCameraEyePos ).distanceSquared( params._rangeCameraEyePos );
+            }
+        }
+        if ( _node->type() == SceneNodeType::TYPE_VEGETATION )
+        {
+            const float3 closest = get<BoundsComponent>()->getBoundingBox().nearestPoint( params._rangeCameraEyePos );
+            rangeDistanceSQ = SQUARED( closest.x - params._rangeCameraEyePos.x ) +
+                              SQUARED( closest.z - params._rangeCameraEyePos.z );
+        }
+
+        if (!IS_IN_RANGE_INCLUSIVE(rangeDistanceSQ, minDistanceSQ, maxDistanceSQ))
         {
             return FrustumCollision::FRUSTUM_OUT;
         }
 
         // We are in range, so proceed to LoD checks
-        const U8 LoDLevel = rComp->getLoDLevel(distanceToClosestPointSQ, params._stage, params._lodThresholds);
+        const U8 LoDLevel = rComp->getLoDLevel(rangeDistanceSQ, params._stagePass._stage, params._lodThresholds);
         if ((params._maxLoD > -1 && LoDLevel > params._maxLoD) || 
             LoDLevel > _node->renderState().maxLodLevel())
         {
@@ -1079,11 +1148,8 @@ FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-    // We may wish to skip frustum culling but still grab the distance to the node
-    if ( !(cullFlags & to_base( CullOptions::CULL_AGAINST_FRUSTUM )) )
-    {
-        return FrustumCollision::FRUSTUM_IN;
-    }
+    // Early-outs must not pass a previous node's distance to the render-range cull.
+    distanceToClosestPointSQ = 0.f;
 
     const F32 maxDistanceSQ = SQUARED(params._cullMaxDistance);
     const BoundsComponent* bComp = get<BoundsComponent>();
@@ -1100,22 +1166,17 @@ FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
         return FrustumCollision::FRUSTUM_IN;
     }
 
-    distanceToClosestPointSQ = bComp->getBoundingSphere().getDistanceSQFromPoint(params._cameraEyePos);
-    if (distanceToClosestPointSQ > maxDistanceSQ)
+    const BoundingBox& bounds = bComp->getBoundingBox();
+    distanceToClosestPointSQ = bounds.nearestPoint( params._cameraEyePos ).distanceSquared( params._cameraEyePos );
+    const F32 rangeDistanceSQ = params._rangeCameraEyePos == params._cameraEyePos
+                                    ? distanceToClosestPointSQ
+                                    : bounds.nearestPoint( params._rangeCameraEyePos ).distanceSquared( params._rangeCameraEyePos );
+    if (rangeDistanceSQ > maxDistanceSQ)
     {
-        // Node is too far away
         return FrustumCollision::FRUSTUM_OUT;
     }
 
-    // Refine the distance a bit using AABBs now as these are "tighter". Again, handle the case when "eye" is contained within the AABB
-    distanceToClosestPointSQ = std::max(bComp->getBoundingBox().nearestPoint(params._cameraEyePos).distanceSquared(params._cameraEyePos), 0.f);
-    if (distanceToClosestPointSQ > maxDistanceSQ)
-    {
-        // Check again using the AABB
-        return FrustumCollision::FRUSTUM_OUT;
-    }
-
-    if (bComp->getBoundingBox().getExtent().maxComponent() < std::max(params._minExtents.maxComponent(), 0.f))
+    if (bounds.getExtent().maxComponent() < std::max(params._minExtents.maxComponent(), 0.f))
     {
         // Node is too small for the current render pass
         return FrustumCollision::FRUSTUM_OUT;
@@ -1126,25 +1187,26 @@ FrustumCollision SceneGraphNode::frustumCullNode(const NodeCullParams& params,
     {
         PROFILE_SCOPE("cullNode - Bounding Sphere & Box Frustum Test", Profiler::Category::Scene );
         // Sphere is in range, so check bounds primitives against the frustum
-        if (bComp->getBoundingBox().containsPoint(params._cameraEyePos))
+        if (bounds.containsPoint(params._cameraEyePos))
         {
             // We are inside the AABB, so INTERSECT is correct
             collisionType = FrustumCollision::FRUSTUM_INTERSECT;
         }
         else
         {
-            I8 frustPlaneCache = params._stage == RenderStage::DISPLAY ? _frustPlaneCache : -1;
+            I8 frustPlaneCache = params._stagePass._stage == RenderStage::DISPLAY
+                               ? _frustPlaneCache.load( std::memory_order_relaxed ) : -1;
 
             // Check if the bounding sphere is in the frustum, as Frustum <-> Sphere check is fast
             collisionType = params._frustum->ContainsSphere(bComp->getBoundingSphere(), frustPlaneCache);
             if (collisionType == FrustumCollision::FRUSTUM_INTERSECT)
             {
                 // If the sphere is not completely in the frustum, check the AABB
-                collisionType = params._frustum->ContainsBoundingBox(bComp->getBoundingBox(), frustPlaneCache);
+                collisionType = params._frustum->ContainsBoundingBox(bounds, frustPlaneCache);
             }
-            if (params._stage == RenderStage::DISPLAY)
+            if (params._stagePass._stage == RenderStage::DISPLAY)
             {
-                _frustPlaneCache = frustPlaneCache;
+                _frustPlaneCache.store( frustPlaneCache, std::memory_order_relaxed );
             }
         }
     }
@@ -1336,30 +1398,8 @@ void SceneGraphNode::clearFlag(const Flags flag, const bool recursive)
 
 void SceneGraphNode::SendEvent(ECS::CustomEvent&& event)
 {
-    size_t idx = 0;
-    while (true)
-    {
-        bool flush = false;
-        {
-            if (Events._eventsFreeList[idx].exchange(false))
-            {
-                Events._events[idx] = MOV(event);
-                Attorney::SceneGraphSGN::onNodeEvent(sceneGraph(), this);
-                return;
-            }
-
-            if (++idx >= Events.EVENT_QUEUE_SIZE)
-            {
-                idx %= Events.EVENT_QUEUE_SIZE;
-                flush = Runtime::isMainThread();
-            }
-        }
-
-        if (flush)
-        {
-            processEvents();
-        }
-    }
+    _events.push(MOV(event));
+    Attorney::SceneGraphSGN::onNodeEvent(sceneGraph(), this);
 }
 
 void SceneGraphNode::updateCollisions( const SceneGraphNode& parentNode, IntersectionContainer& intersections, Mutex& intersectionsLock ) const

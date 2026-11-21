@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -55,6 +55,35 @@ namespace Divide
     public:
         vkRenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor);
 
+        static constexpr void ResetAttachmentInfo(VkRenderingAttachmentInfo& info) noexcept
+        {
+            info = {};
+            info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+            info.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+        }
+
+        static constexpr void ConfigureAttachmentLoadStore(VkRenderingAttachmentInfo& info,
+                                                           const bool clear,
+                                                           const bool resolveMSAA,
+                                                           const bool keepMSAAData) noexcept
+        {
+            info.loadOp = clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+            info.storeOp = resolveMSAA && !keepMSAAData ? VK_ATTACHMENT_STORE_OP_DONT_CARE
+                                                        : VK_ATTACHMENT_STORE_OP_STORE;
+        }
+
+        [[nodiscard]] static constexpr RTUsageTracker::Layout ResolveTargetUsage(const bool toWrite) noexcept
+        {
+            return toWrite ? RTUsageTracker::Layout::ATTACHMENT : RTUsageTracker::Layout::SHADER_READ;
+        }
+
+        [[nodiscard]] static constexpr VkImageSubresourceRange GetAttachmentTransitionRange( const VkImageAspectFlags aspect, const U16 mipLevel ) noexcept
+        {
+            return { aspect, mipLevel, 1u, 0u, VK_REMAINING_ARRAY_LAYERS };
+        }
+
+        [[nodiscard]] static bool GetAttachmentLayerRange( const DrawLayerEntry& entry, U16 layerCount, bool isCube, SubRange& rangeOut ) noexcept;
+
         [[nodiscard]] bool create() override;
 
         PROPERTY_R_IW(VkRenderingInfo, renderingInfo);
@@ -78,18 +107,7 @@ namespace Divide
 
         struct RenderInfoState
         {
-            struct LayeredRenderingInfo
-            {
-                struct Ranges
-                {
-                    SubRange _layerRange{ 0u, ALL_LAYERS };
-                    U16 _mipLevel{ ALL_MIPS };
-                    bool _enabled{false};
-                };
-                std::array<Ranges, to_base(RTColourAttachmentSlot::COUNT) + 1u> _layeredRendering;
-            } _layeredInfo;
-
-            bool _keptMSAAData{false};
+            U16 _mipLevel{ 0u };
         } _renderInfoState;
     };
 

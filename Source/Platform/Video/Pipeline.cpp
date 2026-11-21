@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/Pipeline.h"
 
@@ -32,7 +32,8 @@ bool operator==(const PipelineDescriptor& lhs, const PipelineDescriptor& rhs) {
            lhs._shaderProgramHandle == rhs._shaderProgramHandle &&
            lhs._blendStates == rhs._blendStates &&
            lhs._vertexFormat == rhs._vertexFormat &&
-           lhs._stateBlock == rhs._stateBlock;
+           lhs._stateBlock == rhs._stateBlock &&
+           lhs._alphaToCoverage == rhs._alphaToCoverage;
 }
 
 bool operator!=(const PipelineDescriptor& lhs, const PipelineDescriptor& rhs) {
@@ -41,7 +42,8 @@ bool operator!=(const PipelineDescriptor& lhs, const PipelineDescriptor& rhs) {
            lhs._shaderProgramHandle != rhs._shaderProgramHandle ||
            lhs._blendStates != rhs._blendStates ||
            lhs._vertexFormat != rhs._vertexFormat ||
-           lhs._stateBlock != rhs._stateBlock;
+           lhs._stateBlock != rhs._stateBlock ||
+           lhs._alphaToCoverage != rhs._alphaToCoverage;
 }
 
 namespace
@@ -54,6 +56,7 @@ namespace
 
         const RenderStateBlock& block = pipeline.descriptor()._stateBlock;
         Util::Hash_combine( hash,
+                            block._colourWrite.i,                                    //VK_DYNAMIC_STATE_COLOR_WRITE_MASK_EXT when supported
                             to_U32( std::floor( block._zBias * 1000.0f + 0.5f ) ),   //VK_DYNAMIC_STATE_DEPTH_BIAS
                             to_U32( std::floor( block._zUnits * 1000.0f + 0.5f ) ),  //VK_DYNAMIC_STATE_DEPTH_BIAS
                             to_U32( block._cullMode ),                               //VK_DYNAMIC_STATE_CULL_MODE
@@ -112,7 +115,6 @@ namespace
                             //to_U32( block._stencilFunc ),                            //VK_DYNAMIC_STATE_STENCIL_OP 
                             //block._rasterizationEnabled,                             //VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE
                             //block._primitiveRestartEnabled,                          //VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE
-                            block._colourWrite.i,
                             to_U32( block._fillMode ),
                             block._tessControlPoints );
 

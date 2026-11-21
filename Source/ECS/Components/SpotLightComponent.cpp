@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/SpotLightComponent.h"
 
@@ -11,6 +12,8 @@
 
 namespace Divide {
 
+DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(SpotLightComponent);
+
 SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& context)
      : BaseComponentType<SpotLightComponent, ComponentType::SPOT_LIGHT>(sgn, context)
      , Light(sgn, 30.0f, LightType::SPOT, *sgn->sceneGraph()->parentScene().lightPool())
@@ -19,7 +22,7 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
 
     EditorComponentField cutoffAngle = {};
     cutoffAngle._name = "Cutoff Angle";
-    cutoffAngle._data = &_coneCutoffAngle;
+    cutoffAngle._data = &_coneAngles._inner;
     cutoffAngle._type = EditorComponentFieldType::PUSH_TYPE;
     cutoffAngle._readOnly = false;
     cutoffAngle._range = { EPSILON_F32, 179.99f };
@@ -28,7 +31,7 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
 
     EditorComponentField outerCutoffAngle = {};
     outerCutoffAngle._name = "Outer Cutoff Angle";
-    outerCutoffAngle._data = &_outerConeCutoffAngle;
+    outerCutoffAngle._data = &_coneAngles._outer;
     outerCutoffAngle._type = EditorComponentFieldType::PUSH_TYPE;
     outerCutoffAngle._readOnly = false;
     outerCutoffAngle._range = { EPSILON_F32, 180.0f };
@@ -56,15 +59,54 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
 
     registerFields(editorComponent());
 
-    editorComponent().onChangedCbk([this](std::string_view) noexcept
+    editorComponent().onChangedCbk([this](const std::string_view field) noexcept
     {
-        if (coneCutoffAngle() > outerConeCutoffAngle())
+        if (field == "Cutoff Angle")
         {
-            coneCutoffAngle(outerConeCutoffAngle());
+            _coneAngles.setInnerClamped(_coneAngles._inner);
+        }
+        else if (field == "Outer Cutoff Angle")
+        {
+            _coneAngles.setOuterClamped(_coneAngles._outer);
+        }
+        if (field == "Cutoff Angle" || field == "Outer Cutoff Angle" || field == "Range")
+        {
+            staticShadowsDirty(true);
+            dynamicShadowsDirty(true);
         }
     });
 
     Attorney::SceneNodeLightComponent::setBounds(sgn->getNode(), BoundingBox(float3(-1.0f), float3(1.0f)));
+}
+
+void SpotLightComponent::coneCutoffAngle(const Angle::DEGREES_F angle) noexcept
+{
+    const SpotConeAngles previous = _coneAngles;
+    _coneAngles.setInner(angle);
+    if (previous._inner != _coneAngles._inner || previous._outer != _coneAngles._outer)
+    {
+        staticShadowsDirty(true);
+        dynamicShadowsDirty(true);
+    }
+}
+
+void SpotLightComponent::outerConeCutoffAngle(const Angle::DEGREES_F angle) noexcept
+{
+    const SpotConeAngles previous = _coneAngles;
+    _coneAngles.setOuter(angle);
+    if (previous._inner != _coneAngles._inner || previous._outer != _coneAngles._outer)
+    {
+        staticShadowsDirty(true);
+        dynamicShadowsDirty(true);
+    }
+}
+
+void SpotLightComponent::loadFromXML(const boost::property_tree::ptree& pt)
+{
+    SGNComponent::loadFromXML(pt);
+    _coneAngles.normalize();
+    staticShadowsDirty(true);
+    dynamicShadowsDirty(true);
 }
 
 F32 SpotLightComponent::outerConeRadius() const noexcept

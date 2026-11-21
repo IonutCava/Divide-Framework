@@ -1,6 +1,7 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/SSAOPreRenderOperator.h"
+#include "Headers/SSAOState.h"
 
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Managers/Headers/ProjectManager.h"
@@ -56,6 +57,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     _blurThreshold[1] = config.HalfRes.BlurThreshold; 
     _blurSharpness[0] = config.FullRes.BlurSharpness;
     _blurSharpness[1] = config.HalfRes.BlurSharpness;
+    _kernelSize = SSAO::ConfiguredBlurKernelSizes( config.FullRes, config.HalfRes );
     _kernelSampleCount[0] = CLAMPED(config.FullRes.KernelSampleCount, MIN_KERNEL_SIZE, MAX_KERNEL_SIZE);
     _kernelSampleCount[1] = CLAMPED(config.HalfRes.KernelSampleCount, MIN_KERNEL_SIZE, MAX_KERNEL_SIZE);
     _blur[0] = config.FullRes.Blur;
@@ -112,21 +114,21 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
 
     _noiseTexture = CreateResource( textureAttachment);
     Get(_noiseTexture)->createWithData( {reinterpret_cast<const Byte*>(noiseData.data()), noiseData.size() * sizeof(float4)}, vec3<U16>(SSAO_NOISE_SIZE, SSAO_NOISE_SIZE,1u), {});
+    const vec2<U16> resolution = parent.screenRT()._rt->getResolution();
+    const vec2<U16> halfResolution = SSAO::HalfResolution( resolution );
     {
         TextureDescriptor outputDescriptor{};
         outputDescriptor._dataType = GFXDataFormat::FLOAT_16;
         outputDescriptor._baseFormat = GFXImageFormat::RED;
         outputDescriptor._packing = GFXImagePacking::UNNORMALIZED;
         outputDescriptor._mipMappingState = MipMappingState::OFF;
-        const vec2<U16> res = parent.screenRT()._rt->getResolution();
-
         RenderTargetDescriptor desc = {};
         desc._attachments = 
         {
             InternalRTAttachmentDescriptor{ outputDescriptor, nearestSampler, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0},
         };
         desc._name = "SSAO_Out";
-        desc._resolution = res;
+        desc._resolution = resolution;
 
         //Colour0 holds the AO texture
         _ssaoOutput = _context.renderTargetPool().allocateRT(desc);
@@ -135,13 +137,14 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         _ssaoBlurBuffer = _context.renderTargetPool().allocateRT(desc);
 
         desc._name = "SSAO_Out_HalfRes";
-        desc._resolution /= 2;
+        desc._resolution = halfResolution;
 
         _ssaoHalfResOutput = _context.renderTargetPool().allocateRT(desc);
     }
     {
         TextureDescriptor outputDescriptor{};
         outputDescriptor._dataType = GFXDataFormat::FLOAT_32;
+        outputDescriptor._baseFormat = GFXImageFormat::RGBA;
         outputDescriptor._packing = GFXImagePacking::UNNORMALIZED;
         outputDescriptor._mipMappingState = MipMappingState::OFF;
 
@@ -152,7 +155,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         };
 
         desc._name = "HalfRes_Normals_Depth";
-        desc._resolution = parent.screenRT()._rt->getResolution() / 2;
+        desc._resolution = halfResolution;
 
         _halfDepthAndNormals = _context.renderTargetPool().allocateRT(desc);
     }
@@ -251,13 +254,16 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         _ssaoUpSampleShader = CreateResource(ssaoUpSample, taskCounter);
     }
 
-    _ssaoGenerateConstants.set(_ID("sampleKernel"), PushConstantType::VEC4, ComputeKernel(sampleCount()));
-    _ssaoGenerateConstants.set(_ID("SSAO_RADIUS"), PushConstantType::FLOAT, radius());
-    _ssaoGenerateConstants.set(_ID("SSAO_INTENSITY"), PushConstantType::FLOAT, power());
-    _ssaoGenerateConstants.set(_ID("SSAO_BIAS"), PushConstantType::FLOAT, bias());
-    _ssaoGenerateConstants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2, float2((parent.screenRT()._rt->getResolution() * (_genHalfRes ? 0.5f : 1.f)) / SSAO_NOISE_SIZE));
-    _ssaoGenerateConstants.set(_ID("maxRange"), PushConstantType::FLOAT, maxRange());
-    _ssaoGenerateConstants.set(_ID("fadeStart"), PushConstantType::FLOAT, fadeStart());
+    UniformData& generateConstants = generationConstants();
+    SSAO::UploadSampleKernel( generateConstants, ComputeKernel(sampleCount()) );
+    generateConstants.set(_ID("SSAO_RADIUS"), PushConstantType::FLOAT, radius());
+    generateConstants.set(_ID("SSAO_INTENSITY"), PushConstantType::FLOAT, power());
+    generateConstants.set(_ID("SSAO_BIAS"), PushConstantType::FLOAT, bias());
+    const vec2<U16> targetResolution = _genHalfRes ? halfResolution : resolution;
+    generateConstants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2,
+                          float2(to_F32(targetResolution.width), to_F32(targetResolution.height)) / SSAO_NOISE_SIZE);
+    generateConstants.set(_ID("maxRange"), PushConstantType::FLOAT, maxRange());
+    generateConstants.set(_ID("fadeStart"), PushConstantType::FLOAT, fadeStart());
 
     _ssaoBlurConstants.set(_ID("depthThreshold"), PushConstantType::FLOAT, blurThreshold());
     _ssaoBlurConstants.set(_ID("blurSharpness"), PushConstantType::FLOAT, blurSharpness());
@@ -336,12 +342,14 @@ void SSAOPreRenderOperator::reshape(const U16 width, const U16 height)
 {
     PreRenderOperator::reshape(width, height);
 
-    _ssaoOutput._rt->resize(width, height);
-    _halfDepthAndNormals._rt->resize(width / 2, height / 2);
+    const vec2<U16> resolution{ width, height };
+    SSAO::ResizeTargets( resolution, *_ssaoOutput._rt, *_ssaoBlurBuffer._rt,
+                         *_ssaoHalfResOutput._rt, *_halfDepthAndNormals._rt );
 
-    const float2 targetDim = float2(width, height) * (_genHalfRes ? 0.5f : 1.f);
-
-    _ssaoGenerateConstants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2, targetDim  / SSAO_NOISE_SIZE);
+    const vec2<U16> targetResolution = _genHalfRes ? SSAO::HalfResolution( resolution ) : resolution;
+    generationConstants().set(
+        _ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2,
+        float2(to_F32(targetResolution.width), to_F32(targetResolution.height)) / SSAO_NOISE_SIZE);
 }
 
 void SSAOPreRenderOperator::genHalfRes(const bool state)
@@ -355,13 +363,14 @@ void SSAOPreRenderOperator::genHalfRes(const bool state)
         const U16 width = state ? _halfDepthAndNormals._rt->getWidth() : _ssaoOutput._rt->getWidth();
         const U16 height = state ? _halfDepthAndNormals._rt->getHeight() : _ssaoOutput._rt->getHeight();
 
-        _ssaoGenerateConstants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2, float2(width, height) / SSAO_NOISE_SIZE);
-        _ssaoGenerateConstants.set(_ID("sampleKernel"), PushConstantType::VEC4, ComputeKernel(sampleCount()));
-        _ssaoGenerateConstants.set(_ID("SSAO_RADIUS"), PushConstantType::FLOAT, radius());
-        _ssaoGenerateConstants.set(_ID("SSAO_INTENSITY"), PushConstantType::FLOAT, power());
-        _ssaoGenerateConstants.set(_ID("SSAO_BIAS"), PushConstantType::FLOAT, bias());
-        _ssaoGenerateConstants.set(_ID("maxRange"), PushConstantType::FLOAT, maxRange());
-        _ssaoGenerateConstants.set(_ID("fadeStart"), PushConstantType::FLOAT, fadeStart());
+        UniformData& generateConstants = generationConstants();
+        generateConstants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2, float2(width, height) / SSAO_NOISE_SIZE);
+        SSAO::UploadSampleKernel( generateConstants, ComputeKernel(sampleCount()) );
+        generateConstants.set(_ID("SSAO_RADIUS"), PushConstantType::FLOAT, radius());
+        generateConstants.set(_ID("SSAO_INTENSITY"), PushConstantType::FLOAT, power());
+        generateConstants.set(_ID("SSAO_BIAS"), PushConstantType::FLOAT, bias());
+        generateConstants.set(_ID("maxRange"), PushConstantType::FLOAT, maxRange());
+        generateConstants.set(_ID("fadeStart"), PushConstantType::FLOAT, fadeStart());
         _ssaoBlurConstants.set(_ID("depthThreshold"), PushConstantType::FLOAT, blurThreshold());
         _ssaoBlurConstants.set(_ID("blurSharpness"), PushConstantType::FLOAT, blurSharpness());
         _ssaoBlurConstants.set(_ID("blurKernelSize"), PushConstantType::INT, blurKernelSize());
@@ -373,7 +382,7 @@ void SSAOPreRenderOperator::radius(const F32 val)
     if (!COMPARE(radius(), val))
     {
         _radius[_genHalfRes ? 1 : 0] = val;
-        _ssaoGenerateConstants.set(_ID("SSAO_RADIUS"), PushConstantType::FLOAT, val);
+        generationConstants().set(_ID("SSAO_RADIUS"), PushConstantType::FLOAT, val);
         if (_genHalfRes)
         {
             _context.context().config().rendering.postFX.ssao.HalfRes.Radius = val;
@@ -391,7 +400,7 @@ void SSAOPreRenderOperator::power(const F32 val)
     if (!COMPARE(power(), val))
     {
         _power[_genHalfRes ? 1 : 0] = val;
-        _ssaoGenerateConstants.set(_ID("SSAO_INTENSITY"), PushConstantType::FLOAT, val);
+        generationConstants().set(_ID("SSAO_INTENSITY"), PushConstantType::FLOAT, val);
         if (_genHalfRes)
         {
             _context.context().config().rendering.postFX.ssao.HalfRes.Power = val;
@@ -409,7 +418,7 @@ void SSAOPreRenderOperator::bias(const F32 val)
     if (!COMPARE(bias(), val))
     {
         _bias[_genHalfRes ? 1 : 0] = val;
-        _ssaoGenerateConstants.set(_ID("SSAO_BIAS"), PushConstantType::FLOAT, val);
+        generationConstants().set(_ID("SSAO_BIAS"), PushConstantType::FLOAT, val);
         if (_genHalfRes)
         {
             _context.context().config().rendering.postFX.ssao.HalfRes.Bias = val;
@@ -500,7 +509,7 @@ void SSAOPreRenderOperator::maxRange(F32 val)
     if (!COMPARE(maxRange(), val))
     {
         _maxRange[_genHalfRes ? 1 : 0] = val;
-        _ssaoGenerateConstants.set(_ID("maxRange"), PushConstantType::FLOAT, val);
+        generationConstants().set(_ID("maxRange"), PushConstantType::FLOAT, val);
         if (_genHalfRes)
         {
             _context.context().config().rendering.postFX.ssao.HalfRes.MaxRange = val;
@@ -520,7 +529,7 @@ void SSAOPreRenderOperator::fadeStart(F32 val)
     if (!COMPARE(fadeStart(), val))
     {
         _fadeStart[_genHalfRes ? 1 : 0] = val;
-        _ssaoGenerateConstants.set(_ID("fadeStart"), PushConstantType::FLOAT, val);
+        generationConstants().set(_ID("fadeStart"), PushConstantType::FLOAT, val);
         if (_genHalfRes)
         {
             _context.context().config().rendering.postFX.ssao.HalfRes.FadeDistance = val;
@@ -561,7 +570,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 {
     assert(_enabled);
 
-    _ssaoGenerateConstants.set(_ID("_zPlanes"),            PushConstantType::VEC2, cameraSnapshot._zPlanes);
+    UniformData& generateConstants = generationConstants();
+    generateConstants.set(_ID("_zPlanes"), PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
     const auto& depthAtt   = _parent.screenRT()._rt->getAttachment(RTAttachmentType::DEPTH);
     const auto& normalsAtt = _context.renderTargetPool().getRenderTarget( RenderTargetNames::NORMALS_RESOLVED )->getAttachment(RTAttachmentType::COLOUR);
@@ -601,7 +611,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _generateHalfResPipeline;
 
             GFX::SendPushConstantsCommand* sendPushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
-            sendPushConstantsCmd->_uniformData = &_ssaoGenerateConstants;
+            sendPushConstantsCmd->_uniformData = &generateConstants;
             sendPushConstantsCmd->_fastData.data[0] = cameraSnapshot._projectionMatrix;
             sendPushConstantsCmd->_fastData.data[1] = cameraSnapshot._invProjectionMatrix;
 
@@ -616,6 +626,10 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, halfDepthAtt->texture(), halfDepthAtt->_descriptor._sampler );
+            }
+            {
+                DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
+                Set( binding._data, depthAtt->texture(), depthAtt->_descriptor._sampler );
             }
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
@@ -689,7 +703,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             }
 
             GFX::SendPushConstantsCommand* sendPushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
-            sendPushConstantsCmd->_uniformData = &_ssaoGenerateConstants;
+            sendPushConstantsCmd->_uniformData = &generateConstants;
             sendPushConstantsCmd->_fastData.data[0] = cameraSnapshot._projectionMatrix;
             sendPushConstantsCmd->_fastData.data[1] = cameraSnapshot._invProjectionMatrix;
 

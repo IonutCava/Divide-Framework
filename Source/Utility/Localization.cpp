@@ -1,8 +1,6 @@
-
-
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/Localization.h"
 
-#include "Core/Headers/ErrorCodes.h"
 
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/File/Headers/FileUpdateMonitor.h"
@@ -110,7 +108,7 @@ const char* LanguageData::get(const U64 key, const bool appendSection, const cha
         return appendSection ? entry->second._sectionAndValue.c_str() : entry->second._value.c_str();
     }
 
-    DIVIDE_UNEXPECTED_CALL_MSG("Locale error: INVALID STRING KEY!");
+    DIVIDE_ASSERT(false, "Locale error: INVALID STRING KEY!");
 
     return defaultValue == nullptr ? "MISSING_ENTRY_NO_DEFAULT" : defaultValue;
 }

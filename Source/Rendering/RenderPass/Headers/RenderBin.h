@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -39,7 +39,11 @@
 #ifndef DVD_RENDER_BIN_H_
 #define DVD_RENDER_BIN_H_
 
+#include "Core/Headers/PoolHandle.h"
+
 namespace Divide {
+
+using RenderBinGeometrySortKey = std::array<PoolHandle, 2u>;
 
 struct Task;
 class GFXDevice;
@@ -56,9 +60,34 @@ struct RenderBinItem {
     size_t _stateHash{ 0u };
     I64 _shaderKey{ I64_LOWEST };
     I64 _textureKey{ I64_LOWEST };
+    RenderBinGeometrySortKey _geometrySortKey{};
     F32 _distanceToCameraSq{ 0.f };
     bool _hasTransparency{ false };
 };
+
+[[nodiscard]] inline bool RenderBinGeometrySortKeyLess(const RenderBinGeometrySortKey& lhs,
+                                                       const RenderBinGeometrySortKey& rhs) noexcept
+{
+    for (size_t i = 0u; i < lhs.size(); ++i)
+    {
+        const PoolHandle& left = lhs[i];
+        const PoolHandle& right = rhs[i];
+        if (left._id != right._id)
+        {
+            return left._id < right._id;
+        }
+        if (left._generation != right._generation)
+        {
+            return left._generation < right._generation;
+        }
+        if (left._tag != right._tag)
+        {
+            return left._tag < right._tag;
+        }
+    }
+
+    return false;
+}
 
 enum class RenderingOrder : U8 {
     NONE = 0,

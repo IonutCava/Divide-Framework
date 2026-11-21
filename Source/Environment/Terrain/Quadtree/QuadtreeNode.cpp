@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/QuadtreeNode.h"
 
@@ -41,7 +41,7 @@ void QuadtreeNode::build(const U8 depth,
 
     if (std::max(newsize.x, newsize.y) < _targetChunkDimension)
     {
-        _terrainChunk = std::make_unique<TerrainChunk>(terrain, *this);
+        _terrainChunk = std::make_unique<TerrainChunk>(terrain, *this, chunkCount);
         _terrainChunk->load(depth, pos, _targetChunkDimension, HMsize, _boundingBox);
         chunkCount++;
     }

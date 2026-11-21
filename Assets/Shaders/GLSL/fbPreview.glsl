@@ -24,6 +24,7 @@ vec3 error() {
 void main()
 {
     const vec4 colourIn = textureLod(texDiffuse0, VAR._texCoord, lodLevel);
+    _colourOut = vec4(0.f, 0.f, 0.f, 1.f);
     
     if (channelsArePacked != 0u) {
         if (channelCount == 1) {
@@ -53,18 +54,20 @@ void main()
     }
 
     // Writing directly to a non-sRGB screen: keep sRGB encoded content as-is
-    if (skipLinearisation == 0u) {
+    if (skipLinearisation == 0u && channelsArePacked == 0u &&
+        normalizeOutput == 0u && scaleAndBias == 0u) {
         _colourOut.rgb = ToLinear( _colourOut.rgb );
     }
 
     if (normalizeOutput != 0u) {
-        _colourOut.rgb = normalize(_colourOut.rgb);
-    }
-    if (scaleAndBias != 0u) {
-        _colourOut.rgb = 0.5f * _colourOut.rgb + 0.5f;
+        const float lengthSquared = dot(_colourOut.rgb, _colourOut.rgb);
+        _colourOut.rgb = lengthSquared > 0.f ? _colourOut.rgb * inversesqrt(lengthSquared) : vec3(0.f);
     }
 
     _colourOut.rgb *= multiplier;
+    if (scaleAndBias != 0u) {
+        _colourOut.rgb = 0.5f * _colourOut.rgb + 0.5f;
+    }
 }
 
 -- Fragment.LinearDepth

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -208,7 +208,7 @@ class Scene : public Resource, public PlatformContextComponent {
                       void            addMusic(MusicType type, const std::string_view name, const ResourcePath& srcFile);
         [[nodiscard]] SceneGraphNode* addSky(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
         [[nodiscard]] SceneGraphNode* addInfPlane(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
-                      void            addWater(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
+        [[nodiscard]] SceneGraphNode* addWater(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
                       void            addTerrain(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
         [[nodiscard]] SceneGraphNode* addParticleEmitter(const std::string_view name, std::shared_ptr<ParticleData> data,SceneGraphNode* parentNode);
 #pragma endregion
@@ -270,6 +270,8 @@ class Scene : public Resource, public PlatformContextComponent {
         /// Returns the first available action ID
         [[nodiscard]] virtual U16 registerInputActions();
 
+        void       onNodeAdd(SceneGraphNode* node, bool reparented);
+        void       onNodeMoved(const SceneGraphNode& node);
         void       onNodeSpatialChange(const SceneGraphNode& node);
         void       onNodeDestroy(SceneGraphNode* node);
         void       loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, SceneGraphNode* parent);
@@ -330,9 +332,15 @@ class Scene : public Resource, public PlatformContextComponent {
 
     private:
         void processInternalTimers( U64 appDeltaUS, U64 gameDeltaUS, vector<TimerStruct>& timers );
+        [[nodiscard]] Camera* cameraForInput(PlayerIndex idx) const;
         /// Returns true if the camera was moved/rotated/etc
         bool updateCameraControls(PlayerIndex idx) const;
         void updateSelectionData(PlayerIndex idx, DragSelectData& data);
+        void queueDirtyNodeEvent(const SceneGraphNode& node, U8 eventMask, bool destroyed);
+        void flushDirtySceneData();
+        void resetWaterBodySlots();
+        void removeWaterBodySlot(I64 guid);
+        void upsertWaterBodySlot(const SceneGraphNode& node);
         [[nodiscard]] bool checkCameraUnderwater(PlayerIndex idx) const;
         [[nodiscard]] bool checkCameraUnderwater(const Camera& camera) const noexcept;
 
@@ -360,6 +368,22 @@ class Scene : public Resource, public PlatformContextComponent {
 
         vector<TimerStruct> _taskTimers;
         vector<TimerStruct> _guiTimers;
+
+        struct DirtyNodeEvent
+        {
+            I64 _guid = -1;
+            U8 _eventMask = 0u;
+            U8 _dirtyMask = 0u;
+            bool _destroyed = false;
+        };
+
+        Mutex _dirtyNodeEventLock;
+        fixed_vector<DirtyNodeEvent, 512u, true> _dirtyNodeEvents;
+
+        fixed_vector<U8, GLOBAL_WATER_BODIES_COUNT, true> _freeWaterBodySlots;
+        fixed_vector<std::pair<I64, U8>, GLOBAL_WATER_BODIES_COUNT, true> _waterBodySlots;
+        bool _waterBodiesDirty = true;
+        bool _vegetationFinalizeDirty = true;
 };
 
 namespace Attorney {
@@ -499,9 +523,19 @@ class SceneLoadSave {
 
 class SceneGraph
 {
+    static void onNodeAdd(Scene* scene, SceneGraphNode* node, const bool reparented)
+    {
+        scene->onNodeAdd(node, reparented);
+    }
+
     static void onNodeDestroy(Scene* scene, SceneGraphNode* node)
     {
         scene->onNodeDestroy(node);
+    }
+
+    static void onNodeMoved(Scene* scene, const SceneGraphNode& node)
+    {
+        scene->onNodeMoved(node);
     }
 
     static void onNodeSpatialChange(Scene* scene, const SceneGraphNode& node)

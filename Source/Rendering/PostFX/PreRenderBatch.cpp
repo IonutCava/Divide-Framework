@@ -27,6 +27,8 @@ namespace
     //ToneMap ref: https://bruop.github.io/exposure/
     constexpr U8  GROUP_X_THREADS = 16u;
     constexpr U8  GROUP_Y_THREADS = 16u;
+    constexpr U32 HISTOGRAM_BIN_COUNT = 256u;
+    static_assert(GROUP_X_THREADS * GROUP_Y_THREADS == HISTOGRAM_BIN_COUNT);
 };
 
 namespace TypeUtil
@@ -149,6 +151,22 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
         Get(_currentLuminance)->createWithData( {(Byte*)&val, 1u * sizeof(F32)}, vec3<U16>(1u), {});
     }
     {
+        ResourceDescriptor<Texture> texture( "Disabled SSR" );
+        texture.waitForReady( true );
+        texture._propertyDescriptor._mipMappingState = MipMappingState::OFF;
+        texture._propertyDescriptor._textureOptions._outputSRGB = false;
+        _disabledSSR = CreateResource( texture );
+
+        const std::array<Byte, 4> transparentBlack{};
+        if ( _disabledSSR == INVALID_HANDLE<Texture> ||
+             Get( _disabledSSR )->createWithData( transparentBlack, vec3<U16>( 1u ), {} ) != ImageUsage::SHADER_READ )
+        {
+            Console::errorfn( "Failed to create the disabled SSR fallback texture." );
+            Console::Flush();
+            std::abort();
+        }
+    }
+    {
         const SamplerDescriptor defaultSampler
         {
             ._minFilter = TextureFilter::NEAREST,
@@ -215,7 +233,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
 
             default:
                 DIVIDE_UNEXPECTED_CALL();
-                break;
         }
     }
 
@@ -336,13 +353,15 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
         _lineariseDepthBuffer = CreateResource(lineariseDepthBuffer, loadTasks);
     }
 
+    std::array<U32, HISTOGRAM_BIN_COUNT> initialHistogram{};
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._name = "LUMINANCE_HISTOGRAM_BUFFER";
     bufferDescriptor._ringBufferLength = 0;
-    bufferDescriptor._elementCount = 256;
+    bufferDescriptor._elementCount = HISTOGRAM_BIN_COUNT;
     bufferDescriptor._elementSize = sizeof(U32);
     bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
     bufferDescriptor._updateFrequency = BufferUpdateFrequency::ONCE;
+    bufferDescriptor._initialData = { initialHistogram.data(), initialHistogram.size() * sizeof(U32) };
 
     _histogramBuffer = _context.newShaderBuffer(bufferDescriptor);
 
@@ -385,6 +404,7 @@ PreRenderBatch::~PreRenderBatch()
     }
 
     DestroyResource(_currentLuminance);
+    DestroyResource(_disabledSSR);
     DestroyResource(_toneMap);
     DestroyResource(_createHistogram);
     DestroyResource(_averageHistogram);
@@ -394,6 +414,13 @@ PreRenderBatch::~PreRenderBatch()
     {
         DestroyResource(shader);
     }
+}
+
+Handle<Texture> PreRenderBatch::ssrTexture(const bool enabled) const noexcept
+{
+    return enabled
+        ? _context.renderTargetPool().getRenderTarget( RenderTargetNames::SSR_RESULT )->getAttachment( RTAttachmentType::COLOUR )->texture()
+        : _disabledSSR;
 }
 
 bool PreRenderBatch::operatorsReady() const noexcept
@@ -524,8 +551,8 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
 
     const RenderTargetHandle prevScreenHandle
     {
-        _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV),
-        RenderTargetNames::SCREEN_PREV
+        _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV[idx]),
+        RenderTargetNames::SCREEN_PREV[idx]
     };
 
     GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: Execute PrePass operators";
@@ -554,7 +581,8 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
     cmd->_usage = DescriptorSetUsage::PER_PASS;
     {
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 3u, ShaderStageVisibility::FRAGMENT );
-        Set( binding._data, ssrDataAtt->texture(), ssrDataAtt->_descriptor._sampler );
+        const bool ssrEnabled = (filterStack & (1u << to_U32( FilterType::FILTER_SS_REFLECTIONS ))) != 0u;
+        Set( binding._data, ssrTexture( ssrEnabled ), ssrDataAtt->_descriptor._sampler );
     }
     {
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 4u, ShaderStageVisibility::FRAGMENT );
@@ -565,6 +593,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
 void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, U32 filterStack, GFX::CommandBuffer& bufferInOut)
 {
     _screenRTs._swappedHDR = _screenRTs._swappedLDR = false;
+    const bool showWorldAO = _context.materialDebugFlag() == MaterialDebugFlag::WORLD_AO;
     _toneMapParams._width = screenRT()._rt->getWidth();
     _toneMapParams._height = screenRT()._rt->getHeight();
     const F32 logLumRange = _toneMapParams._maxLogLuminance - _toneMapParams._minLogLuminance;
@@ -613,7 +642,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         memCmd->_bufferLocks.emplace_back(BufferLock
         {
             ._range = { 0u, U32_MAX },
-            ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+            ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE,
             ._buffer = _histogramBuffer->getBufferImpl()
         });
 
@@ -638,7 +667,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         {
             ._targetView   = luminanceView,
             ._sourceLayout = ImageUsage::SHADER_READ,
-            ._targetLayout = ImageUsage::SHADER_WRITE,
+            ._targetLayout = ImageUsage::SHADER_READ_WRITE,
         });
 
         GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _pipelineLumCalcAverage;
@@ -651,7 +680,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 12u, ShaderStageVisibility::COMPUTE );
-            Set(binding._data, luminanceView, ImageUsage::SHADER_WRITE );
+            Set(binding._data, luminanceView, ImageUsage::SHADER_READ_WRITE );
         }
 
 
@@ -668,14 +697,14 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             memCmd->_bufferLocks.emplace_back( BufferLock
             {
                 ._range = { 0u, U32_MAX },
-                ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_READ,
+                ._type = BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE,
                 ._buffer = _histogramBuffer->getBufferImpl()
             });
 
             memCmd->_textureLayoutChanges.emplace_back(TextureLayoutChange
             {
                 ._targetView   = luminanceView,
-                ._sourceLayout = ImageUsage::SHADER_WRITE,
+                ._sourceLayout = ImageUsage::SHADER_READ_WRITE,
                 ._targetLayout = ImageUsage::SHADER_READ,
             });
         }
@@ -706,7 +735,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: Execute HDR operators";
     for (auto& op : _operators[to_base(FilterSpace::FILTER_SPACE_HDR)])
     {
-        if (filterStack & 1u << to_U32(op->operatorType()))
+        if ( !showWorldAO && (filterStack & 1u << to_U32(op->operatorType())) )
         {
             GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = PostFX::FilterName(op->operatorType());
             if (op->execute(idx, cameraSnapshot, getInput(true), getOutput(true), bufferInOut))
@@ -718,26 +747,13 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     }
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
-    RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV);
+    RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV[idx]);
     Handle<Texture> prevScreenTex = prevScreenRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO )->texture();
 
-    static bool firstPass = true;
-    if ( firstPass )
-    {
-        firstPass = false;
-
-        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_textureLayoutChanges.emplace_back(TextureLayoutChange
-        {
-            ._targetView = Get(prevScreenTex)->getView(),
-            ._sourceLayout = ImageUsage::SHADER_READ,
-            ._targetLayout = ImageUsage::RT_COLOUR_ATTACHMENT
-        });
-
-    }
     // Copy our screen target PRE tonemap to feed back to PostFX operators in the next frame
     GFX::BlitRenderTargetCommand blitScreenColourCmd = {};
     blitScreenColourCmd._source = getInput(true)._targetID;
-    blitScreenColourCmd._destination = RenderTargetNames::SCREEN_PREV;
+    blitScreenColourCmd._destination = RenderTargetNames::SCREEN_PREV[idx];
     blitScreenColourCmd._params.emplace_back(RTBlitEntry
     {
         ._input = 
@@ -757,7 +773,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
-    const bool bloomEnabled = _context.context().config().rendering.postFX.bloom.enabled && _parent.getFilterState(FilterType::FILTER_BLOOM);
+    const bool bloomEnabled = !showWorldAO && _context.context().config().rendering.postFX.bloom.enabled && _parent.getFilterState(FilterType::FILTER_BLOOM);
 
     { // ToneMap and generate LDR render target (Alpha channel contains pre-toneMapped luminance value)
         const auto& screenAtt = getInput(true)._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
@@ -803,7 +819,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
                                      adaptiveExposureControl() ? 1.f : 0.f,
                                      _context.materialDebugFlag() != MaterialDebugFlag::COUNT ? 1.f : 0.f);
 
-        if (_context.context().config().rendering.postFX.bloom.enabled)
+        if (bloomEnabled)
         {
             pushData.data[0]._vec[1].x = _context.context().config().rendering.postFX.bloom.strength;
         }
@@ -819,7 +835,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     }
 
     // Now that we have an LDR target, proceed with edge detection. This LDR target is NOT GAMMA CORRECTED!
-    if (edgeDetectionMethod() != EdgeDetectionMethod::COUNT)
+    if ( !showWorldAO && edgeDetectionMethod() != EdgeDetectionMethod::COUNT )
     {
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: edge detection";
 
@@ -863,7 +879,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: Execute LDR operators";
     for (auto& op : _operators[to_base(FilterSpace::FILTER_SPACE_LDR)])
     {
-        if ( filterStack & 1u << to_U32(op->operatorType()))
+        if ( !showWorldAO && (filterStack & 1u << to_U32(op->operatorType())) )
         {
             GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = PostFX::FilterName(op->operatorType());
 

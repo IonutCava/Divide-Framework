@@ -38,7 +38,8 @@ AIEntity::AIEntity( NPC* parent, const float3& currentPosition, std::string_view
 
 AIEntity::~AIEntity()
 {
-    if (_detourCrowd) {
+    if (_detourCrowd)
+    {
         _detourCrowd->removeAgent(getAgentID());
     }
 
@@ -399,7 +400,8 @@ void AIEntity::setVelocity(const float3& velocity) {
     _stopped = false;
     _destination.reset();
 
-    if (!isAgentLoaded() || !_detourCrowd->requestVelocity(getAgentID(), velocity)) {
+    if (!isAgentLoaded() || !_detourCrowd->requestVelocity(getAgentID(), velocity))
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
 }

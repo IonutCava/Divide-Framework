@@ -138,7 +138,7 @@ float bdepth(in vec2 coords) //blurring depth
     
     offset[0] = vec2(-wh.x,-wh.y);
     offset[1] = vec2( 0.0, -wh.y);
-    offset[2] = vec2( wh.x -wh.y);
+    offset[2] = vec2( wh.x, -wh.y);
     
     offset[3] = vec2(-wh.x,  0.0);
     offset[4] = vec2( 0.0,   0.0);
@@ -203,11 +203,11 @@ vec3 debugFocus(in vec3 col, in float blur, in float depth) {
 }
 
 float vignette(in vec2 coord) {
-    float dist = distance(coord, vec2(0.5f, 0.5f));
-
-    dist = smoothstep(vignout + (fstop / vignfade), vignin + (fstop / vignfade), dist);
-
-    return Saturate(dist);
+    const float dist = distance(coord, vec2(0.5f, 0.5f));
+    const float offset = fstop / vignfade;
+    const float inner = min(vignin, vignout) + offset;
+    const float outer = max(vignin, vignout) + offset;
+    return outer > inner ? 1.f - smoothstep(inner, outer, dist) : 1.f - step(inner, dist);
 }
 
 void main() 

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -83,7 +83,10 @@ class RenderPass final : NonCopyable {
 
     PassData getPassData() const noexcept;
 
+    /// Stages whose GPU work must be submitted before this stage's command buffer.
     PROPERTY_RW(vector<RenderStage>, dependencies);
+    /// Stages whose CPU recording must finish before this stage starts recording (must be a subset of dependencies).
+    PROPERTY_RW(vector<RenderStage>, recordingDependencies);
 
    private:
     GFXDevice& _context;

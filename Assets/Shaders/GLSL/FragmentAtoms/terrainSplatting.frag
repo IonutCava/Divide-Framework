@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #ifndef _TERRAIN_SPLATTING_FRAG_
 #define _TERRAIN_SPLATTING_FRAG_
 

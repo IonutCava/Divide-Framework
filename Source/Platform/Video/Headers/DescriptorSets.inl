@@ -37,16 +37,16 @@ namespace Divide
 {
     inline bool ImageView::operator==( const ImageView& other ) const noexcept
     {
-        return _subRange         == other._subRange &&
-               _descriptor       == other._descriptor &&
+        return _srcTexture       == other._srcTexture &&
                TargetType(*this) == TargetType(other) &&
-               _srcTexture       == other._srcTexture;
+               _descriptor       == other._descriptor &&
+               _subRange         == other._subRange;
     }
 
     inline bool ImageView::operator!=( const ImageView& other ) const noexcept
     {
         return _srcTexture       != other._srcTexture ||
-               _subRange         != other._subRange ||
+               _subRange         != other._subRange   ||
                TargetType(*this) != TargetType(other) ||
                _descriptor       != other._descriptor;
     }
@@ -61,16 +61,21 @@ namespace Divide
 
         switch ( _type )
         {
-            case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC : 
-            case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC : 
+            case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC :
+            case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC :
             case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC :
             case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC :
-            case DescriptorSetBindingType::INDIRECT_BUFFER : return _buffer == other._buffer;
-            case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return _sampledImage == other._sampledImage;
-            case DescriptorSetBindingType::IMAGE : return _imageView == other._imageView;
-
-            default:
-            case DescriptorSetBindingType::COUNT: break;
+            case DescriptorSetBindingType::INDIRECT_BUFFER :
+                return _buffer == other._buffer;
+            case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
+                return _sampledImage._imageHash   == other._sampledImage._imageHash &&
+                       _sampledImage._samplerHash == other._sampledImage._samplerHash &&
+                       _sampledImage._image       == other._sampledImage._image &&
+                       _sampledImage._sampler     == other._sampledImage._sampler;
+            case DescriptorSetBindingType::IMAGE:
+                return _imageView == other._imageView;
+            case DescriptorSetBindingType::COUNT:
+            default: break;
         }
 
         return true;
@@ -78,36 +83,43 @@ namespace Divide
 
     inline bool DescriptorSetBindingData::operator!=( const DescriptorSetBindingData& other ) const noexcept
     {
-        if ( _type == other._type )
-        {
-            switch ( _type )
-            {
-                case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC : 
-                case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC : 
-                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC :
-                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC:
-                case DescriptorSetBindingType::INDIRECT_BUFFER: return _buffer != other._buffer;
-                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return _sampledImage != other._sampledImage;
-                case DescriptorSetBindingType::IMAGE: return _imageView != other._imageView;
+        return !(*this == other);
+    }
 
-                default:
-                case DescriptorSetBindingType::COUNT: return false;
+    inline bool operator==( const DescriptorSet& lhs, const DescriptorSet& rhs ) noexcept
+    {
+        if ( lhs._bindingCount != rhs._bindingCount )
+        {
+            return false;
+        }
+
+        for ( U8 i = 0u; i < lhs._bindingCount; ++i )
+        {
+            if ( lhs._bindings[i] != rhs._bindings[i] )
+            {
+                return false;
             }
         }
 
         return true;
     }
 
-    inline bool operator==( const DescriptorSet& lhs, const DescriptorSet& rhs ) noexcept
-    {
-        return lhs._bindingCount == rhs._bindingCount &&
-               lhs._bindings == rhs._bindings;
-    }
-
     inline bool operator!=( const DescriptorSet& lhs, const DescriptorSet& rhs ) noexcept
     {
-        return lhs._bindingCount != rhs._bindingCount ||
-               lhs._bindings != rhs._bindings;
+        if ( lhs._bindingCount != rhs._bindingCount )
+        {
+            return true;
+        }
+
+        for ( U8 i = 0u; i < lhs._bindingCount; ++i )
+        {
+            if ( lhs._bindings[i] != rhs._bindings[i] )
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     inline void Set( DescriptorSetBindingData& dataInOut, const DescriptorImageView& view ) noexcept

@@ -1,10 +1,14 @@
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #ifndef _DEBUG_FRAG_
 #define _DEBUG_FRAG_
 
 #include "lightingCalc.frag"
 #include "turboColormap.frag"
 
-bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, in vec2 uv, in vec3 normalWV, out vec3 debugColour) {
+bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, in vec2 uv, in vec3 normalWV,
+                    in vec4 positionDx, in vec4 positionDy, in IBLGradients gradients, out vec3 debugColour) {
 
     const vec3 viewVec = computeViewDirectionWV();
 
@@ -29,7 +33,7 @@ bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, i
             materialCopy._diffuseColour = vec3(1.f);
             materialCopy._emissive = vec3(0.f);
             debugColour = dvd_AmbientColour.rgb * materialCopy._diffuseColour * materialCopy._occlusion;
-            debugColour = getLightContribution(materialCopy, normalWV, viewVec, dvd_ReceivesShadows(materialData), debugColour);
+            debugColour = getLightContribution(materialCopy, normalWV, viewVec, dvd_ReceivesShadows(materialData), positionDx, positionDy, debugColour);
         } break;
         case DEBUG_SPECULAR:
         {
@@ -48,13 +52,13 @@ bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, i
     #if !defined(NO_ENV_MAPPING) && !defined(NO_IBL)
             PBRMaterial materialCopy = material;
             materialCopy._diffuseColour = vec3(1.f);
-            iblRadiance = ApplyIBL(materialCopy, viewVec, normalWV, NdotV, VAR._vertexW.xyz, dvd_ProbeIndex(materialData));
+            iblRadiance = ApplyIBL(materialCopy, viewVec, normalWV, NdotV, VAR._vertexW.xyz, dvd_ProbeIndex(materialData), positionDx, positionDy, gradients);
     #endif
             debugColour = iblRadiance;
         } break;
         case DEBUG_SSAO: {
             #if !defined(NO_SSAO)
-                debugColour = vec3(texture(texSSAO, dvd_screenPositionNormalised).r);
+                debugColour = vec3(SampleScreenTexture(texSSAO).r);
             #else //!NO_SSAO
                 debugColour = vec3(1.f);
             #endif //!NO_SSAO
@@ -84,7 +88,7 @@ bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, i
         } break;
         case DEBUG_SHADOW_MAPS:
         {
-            debugColour = dvd_ReceivesShadows(materialData) ? vec3(getShadowMultiplier(normalWV)) : vec3(1.f);
+            debugColour = dvd_ReceivesShadows(materialData) ? vec3(getShadowMultiplier(normalWV, positionDx, positionDy)) : vec3(1.f);
         } break;
         case DEBUG_CSM_SPLITS:
         {
@@ -156,7 +160,7 @@ bool getDebugColour(in PBRMaterial material, in NodeMaterialData materialData, i
         } break;
         case DEBUG_WORLD_AO:
         {
-            debugColour = vec3( getWorldAO());
+            debugColour = vec3( getWorldAO(positionDx, positionDy) );
         } break;
     }
 

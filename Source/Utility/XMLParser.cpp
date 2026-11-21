@@ -1,5 +1,4 @@
-
-
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/XMLParser.h"
 
 #include "Core/Headers/Configuration.h"
@@ -31,7 +30,7 @@ namespace
 
 namespace detail
 {
-    bool LoadSave::read(const ResourcePath& filePath, const char* fileName, const std::string& rootNode)
+    bool SerializerContext::read(const ResourcePath& filePath, const char* fileName, const std::string& rootNode)
     {
         _filePath = filePath;
         _fileName = fileName;
@@ -47,11 +46,15 @@ namespace detail
                 backupReturnCode != FileError::FILE_NOT_FOUND &&
                 backupReturnCode != FileError::FILE_EMPTY)
             {
-                if constexpr(!Config::Build::IS_SHIPPING_BUILD)
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                Console::errorfn("Failed to restore XML backup for '{}': {}", loadPath, Names::fileError[to_base(backupReturnCode)]);
             }
+        }
+
+        // Some C++ runtimes (e.g. libc++) open directories as empty streams, which Boost parses as an empty document.
+        if (!fileExists(loadPath))
+        {
+            Console::errorfn("Failed to read XML file '{}': not a regular file", loadPath);
+            return false;
         }
 
         try
@@ -64,7 +67,11 @@ namespace detail
         }
         catch ( const boost::property_tree::xml_parser_error& error )
         {
-            Console::errorfn( error.what() );
+            Console::errorfn( "{}", error.what() );
+        }
+        catch ( const std::ios_base::failure& error )
+        {
+            Console::errorfn( "Failed to read XML file '{}': {}", loadPath, error.what() );
         }
         catch(...)
         {
@@ -74,7 +81,7 @@ namespace detail
         return false;
     }
 
-    bool LoadSave::write( const ResourcePath& filePath, const char* fileName ) const
+    bool SerializerContext::write( const ResourcePath& filePath, const char* fileName ) const
     {
         const ResourcePath savePath = filePath / fileName;
 
@@ -87,12 +94,12 @@ namespace detail
                 backupReturnCode != FileError::FILE_NOT_FOUND &&
                 backupReturnCode != FileError::FILE_EMPTY)
             {
-                    DIVIDE_UNEXPECTED_CALL();
+                Console::errorfn("Failed to back up XML file '{}': {}", savePath, Names::fileError[to_base(backupReturnCode)]);
             }
         }
         else if (!createFile(savePath, true))
         {
-            DIVIDE_UNEXPECTED_CALL();
+            return false;
         }
 
         try
@@ -106,7 +113,11 @@ namespace detail
         }
         catch(const boost::property_tree::xml_parser_error& error)
         {
-            Console::errorfn(error.what());
+            Console::errorfn("{}", error.what());
+        }
+        catch(const std::ios_base::failure& error)
+        {
+            Console::errorfn("Failed to write XML file '{}': {}", savePath, error.what());
         }
         catch(...)
         {
@@ -263,11 +274,21 @@ void writeXML(const ResourcePath& path, const ptree& tree)
 
 void readXML(const ResourcePath& path, ptree& tree)
 {
+    if (!fileExists(path))
+    {
+        Console::errorfn(LOCALE_STR("ERROR_XML_INVALID_FILE"), path, "not a regular file");
+        return;
+    }
+
     try
     {
         read_xml(path.string().c_str(), tree);
     }
     catch (const boost::property_tree::xml_parser_error& e)
+    {
+        Console::errorfn(LOCALE_STR("ERROR_XML_INVALID_FILE"), path, e.what());
+    }
+    catch (const std::ios_base::failure& e)
     {
         Console::errorfn(LOCALE_STR("ERROR_XML_INVALID_FILE"), path, e.what());
     }

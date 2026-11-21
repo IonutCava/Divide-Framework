@@ -1,8 +1,9 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/vkSwapChain.h"
 #include "Headers/vkDevice.h"
 
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Utility/Headers/Localization.h"
 
 #include "Platform/Headers/DisplayWindow.h"
@@ -10,10 +11,28 @@
 
 namespace Divide {
 
-    VKSwapChain::VKSwapChain(VK_API& context, const VKDevice& device, const DisplayWindow& window)
+    namespace
+    {
+        [[nodiscard]] constexpr const char* PresentModeName( const VkPresentModeKHR mode ) noexcept
+        {
+            switch ( mode )
+            {
+                case VK_PRESENT_MODE_IMMEDIATE_KHR:    return "IMMEDIATE";
+                case VK_PRESENT_MODE_MAILBOX_KHR:      return "MAILBOX";
+                case VK_PRESENT_MODE_FIFO_KHR:         return "FIFO";
+                case VK_PRESENT_MODE_FIFO_RELAXED_KHR: return "FIFO_RELAXED";
+                default: break;
+            }
+
+            return "OTHER";
+        }
+    }
+
+    VKSwapChain::VKSwapChain( VK_API& context, const VKDevice& device, const DisplayWindow& window, const bool smokeReadback )
         : _context(context)
         , _device(device)
         , _window(window)
+        , _smokeReadback(smokeReadback)
     {
         const auto& windowDimensions = _window.getDrawableSize();
         surfaceExtent({ windowDimensions.width, windowDimensions.height } );
@@ -26,22 +45,28 @@ namespace Divide {
     
     void VKSwapChain::destroy() 
     {
-        vkb::destroy_swapchain(_swapChain);
-
+        _activeFrame = nullptr;
         _swapChain.destroy_image_views(_swapchainImageViews);
-        _swapchainImages.clear();
-        _swapchainImageViews.clear();
-        _swapchainImagePresented.clear();
 
         if ( _swapChain.swapchain != VK_NULL_HANDLE )
         {
             const VkDevice device = _device.getVKDevice();
+            const VkCommandPool pool = _device.getQueue(QueueType::GRAPHICS)._pool;
             for (FrameData& frameData : _frames)
             {
+                if ( frameData._commandBuffer != VK_NULL_HANDLE )
+                {
+                    vkFreeCommandBuffers(device, pool, 1u, &frameData._commandBuffer);
+                }
                 vkDestroySemaphore(device, frameData._presentSemaphore, nullptr);
                 vkDestroyFence(device, frameData._renderFence._handle, nullptr);
+                if ( frameData._timestampPool != VK_NULL_HANDLE )
+                {
+                    vkDestroyQueryPool( device, frameData._timestampPool, nullptr );
+                }
             }
             _frames.clear();
+            vkb::destroy_swapchain(_swapChain);
             _swapChain.swapchain = VK_NULL_HANDLE;
 
             for (VkSemaphore& semaphore : _renderSemaphores)
@@ -53,6 +78,9 @@ namespace Divide {
             }
             _renderSemaphores.clear();
         }
+        _swapchainImages.clear();
+        _swapchainImageViews.clear();
+        _swapchainImagePresented.clear();
     }
 
     ErrorCode VKSwapChain::create(const bool vSync, const bool adaptiveSync, VkSurfaceKHR targetSurface)
@@ -68,6 +96,29 @@ namespace Divide {
         if ( _swapChain.swapchain != VK_NULL_HANDLE )
         {
             swapchainBuilder.set_old_swapchain( _swapChain );
+        }
+
+        if ( _smokeReadback )
+        {
+            VkSurfaceCapabilitiesKHR capabilities{};
+            const VkResult capabilitiesResult = vkGetPhysicalDeviceSurfaceCapabilitiesKHR( _device.getVKPhysicalDevice(),
+                                                                                           targetSurface, &capabilities );
+            if ( capabilitiesResult == VK_ERROR_DEVICE_LOST )
+            {
+                ReportVulkanDeviceLost( "vkGetPhysicalDeviceSurfaceCapabilitiesKHR" );
+            }
+            if ( capabilitiesResult != VK_SUCCESS )
+            {
+                char detail[128]{};
+                std::snprintf( detail, sizeof( detail ), "Surface capability query failed: %d", to_I32( capabilitiesResult ) );
+                RenderSmokeTest::Fail( "window_capture", detail, RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            if ( ( capabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT ) == 0u )
+            {
+                RenderSmokeTest::Fail( "window_capture", "The main swapchain does not support transfer-source readback",
+                                       RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
+            swapchainBuilder.add_image_usage_flags( VK_IMAGE_USAGE_TRANSFER_SRC_BIT );
         }
 
         // adaptiveSync not supported yet
@@ -91,6 +142,7 @@ namespace Divide {
         if ( !vkbSwapchain )
         {
             Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), vkbSwapchain.error().message().c_str() );
+            destroy();
             return ErrorCode::VK_OLD_HARDWARE;
         }
 
@@ -100,7 +152,7 @@ namespace Divide {
         _swapchainImages = _swapChain.get_images().value();
         _swapchainImageViews = _swapChain.get_image_views().value();
         _swapchainImagePresented.assign(_swapchainImages.size(), 0u);
-        _frames.resize(_swapchainImages.size());
+        _frames.resize(FrameSlotCount());
         _renderSemaphores.resize(_swapchainImages.size());
 
         if ( _swapChain.image_format == VK_FORMAT_UNDEFINED )
@@ -108,22 +160,95 @@ namespace Divide {
             return ErrorCode::VK_SURFACE_CREATE;
         }
 
+        // Report the mode the driver actually granted: IMMEDIATE silently falls back to FIFO (display-synchronised) if unsupported
+        Console::printfn( "Vulkan swapchain present mode: {} (VSync requested: {})", PresentModeName( _swapChain.present_mode ), vSync );
+        if ( !vSync && _swapChain.present_mode == VK_PRESENT_MODE_FIFO_KHR )
+        {
+            Console::warnfn( "Vulkan IMMEDIATE present mode is unavailable: presentation is synchronised to the display refresh rate" );
+        }
+
         const VkSemaphoreCreateInfo semaphoreCreateInfo = vk::semaphoreCreateInfo();
         const VkFenceCreateInfo fenceCreateInfo = vk::fenceCreateInfo( VK_FENCE_CREATE_SIGNALED_BIT );
         const VkCommandBufferAllocateInfo cmdAllocInfo = vk::commandBufferAllocateInfo( _device.getQueue( QueueType::GRAPHICS)._pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1u );
 
         const VkDevice device = _device.getVKDevice();
+        {
+            const U32 graphicsFamily = _device.getQueue( QueueType::GRAPHICS )._index;
+            U32 familyCount = 0u;
+            vkGetPhysicalDeviceQueueFamilyProperties( _device.getVKPhysicalDevice(), &familyCount, nullptr );
+            vector<VkQueueFamilyProperties> families( familyCount );
+            vkGetPhysicalDeviceQueueFamilyProperties( _device.getVKPhysicalDevice(), &familyCount, families.data() );
+            _timestampValidBits = graphicsFamily < familyCount ? families[graphicsFamily].timestampValidBits : 0u;
+            _timestampPeriodNS = _device.getPhysicalDevice().properties.limits.timestampPeriod;
+            if ( _timestampPeriodNS <= 0.f )
+            {
+                _timestampValidBits = 0u;
+            }
+        }
+        lastGPUTimeMS( 0.f );
+        const auto creationFailed = [this]( FrameData& frame, const VkResult result, const char* operation )
+        {
+            frame._frameError = result;
+            if ( result == VK_ERROR_DEVICE_LOST && RenderSmokeTest::Enabled() )
+            {
+                ReportVulkanDeviceLost( operation, &_device );
+            }
+            Console::errorfn( "Vulkan swapchain initialization failed during {}: {} ({})",
+                              operation, VKErrorString( result ).c_str(), to_I32( result ) );
+            return ErrorCode::VK_SURFACE_CREATE;
+        };
+
         for ( size_t i = 0u; i < _frames.size(); ++i )
         {
-            VK_CHECK( vkCreateSemaphore( device, &semaphoreCreateInfo, nullptr, &_frames[i]._presentSemaphore ) );
-            VK_CHECK( vkCreateFence( device,     &fenceCreateInfo,     nullptr, &_frames[i]._renderFence._handle ) );
-            VK_CHECK( vkAllocateCommandBuffers( device, &cmdAllocInfo, &_frames[i]._commandBuffer ) );
-            _frames[i]._renderFence._tag = i;
+            FrameData& frame = _frames[i];
+            VkSemaphore presentSemaphore = VK_NULL_HANDLE;
+            VkResult result = vkCreateSemaphore( device, &semaphoreCreateInfo, nullptr, &presentSemaphore );
+            if ( result != VK_SUCCESS )
+            {
+                return creationFailed( frame, result, "vkCreateSemaphore (acquire)" );
+            }
+            frame._presentSemaphore = presentSemaphore;
+
+            VkFence renderFence = VK_NULL_HANDLE;
+            result = vkCreateFence( device, &fenceCreateInfo, nullptr, &renderFence );
+            if ( result != VK_SUCCESS )
+            {
+                return creationFailed( frame, result, "vkCreateFence" );
+            }
+            frame._renderFence._handle = renderFence;
+
+            VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+            result = vkAllocateCommandBuffers( device, &cmdAllocInfo, &commandBuffer );
+            if ( result != VK_SUCCESS )
+            {
+                return creationFailed( frame, result, "vkAllocateCommandBuffers" );
+            }
+            frame._commandBuffer = commandBuffer;
+            frame._renderFence._tag = to_U8( i );
+
+            if ( _timestampValidBits > 0u )
+            {
+                VkQueryPoolCreateInfo queryInfo{};
+                queryInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+                queryInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+                queryInfo.queryCount = 2u + GPU_PASS_TIMESTAMP_CAPACITY;
+                VkQueryPool timestampPool = VK_NULL_HANDLE;
+                if ( vkCreateQueryPool( device, &queryInfo, nullptr, &timestampPool ) == VK_SUCCESS )
+                {
+                    frame._timestampPool = timestampPool;
+                }
+            }
         }
 
         for (VkSemaphore& semaphore : _renderSemaphores)
         {
-            VK_CHECK( vkCreateSemaphore( device, &semaphoreCreateInfo, nullptr, &semaphore) );
+            VkSemaphore renderSemaphore = VK_NULL_HANDLE;
+            const VkResult result = vkCreateSemaphore( device, &semaphoreCreateInfo, nullptr, &renderSemaphore );
+            if ( result != VK_SUCCESS )
+            {
+                return creationFailed( _frames.front(), result, "vkCreateSemaphore (render finished)" );
+            }
+            semaphore = renderSemaphore;
         }
 
         const auto& windowDimensions = _window.getDrawableSize();
@@ -132,36 +257,170 @@ namespace Divide {
         return ErrorCode::NO_ERR;
     }
 
+    bool VKSwapChain::ConvertSmokeReadback( const VkFormat format, const U32 width, const U32 height,
+                                            const std::span<const Byte> source, const std::span<Byte> destination ) noexcept
+    {
+        if ( !SupportsSmokeReadback( format ) || width == 0u || height == 0u ||
+             to_size( width ) > std::numeric_limits<size_t>::max() / 4u )
+        {
+            return false;
+        }
+        const size_t rowBytes = to_size( width ) * 4u;
+        if ( to_size( height ) > std::numeric_limits<size_t>::max() / rowBytes )
+        {
+            return false;
+        }
+        const size_t requiredBytes = rowBytes * to_size( height );
+        if ( source.size() < requiredBytes || destination.size() < requiredBytes )
+        {
+            return false;
+        }
+
+        const bool packed = format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 ||
+                            format == VK_FORMAT_A2R10G10B10_UNORM_PACK32;
+        const bool swapRedBlue = format == VK_FORMAT_B8G8R8A8_UNORM || format == VK_FORMAT_B8G8R8A8_SRGB ||
+                                 format == VK_FORMAT_A2R10G10B10_UNORM_PACK32;
+        // The swapchain is top-down; ImageTools::SaveImage expects bottom-up RGBA.
+        for ( size_t row = 0u; row < to_size( height ); ++row )
+        {
+            const Byte* input = source.data() + ( to_size( height ) - row - 1u ) * rowBytes;
+            Byte* output = destination.data() + row * rowBytes;
+            if ( !packed && !swapRedBlue )
+            {
+                std::memcpy( output, input, rowBytes );
+                continue;
+            }
+            for ( size_t column = 0u; column < to_size( width ); ++column )
+            {
+                if ( packed )
+                {
+                    U32 pixel = 0u;
+                    std::memcpy( &pixel, input, sizeof( pixel ) );
+                    const auto channel = []( const U32 value ) { return Byte{ to_U8( ( value * 255u + 511u ) / 1023u ) }; };
+                    const U32 low = pixel & 1023u;
+                    const U32 high = ( pixel >> 20u ) & 1023u;
+                    output[0] = channel( swapRedBlue ? high : low );
+                    output[1] = channel( ( pixel >> 10u ) & 1023u );
+                    output[2] = channel( swapRedBlue ? low : high );
+                    output[3] = Byte{ to_U8( ( pixel >> 30u ) * 85u ) };
+                }
+                else
+                {
+                    output[0] = input[2];
+                    output[1] = input[1];
+                    output[2] = input[0];
+                    output[3] = input[3];
+                }
+                input += 4u;
+                output += 4u;
+            }
+        }
+        return true;
+    }
+
+    VkImageMemoryBarrier2 VKSwapChain::SmokePresentBarrier( const VkImage image, const bool capture ) noexcept
+    {
+        VkImageMemoryBarrier2 barrier = vk::imageMemoryBarrier2();
+        barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+        barrier.dstStageMask = capture ? VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT : VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+        barrier.dstAccessMask = capture ? VK_ACCESS_2_TRANSFER_READ_BIT : VK_ACCESS_2_NONE;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        barrier.newLayout = capture ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        barrier.image = image;
+        barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0u, 1u, 0u, 1u };
+        return barrier;
+    }
+
+    VkResult VKSwapChain::waitForFrameSlot( const U64 frameNumber ) noexcept
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        return WaitForFrameSlot( { _frames.data(), _frames.size() }, frameNumber, _device.getVKDevice(),
+                                 []( const VkDevice device, const VkFence fence )
+        {
+            PROFILE_SCOPE( "Wait for fences", Profiler::Category::Graphics );
+            return vkWaitForFences( device, 1u, &fence, VK_TRUE, U64_MAX );
+        } );
+    }
+
     VkResult VKSwapChain::beginFrame()
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        _activeFrame = &_frames[GFXDevice::FrameCount() % _frames.size()];
-
-        //wait until the GPU has finished rendering the last frame.
+        _activeFrame = nullptr;
+        if ( _frames.empty() || _swapChain.swapchain == VK_NULL_HANDLE )
         {
-            PROFILE_SCOPE( "Wait for fences", Profiler::Category::Graphics);
-            VK_CHECK( vkWaitForFences( _device.getVKDevice(), 1, &_activeFrame->_renderFence._handle, VK_TRUE, U64_MAX ) );
-        }
-        {
-            PROFILE_SCOPE( "Reset fences", Profiler::Category::Graphics );
-            VK_CHECK( vkResetFences( _device.getVKDevice(), 1, &_activeFrame->_renderFence._handle ) );
+            return VK_ERROR_OUT_OF_DATE_KHR;
         }
 
-        //request image from the swapchain, one second timeout
+        const U64 frameNumber = GFXDevice::FrameCount();
+        const VkResult waitResult = waitForFrameSlot( frameNumber );
+        if ( waitResult != VK_SUCCESS )
+        {
+            return waitResult;
+        }
+
+        FrameData& frame = _frames[FrameSlotIndex( frameNumber )];
+        if ( frame._presentSemaphore == VK_NULL_HANDLE || frame._commandBuffer == VK_NULL_HANDLE )
+        {
+            frame._frameError = VK_ERROR_INITIALIZATION_FAILED;
+            return frame._frameError;
+        }
+
+        // The slot's fence has signaled, so the previous submission's timestamps are available.
+        readFrameTimestamps( frame );
+
+        _activeFrame = &frame;
+        // Request an image from the swapchain, waiting until one is available.
         VkResult ret = VK_ERROR_UNKNOWN;
         {
-            PROFILE_SCOPE( "Aquire Next Image", Profiler::Category::Graphics );
+            PROFILE_SCOPE( "Acquire Next Image", Profiler::Category::Graphics );
             ret = vkAcquireNextImageKHR(_device.getVKDevice(), _swapChain.swapchain, U64_MAX, _activeFrame->_presentSemaphore, nullptr, &_swapchainImageIndex);
         }
 
-        if ( ret == VK_SUCCESS )
+        if ( ret == VK_SUCCESS || ret == VK_SUBOPTIMAL_KHR )
         {
+            if ( _swapchainImageIndex >= _swapchainImages.size() ||
+                 _swapchainImageIndex >= _swapchainImageViews.size() ||
+                 _swapchainImageIndex >= _swapchainImagePresented.size() ||
+                 _swapchainImageIndex >= _renderSemaphores.size() ||
+                 _swapchainImages[_swapchainImageIndex] == VK_NULL_HANDLE ||
+                 _swapchainImageViews[_swapchainImageIndex] == VK_NULL_HANDLE ||
+                 _renderSemaphores[_swapchainImageIndex] == VK_NULL_HANDLE )
+            {
+                frame._frameError = VK_ERROR_INITIALIZATION_FAILED;
+                _activeFrame = nullptr;
+                return frame._frameError;
+            }
+
             _currentImageRenderedThisFrame = false;
             PROFILE_SCOPE( "Begin Command Buffer", Profiler::Category::Graphics );
             //begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
             VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo( VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT );
-            VK_CHECK( vkBeginCommandBuffer(_activeFrame->_commandBuffer, &cmdBeginInfo ) );
+            const VkResult beginResult = vkBeginCommandBuffer( frame._commandBuffer, &cmdBeginInfo );
+            if ( beginResult != VK_SUCCESS )
+            {
+                frame._frameError = beginResult;
+                _activeFrame = nullptr;
+                return beginResult;
+            }
+
+            if ( frame._timestampPool != VK_NULL_HANDLE )
+            {
+                vkCmdResetQueryPool( frame._commandBuffer, frame._timestampPool, 0u, 2u + GPU_PASS_TIMESTAMP_CAPACITY );
+                vkCmdWriteTimestamp2( frame._commandBuffer, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, frame._timestampPool, 0u );
+            }
+            frame._passTimestampCount = 0u;
+            frame._passTimestampFrame = frameNumber;
+        }
+        else
+        {
+            if ( ret != VK_ERROR_OUT_OF_DATE_KHR )
+            {
+                frame._frameError = ret;
+            }
+            _activeFrame = nullptr;
         }
 
         return ret;
@@ -171,25 +430,37 @@ namespace Divide {
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        static fixed_vector<VkPipelineStageFlags, 8, true> s_waitStages;
-        static VKSubmitSempahore::Container s_waitSempahores;
+        if ( _activeFrame == nullptr )
+        {
+            return VK_ERROR_INITIALIZATION_FAILED;
+        }
 
-        s_waitSempahores.reset_lose_memory();
-        s_waitSempahores.reserve(semaphores.size() + 1u);
+        fixed_vector<VkPipelineStageFlags, 8, true> waitStages;
+        VKSubmitSempahore::Container waitSemaphores;
 
-        s_waitStages.reset_lose_memory();
-        s_waitStages.reserve(semaphores.size() + 1u);
+        waitSemaphores.reserve(semaphores.size() + 1u);
+        waitStages.reserve(semaphores.size() + 1u);
 
-        s_waitSempahores.push_back( _activeFrame->_presentSemaphore );
-        s_waitStages.push_back( VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT );
+        waitSemaphores.push_back( _activeFrame->_presentSemaphore );
+        waitStages.push_back( VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT );
 
         for ( VkSemaphore s : semaphores )
         {
-            s_waitSempahores.push_back(s);
-            s_waitStages.push_back(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+            waitSemaphores.push_back(s);
+            waitStages.push_back(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
         }
 
-        VK_CHECK( vkEndCommandBuffer(_activeFrame->_commandBuffer ) );
+        if ( _activeFrame->_timestampPool != VK_NULL_HANDLE )
+        {
+            vkCmdWriteTimestamp2( _activeFrame->_commandBuffer, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, _activeFrame->_timestampPool, 1u );
+        }
+
+        const VkResult endResult = vkEndCommandBuffer( _activeFrame->_commandBuffer );
+        if ( endResult != VK_SUCCESS )
+        {
+            _activeFrame->_frameError = endResult;
+            return endResult;
+        }
 
         VkSemaphore imageRenderSemaphore = _renderSemaphores[_swapchainImageIndex];
 
@@ -198,16 +469,32 @@ namespace Divide {
         // we will signal the _renderSemaphore, to signal that rendering has finished
        
         VkSubmitInfo submit = vk::submitInfo();
-        submit.pWaitDstStageMask = s_waitStages.data();
-        submit.waitSemaphoreCount = to_U32(s_waitSempahores.size());
-        submit.pWaitSemaphores = s_waitSempahores.data();
+        submit.pWaitDstStageMask = waitStages.data();
+        submit.waitSemaphoreCount = to_U32(waitSemaphores.size());
+        submit.pWaitSemaphores = waitSemaphores.data();
         submit.signalSemaphoreCount = 1;
         submit.pSignalSemaphores = &imageRenderSemaphore;
         submit.commandBufferCount = 1;
         submit.pCommandBuffers = &_activeFrame->_commandBuffer;
 
+        // Reset only when submitting, so an abandoned frame leaves a signaled fence.
+        const VkResult resetResult = vkResetFences( _device.getVKDevice(), 1u, &_activeFrame->_renderFence._handle );
+        if ( resetResult != VK_SUCCESS )
+        {
+            _activeFrame->_frameError = resetResult;
+            return resetResult;
+        }
+
         // submit command buffer to the queue and execute it. _renderFence will now block until the graphic commands finish execution
-        _device.submitToQueue(QueueType::GRAPHICS, submit, _activeFrame->_renderFence._handle);
+        const VkResult submitResult = _device.submitToQueue(QueueType::GRAPHICS, submit, _activeFrame->_renderFence._handle);
+        if ( submitResult != VK_SUCCESS )
+        {
+            _activeFrame->_frameError = submitResult;
+            return submitResult;
+        }
+        _activeFrame->_submissionPending = true;
+        _activeFrame->_timestampsPending = _activeFrame->_timestampPool != VK_NULL_HANDLE;
+
         PROFILE_VK_PRESENT( &_swapChain.swapchain );
 
         // this will put the image we just rendered into the visible window.
@@ -225,8 +512,59 @@ namespace Divide {
         {
             markCurrentImagePresented();
         }
+        else if ( presentResult != VK_ERROR_OUT_OF_DATE_KHR )
+        {
+            _activeFrame->_frameError = presentResult;
+        }
 
         return presentResult;
+    }
+
+    void VKSwapChain::readFrameTimestamps( FrameData& frame ) noexcept
+    {
+        _lastPassTimestampCount = 0u;
+        if ( !frame._timestampsPending )
+        {
+            return;
+        }
+        frame._timestampsPending = false;
+
+        std::array<U64, 2u + GPU_PASS_TIMESTAMP_CAPACITY> timestamps{};
+        const U32 passCount = std::min( frame._passTimestampCount, GPU_PASS_TIMESTAMP_CAPACITY );
+        const VkResult result = vkGetQueryPoolResults( _device.getVKDevice(), frame._timestampPool, 0u, 2u + passCount,
+                                                       sizeof( U64 ) * ( 2u + passCount ), timestamps.data(), sizeof( U64 ),
+                                                       VK_QUERY_RESULT_64_BIT );
+        if ( result == VK_SUCCESS )
+        {
+            lastGPUTimeMS( TimestampDeltaMS( timestamps[0], timestamps[1], _timestampValidBits, _timestampPeriodNS ) );
+            for ( U32 i = 0u; i < passCount; ++i )
+            {
+                _lastPassTimestampsMS[i] = TimestampDeltaMS( timestamps[2], timestamps[2u + i], _timestampValidBits, _timestampPeriodNS );
+            }
+            _lastPassTimestampCount = passCount;
+            _lastPassTimestampFrame = frame._passTimestampFrame;
+        }
+    }
+
+    void VKSwapChain::writePassTimestamp( const U32 index ) noexcept
+    {
+        if ( _activeFrame == nullptr || _activeFrame->_timestampPool == VK_NULL_HANDLE || index >= GPU_PASS_TIMESTAMP_CAPACITY ) [[unlikely]]
+        {
+            return;
+        }
+
+        // Unwritten queries in the range would make the non-waiting readback return VK_NOT_READY, so indices must be dense.
+        DIVIDE_ASSERT( index == _activeFrame->_passTimestampCount );
+        vkCmdWriteTimestamp2( _activeFrame->_commandBuffer, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, _activeFrame->_timestampPool, 2u + index );
+        _activeFrame->_passTimestampCount = index + 1u;
+    }
+
+    U32 VKSwapChain::readPassTimestamps( const std::span<F32> outMS, U64& frameNumberOut ) const noexcept
+    {
+        const U32 count = std::min( _lastPassTimestampCount, to_U32( outMS.size() ) );
+        std::copy_n( _lastPassTimestampsMS.begin(), count, outMS.begin() );
+        frameNumberOut = _lastPassTimestampFrame;
+        return count;
     }
 
     vkb::Swapchain& VKSwapChain::getSwapChain() noexcept
@@ -285,5 +623,10 @@ namespace Divide {
     {
         dataOut = _activeFrame;
         return dataOut != nullptr;
+    }
+
+    VkFence VKSwapChain::activeFrameFence() const noexcept
+    {
+        return _activeFrame != nullptr ? _activeFrame->_renderFence._handle : VK_NULL_HANDLE;
     }
 }; //namespace Divide

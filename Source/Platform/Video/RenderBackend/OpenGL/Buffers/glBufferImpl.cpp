@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/glBufferImpl.h"
 #include "Headers/glMemoryManager.h"
@@ -81,6 +81,7 @@ namespace Divide
         if ( !Runtime::isMainThread() && _lockManager != nullptr )
         {
             auto sync = LockManager::CreateSyncObject( RenderAPI::OpenGL, LockManager::DEFAULT_SYNC_FLAG_SSBO );
+            gl46core::glFlush();
             DIVIDE_EXPECTED_CALL( lockRange( { 0u, _params._dataSize }, sync ) );
         }
 
@@ -114,6 +115,7 @@ namespace Divide
         if ( !waitForLockedRange({offsetInBytes, rangeInBytes} ) ) [[unlikely]]
         {
             Console::errorfn( LOCALE_STR( "ERROR_BUFFER_LOCK_MANAGER_WAIT" ) );
+            return {};
         }
 
         BufferLock ret
@@ -153,7 +155,11 @@ namespace Divide
         DIVIDE_ASSERT(_params._hostVisible);
         DIVIDE_GPU_ASSERT(outData.second >= rangeInBytes && _memoryBlock._size >= offsetInBytes + rangeInBytes);
 
-        DIVIDE_EXPECTED_CALL( waitForLockedRange( {offsetInBytes, rangeInBytes} ) );
+        if ( !waitForLockedRange( {offsetInBytes, rangeInBytes} ) ) [[unlikely]]
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_BUFFER_LOCK_MANAGER_WAIT" ) );
+            return;
+        }
 
         LockGuard<Mutex> w_lock(_dataLock);
         if (_params._updateFrequency != BufferUpdateFrequency::ONCE) [[likely]]

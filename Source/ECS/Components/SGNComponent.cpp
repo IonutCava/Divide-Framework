@@ -2,12 +2,10 @@
 
 #include "Headers/SGNComponent.h"
 
+#include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Graphs/Headers/SceneGraph.h"
 #include "Graphs/Headers/SceneGraphNode.h"
-
-#include "ECS/Components/Headers/NetworkingComponent.h"
-#include "ECS/Components/Headers/RenderingComponent.h"
 
 namespace Divide {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;

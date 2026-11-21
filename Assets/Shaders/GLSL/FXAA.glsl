@@ -48,7 +48,7 @@ void main(void)
     vec4 ConsoleRcpFrameOpt2 = vec4(0.0, 0.0, 0.0, 0.0);
     vec4 Console360RcpFrameOpt2 = vec4(0.0, 0.0, 0.0, 0.0);
 
-    int qualityFactor = min(dvd_qualityMultiplier, 4);
+    int qualityFactor = clamp(dvd_qualityMultiplier, 0, 4);
     // Only used on FXAA Quality.
     // Choose the amount of sub-pixel aliasing removal.
     // This can effect sharpness.

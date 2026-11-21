@@ -1,10 +1,11 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/vkShaderProgram.h"
 
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
+#include "Platform/Video/Shaders/Headers/GLSLToSPIRV.h"
 
 #include "Utility/Headers/Localization.h"
 
@@ -69,6 +70,7 @@ namespace Divide {
         _loadData = data;
 
         _valid = false;
+        _multiDrawCompatible = false;
 
         reset();
 
@@ -79,6 +81,14 @@ namespace Divide {
             assert(_handle == VK_NULL_HANDLE);
 
             assert(!data._sourceCodeSpirV.empty());
+
+            bool usesDrawIndex = false;
+            if ( !SpirvHelper::UsesDrawIndex( data._sourceCodeSpirV, usesDrawIndex ) )
+            {
+                Console::errorfn( "Invalid SPIR-V instruction stream for Vulkan shader '{}'", name().c_str() );
+                return false;
+            }
+            _multiDrawCompatible = !usesDrawIndex;
 
             //create a new shader module, using the buffer we loaded
             const VkShaderModuleCreateInfo createInfo = vk::shaderModuleCreateInfo(data._sourceCodeSpirV.size() * sizeof(SpvWord), data._sourceCodeSpirV.data());
@@ -107,13 +117,10 @@ namespace Divide {
 
     vkShaderProgram::~vkShaderProgram()
     {
-        if (!unload())
-        {
-            NOP();
-        }
+        clearShaderStages();
     }
 
-    bool vkShaderProgram::unload() 
+    void vkShaderProgram::clearShaderStages()
     {
         for ( vkShaderEntry& shader : _shaderStage )
         {
@@ -121,7 +128,11 @@ namespace Divide {
         }
 
         _shaderStage.clear();
+    }
 
+    bool vkShaderProgram::unload()
+    {
+        clearShaderStages();
         return ShaderProgram::unload();
     }
 
@@ -179,7 +190,7 @@ namespace Divide {
 
             if ( !_shaderStage.empty() )
             {
-                VK_API::OnShaderReloaded(this);
+                VK_API::OnShaderReloaded( getGUID() );
                 return true;
             }
         }

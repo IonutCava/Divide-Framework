@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/glLockManager.h"
 
@@ -66,6 +66,12 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+        if ( SDL_GL_GetCurrentContext() == nullptr )
+        {
+            Console::errorfn( "OpenGL: cannot wait for a buffer fence without a current context" );
+            return false;
+        }
+
         gl46core::GLuint64 waitTimeout = 0u;
         gl46core::SyncObjectMask waitFlags = gl46core::SyncObjectMask::GL_NONE_BIT;
         while ( true )
@@ -78,7 +84,11 @@ namespace Divide
             {
                 return true;
             }
-            DIVIDE_GPU_ASSERT( waitRet != gl46core::GL_WAIT_FAILED, "glLockManager::wait error: Not sure what to do here. Probably raise an exception or something." );
+            if ( waitRet != gl46core::GL_TIMEOUT_EXPIRED )
+            {
+                Console::errorfn( "OpenGL: buffer fence wait failed (status {})", to_U32( waitRet ) );
+                return false;
+            }
 
             if ( retryCount == 1 )
             {
@@ -92,11 +102,7 @@ namespace Divide
 
             if ( ++retryCount > g_MaxLockWaitRetries )
             {
-                if ( waitRet != gl46core::GL_TIMEOUT_EXPIRED ) [[unlikely]]
-                {
-                    Console::errorfn(LOCALE_STR("ERROR_GL_LOCK_WAIT_TIMEOUT"));
-                }
-
+                Console::errorfn( LOCALE_STR( "ERROR_GL_LOCK_WAIT_TIMEOUT" ) );
                 break;
             }
         }
@@ -111,7 +117,7 @@ namespace Divide
         glSyncObject* glSync = static_cast<glSyncObject*>(sync.get());
 
         if ( glSync->_syncObject == nullptr ||
-             glSync->_frameNumber + Config::MAX_FRAMES_IN_FLIGHT < GL_API::GetStateTracker()._lastSyncedFrameNumber )
+             glSync->_frameNumber + Config::MAX_FRAMES_IN_FLIGHT < GL_API::GetStateTracker()._lastSyncedFrameNumber.load( std::memory_order_relaxed ) )
         {
             // Lock expired from underneath us
             return true;

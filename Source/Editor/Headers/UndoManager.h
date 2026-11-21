@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -41,6 +41,7 @@ namespace Divide {
 
         PushConstantType _type = PushConstantType::COUNT;
         string _name = "";
+        I64 _ownerGUID = -1;
         DELEGATE<void, std::string_view> _onChangedCbk;
 
         virtual void swapValues() = 0;
@@ -76,6 +77,7 @@ namespace Divide {
 
         [[nodiscard]] bool Undo();
         [[nodiscard]] bool Redo();
+        void removeEntriesForOwner(I64 ownerGUID);
 
         [[nodiscard]] size_t UndoStackSize() const noexcept { return _undoStack.size(); }
         [[nodiscard]] size_t RedoStackSize() const noexcept { return _redoStack.size(); }
@@ -85,8 +87,9 @@ namespace Divide {
         template<typename T>
         void registerUndoEntry(const UndoEntry<T>& entry)
         {
+            _redoStack.clear();
             _undoStack.emplace_back( std::make_shared<UndoEntry<T>>( entry ) );
-            if (to_U32(_undoStack.size()) >= _maxSize)
+            if (to_U32(_undoStack.size()) > _maxSize)
             {
                 _undoStack.pop_front();
             }

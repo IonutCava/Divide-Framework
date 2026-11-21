@@ -1,0 +1,10 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
+#ifndef _HIZ_DISPATCH_INDEX_CMN_
+#define _HIZ_DISPATCH_INDEX_CMN_
+
+#define HIZ_CULL_GROUP_COUNT(COUNT, SIZE) (((COUNT) / (SIZE)) + (((COUNT) % (SIZE)) != 0u ? 1u : 0u))
+#define HIZ_CULL_GROUP_INDEX(X, Y, WIDTH) (((Y) * (WIDTH)) + (X))
+#define HIZ_CULL_ENTITY_INDEX(GROUP, LANE, SIZE) (((GROUP) * (SIZE)) + (LANE))
+
+#endif

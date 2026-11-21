@@ -1,8 +1,8 @@
 
 
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -89,6 +89,7 @@ namespace Divide
         void printResources( bool error ) final;
 
         SharedMutex _lock;
+        std::atomic<U64> _mutationVersion{ 1u };
         fixed_vector<std::pair<bool, U8>, ResourcePoolSize, true> _freeList;
         fixed_vector<Entry, ResourcePoolSize, true> _resPool;
 
@@ -200,6 +201,7 @@ namespace Divide
     {
         _freeList.resize( size, std::make_pair( true, 0u ) );
         _resPool.resize( size, {} );
+        _mutationVersion.fetch_add( 1u, std::memory_order_release );
     }
 
     template<typename T>
@@ -215,6 +217,7 @@ namespace Divide
                 Entry& entry = _resPool[handleOut._index];
                 entry._descriptorHash = descriptorHash;
                 entry._refCount = 1u;
+                _mutationVersion.fetch_add( 1u, std::memory_order_release );
 
                 return MOV(handleOut);
             }
@@ -245,17 +248,16 @@ namespace Divide
     {
         switch ( _api )
         {
-            case RenderAPI::None:   GetMemPool<noTexture>().deleteElement( static_cast<ResourcePtr<noTexture>>( ptr ) ); break;
-            case RenderAPI::OpenGL: GetMemPool<glTexture>().deleteElement( static_cast<ResourcePtr<glTexture>>( ptr ) ); break;
-            case RenderAPI::Vulkan: GetMemPool<vkTexture>().deleteElement( static_cast<ResourcePtr<vkTexture>>( ptr ) ); break;
             case RenderAPI::NRI_Vulkan:
             case RenderAPI::NRI_D3D12:
             case RenderAPI::NRI_D3D11:
-            case RenderAPI::NRI_None:
-                GetMemPool<nriTexture>().deleteElement( static_cast<ResourcePtr<nriTexture>>( ptr ) ); break;
+            case RenderAPI::NRI_None: GetMemPool<nriTexture>().deleteElement( static_cast<ResourcePtr<nriTexture>>( ptr ) ); break;
+            case RenderAPI::None:     GetMemPool<noTexture>().deleteElement( static_cast<ResourcePtr<noTexture>>( ptr ) ); break;
+            case RenderAPI::OpenGL:   GetMemPool<glTexture>().deleteElement( static_cast<ResourcePtr<glTexture>>( ptr ) ); break;
+            case RenderAPI::Vulkan:   GetMemPool<vkTexture>().deleteElement( static_cast<ResourcePtr<vkTexture>>( ptr ) ); break;
 
-            default:
-            case RenderAPI::COUNT:  DIVIDE_UNEXPECTED_CALL(); break;
+            case RenderAPI::COUNT:
+            default:                  DIVIDE_UNEXPECTED_CALL();
         }
     }
 
@@ -264,17 +266,15 @@ namespace Divide
     {
         switch ( _api )
         {
-            case RenderAPI::None:   GetMemPool<noShaderProgram>().deleteElement( static_cast<ResourcePtr<noShaderProgram>>( ptr) ); break;
-            case RenderAPI::OpenGL: GetMemPool<glShaderProgram>().deleteElement( static_cast<ResourcePtr<glShaderProgram>>( ptr) ); break;
-            case RenderAPI::Vulkan: GetMemPool<vkShaderProgram>().deleteElement( static_cast<ResourcePtr<vkShaderProgram>>( ptr) ); break;
             case RenderAPI::NRI_Vulkan:
             case RenderAPI::NRI_D3D12:
             case RenderAPI::NRI_D3D11:
-            case RenderAPI::NRI_None:
-                GetMemPool<nriShaderProgram>().deleteElement(static_cast<ResourcePtr<nriShaderProgram>>(ptr)); break;
-
-            default:
-            case RenderAPI::COUNT:  DIVIDE_UNEXPECTED_CALL(); break;
+            case RenderAPI::NRI_None: GetMemPool<nriShaderProgram>().deleteElement(static_cast<ResourcePtr<nriShaderProgram>>(ptr)); break;
+            case RenderAPI::None:     GetMemPool<noShaderProgram>().deleteElement( static_cast<ResourcePtr<noShaderProgram>>( ptr) ); break;
+            case RenderAPI::OpenGL:   GetMemPool<glShaderProgram>().deleteElement( static_cast<ResourcePtr<glShaderProgram>>( ptr) ); break;
+            case RenderAPI::Vulkan:   GetMemPool<vkShaderProgram>().deleteElement( static_cast<ResourcePtr<vkShaderProgram>>( ptr) ); break;
+            case RenderAPI::COUNT:
+            default:                  DIVIDE_UNEXPECTED_CALL();
         }
     }
 
@@ -307,6 +307,7 @@ namespace Divide
                 entry = {};
                 ++_freeList[handle._index].second;
                 _freeList[handle._index].first = true;
+                _mutationVersion.fetch_add( 1u, std::memory_order_release );
             }
             else
             {
@@ -366,6 +367,7 @@ namespace Divide
     void ResourcePool<T>::commitLocked( const Handle<T> handle, ResourcePtr<T> ptr )
     {
         _resPool[handle._index]._ptr = ptr;
+        _mutationVersion.fetch_add( 1u, std::memory_order_release );
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
@@ -374,7 +376,7 @@ namespace Divide
         if ( handle != INVALID_HANDLE<T>)
         {
             ResourcePool<T>& pool = GetPool<T>( s_renderAPI );
-            SharedLock<SharedMutex> r_lock( pool._lock );
+            LockGuard<SharedMutex> w_lock( pool._lock );
             if ( pool._freeList[handle._index].second == handle._generation )
             {
                 auto& entry = pool._resPool[handle._index];
@@ -390,18 +392,7 @@ namespace Divide
     Handle<T> ResourceCache::RetrieveOrAllocateHandle( const size_t descriptorHash, bool& wasInCache )
     {
         ResourcePool<T>& pool = GetPool<T>(s_renderAPI);
-        {
-            SharedLock<SharedMutex> r_lock(pool._lock);
-            const Handle<T> ret = pool.retrieveHandleLocked(descriptorHash);
-            if ( ret != INVALID_HANDLE<T> )
-            {
-                wasInCache = true;
-                return MOV(ret);
-            }
-        }
-
         LockGuard<SharedMutex> w_lock( pool._lock );
-        // Check again
         const Handle<T> ret = pool.retrieveHandleLocked( descriptorHash );
         if ( ret != INVALID_HANDLE<T> )
         {
@@ -417,17 +408,66 @@ namespace Divide
     template <typename T> requires std::is_base_of_v<CachedResource, T>
     T* ResourceCache::Get( const Handle<T> handle )
     {
+        if ( handle == INVALID_HANDLE<T> ) [[unlikely]]
+        {
+            return nullptr;
+        }
+
+        ResourcePool<T>& pool = GetPool<T>( s_renderAPI );
+
+        struct GetCacheEntry
+        {
+            Handle<T> _handle = INVALID_HANDLE<T>;
+            T* _ptr = nullptr;
+            U64 _mutationVersion = U64_MAX;
+        };
+
+        thread_local GetCacheEntry s_cache;
+
+        const U64 currentMutationVersion = pool._mutationVersion.load( std::memory_order_acquire );
+        if ( s_cache._handle == handle && s_cache._mutationVersion == currentMutationVersion ) [[likely]]
+        {
+            return s_cache._ptr;
+        }
+
+        T* ptr = nullptr;
+        {
+            SharedLock<SharedMutex> r_lock( pool._lock );
+            if ( handle._index < pool._freeList.size() &&
+                 !pool._freeList[handle._index].first &&
+                  pool._freeList[handle._index].second == handle._generation )
+            {
+                ptr = pool._resPool[handle._index]._ptr;
+            }
+        }
+
+        s_cache._handle = handle;
+        s_cache._ptr = ptr;
+        s_cache._mutationVersion = pool._mutationVersion.load( std::memory_order_relaxed );
+
+        return ptr;
+    }
+
+    template <typename T> requires std::is_base_of_v<CachedResource, T>
+    ResourceSnapshot ResourceCache::Inspect( const Handle<T> handle )
+    {
         if ( handle != INVALID_HANDLE<T> ) [[likely]]
         {
             ResourcePool<T>& pool = GetPool<T>( s_renderAPI );
             SharedLock<SharedMutex> r_lock( pool._lock );
-            if ( pool._freeList[handle._index].second == handle._generation )
+            if ( handle._index < pool._freeList.size() &&
+                 !pool._freeList[handle._index].first &&
+                 pool._freeList[handle._index].second == handle._generation )
             {
-                return pool._resPool[handle._index]._ptr;
+                const T* resource = pool._resPool[handle._index]._ptr;
+                if ( resource != nullptr )
+                {
+                    return { resource->getState(), resource->getGUID() };
+                }
             }
         }
 
-        return nullptr;
+        return {};
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
@@ -462,20 +502,16 @@ namespace Divide
     {
         switch ( s_renderAPI )
         {
-            case RenderAPI::None:   return GetMemPool<noShaderProgram>().newElement( *s_context, descriptor );
-            case RenderAPI::OpenGL: return GetMemPool<glShaderProgram>().newElement( *s_context, descriptor );
-            case RenderAPI::Vulkan: return GetMemPool<vkShaderProgram>().newElement( *s_context, descriptor );
             case RenderAPI::NRI_Vulkan:
             case RenderAPI::NRI_D3D12:
             case RenderAPI::NRI_D3D11:
-            case RenderAPI::NRI_None:
-                return GetMemPool<nriShaderProgram>().newElement(*s_context, descriptor);
-
-            default:
-            case RenderAPI::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+            case RenderAPI::NRI_None: return GetMemPool<nriShaderProgram>().newElement(*s_context, descriptor);
+            case RenderAPI::None:     return GetMemPool<noShaderProgram>().newElement( *s_context, descriptor );
+            case RenderAPI::OpenGL:   return GetMemPool<glShaderProgram>().newElement( *s_context, descriptor );
+            case RenderAPI::Vulkan:   return GetMemPool<vkShaderProgram>().newElement( *s_context, descriptor );
+            case RenderAPI::COUNT:
+            default:                  DIVIDE_UNEXPECTED_CALL();
         }
-
-        return nullptr;
     }
 
     template<>
@@ -483,20 +519,16 @@ namespace Divide
     {
         switch ( s_renderAPI )
         {
-            case RenderAPI::None:   return GetMemPool<noTexture>().newElement( *s_context, descriptor );
-            case RenderAPI::OpenGL: return GetMemPool<glTexture>().newElement( *s_context, descriptor );
-            case RenderAPI::Vulkan: return GetMemPool<vkTexture>().newElement( *s_context, descriptor );
             case RenderAPI::NRI_Vulkan:
             case RenderAPI::NRI_D3D12:
             case RenderAPI::NRI_D3D11:
-            case RenderAPI::NRI_None:
-                return GetMemPool<nriTexture>().newElement(*s_context, descriptor);
-
-            default:
-            case RenderAPI::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+            case RenderAPI::NRI_None: return GetMemPool<nriTexture>().newElement(*s_context, descriptor);
+            case RenderAPI::None:     return GetMemPool<noTexture>().newElement( *s_context, descriptor );
+            case RenderAPI::OpenGL:   return GetMemPool<glTexture>().newElement( *s_context, descriptor );
+            case RenderAPI::Vulkan:   return GetMemPool<vkTexture>().newElement( *s_context, descriptor );
+            case RenderAPI::COUNT:
+            default:                  DIVIDE_UNEXPECTED_CALL();
         }
-
-        return nullptr;
     }
 
     template<typename T> requires std::is_base_of_v<Resource, T>
@@ -582,11 +614,14 @@ namespace Divide
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
-    Handle<T> ResourceCache::LoadResource( const ResourceDescriptor<T>& descriptor, bool& wasInCache, std::atomic_uint& taskCounter )
+    Handle<T> ResourceCache::LoadResource( const ResourceDescriptor<T>& descriptor, bool& wasInCache, std::atomic_uint* taskCounter )
     {
         DIVIDE_ASSERT(s_enabled);
 
-        taskCounter.fetch_add( 1u );
+        if (taskCounter != nullptr)
+        {
+            taskCounter->fetch_add( 1u );
+        }
 
         // The loading process may change the resource descriptor so always use the user-specified descriptor hash for lookup!
         const size_t loadingHash = descriptor.getHash();
@@ -600,7 +635,10 @@ namespace Divide
         Handle<T> ret = RetrieveOrAllocateHandle<T>( loadingHash, wasInCache );
         if ( wasInCache )
         {
-            taskCounter.fetch_sub( 1u );
+            if (taskCounter != nullptr)
+            {
+                taskCounter->fetch_sub( 1u );
+            }
             return MOV(ret);
         }
 
@@ -616,7 +654,7 @@ namespace Divide
                                 ResourceCache::Build<T>( ptr, descriptor );
                             }),
                             descriptor.waitForReady() ? TaskPriority::REALTIME : TaskPriority::HIGH,
-                            [ptr, ret, &taskCounter, resName = descriptor.resourceName()]()
+                            [ptr, ret, taskCounter, resName = descriptor.resourceName()]()
                             {
                                 DIVIDE_ASSERT(ret != INVALID_HANDLE<T>);
 
@@ -639,9 +677,20 @@ namespace Divide
                                     GetPool<T>(s_renderAPI).deallocate( retCpy );
                                 }
 
-                                taskCounter.fetch_sub( 1u );
+                                if (taskCounter != nullptr)
+                                {
+                                    taskCounter->fetch_sub( 1u );
+                                }
                             }
                 );
+        }
+        else
+        {
+            GetPool<T>(s_renderAPI).deallocate( ret );
+            if (taskCounter != nullptr)
+            {
+                taskCounter->fetch_sub( 1u );
+            }
         }
 
         return MOV(ret);

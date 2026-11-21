@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2018-2026 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -50,6 +50,13 @@ class VKDevice final : NonCopyable, NonMovable
                    features.extendedDynamicState3ColorWriteMask;
         }
 
+        [[nodiscard]] static constexpr bool CanEnableDeviceFault( const bool smokeMode,
+                                                                   const bool extensionPresent,
+                                                                   const bool featureSupported ) noexcept
+        {
+            return smokeMode && extensionPresent && featureSupported;
+        }
+
         [[nodiscard]] VkDevice getVKDevice() const noexcept;
         [[nodiscard]] VkPhysicalDevice getVKPhysicalDevice() const noexcept;
 
@@ -57,8 +64,14 @@ class VKDevice final : NonCopyable, NonMovable
         [[nodiscard]] const vkb::PhysicalDevice& getPhysicalDevice() const noexcept;
 
         [[nodiscard]] VkCommandPool   createCommandPool(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT) const;
-                      void            submitToQueue(QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence) const;
+        [[nodiscard]] VkResult        submitToQueue(QueueType queue, const VkSubmitInfo& submitInfo, VkFence& fence) const;
         [[nodiscard]] VkResult        queuePresent(QueueType queue, const VkPresentInfoKHR& presentInfo) const;
+        [[nodiscard]] VkResult        waitIdle() const;
+        void writeDeviceFaultInfo( std::FILE* output ) const noexcept;
+
+        [[nodiscard]] static bool SmokeQueueSubmitActive() noexcept;
+        [[nodiscard]] static std::FILE* PendingSmokeDeviceLossFailure() noexcept;
+        static void SetPendingSmokeDeviceLossFailure( std::FILE* output ) noexcept;
 
         [[nodiscard]] U32     getPresentQueueIndex() const noexcept;
         [[nodiscard]] VKQueue getQueue( QueueType type ) const noexcept;
@@ -71,11 +84,22 @@ class VKDevice final : NonCopyable, NonMovable
 
     private:
         [[nodiscard]] VKQueue getQueueInternal( QueueType type, bool dedicated) const noexcept;
+        [[nodiscard]] Mutex& queueLock( QueueType type ) const noexcept;
 
     private:
+        struct SmokeFailureState
+        {
+            bool _queueSubmitActive{ false };
+            std::FILE* _deviceLossFailure{ nullptr };
+        };
+
+        static thread_local SmokeFailureState s_smokeFailureState;
+
         vkb::Device _device{}; // Vulkan device for commands
         vkb::PhysicalDevice _physicalDevice{}; // GPU chosen as the default device
         U32 _presentQueueIndex{ INVALID_VK_QUEUE_INDEX };
+        bool _deviceFaultEnabled{ false };
+        bool _deviceFaultVendorBinary{ false };
 
         std::array<VKQueue, to_base( QueueType::COUNT ) > _queues;
         mutable std::array<Mutex, to_base( QueueType::COUNT )> _queueLocks;

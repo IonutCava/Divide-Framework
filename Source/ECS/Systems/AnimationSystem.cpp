@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/AnimationSystem.h"
 
@@ -37,26 +37,35 @@ namespace Divide {
 
         for (AnimationComponent* comp : _componentCache)
         {
+            comp->_frameTicked = false;
             const SceneAnimator* animator = comp->animator();
 
-            if (!animator || COMPARE(comp->_parentTimeStamp, comp->_currentTimeStamp))
+            if (!animator)
             {
-                return;
+                continue;
             }
 
-            comp->_currentTimeStamp = comp->_parentTimeStamp;
-            const D64 timeStampSec = Time::MillisecondsToSeconds<D64>(comp->_currentTimeStamp);
-
-            if (comp->playAnimations())
+            const bool playing = comp->playAnimations();
+            if (!COMPARE(comp->_parentTimeStamp, comp->_currentTimeStamp))
             {
-                // Update Animations
-                comp->_frameIndex = animator->frameIndexForTimeStamp(comp->animationIndex(), timeStampSec, !comp->playInReverse());
+                comp->_currentTimeStamp = comp->_parentTimeStamp;
+                const D64 timeStampSec = Time::MillisecondsToSeconds<D64>(comp->_currentTimeStamp);
 
-                if (comp->animationIndex() != comp->previousAnimationIndex() && comp->animationIndex() != U32_MAX)
+                if (playing)
                 {
-                    comp->previousAnimationIndex(comp->animationIndex());
+                    // Update Animations
+                    comp->_frameIndex = animator->frameIndexForTimeStamp(comp->animationIndex(), timeStampSec, !comp->playInReverse());
+
+                    if (comp->animationIndex() != comp->previousAnimationIndex() && comp->animationIndex() != U32_MAX)
+                    {
+                        comp->previousAnimationIndex(comp->animationIndex());
+                    }
                 }
             }
+
+            const I32 currentFrame = playing ? std::max(comp->_frameIndex._curr, 0) : 0;
+            comp->_frameTicked = currentFrame != comp->_lastObservedFrameIndex;
+            comp->_lastObservedFrameIndex = currentFrame;
 
             // Resolve IK
             //if (comp->_resolveIK)

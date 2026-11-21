@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -65,7 +65,7 @@ public:
     PROPERTY_R_IW(size_t, stateHash, 0u);
     PROPERTY_R_IW(size_t, blendStateHash, 0u);
     PROPERTY_R_IW(size_t, vertexFormatHash, 0u);
-    /// Used by Vulkan. It's the complete pipeline hash minus dynamic state settings
+    /// Vulkan's baked state, excluding blend and colour write state keyed separately when static.
     PROPERTY_R_IW(size_t, compiledPipelineHash, 0u);
 }; //class Pipeline
 

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -129,6 +129,7 @@ class PreRenderBatch {
     [[nodiscard]] RenderTargetHandle screenRT() const noexcept;
     [[nodiscard]] RenderTargetHandle edgesRT() const noexcept;
     [[nodiscard]] Handle<Texture> luminanceTex() const noexcept;
+    [[nodiscard]] Handle<Texture> ssrTexture(bool enabled) const noexcept;
 
     [[nodiscard]] PreRenderOperator* getOperator(FilterType type) const;
 
@@ -175,7 +176,6 @@ class PreRenderBatch {
 
             default:
                 DIVIDE_UNEXPECTED_CALL();
-                break;
         }
 
         return FilterSpace::COUNT;
@@ -196,6 +196,7 @@ class PreRenderBatch {
     ScreenTargets _screenRTs{};
     ShaderBuffer_uptr _histogramBuffer{ nullptr };
     Handle<Texture> _currentLuminance{ INVALID_HANDLE<Texture> };
+    Handle<Texture> _disabledSSR{ INVALID_HANDLE<Texture> };
     Handle<ShaderProgram> _toneMap{ INVALID_HANDLE<ShaderProgram> };
     Handle<ShaderProgram> _createHistogram{ INVALID_HANDLE<ShaderProgram> };
     Handle<ShaderProgram> _averageHistogram{ INVALID_HANDLE<ShaderProgram> };
@@ -208,7 +209,6 @@ class PreRenderBatch {
 
     RenderTargetHandle _sceneEdges{};
     RenderTargetHandle _linearDepthRT{};
-
     F32 _adaptiveExposureValue{1.f};
     mutable bool _adaptiveExposureValueNeedsUpdate{false};
 };

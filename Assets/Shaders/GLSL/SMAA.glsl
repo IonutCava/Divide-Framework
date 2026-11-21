@@ -7,22 +7,21 @@
 layout(location = ATTRIB_FREE_START + 0) out vec2 vPixCoord;
 layout(location = ATTRIB_FREE_START + 1) out vec4 vOffset[3];
 
-const float SMAA_STEPS[] = { 4.f, 8.f, 16.f, 32.f, 64.f, 128.f, 256.f };
+const float SMAA_STEPS[] = { 4.f, 8.f, 16.f, 32.f };
 
 void main(void)
 {
-    //0 -> 4, 1 -> 8, 2 -> 16, 3 -> 32, etc
-    const float SMAA_MAX_SEARCH_STEPS = SMAA_STEPS[dvd_qualityMultiplier];
+    const int qualityIndex = clamp(dvd_qualityMultiplier, 0, SMAA_STEPS.length() - 1);
+    const float SMAA_MAX_SEARCH_STEPS = SMAA_STEPS[qualityIndex];
 
     vec4 RT_METRICS = vec4(1.0 / dvd_ViewPort.z, 1.0 / dvd_ViewPort.w, dvd_ViewPort.z, dvd_ViewPort.w);
-
-    vPixCoord = VAR._texCoord * RT_METRICS.zw;
 
     vec2 uv = vec2(0, 0);
     if ((dvd_VertexIndex & 1) != 0)uv.x = 1;
     if ((dvd_VertexIndex & 2) != 0)uv.y = 1;
 
     VAR._texCoord = uv * 2;
+    vPixCoord = VAR._texCoord * RT_METRICS.zw;
 
     // We will use these offsets for the searches later on (see @PSEUDO_GATHER4):
     vOffset[0] = Mad(RT_METRICS.xyxy, vec4(-0.25, -0.125, 1.25, -0.125), VAR._texCoord.xyxy);
@@ -417,8 +416,9 @@ void SMAADetectVerticalCornerPattern(sampler2D edgesTex, inout vec2 weights, vec
 }
 
 void main() {
-    SMAA_MAX_SEARCH_STEPS = SMAA_MAX_SEARCH_STEPS_VALUES[dvd_qualityMultiplier];
-    SMAA_MAX_SEARCH_STEPS_DIAG = SMAA_MAX_SEARCH_STEPS_DIAG_VALUES[dvd_qualityMultiplier];
+    const int qualityIndex = clamp(dvd_qualityMultiplier, 0, SMAA_MAX_SEARCH_STEPS_VALUES.length() - 1);
+    SMAA_MAX_SEARCH_STEPS = SMAA_MAX_SEARCH_STEPS_VALUES[qualityIndex];
+    SMAA_MAX_SEARCH_STEPS_DIAG = SMAA_MAX_SEARCH_STEPS_DIAG_VALUES[qualityIndex];
 
     vec4 subsampleIndices = vec4(0.0); // Just pass zero for SMAA 1x, see @SUBSAMPLE_INDICES.
     vec4 weights = vec4(0.0, 0.0, 0.0, 0.0);

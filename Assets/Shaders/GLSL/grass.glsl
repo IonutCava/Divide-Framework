@@ -1,13 +1,18 @@
 --Vertex
 
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
+
 #define COMPUTE_TBN
 #include "vbInputData.vert"
+#define VEGETATION_GRASS_DRAW
 #include "vegetationData.cmn"
+#include "grassInstanceMetadata.cmn"
 #include "sceneData.cmn"
 #include "lightingDefaults.vert"
 
 VegetationData GrassData(in uint instanceID) {
-    return grassData[dvd_terrainChunkOffset * MAX_GRASS_INSTANCES + instanceID];
+    return grassData[dvd_InstanceDataOffset + instanceID];
 }
 
 layout(location = ATTRIB_FREE_START + 0) flat out uint  _layer;
@@ -31,7 +36,7 @@ void largetScaleMotion(inout vec4 vertexW, in vec4 vertex, in float heightExtent
 }
 
 void main() {
-    VegetationData data = GrassData(dvd_InstanceIndex);
+    VegetationData data = GrassData(VEGETATION_INSTANCE_INDEX);
     if (data.data.z < 0.f) {
         //gl_CullDistance[0] = -1.0f;
         gl_Position = vec4(2.f, 2.f, 2.f, 1.f);
@@ -39,25 +44,27 @@ void main() {
     }
 
     const NodeTransformData nodeData = fetchInputData();
-    _instanceID = dvd_InstanceIndex;
+    VAR._SelectionFlag = dvd_SelectionFlag(nodeData);
+    _instanceID = GRASS_METADATA_TINT(uint(data.data.y));
     float scale = data.positionAndScale.w * Saturate(data.data.z);
 
     _alphaFactor = Saturate(data.data.z);
 
     _layer = uint(data.data.x);
-    VAR._LoDLevel = uint(data.data.y);
+    VAR._LoDLevel = GRASS_METADATA_LOD(uint(data.data.y));
 
     const float timeGrass = dvd_windDetails.w * MSToSeconds(dvd_GameTimeMS) * 0.5f;
     const bool animate = VAR._LoDLevel < 2u && dvd_Vertex.y > 0.5f;
 
-    const float height = dvd_Vertex.y;
     dvd_Vertex.xyz *= scale;
     dvd_Vertex.y -= (1.f - scale) * 0.25f;
     dvd_Vertex.xyz = QuaternionRotate(data.orientationQuad, dvd_Vertex.xyz);
     VAR._vertexW = dvd_Vertex + vec4(data.positionAndScale.xyz, 0.0f);
 
     if (animate) {
+#if !defined(VEGETATION_WIND_DISABLED)
         largetScaleMotion(VAR._vertexW, dvd_Vertex, dvd_Vertex.y * 0.075f, timeGrass);
+#endif //!VEGETATION_WIND_DISABLED
 
 #       if 1
             const vec2 viewDirection = normalize(VAR._vertexW.xz - dvd_CameraPosition.xz);
@@ -74,11 +81,14 @@ void main() {
 #endif //!SHADOW_PASS
 
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
-    dvd_Normal = normalize(QuaternionRotate(data.orientationQuad, dvd_Normal));
+    computeLightVectors(data.orientationQuad, vec3(scale));
 
-    computeLightVectors(nodeData);
-
-    gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
+    const vec4 clipPosition = dvd_ProjectionMatrix * VAR._vertexWV;
+    gl_Position = clipPosition;
+#if defined(HAS_VELOCITY)
+    // STUBBED: TODO: Implement vegetation velocity support with previous instance and deformation state.
+    VAR._prevVertexWVP = dvd_PrevViewProjectionMatrix * VAR._vertexW;
+#endif //HAS_VELOCITY
 }
 
 -- Fragment.Colour
@@ -92,15 +102,23 @@ layout(early_fragment_tests) in;
 
 #include "BRDF.frag"
 #include "output.frag"
+#include "transparentCoverage.cmn"
 
 layout(location = ATTRIB_FREE_START + 0) flat in uint  _layer;
 layout(location = ATTRIB_FREE_START + 1) flat in uint  _instanceID;
 layout(location = ATTRIB_FREE_START + 2)      in float _alphaFactor;
 
 void main (void){
+    const vec4 positionDx = dFdx(VAR._vertexW);
+    const vec4 positionDy = dFdy(VAR._vertexW);
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
 
     vec4 albedo = texture(texDiffuse0, vec3(VAR._texCoord, _layer));
+    albedo.a *= _alphaFactor;
+    if (!TRANSPARENT_HAS_COVERAGE(albedo.a))
+    {
+        discard;
+    }
 
     if (_instanceID % 3 == 0) {
         albedo.rgb = overlayVec(albedo.rgb, vec3(0.9f, 0.85f, 0.55f));
@@ -123,12 +141,12 @@ void main (void){
 #endif //DEBUG_LODS
 
     const vec3 normalWV = getNormalWV(data, vec3(VAR._texCoord, 0));
+    const vec3 viewVec = computeViewDirectionWV();
+    const float NdotV = max(dot(normalWV, viewVec), 0.f);
+    const PBRMaterial material = initMaterialProperties(data, albedo.rgb, VAR._texCoord, normalWV, NdotV);
+    const IBLGradients gradients = IBL_GRADIENTS(vec3(0.f), vec2(0.f));
 
-    vec4 colour = vec4(albedo.rgb, min(albedo.a, _alphaFactor));
-    if (albedo.a > ALPHA_DISCARD_THRESHOLD) {
-        colour = getPixelColour(albedo, data, normalWV);
-    }
-    writeScreenColour(colour, vec3(0.f), normalWV);
+    writeScreenColour(getPixelColour(albedo, data, normalWV, material, viewVec, gradients, positionDx, positionDy), vec3(0.f), normalWV);
 }
 
 --Fragment.PrePass
@@ -160,10 +178,11 @@ layout(location = ATTRIB_FREE_START + 2)      in float _alphaFactor;
 layout(location = 0) out vec2 _colourOut;
 
 void main(void) {
+    const vec2 moments = computeMoments();
     // Only discard alpha == 0
     if (texture(texDiffuse0, vec3(VAR._texCoord, _layer)).a < ALPHA_DISCARD_THRESHOLD) {
         discard;
     }
 
-    _colourOut = computeMoments();
+    _colourOut = moments;
 }

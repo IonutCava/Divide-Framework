@@ -1,8 +1,6 @@
 #include "UnitTests/unitTestCommon.h"
 
 #include "Core/TemplateLibraries/Headers/SharedPtrFactory.h"
-#include <functional>
-#include <stdexcept>
 
 namespace Divide
 {
@@ -26,7 +24,7 @@ namespace Divide
 
         struct ThrowingFactoryObject
         {
-            ThrowingFactoryObject()
+            [[noreturn]] ThrowingFactoryObject()
             {
                 throw std::runtime_error("constructor failed");
             }

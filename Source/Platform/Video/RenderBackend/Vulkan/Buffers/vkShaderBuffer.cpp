@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/vkShaderBuffer.h"
 #include "Headers/vkBufferImpl.h"
@@ -46,7 +47,11 @@ namespace Divide
 
     BufferLock vkShaderBuffer::writeBytesInternal( const BufferRange<> range, const bufferPtr data ) noexcept
     {
-        DIVIDE_EXPECTED_CALL( _bufferImpl->waitForLockedRange( range ) );
+        if ( !_bufferImpl->waitForLockedRange( range ) )
+        {
+            Console::errorfn( "Vulkan: failed to wait for a shader buffer write" );
+            return {};
+        }
 
         const bool isCommandBuffer = getUsage() == BufferUsageType::COMMAND_BUFFER;
         const VkAccessFlags2 dstAccessMask = VK_ACCESS_SHADER_READ_BIT | (isCommandBuffer ? VK_ACCESS_INDIRECT_COMMAND_READ_BIT : VK_ACCESS_NONE);
@@ -56,11 +61,9 @@ namespace Divide
         return _bufferImpl->writeBytes(range, dstAccessMask, dstStageMask, data);
     }
 
-    void vkShaderBuffer::readBytesInternal( BufferRange<> range, std::pair<bufferPtr, size_t> outData ) noexcept
+    void vkShaderBuffer::readBytesInternal( const BufferRange<> range, std::pair<bufferPtr, size_t> outData ) noexcept
     {
         DIVIDE_EXPECTED_CALL( _bufferImpl->waitForLockedRange( range ) );
-
-        range._length = std::min( std::min( range._length, outData.second ), _alignedBufferSize - range._startOffset );
 
         LockGuard<Mutex> w_lock( _implLock );
         _bufferImpl->readBytes(range, outData);
@@ -69,6 +72,12 @@ namespace Divide
     LockableBuffer* vkShaderBuffer::getBufferImpl()
     {
         return _bufferImpl.get();
+    }
+
+    bool vkShaderBuffer::supportsPersistentWrites() const noexcept
+    {
+        return _bufferImpl != nullptr && _bufferImpl->_buffer != VK_NULL_HANDLE &&
+               _bufferImpl->_allocInfo.pMappedData != nullptr && _bufferImpl->_stagingBuffer == nullptr;
     }
 
 }; //namespace Divide

@@ -32,7 +32,6 @@
 #ifndef DVD_HARDWARE_QUERY_H_
 #define DVD_HARDWARE_QUERY_H_
 
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 
 namespace Divide {
 

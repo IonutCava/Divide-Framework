@@ -6,6 +6,8 @@
 #include "Dynamics/Entities/Units/Headers/Unit.h"
 
 namespace Divide {
+DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(UnitComponent);
+
 UnitComponent::UnitComponent(SceneGraphNode* parentSGN, PlatformContext& context)
     : BaseComponentType<UnitComponent, ComponentType::UNIT>(parentSGN, context),
       _unit(nullptr)

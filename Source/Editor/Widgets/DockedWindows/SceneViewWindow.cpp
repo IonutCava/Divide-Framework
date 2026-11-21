@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/SceneViewWindow.h"
 #include "Editor/Headers/Utils.h"
@@ -21,6 +21,11 @@ namespace Divide
         : NodePreviewWindow(parent, descriptor)
     {
         _originalName = descriptor.name;
+    }
+
+    RenderTargetID SceneViewWindow::GameViewRenderTarget() noexcept
+    {
+        return RenderTargetNames::BACK_BUFFER;
     }
 
     void SceneViewWindow::drawInternal()
@@ -135,7 +140,7 @@ namespace Divide
                 case 1u: settings.currentGizmoOperation = ImGuizmo::TRANSLATE_X; break;
                 case 2u: settings.currentGizmoOperation = ImGuizmo::TRANSLATE_Y; break;
                 case 3u: settings.currentGizmoOperation = ImGuizmo::TRANSLATE_Z; break;
-                default: DIVIDE_UNEXPECTED_CALL(); break;
+                default: DIVIDE_UNEXPECTED_CALL();
             }
             settings.currentAxisSelected = settings.previousAxisSelected[0];
             Attorney::EditorSceneViewWindow::editorEnableGizmo(_parent, true);
@@ -159,7 +164,7 @@ namespace Divide
             readOnly = false;
         }
 
-        const RenderTarget* rt = _parent.context().gfx().renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN);
+        const RenderTarget* rt = _parent.context().gfx().renderTargetPool().getRenderTarget(GameViewRenderTarget());
         const Handle<Texture> gameView = rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture();
 
         NodePreviewWindow::drawInternal(gameView);
@@ -425,7 +430,7 @@ namespace Divide
                                 Util::Colours[2],
                                 flags);
                             break;
-                        default: DIVIDE_UNEXPECTED_CALL(); break;
+                        default: DIVIDE_UNEXPECTED_CALL();
                     }
                 }
                 else if (IsRotationOperation(settings))
@@ -493,7 +498,7 @@ namespace Divide
                                 Util::Colours[2],
                                 flags);
                             break;
-                        default: DIVIDE_UNEXPECTED_CALL(); break;
+                        default: DIVIDE_UNEXPECTED_CALL();
                     }
                 }
                 else if (IsScaleOperation(settings))
@@ -564,7 +569,7 @@ namespace Divide
                                 Util::Colours[2],
                                 flags);
                             break;
-                        default: DIVIDE_UNEXPECTED_CALL(); break;
+                        default: DIVIDE_UNEXPECTED_CALL();
                     }
                 }
             }

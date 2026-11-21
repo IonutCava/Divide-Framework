@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -34,6 +34,7 @@
 #define DVD_SCENE_GRAPH_NODE_H_
 
 #include "SceneNodeFwd.h"
+#include "SceneNodeEventQueue.h"
 #include "SGNRelationshipCache.h"
 #include "IntersectionRecord.h"
 
@@ -77,6 +78,9 @@ namespace Divide
     template<typename T> requires std::is_base_of_v<SceneNode, T>
     SceneNodeHandle FromHandle( const Handle<T> handle);
 
+    template<typename T> requires std::is_base_of_v<SceneNode, T>
+    SceneNodeHandle FromSharedHandle( const Handle<T> handle );
+
     struct SceneGraphNodeDescriptor
     {
         Str<64>            _name = "";
@@ -93,7 +97,6 @@ namespace Divide
     {
         class SceneGraphNodeEditor;
         class SceneGraphNodeComponent;
-        class SceneGraphNodeSystem;
         class SceneGraphNodeSceneGraph;
         class SceneGraphNodeRenderPassCuller;
         class SceneGraphNodeRenderPassManager;
@@ -106,7 +109,6 @@ namespace Divide
     {
         friend class Attorney::SceneGraphNodeEditor;
         friend class Attorney::SceneGraphNodeComponent;
-        friend class Attorney::SceneGraphNodeSystem;
         friend class Attorney::SceneGraphNodeSceneGraph;
         friend class Attorney::SceneGraphNodeRenderPassCuller;
         friend class Attorney::SceneGraphNodeRenderPassManager;
@@ -124,7 +126,8 @@ namespace Divide
             PARENT_POST_RENDERED = toBit( 6 ),
             SELECTION_LOCKED = toBit( 7 ),
             IS_CONTAINER = toBit( 8 ),
-            COUNT = 9
+            VEGETATION_TREE = toBit( 9 ),
+            COUNT = 10
         };
 
         struct ChildContainer
@@ -166,9 +169,6 @@ namespace Divide
 
         /// Changing a node's parent means removing this node from the current parent's child list and appending it to the new parent's list (happens after a full frame)
         void setParent( SceneGraphNode* parent, bool defer = false );
-
-        /// Checks if we have a parent matching the typeMask. We check recursively until we hit the top node (if ignoreRoot is false, top node is Root)
-        bool isChildOfType( U16 typeMask ) const;
 
         /// Returns true if the current node is related somehow to the specified target node (see RelationshipType enum for more details)
         bool isRelated( const SceneGraphNode* target ) const;
@@ -287,14 +287,13 @@ namespace Divide
         void onNetworkSend( U32 frameCount ) const;
         /// Returns a bottom-up list(leafs -> root) of all of the nodes parented under the current one.
         void getAllNodes( vector<SceneGraphNode*>& nodeList );
-        /// Destructs all of the nodes specified in the list and removes them from the _children container.
-        void processDeleteQueue( vector<size_t>& childList );
+        /// Destructs a direct child identified by its graph-node GUID.
+        void destroyChild( I64 guid );
+        void invalidateAggregateBounds();
         /// Similar to the saveToXML call but is geared towards temporary state (e.g. save game)
         bool saveCache( ByteBuffer& outputBuffer ) const;
         /// Similar to the loadFromXML call but is geared towards temporary state (e.g. save game)
         bool loadCache( ByteBuffer& inputBuffer );
-        /// Called by the TransformComponent whenever the transform changed.
-        void setTransformDirty( U32 transformMask );
         /// As opposed to "postLoad()" that's called when the SceneNode is ready for processing, this call is used as a callback for when the SceneNode finishes loading as a Resource. postLoad() is called after this always.
         static void PostLoad( SceneNode* sceneNode, SceneGraphNode* sgn );
         /// This indirect is used to avoid including ECS headers in this file, but we still need the ECS engine for templated methods
@@ -328,13 +327,7 @@ namespace Divide
             RenderingComponent* _renderingComponent = nullptr;
         } Hacks;
 
-        struct events
-        {
-            // this should be ample storage PER FRAME for events.
-            static constexpr size_t EVENT_QUEUE_SIZE = 128;
-            std::array<ECS::CustomEvent, EVENT_QUEUE_SIZE> _events;
-            std::array<std::atomic_bool, EVENT_QUEUE_SIZE> _eventsFreeList;
-        } Events;
+        SceneNodeEventQueue _events;
 
         POINTER_R( SceneGraph, sceneGraph, nullptr );
         POINTER_R( SceneNode, node, nullptr );
@@ -348,8 +341,7 @@ namespace Divide
         PROPERTY_R( U32, instanceCount, 1u );
         PROPERTY_R( bool, serialize, true );
         PROPERTY_R( NodeUsageContext, usageContext, NodeUsageContext::NODE_STATIC );
-        //ToDo: make this work in a multi-threaded environment
-        mutable I8 _frustPlaneCache = -1;
+        mutable std::atomic<I8> _frustPlaneCache{ -1 };
 
         private:
           const SceneGraphNodeDescriptor _descriptor;
@@ -392,9 +384,9 @@ namespace Divide
                 node->getAllNodes( nodeList );
             }
 
-            static void processDeleteQueue( SceneGraphNode* node, vector<size_t>& childList )
+            static void destroyChild( SceneGraphNode* node, const I64 guid )
             {
-                node->processDeleteQueue( childList );
+                node->destroyChild( guid );
             }
 
             static bool saveCache( const SceneGraphNode* node, ByteBuffer& outputBuffer )
@@ -411,16 +403,6 @@ namespace Divide
                 node.updateCollisions( parentNode, intersections, intersectionsLock );
             }
             friend class Divide::SceneGraph;
-        };
-
-        class SceneGraphNodeSystem
-        {
-            static void setTransformDirty( SceneGraphNode* node, const U32 transformMask )
-            {
-                node->setTransformDirty( transformMask );
-            }
-
-            friend class Divide::TransformSystem;
         };
 
         class SceneGraphNodeComponent

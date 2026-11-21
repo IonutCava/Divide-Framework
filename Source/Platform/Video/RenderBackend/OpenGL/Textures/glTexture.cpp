@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "Headers/glTexture.h"
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -22,29 +24,11 @@ bool glTexture::unload()
 {
     if ( _textureHandle > 0u && _textureHandle != GL_NULL_HANDLE )
     {
-        if (GL_API::GetStateTracker().unbindTexture(_descriptor._texType, _textureHandle))
-        {
-            NOP();
-        }
-
-        gl46core::glDeleteTextures(1, &_textureHandle);
+        DIVIDE_EXPECTED_CALL( GL_API::DeleteTextures( 1, &_textureHandle ) );
         _textureHandle = GL_NULL_HANDLE;
     }
 
     return Texture::unload();
-}
-
-bool glTexture::postLoad()
-{
-    DIVIDE_ASSERT(Runtime::isMainThread());
-
-    if (_loadSync != nullptr)
-    {
-        gl46core::glWaitSync(_loadSync, static_cast<gl46core::GLbitfield>(gl46core::UnusedMask::GL_UNUSED_BIT), gl46core::GL_TIMEOUT_IGNORED);
-        GL_API::DestroyFenceSync(_loadSync);
-    }
-
-    return Texture::postLoad();
 }
 
 void glTexture::reserveStorage( const bool makeImmutable )
@@ -140,15 +124,15 @@ void glTexture::reserveStorage( const bool makeImmutable )
                                                          gl46core::GL_TRUE );
             }
         } break;
-        default: DIVIDE_UNEXPECTED_CALL(); break;
+        default: DIVIDE_UNEXPECTED_CALL();
     }
 
     _hasStorage = true;
 }
 
-ImageUsage glTexture::prepareTextureData(const vec3<U16>& dimensions, const U16 layers, bool makeImmutable)
+ImageUsage glTexture::prepareTextureData( const vec3<U16>& dimensions, const U16 layers, const bool makeImmutable, const U16 suppliedMipCount )
 {
-    const ImageUsage ret = Texture::prepareTextureData(dimensions, layers, makeImmutable);
+    const ImageUsage ret = Texture::prepareTextureData( dimensions, layers, makeImmutable, suppliedMipCount );
     DIVIDE_UNUSED(ret);
 
     _type = GLUtil::internalTextureType( _descriptor._texType, _descriptor._msaaSamples );
@@ -159,7 +143,7 @@ ImageUsage glTexture::prepareTextureData(const vec3<U16>& dimensions, const U16 
     assert(_loadingHandle != 0 && "glTexture error: failed to generate new texture handle!");
     if constexpr(Config::ENABLE_GPU_VALIDATION)
     {
-        gl46core::glObjectLabel( gl46core::GL_TEXTURE, _loadingHandle, -1, resourceName().c_str());
+        GLUtil::SetObjectLabel( gl46core::GL_TEXTURE, _loadingHandle, resourceName().c_str() );
     }
 
     reserveStorage(makeImmutable);
@@ -170,7 +154,7 @@ ImageUsage glTexture::prepareTextureData(const vec3<U16>& dimensions, const U16 
 void glTexture::submitTextureData(ImageUsage& crtUsageInOut)
 {
     gl46core::glTextureParameteri(_loadingHandle, gl46core::GL_TEXTURE_BASE_LEVEL, _descriptor._mipBaseLevel );
-    gl46core::glTextureParameteri( _loadingHandle, gl46core::GL_TEXTURE_MAX_LEVEL, mipCount());
+    gl46core::glTextureParameteri( _loadingHandle, gl46core::GL_TEXTURE_MAX_LEVEL, to_I32( mipCount() ) - 1 );
 
     if ( _descriptor._mipMappingState == MipMappingState::AUTO)
     {
@@ -180,27 +164,44 @@ void glTexture::submitTextureData(ImageUsage& crtUsageInOut)
     if ( _textureHandle > 0u && _textureHandle != GL_NULL_HANDLE )
     {
         // Immutable storage requires us to create a new texture object 
-        gl46core::glDeleteTextures(1, &_textureHandle);
+        DIVIDE_EXPECTED_CALL( GL_API::DeleteTextures( 1, &_textureHandle ) );
     }
 
     _textureHandle = _loadingHandle;
+    Texture::submitTextureData(crtUsageInOut);
+
     if (!Runtime::isMainThread())
     {
-        if (_loadSync != nullptr)
+        gl46core::GLsync uploadSync = GL_API::CreateFenceSync();
+        if (uploadSync == nullptr)
         {
-            GL_API::DestroyFenceSync(_loadSync);
+            Console::errorfn("OpenGL: failed to create upload fence for texture '{}'", resourceName().c_str());
+            crtUsageInOut = ImageUsage::UNDEFINED;
+            return;
         }
-        _loadSync = GL_API::CreateFenceSync();
-        gl46core::glFlush();
-    }
 
-    Texture::submitTextureData(crtUsageInOut);
+        gl46core::glFlush();
+        constexpr gl46core::GLuint64 uploadWaitTimeoutNS = 30'000'000'000ull;
+        const gl46core::GLenum result = gl46core::glClientWaitSync(uploadSync, gl46core::SyncObjectMask::GL_NONE_BIT, uploadWaitTimeoutNS);
+        if (result == gl46core::GL_ALREADY_SIGNALED || result == gl46core::GL_CONDITION_SATISFIED)
+        {
+            // Finish establishes shared-object completion before another context binds the texture.
+            gl46core::glFinish();
+        }
+        GL_API::DestroyFenceSync(uploadSync);
+
+        if (result != gl46core::GL_ALREADY_SIGNALED && result != gl46core::GL_CONDITION_SATISFIED)
+        {
+            Console::errorfn("OpenGL: upload fence wait failed for texture '{}' (status {})", resourceName().c_str(), to_U32(result));
+            crtUsageInOut = ImageUsage::UNDEFINED;
+        }
+    }
 }
 
 void glTexture::loadDataInternal(const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment )
 {
     const U32 numLayers = imageData.layerCount();
-    const U16 numMips = imageData.mipCount();
+    const U16 numMips = std::min<U16>( imageData.mipCount(), mipCount() );
 
     for ( U32 l = 0u; l < numLayers; ++l )
     {
@@ -339,12 +340,8 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, con
 
                 default:
                 case GFXDataFormat::COUNT:
-                {
                     DIVIDE_UNEXPECTED_CALL();
-                } break;
             }
-
-            return (bufferPtr)nullptr;
         };
 
         const GLUtil::FormatAndDataType formatAndType = GLUtil::InternalFormatAndDataType( _descriptor._baseFormat, _descriptor._dataType, _descriptor._packing );

@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/RenderQueue.h"
 
@@ -94,7 +95,8 @@ namespace Divide
                     return RenderBinType::OPAQUE;
                 }
             } break;
-            case SceneNodeType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+            case SceneNodeType::COUNT:
+                DIVIDE_UNEXPECTED_CALL();
         }
 
         return RenderBinType::COUNT;
@@ -103,17 +105,22 @@ namespace Divide
     void RenderQueue::addNodeToQueue( const SceneGraphNode* sgn,
                                       const RenderStagePass stagePass,
                                       const F32 minDistToCameraSq,
-                                      const RenderBinType targetBinType )
+                                      const RenderBinType targetBinType,
+                                      const RenderBinType nodeBinType )
     {
-        const RenderingComponent* const renderingCmp = sgn->get<RenderingComponent>();
-        // We need a rendering component to render the node
-        assert( renderingCmp != nullptr );
-        RenderBinType rbType = getBinForNode( sgn, renderingCmp->getMaterialInstance() );
-        assert( rbType != RenderBinType::COUNT );
+        RenderBinType rbType = nodeBinType;
+        if ( rbType == RenderBinType::COUNT )
+        {
+            const RenderingComponent* const renderingCmp = sgn->get<RenderingComponent>();
+            // We need a rendering component to render the node
+            assert( renderingCmp != nullptr );
+            rbType = getBinForNode( sgn, renderingCmp->getMaterialInstance() );
+        }
 
+        assert( rbType != RenderBinType::COUNT );
         if ( targetBinType == RenderBinType::COUNT || rbType == targetBinType )
         {
-            getBin(rbType).addNodeToBin(sgn, stagePass, minDistToCameraSq);
+            getBin( rbType ).addNodeToBin( sgn, stagePass, minDistToCameraSq );
         }
     }
 
@@ -121,40 +128,11 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        if ( params._binType == RenderBinType::COUNT )
+        for ( U8 i = 0u; i < to_base( RenderBinType::COUNT ); ++i )
         {
-            if ( !params._filterByBinType )
+            if ( params.includes( static_cast<RenderBinType>( i ) ) )
             {
-                for ( const RenderBin& renderBin : _renderBins )
-                {
-                    renderBin.populateRenderQueue( params._stagePass, queueInOut );
-                }
-            }
-            else
-            {
-                // Why are we allowed to exclude everything? idk.
-                NOP();
-            }
-        }
-        else
-        {
-            if ( !params._filterByBinType )
-            {
-                if ( params._binType != RenderBinType::COUNT)
-                {
-                    getBin(params._binType).populateRenderQueue(params._stagePass, queueInOut);
-                }
-            }
-            else
-            {
-                for ( U8 i = 0u; i < to_base( RenderBinType::COUNT ); ++i )
-                {
-                    if ( i == to_base( params._binType ) )
-                    {
-                        continue;
-                    }
-                    _renderBins[i].populateRenderQueue( params._stagePass, queueInOut );
-                }
+                _renderBins[i].populateRenderQueue( params._stagePass, queueInOut );
             }
         }
     }
@@ -181,9 +159,8 @@ namespace Divide
         }
         else
         {
-            bool sortTaskDirty = false;
             TaskPool& pool = parent().platformContext().taskPool( TaskPoolType::RENDERER );
-            Task* sortTask = CreateTask( TASK_NOP );
+            TaskGroup sortTasks( pool );
             for (U8 i = 0u; i < to_base( RenderBinType::COUNT ); ++i)
             {
                 RenderBin& renderBin = _renderBins[i];
@@ -192,18 +169,11 @@ namespace Divide
                 if ( renderBin.getBinSize() > k_threadBias )
                 {
                     const RenderingOrder sortOrder = renderOrder == RenderingOrder::COUNT ? getSortOrder( stagePass, rbType ) : renderOrder;
-                    pool.enqueue( *CreateTask( sortTask,
-                                        [&renderBin, rbType, sortOrder]( const Task& )
-                                        {
-                                            renderBin.sort( rbType, sortOrder );
-                                        } ) );
-                    sortTaskDirty = true;
+                    sortTasks.enqueue( [&renderBin, rbType, sortOrder]( const Task& )
+                    {
+                        renderBin.sort( rbType, sortOrder );
+                    } );
                 }
-            }
-
-            if ( sortTaskDirty )
-            {
-                pool.enqueue( *sortTask );
             }
 
             for ( U8 i = 0u; i < to_base( RenderBinType::COUNT ); ++i )
@@ -217,10 +187,7 @@ namespace Divide
                 }
             }
 
-            if ( sortTaskDirty )
-            {
-                pool.wait( *sortTask );
-            }
+            sortTasks.wait();
         }
     }
 

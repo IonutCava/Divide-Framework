@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -34,6 +34,7 @@
 #define DVD_SINGLE_SHADOW_MAP_GENERATOR_H_
 
 #include "ShadowMap.h"
+#include "Rendering/Lighting/Headers/ShadowPassState.h"
 #include "Platform/Video/Headers/PushConstants.h"
 
 namespace Divide {
@@ -49,11 +50,22 @@ class SingleShadowMapGenerator final : public ShadowMapGenerator {
     explicit SingleShadowMapGenerator(GFXDevice& context);
     ~SingleShadowMapGenerator() override;
 
-    void render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) override;
+    void render(const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, const ShadowRefreshPlan& refreshPlan) override;
 
     void updateMSAASampleCount(U8 sampleCount) override;
+    void finishRender() override;
 
   protected:
+    struct StaticCacheLayer
+    {
+        ShadowStaticCacheState _state{};
+        ShadowStaticCacheKey _pendingKey{};
+        bool* _pendingOut = nullptr;
+        bool _pendingCasters = false;
+        bool _rebuilt = false;
+    };
+    std::array<StaticCacheLayer, Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS> _staticLayers{};
+
     void blurTarget(U16 layerOffset, GFX::CommandBuffer& bufferInOut );
 
   protected:

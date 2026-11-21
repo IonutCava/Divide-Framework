@@ -1,6 +1,5 @@
 
 
-#include "Headers/Profiler.h"
 #include "Core/Headers/Application.h"
 
 namespace Divide::Profiler

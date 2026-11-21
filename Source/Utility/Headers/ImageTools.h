@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -42,7 +42,7 @@ struct LayerData {
     virtual ~LayerData() = default;
     [[nodiscard]] virtual bufferPtr data() const = 0;
 
-    /// the image data as it was read from the file / memory.
+    /// Storage size in bytes, including any zero-initialized padding.
     size_t _size = 0u;
     /// with and height
     vec3<U16> _dimensions = { 0, 0, 1 };
@@ -53,21 +53,22 @@ struct ImageMip final : LayerData {
 
     explicit ImageMip(const T* data, size_t len, const U16 width, const U16 height, const U16 depth, const U8 numComponents)
     {
-        const size_t totalSizeTest = to_size(width) * height * depth * numComponents;
-        const size_t actualSize = std::max(len, totalSizeTest);
+        const size_t requiredElements = to_size(width) * height * depth * numComponents;
+        const size_t actualElements = std::max(len, requiredElements);
+        const size_t initializedBytes = (len == 0u ? requiredElements : len) * sizeof( T );
 
-        _data.resize(actualSize, T{ 0u });
+        _data.resize(actualElements, T{ 0u });
 
         if ( data != nullptr )
         {
-            std::memcpy( _data.data(), data, len == 0u ? totalSizeTest : len * sizeof( T ) );
+            std::memcpy( _data.data(), data, initializedBytes );
         }
         else
         {
-            std::memset(_data.data(), 0u, len == 0u ? totalSizeTest : len * sizeof ( T ));
+            std::memset( _data.data(), 0u, initializedBytes );
         }
 
-        _size = actualSize;
+        _size = actualElements * sizeof( T );
         _dimensions.set(width, height, depth);
     }
 
@@ -111,9 +112,15 @@ struct ImageLayer {
         return to_U8(_mips.size());
     }
 
+    [[nodiscard]] vector<U8>& decompressedData() noexcept { return _decompressedData; }
+    [[nodiscard]] const vector<U8>& decompressedData() const noexcept { return _decompressedData; }
+
 private:
     vector<LayerData_uptr> _mips;
+    vector<U8> _decompressedData;
 };
+
+[[nodiscard]] bool HaveCompatibleMipChains( const vector<ImageLayer>& layers ) noexcept;
 
 struct ImageData final : NonCopyable
 {
@@ -159,14 +166,14 @@ struct ImageData final : NonCopyable
 
     [[nodiscard]] GFXDataFormat dataType() const noexcept { return _dataType; }
     /// get the texel colour at the specified offset from the origin
-    [[nodiscard]] UColour4 getColour(I32 x, I32 y, U32 layer = 0u, U8 mipLevel = 0u) const;
-    void getColour(I32 x, I32 y, U8& r, U8& g, U8& b, U8& a, U32 layer = 0u, U8 mipLevel = 0u) const;
+    [[nodiscard]] UColour4 getColour(I32 x, I32 y, U32 layer = 0u, U8 mipLevel = 0u, U16 slice = 0u) const;
+    void getColour(I32 x, I32 y, U8& r, U8& g, U8& b, U8& a, U32 layer = 0u, U8 mipLevel = 0u, U16 slice = 0u) const;
 
-    void getColourComponent(const I32 x, const I32 y, const U8 comp, U8& c, const U32 layer, const U8 mipLevel = 0) const;
+    void getColourComponent(I32 x, I32 y, U8 comp, U8& c, U32 layer, U8 mipLevel = 0u, U16 slice = 0u) const;
     FORCE_INLINE void getRed(const I32 x, const I32 y, U8& r, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 0, r, layer, mipLevel); }
     FORCE_INLINE void getGreen(const I32 x, const I32 y, U8& g, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 1, g, layer, mipLevel); }
     FORCE_INLINE void getBlue(const I32 x, const I32 y, U8& b, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 2, b, layer, mipLevel); }
-    FORCE_INLINE void getAlpha(const I32 x, const I32 y, U8& a, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 3, a, layer, mipLevel); }
+    FORCE_INLINE void getAlpha(const I32 x, const I32 y, U8& a, const U32 layer, const U8 mipLevel = 0, const U16 slice = 0u) const { getColourComponent(x, y, 3, a, layer, mipLevel, slice); }
 
     [[nodiscard]] bool loadFromMemory( std::span<const Byte> data, const vec3<U16>& dimensions, U16 layerCount, U8 numComponents);
     /// creates this image instance from the specified data
@@ -174,6 +181,7 @@ struct ImageData final : NonCopyable
     [[nodiscard]] bool loadFromFile( PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name, ImportOptions& options, bool isRetry = false);
 
     [[nodiscard]] FORCE_INLINE ResourcePath fullPath() const noexcept { return _path / _name; }
+    [[nodiscard]] const ResourcePath& decodedPath() const noexcept { return _decodedPath; }
 
     /// If true, then the source image's alpha channel is used for data and not opacity (so skip mip-filtering for example)
     PROPERTY_RW(bool, ignoreAlphaChannelTransparency, false);
@@ -197,10 +205,10 @@ struct ImageData final : NonCopyable
 
     //Each entry is a separate mip map.
     vector<ImageLayer> _layers{};
-    vector<U8> _decompressedData{};
     LoadingData _loadingData{};
     /// the image path
     ResourcePath _path{};
+    ResourcePath _decodedPath{};
     /// the actual image filename
     Str<256> _name{};
     /// the image format
@@ -226,4 +234,3 @@ struct ImageData final : NonCopyable
 }  // namespace Divide
 
 #endif //DVD_UTILITY_IMAGETOOLS_H
-

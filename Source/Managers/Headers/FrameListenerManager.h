@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -55,16 +55,13 @@ class FrameListenerManager {
 
   private:
 
-    bool frameStarted(const FrameEvent& evt);
-    bool framePreRender(const FrameEvent& evt);
-    bool frameSceneRenderStarted(const FrameEvent& evt);
-    bool frameSceneRenderEnded(const FrameEvent& evt);
-    bool frameRenderingQueued(const FrameEvent& evt);
-    bool framePostRender(const FrameEvent& evt);
-    bool frameEnded(const FrameEvent& evt);
+    using FrameCallback = bool (FrameListener::*)(const FrameEvent&);
+    bool dispatchFrameEvent(const FrameEvent& evt, FrameCallback callback);
 
    private:
     vector<FrameListener*> _listeners;
+    vector<vector<I64>> _dispatchedListeners;
+    size_t _dispatchDepth{0u};
 
 };
 
