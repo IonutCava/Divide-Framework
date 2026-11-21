@@ -7,7 +7,6 @@
 #include "Dynamics/Entities/Units/Headers/Unit.h"
 #include "ECS/Components/Headers/UnitComponent.h"
 
-#include "Core/Headers/Profiler.h"
 #include "ECS/Components/Headers/EditorComponent.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Graphs/Headers/SceneNode.h"

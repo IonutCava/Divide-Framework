@@ -5,11 +5,9 @@
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
-#include "Core/Headers/TaskPool.h"
 #include "Core/Headers/ThreadPoolSizing.h"
 #include "Managers/Headers/RenderStageSchedule.h"
 #include "Managers/Headers/RenderViewSchedule.h"
-#include "Platform/Headers/ConditionalWait.h"
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Utility/Headers/XMLParser.h"
 

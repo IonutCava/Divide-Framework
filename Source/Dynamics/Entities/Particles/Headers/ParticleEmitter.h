@@ -36,7 +36,6 @@
 #include "ParticleSource.h"
 #include "ParticleUpdater.h"
 #include "Graphs/Headers/SceneNode.h"
-#include "Platform/Threading/Headers/SharedMutex.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
 #include "Platform/Video/Headers/GenericDrawCommand.h"
 

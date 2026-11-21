@@ -9,11 +9,9 @@
 #include "UnitTests/unitTestCommon.h"
 
 #include "Core/Headers/Configuration.h"
-#include "Core/Headers/Console.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/OcclusionCullDispatch.h"
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 #include "Platform/Video/Shaders/Headers/GLSLToSPIRV.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Shaders/glsw/Headers/glsw.h"

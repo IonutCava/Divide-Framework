@@ -3,11 +3,9 @@
 #include "UnitTests/unitTestCommon.h"
 #include "Core/Headers/Application.h"
 #include "Core/Headers/PlatformContext.h"
-#include "Core/Headers/TaskPool.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "GUI/Headers/GUIButton.h"
 #include "Platform/Audio/Headers/AudioDescriptor.h"
-#include "Platform/Headers/ConditionalWait.h"
 
 namespace Divide
 {

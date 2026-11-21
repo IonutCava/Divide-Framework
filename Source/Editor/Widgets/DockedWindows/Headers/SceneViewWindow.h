@@ -34,7 +34,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DVD_SCENE_VIEW_WINDOW_H_
 
 #include "NodePreviewWindow.h"
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 
 struct ImGuiWindow;
 

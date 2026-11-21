@@ -4,9 +4,6 @@
 
 #pragma once
 
-#include "Platform/Headers/PlatformDataTypes.h"
-#include "Core/TemplateLibraries/Headers/Vector.h"
-#include "Core/Math/Headers/MathVectors.h"
 
 namespace Divide
 {

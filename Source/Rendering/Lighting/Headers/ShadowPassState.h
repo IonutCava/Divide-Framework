@@ -8,14 +8,9 @@
 
 #pragma once
 
-#include "Platform/Headers/PlatformDataTypes.h"
 #include "../../../../Assets/Shaders/GLSL/Common/csmShadow.cmn"
 
 #include <algorithm>
-#include <array>
-#include <cassert>
-#include <cmath>
-#include <cstddef>
 
 namespace Divide
 {

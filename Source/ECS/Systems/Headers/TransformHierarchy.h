@@ -4,7 +4,6 @@
 
 #include "ECS/Components/Headers/TransformComponent.h"
 
-#include <cmath>
 
 namespace Divide
 {

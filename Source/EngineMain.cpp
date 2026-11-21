@@ -2,7 +2,6 @@
 // Copyright (c) 2026 DIVIDE-Studio
 
 #include "EngineMain.h"
-#include "EngineConfig.h"
 
 #include "Platform/File/Headers/FileManagement.h"
 #include "Utility/Headers/Localization.h"

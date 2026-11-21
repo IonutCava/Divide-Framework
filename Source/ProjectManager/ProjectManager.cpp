@@ -8,16 +8,13 @@
 #include "imgui_impl_sdlrenderer3.h"
 
 #include <regex>
-#include <stack>
 
 #include <exception>
 #include <optional>
-#include <cassert>
 #include <memory>
 #include <string.h>
 #include <thread>
 
-#include <filesystem>
 
 #include <SDL3_image/SDL_image.h>
 #include <SDL3/SDL_surface.h>

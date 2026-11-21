@@ -4,7 +4,6 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 
-#include <cmath>
 
 namespace Divide {
 

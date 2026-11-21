@@ -2,7 +2,6 @@
 #include "Headers/Sun.h"
 
 #include <ctime>
-#include <stdexcept>
 
 namespace Divide {
 

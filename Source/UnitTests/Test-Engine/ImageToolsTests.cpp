@@ -2,7 +2,6 @@
 #include "UnitTests/unitTestCommon.h"
 #include "Core/Headers/Application.h"
 #include "Core/Headers/PlatformContext.h"
-#include "Core/Headers/TaskPool.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Utility/Headers/DDSCache.h"

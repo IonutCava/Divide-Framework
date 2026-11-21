@@ -34,7 +34,6 @@
 #define DVD_PARTICLE_SOURCE_H_
 
 #include "ParticleGenerator.h"
-#include "Platform/Threading/Headers/SharedMutex.h"
 
 #include <map>
 #include <memory>

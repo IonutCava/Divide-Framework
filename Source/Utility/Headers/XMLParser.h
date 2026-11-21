@@ -33,7 +33,6 @@
 #ifndef DVD_XML_PARSER_H_
 #define DVD_XML_PARSER_H_
 
-#include "Platform/Headers/PlatformDefines.h"
 
 namespace Divide
 {

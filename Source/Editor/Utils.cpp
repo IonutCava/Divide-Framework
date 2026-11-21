@@ -4,7 +4,6 @@
 #include "Headers/Utils.h"
 
 #include <imgui_internal.h>
-#include <type_traits>
 
 namespace Divide
 {

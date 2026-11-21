@@ -11,8 +11,6 @@
 #include "Editor/Headers/UndoManager.h"
 #include "Rendering/Lighting/Headers/SpotLightGeometry.h"
 
-#include <array>
-#include <utility>
 #include <vector>
 
 namespace Divide

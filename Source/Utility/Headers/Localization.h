@@ -33,7 +33,6 @@
 #ifndef DVD_LOCALE_H_
 #define DVD_LOCALE_H_
 
-#include "Platform/Headers/PlatformDefines.h"
 
 namespace Divide {
 

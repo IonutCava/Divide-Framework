@@ -1,5 +1,4 @@
 // Copyright (c) 2026 DIVIDE-Studio
-#include "Headers/PlatformDefines.h"
 #include "Headers/PlatformRuntime.h"
 
 #include "GUI/Headers/GUI.h"

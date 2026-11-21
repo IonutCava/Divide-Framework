@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include "Platform/Headers/PlatformDataTypes.h"
 
 #include <optional>
 #include <unordered_map>

@@ -1,7 +1,6 @@
 // Copyright (c) 2026 DIVIDE-Studio
 
 #include "UnitTests/unitTestCommon.h"
-#include "Core/Headers/Profiler.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 

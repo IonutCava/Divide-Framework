@@ -21,7 +21,6 @@
 #include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
 
 #include <algorithm>
-#include <cmath>
 #include <numeric>
 
 namespace Divide

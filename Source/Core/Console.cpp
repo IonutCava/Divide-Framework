@@ -1,6 +1,5 @@
 // Copyright (c) 2026 DIVIDE-Studio
 
-#include "Headers/Console.h"
 
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Platform/Video/Headers/GFXDevice.h"

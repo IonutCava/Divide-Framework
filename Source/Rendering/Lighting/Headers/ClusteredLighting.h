@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include "EngineConfig.h"
 
 namespace Divide::ClusteredLighting
 {

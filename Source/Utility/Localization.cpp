@@ -1,7 +1,6 @@
 // Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/Localization.h"
 
-#include "Core/Headers/ErrorCodes.h"
 
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/File/Headers/FileUpdateMonitor.h"

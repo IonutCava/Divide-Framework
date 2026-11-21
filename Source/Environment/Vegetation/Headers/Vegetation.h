@@ -37,7 +37,6 @@
 #include "Utility/Headers/ImageTools.h"
 #include "Graphs/Headers/SceneNode.h"
 #include "Environment/Terrain/Headers/Terrain.h"
-#include "Platform/Threading/Headers/Task.h"
 #include "Platform/Video/Headers/RenderStagePass.h"
 
 namespace eastl

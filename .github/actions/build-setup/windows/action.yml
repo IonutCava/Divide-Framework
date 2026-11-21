@@ -52,6 +52,23 @@ runs:
           }
         }
 
+    - name: Select Visual Studio LLVM
+      if: ${{ inputs.compiler == 'clang' }}
+      shell: pwsh
+      run: |
+        if ([string]::IsNullOrWhiteSpace($env:VSINSTALLDIR)) { throw 'MSVC setup did not provide VSINSTALLDIR.' }
+        $llvmBin = Join-Path $env:VSINSTALLDIR 'VC\Tools\Llvm\x64\bin'
+        foreach ($tool in @('clang-cl.exe', 'clang.exe', 'llvm-rc.exe')) {
+          if (-not (Test-Path (Join-Path $llvmBin $tool))) { throw "Required LLVM tool '$tool' not found in '$llvmBin'." }
+        }
+
+        $clangCl = Join-Path $llvmBin 'clang-cl.exe'
+        & $clangCl --version
+        if ($LASTEXITCODE -ne 0) { throw "Unable to query clang-cl version: $LASTEXITCODE" }
+        '#include <vector>' | & $clangCl /TP /std:c++latest /Zs -
+        if ($LASTEXITCODE -ne 0) { throw "Visual Studio LLVM is incompatible with the selected MSVC STL: $LASTEXITCODE" }
+        $llvmBin >> $env:GITHUB_PATH
+
     - name: Clean workspace (self-hosted only)
       if: runner.self-hosted
       shell: pwsh

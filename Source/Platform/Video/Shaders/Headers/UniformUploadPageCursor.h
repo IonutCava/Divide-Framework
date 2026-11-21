@@ -2,9 +2,7 @@
 
 #pragma once
 
-#include "EngineConfig.h"
 
-#include <array>
 namespace Divide
 {
     class UniformUploadPageCursor

@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "Platform/Headers/PlatformDataTypes.h"
 
 namespace Divide
 {

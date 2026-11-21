@@ -1,8 +1,6 @@
 #include "UnitTests/unitTestCommon.h"
 
 #include "Core/TemplateLibraries/Headers/SharedPtrFactory.h"
-#include <functional>
-#include <stdexcept>
 
 namespace Divide
 {

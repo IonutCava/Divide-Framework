@@ -33,7 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_ENGINE_MAIN_HEADER_
 #define DVD_ENGINE_MAIN_HEADER_
 
-#include "Core/Headers/ErrorCodes.h"
 
 namespace Divide
 {

@@ -45,7 +45,6 @@
 #include "ECS/Components/Headers/SelectionComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
 #include "ECS/Components/Headers/UnitComponent.h"
-#include <filesystem>
 
 namespace Divide
 {

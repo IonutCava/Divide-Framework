@@ -1,7 +1,6 @@
 // Copyright (c) 2026 DIVIDE-Studio
 
 #include "UnitTests/unitTestCommon.h"
-#include "Core/Headers/Console.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Platform/File/Headers/FileManagement.h"
 
