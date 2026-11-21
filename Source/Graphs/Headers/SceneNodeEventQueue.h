@@ -2,13 +2,9 @@
 
 #pragma once
 
-#include "Core/TemplateLibraries/Headers/Vector.h"
 #include "ECS/Components/Headers/SGNComponent.h"
-#include "Platform/Threading/Headers/SharedMutex.h"
 
-#include <array>
 #include <atomic>
-#include <utility>
 
 namespace Divide
 {

@@ -2,9 +2,6 @@
 
 #pragma once
 
-#include "Core/TemplateLibraries/Headers/Vector.h"
-#include "Platform/Headers/PlatformDataTypes.h"
-#include "Platform/Threading/Headers/SharedMutex.h"
 
 #include <algorithm>
 

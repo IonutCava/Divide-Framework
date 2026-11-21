@@ -56,6 +56,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mimalloc.h>
 #endif //ENABLE_MIMALLOC
 
+#include <utility>
+
 #include "Platform/Headers/PlatformDefinesOS.h"
 #include "Platform/Headers/PlatformDataTypes.h"
 
@@ -90,7 +92,6 @@ DISABLE_GCC_WARNING_POP()
 #include <span>
 #include <array>
 #include <functional>
-#include <utility>
 
 #include <fmt/printf.h>
 

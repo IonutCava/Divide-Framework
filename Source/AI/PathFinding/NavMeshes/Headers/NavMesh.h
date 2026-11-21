@@ -62,7 +62,6 @@
 #ifndef DVD_NAVIGATION_MESH_H_
 #define DVD_NAVIGATION_MESH_H_
 
-#include "Platform/Threading/Headers/Task.h"
 #include "Core/Headers/PlatformContextComponent.h"
 #include "NavMeshConfig.h"
 #include "NavMeshLoader.h"

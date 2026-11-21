@@ -1,8 +1,6 @@
 // Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/FileManagement.h"
-#include "Headers/ResourcePath.h"
 
-#include <filesystem>
 
 namespace Divide {
 

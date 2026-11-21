@@ -36,7 +36,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "glResources.h"
 
 #include "Core/Headers/RingBuffer.h"
-#include "Core/TemplateLibraries/Headers/Vector.h"
 
 namespace Divide {
 

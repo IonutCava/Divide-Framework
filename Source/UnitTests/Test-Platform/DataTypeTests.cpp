@@ -5,6 +5,31 @@
 namespace Divide
 {
 
+TEST_CASE( "Enum underlying conversions preserve values and constexpr array extents", "[data_type_tests]" )
+{
+    enum class SignedValue : I8
+    {
+        NEGATIVE = -7
+    };
+    enum class UnsignedValue : U64
+    {
+        LARGE = U64_MAX
+    };
+
+    STATIC_CHECK( std::is_same_v<decltype(to_base(SignedValue::NEGATIVE)), I8> );
+    STATIC_CHECK( std::is_same_v<decltype(to_base(UnsignedValue::LARGE)), U64> );
+    STATIC_CHECK( to_base(SignedValue::NEGATIVE) == -7 );
+    STATIC_CHECK( to_base(UnsignedValue::LARGE) == U64_MAX );
+    STATIC_CHECK( noexcept(to_base(SignedValue::NEGATIVE)) );
+
+    constexpr QueryResults queries{};
+    constexpr AttributeFlags flags{};
+    constexpr AttributeOffsets offsets{};
+    STATIC_CHECK( queries.size() == to_base(QueryType::COUNT) );
+    STATIC_CHECK( flags.size() == to_base(AttribLocation::COUNT) );
+    STATIC_CHECK( offsets.size() == flags.size() );
+}
+
 TEST_CASE( "Fundamental types and resource handles have expected sizes", "[data_type_tests]" )
 {
     STATIC_CHECK( sizeof(F32) == 4u );

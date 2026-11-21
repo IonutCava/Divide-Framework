@@ -170,6 +170,11 @@ Windows matrix steps invoke CMake/CTest presets directly after MSVC setup.
 Do not reinitialize MSVC through `run-cmake`: its automatic `vcpkg env` lookup
 can select Visual Studio's bundled, manifest-only vcpkg instead of the pinned
 repository checkout.
+For Clang jobs, Windows setup prepends the selected Visual Studio installation's
+`VC\Tools\Llvm\x64\bin` to PATH before dependency-cache identification and CMake.
+This keeps `clang-cl`, `clang` and `llvm-rc` paired with that installation's MSVC
+STL instead of an older standalone LLVM earlier on the runner PATH. Setup checks
+STL compatibility with a syntax-only `<vector>` compile before provisioning.
 
 ### Dependency configuration
 

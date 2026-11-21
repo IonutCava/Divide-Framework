@@ -4,7 +4,6 @@
 #ifndef DVD_RENDER_VIEW_SCHEDULE_H_
 #define DVD_RENDER_VIEW_SCHEDULE_H_
 
-#include "Core/Headers/TaskPool.h"
 
 namespace Divide
 {

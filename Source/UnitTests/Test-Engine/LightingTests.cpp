@@ -7,7 +7,6 @@
 */
 
 #include "UnitTests/unitTestCommon.h"
-#include "EngineConfig.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/ClusteredLighting.h"
@@ -22,11 +21,6 @@
 #include "../../../Assets/Shaders/GLSL/Common/spotShadowProjection.cmn"
 
 #include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstdint>
-#include <limits>
-#include <utility>
 
 namespace Divide
 {

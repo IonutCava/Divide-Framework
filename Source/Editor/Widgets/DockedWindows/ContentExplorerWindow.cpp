@@ -13,7 +13,6 @@
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Geometry/Shapes/Headers/Mesh.h"
 
-#include <filesystem>
 #include <imgui_internal.h>
 #include <imgui_stdlib.h>
 

@@ -1,7 +1,4 @@
-#include "Headers/PlatformDataTypes.h"
 
-#include "EngineConfig.h"
-#include <cassert> //assert
 #include <cstring> //std::memcpy
 
 namespace Divide

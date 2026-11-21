@@ -2,7 +2,6 @@
 #include "UnitTests/unitTestCommon.h"
 #include "Core/Headers/Application.h"
 #include "Core/Headers/PlatformContext.h"
-#include "Core/Headers/TaskPool.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Geometry/Animations/Headers/AnimationUtils.h"
 #include "Geometry/Animations/Headers/Bone.h"
@@ -10,7 +9,6 @@
 #include "Geometry/Shapes/Headers/Mesh.h"
 #include "Graphs/Headers/SceneNode.h"
 #include "Graphs/Headers/SceneGraphNode.h"
-#include "Platform/Headers/ConditionalWait.h"
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>

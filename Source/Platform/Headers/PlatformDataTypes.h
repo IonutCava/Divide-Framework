@@ -217,7 +217,10 @@ namespace Divide
     using BaseType = std::underlying_type_t<Type>;
 
     template <typename Type>
-    constexpr auto to_base(const Type value) noexcept { return std::to_underlying(value); }
+    constexpr BaseType<Type> to_base(const Type value) noexcept
+    {
+        return std::to_underlying(value);
+    }
 
     namespace detail
     {

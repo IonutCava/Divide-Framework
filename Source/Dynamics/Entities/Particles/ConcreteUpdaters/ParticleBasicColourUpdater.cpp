@@ -2,7 +2,6 @@
 
 #include "Headers/ParticleBasicColourUpdater.h"
 
-#include "Core/Headers/TaskPool.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 

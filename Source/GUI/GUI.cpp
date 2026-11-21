@@ -13,7 +13,6 @@
 #include "GUI/CEGUIAddons/Renderer/Headers/CEGUIRenderer.h"
 #include "GUI/CEGUIAddons/Renderer/Headers/DVDTextureTarget.h"
 
-#include "Core/Headers/NonCopyable.h"
 #include "Core/Debugging/Headers/DebugInterface.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"

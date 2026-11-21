@@ -5,13 +5,11 @@
 #include "Core/Headers/Application.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
-#include "Core/Headers/TaskPool.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Material/Headers/ShaderComputeQueue.h"
 #include "Managers/Headers/ProjectManager.h"
 #include "Managers/Headers/RenderPassManager.h"
-#include "Platform/Headers/ConditionalWait.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 

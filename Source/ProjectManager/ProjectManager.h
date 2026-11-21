@@ -33,9 +33,7 @@
 #ifndef DVD_PROJECTMANAGER_H
 #define DVD_PROJECTMANAGER_H
 
-#include <cstdint>
 
-#include "EngineConfig.h"
 
 struct SDL_Texture;
 struct SDL_Surface;

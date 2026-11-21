@@ -33,13 +33,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_EDITOR_UTILS_INL_
 #define DVD_EDITOR_UTILS_INL_
 
-#include "Core/Math/Headers/MathHelper.h"
 #include "ECS/Components/Headers/EditorComponent.h"
 #include "Editor.h"
 #include "PropertyEditState.h"
 #include "UndoManager.h"
-#include "Platform/Headers/PlatformDefines.h"
-#include "Platform/Video/Headers/RenderAPIEnums.h"
 
 #include <imgui.h>
 

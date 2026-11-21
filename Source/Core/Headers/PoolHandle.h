@@ -33,7 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_POOL_HANDLE_H_
 #define DVD_POOL_HANDLE_H_
 
-#include "Platform/Headers/PlatformDataTypes.h"
 
 namespace Divide {
 

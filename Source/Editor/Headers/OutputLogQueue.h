@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include "Core/Headers/Console.h"
-#include "Platform/Threading/Headers/SharedMutex.h"
 
 namespace Divide
 {
