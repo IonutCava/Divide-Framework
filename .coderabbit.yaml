@@ -1,0 +1,6 @@
+reviews:
+  path_filters:
+    - "!*.xml"
+    - "!**/*.xml"
+    - "!docs/**"
+    - "!Source/UnitTests/**"
