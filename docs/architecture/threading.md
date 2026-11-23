@@ -96,10 +96,15 @@ Scene-graph spatial callbacks can run on parallel workers. The editor coalesces
 their notifications and refreshes gizmo selections on the main thread, retaining
 the request while the gizmo is being manipulated.
 `Console` serializes stream writes, queue draining, and callback dispatch.
-Logging from a callback is queued until the current dispatch completes; a
-callback may unbind itself, and an unbind on another thread waits for its
-in-flight callback. Callbacks must not wait on work that needs the console lock
-or call `Console::Start`. `Stop` drains accepted queued output before shutdown,
+With default flags in normal deferred mode, INFO entries stay queued until an
+explicit or periodic flush; WARNING and ERROR entries request a flush on print.
+`PRINT_IMMEDIATE` retains its immediate dispatch and flush behavior for INFO.
+A shared producer token preserves enqueue order across threads because
+`Console::Output` holds the console lock while enqueuing. Logging from a
+callback is queued until the current dispatch completes; a callback may unbind
+itself, and an unbind on another thread waits for its in-flight callback.
+Callbacks must not wait on work that needs the console lock or call
+`Console::Start`. `Stop` drains accepted queued output before shutdown,
 including when output has since been disabled. Immediate output does not drain
 unrelated deferred messages unless a flush is requested. Temporary diagnostic
 flag changes use `Console::ScopedFlags`, which affects only the calling thread.

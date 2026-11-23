@@ -269,11 +269,75 @@ namespace Divide
         });
         second._id = Console::BindConsoleOutput([&](const Console::OutputEntry&) { ++secondCalls; });
         Console::printfn("remove-callbacks");
+        Console::Flush();
         Console::printfn("after-removal");
+        Console::Flush();
         CHECK(removedFirst);
         CHECK(removedSecond);
         CHECK(firstCalls == 1u);
         CHECK(secondCalls == 0u);
+    }
+
+    TEST_CASE( "Console batches info output but flushes warnings and errors", "[console][threading][render_smoke]" )
+    {
+        const ConsoleTestScope console;
+        vector<Console::OutputEntry> received;
+        ConsoleCallbackScope callback;
+        callback._id = Console::BindConsoleOutput([&](const Console::OutputEntry& entry)
+        {
+            received.push_back(entry);
+        });
+
+        Console::printfn("buffered-info");
+        CHECK(received.empty());
+
+        Console::warnfn("warning");
+        REQUIRE(received.size() == 2u);
+        CHECK(received[0]._text == "buffered-info\n");
+        CHECK(received[0]._type == Console::EntryType::INFO);
+        CHECK(received[1]._text == "warning\n");
+        CHECK(received[1]._type == Console::EntryType::WARNING);
+
+        Console::printfn("buffered-info-after-warning");
+        CHECK(received.size() == 2u);
+
+        Console::errorfn("error");
+        REQUIRE(received.size() == 4u);
+        CHECK(received[2]._text == "buffered-info-after-warning\n");
+        CHECK(received[2]._type == Console::EntryType::INFO);
+        CHECK(received[3]._text == "error\n");
+        CHECK(received[3]._type == Console::EntryType::ERR);
+
+        Console::printfn("explicit-flush");
+        CHECK(received.size() == 4u);
+        Console::Flush();
+        REQUIRE(received.size() == 5u);
+        CHECK(received[4]._text == "explicit-flush\n");
+    }
+
+    TEST_CASE( "Debug console output follows the build configuration", "[console]" )
+    {
+        const ConsoleTestScope console;
+        vector<Console::OutputEntry> received;
+        ConsoleCallbackScope callback;
+        callback._id = Console::BindConsoleOutput([&](const Console::OutputEntry& entry)
+        {
+            received.push_back(entry);
+        });
+
+        Console::d_printfn("debug {}", 42);
+        Console::Flush();
+
+        if constexpr (Config::Build::IS_DEBUG_BUILD)
+        {
+            REQUIRE(received.size() == 1u);
+            CHECK(received[0]._text == "debug 42\n");
+            CHECK(received[0]._type == Console::EntryType::INFO);
+        }
+        else
+        {
+            CHECK(received.empty());
+        }
     }
 
     TEST_CASE( "Console unbind waits for an in-flight callback", "[console][threading][render_smoke]" )
@@ -293,7 +357,11 @@ namespace Divide
                 std::this_thread::yield();
             }
         });
-        std::thread producer([] { Console::printfn("in-flight"); });
+        std::thread producer([]
+        {
+            Console::printfn("in-flight");
+            Console::Flush();
+        });
         while (!entered.load(std::memory_order_acquire))
         {
             std::this_thread::yield();
@@ -341,6 +409,7 @@ namespace Divide
             std::thread other([] { Console::printfn("other"); });
             other.join();
         }
+        Console::Flush();
         CHECK(Console::IsFlagSet(Console::Flags::DECORATE_SEVERITY));
         REQUIRE(received.size() == 2u);
         CHECK(received[0] == "local\n");

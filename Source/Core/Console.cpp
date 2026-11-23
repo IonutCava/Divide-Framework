@@ -42,15 +42,23 @@ namespace
     thread_local U32 g_enabledOverrides = 0u;
     thread_local U32 g_disabledOverrides = 0u;
 
-    moodycamel::BlockingConcurrentQueue<Console::OutputEntry>& OutBuffer()
+    struct OutputQueue
     {
-        NO_DESTROY static moodycamel::BlockingConcurrentQueue<Console::OutputEntry> s_OutputBuffer;
+        moodycamel::BlockingConcurrentQueue<Console::OutputEntry> _queue;
+        // Console::Output holds g_outputMutex across enqueue, so this token preserves that order across threads.
+        moodycamel::ProducerToken _producer{ _queue };
+    };
+
+    OutputQueue& OutBuffer()
+    {
+        NO_DESTROY static OutputQueue s_OutputBuffer;
         return s_OutputBuffer;
     }
 
     void EnqueueOutput(const Console::OutputEntry& entry)
     {
-        if (!OutBuffer().enqueue(entry))
+        OutputQueue& outputQueue = OutBuffer();
+        if (!outputQueue._queue.enqueue(outputQueue._producer, entry))
         {
             ::fprintf(stderr, "Console output queue allocation failed: %s", entry._text.c_str());
             ::fflush(stderr);
@@ -143,7 +151,8 @@ void Console::Output(const std::string_view text, const bool newline, const Entr
         };
 
         const bool immediate = (flags & to_base(Flags::PRINT_IMMEDIATE)) != 0u;
-        const bool flushOnPrint = (flags & to_base(Flags::FLUSH_ON_PRINT)) != 0u;
+        const bool flushOnPrint = (flags & to_base(Flags::FLUSH_ON_PRINT)) != 0u &&
+                                  (type != EntryType::INFO || immediate);
         if (immediate && s_running.load(std::memory_order_relaxed) && !g_dispatching)
         {
             {
@@ -252,7 +261,7 @@ void Console::Flush()
         size_t count{};
         do
         {
-            count = OutBuffer().try_dequeue_bulk(std::begin(g_outputCache), g_outputCache.size());
+            count = OutBuffer()._queue.try_dequeue_bulk(std::begin(g_outputCache), g_outputCache.size());
 
             for (size_t i = 0u; i < count; ++i)
             {
