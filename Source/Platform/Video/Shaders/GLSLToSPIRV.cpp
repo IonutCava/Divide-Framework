@@ -255,6 +255,8 @@ bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* p
         }
     }
 
+    using Divide::Console;
+    STUBBED( "ToDo: Enable SPIR-V optimisation after validating reflection compatibility and updating shader cache versions." );
     glslang::GlslangToSpv( *program.getIntermediate( stage ), spirv );
     return !spirv.empty();
 }

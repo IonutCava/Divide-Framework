@@ -73,6 +73,17 @@ vegetation inputs. `Terrain::load()` turns this data into the material and
 shader inputs used by terrain chunks. Keep descriptor parsing, generated
 shader data, and cache identity in sync when changing these inputs.
 
+`terrainSplatting.frag` treats splat channels as material weights, not opacity
+overlays. Albedo, roughness, and encoded normals use weighted sums normalized
+by the total weight across all layers before normals are decoded. Normalizing
+the weights also handles quantization in the blend maps. An all-zero mask
+produces black albedo, zero roughness, and a neutral tangent-space normal.
+
+Terrain normal sampling corrects each mirrored anti-tiling sample's encoded
+X/Y components before blending. Albedo samples remain unchanged. The terrain
+tangent basis follows the position and UV derivatives in view space, preserving
+the UV handedness without switching reference axes on steep slopes.
+
 Terrain chunks initialize vegetation through indexed parallel work. Chunk tasks
 must own stable input data and write only their assigned chunk. The terrain
 resource owns the vegetation instances and releases them before releasing
