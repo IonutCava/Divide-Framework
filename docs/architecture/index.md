@@ -29,17 +29,6 @@ validation-gating behavior. Use a recoverable assertion or explicit error
 return when a fallback is intended; changing the unexpected-call contract
 affects all its callers.
 
-## Math SIMD alignment
-
-`Source/Core/Math/Headers/MathVectors.h` declares `vec4` inside `#pragma pack(1)`.
-GCC/Clang cap member alignment under packing, so `vec4` carries a class-level
-`alignas(Vec4Alignment<T>)` to preserve SIMD alignment without changing packed
-non-SIMD vector layouts. Packing an enclosing type can still suppress the alignment
-of its `float4` or matrix members and make SIMD accesses fault. GPU records use
-natural alignment and test their shader-visible offsets and sizes; see
-[Rendering](rendering.md). Keep the layout and alignment tests when
-changing these types.
-
 ## Debugging routes
 
 - Both GL and Vulkan fail: start in shared `GFXDevice`, `ShaderProgram`, `RenderPassExecutor`, and descriptor setup.
@@ -52,6 +41,4 @@ changing these types.
 - Every PR/change must review and update the relevant documentation alongside the implementation; keep one authoritative explanation and cross-link related guides.
 - If the affected subsystem has no guide or entry, create one using the existing pattern: scope and entry points, ownership/data flow, invariants, safe-change guidance, and known limitations. Add new guides to this index and the routing table in `AGENTS.md`.
 - Preserve invariants, ownership, data flow, debugging entry points, and limitations rather than exhaustive file inventories.
-- Capability/readiness notes are a migration of the existing repository reference, not a fresh end-to-end audit. Verify them against the current branch before implementation.
-- For newly checked volatile claims, record the source symbols and the last-verified commit. Do not imply that a documentation reorganization validates runtime behavior.
 - Add decision records under `docs/decisions/` only for durable choices with meaningful rationale, not session logs.

@@ -117,7 +117,7 @@ checklist below. Later measurements and fixes supersede some of the conclusions.
 - Bindless changes shader descriptor layouts → shader cache invalidation via AppendToShaderHeader / preprocessing version bump.
 - Vulkan buffer, image, view and sampler retirement and shader-reload pipelines
   use transient deferred deletion; pipeline-cache teardown is different. New
-  pools need a GPU-completion proof; see [GPU resources](../architecture/gpu-resources.md#vulkan-memory).
+  pools need a GPU-completion proof; see [GPU resources](../architecture/gpu-resources.md#vulkan-resources).
 - No commits/pushes without explicit request.
 
 ## Optional tooling (for user to review/install)
@@ -300,7 +300,7 @@ Queued commands retain old revisions through edits; replay retains owners per
 merged slot, including slots omitted by later partial commands. Publication
 uses the existing memory pool and allocator-backed shared control blocks;
 steady command copies do not allocate new records. First use and edits can.
-See [binding ownership](../architecture/shader-descriptors.md#immutable-material-binding-revisions).
+See [binding ownership](../architecture/shader-descriptors.md#binding-and-cache-lifetime).
 
 Step 3 adds bounded direct-mapped caches for stable sampled-image operations.
 Vulkan reuses resolved combined-image-sampler values but preserves per-slot

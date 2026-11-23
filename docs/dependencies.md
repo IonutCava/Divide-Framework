@@ -2,14 +2,9 @@
 
 <!-- Copyright (c) 2026 DIVIDE-Studio -->
 
-`vcpkg.json` manages many dependencies that receive ongoing fixes and updates.
-Some larger dependencies are fetched through CMake. Small, infrequently changing
-libraries may instead be vendored in `Source/ThirdParty` when their licenses
-permit it.
-
-On macOS, solar calculations use the system's local-time API instead of the
-`date` library. Unlike the previous system-zone lookup, this also honors a
-process `TZ` environment-variable override.
+`vcpkg.json` manages most dependencies. Some larger dependencies are fetched
+through CMake. Small libraries may be vendored in `Source/ThirdParty` when
+their licenses permit it.
 
 ## Vendored library provenance
 

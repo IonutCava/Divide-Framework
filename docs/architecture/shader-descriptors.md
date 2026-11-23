@@ -6,328 +6,90 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 ## Entry points
 
-- `Source/Platform/Video/Shaders/ShaderProgram.cpp`: shared source loading, generated header, shader pipeline.
-- `Source/Platform/Video/Shaders/GLSLToSPIRV.cpp`: glslang stage mapping and SPIR-V compilation.
-- `Source/Platform/Video/Shaders/ShaderDataUploader.cpp`: cache/reflection serialization and `BYTE_BUFFER_VERSION`.
-- `Source/Platform/Video/Headers/RenderAPIEnums.h`: shader/topology/descriptor enums.
-- `Source/Platform/Video/GFXDevice.cpp`: `initDescriptorSets()` registers canonical bindings.
-- `Assets/Shaders/GLSL/`: shader declarations and shared atoms.
-- `Source/Platform/Video/RenderBackend/OpenGL/Shaders/glShaderProgram.cpp`: GL consumption/binding.
-- `Source/Platform/Video/RenderBackend/Vulkan/Shaders/vkShaderProgram.cpp`: Vulkan shader modules and program layouts.
-- `Source/Platform/Video/RenderBackend/Vulkan/VKWrapper.cpp`: descriptor layouts, caches, and `VK_API::bindShaderResources`.
-- `Source/Platform/Video/RenderBackend/Vulkan/vkDescriptors.cpp` and `Source/Platform/Video/RenderBackend/Vulkan/Headers/vkDescriptors.h`: descriptor layout-cache identity.
-- `Source/Platform/Video/RenderBackend/Vulkan/Vulkan-Descriptor-Allocator/`: descriptor pool allocation.
+- `Source/Platform/Video/Shaders/ShaderProgram.cpp` loads shader source and manages compilation and caches.
+- `GLSLToSPIRV.cpp` compiles Vulkan shader stages.
+- `ShaderDataUploader.cpp` serializes reflection and shader data.
+- `GFXDevice.cpp` registers descriptor bindings.
+- `Assets/Shaders/GLSL/` contains shader declarations and shared shader code.
+- The OpenGL and Vulkan shader backends consume the shared program and descriptor data.
 
-## Shared shader flow
+## Shader flow and caches
 
-`ShaderProgram` loads/reparses GLSL, loads/builds GLSL cache, loads/builds SPIR-V, loads/builds reflection, and hands shared results to the backend.
-OpenGL still consumes GLSL; Vulkan consumes SPIR-V. Reflection is shared, not duplicated per backend.
-CPU profiling separates cache lookup/write and their lock waits, source and
-include/macro processing, push-constant detection, SPIR-V compilation,
-reflection, and OpenGL upload. Capture asset-worker events as well as the main
-thread; these scopes measure wall time and do not establish GPU execution time.
-Push-constant detection skips regular-expression matching for lines without a
-`PushData` token while retaining backend-specific declaration and identifier
-checks; cached GLSL is still checked rather than trusting unverified metadata.
-`GFXDevice` preloads the regular and linear-depth framebuffer preview programs
-during rendering initialization. The depth-preview load participates in the
-startup task barrier and failure stops initialization; debug-view registration
-remains lazy and resets with the registry. Post-AA includes FXAA in the same
-`PreRenderBatch` load counter as its SMAA programs.
-The resource pool calls `unload()` before destroying a loaded shader program.
-Vulkan's destructor only releases any remaining module-parent references, so it
-also cleans up partially loaded programs without unregistering a loaded program
-twice.
-Material shader slots own their program references. Cloning acquires a separate
-reference only for a ready program; pending clones request their own slot. A
-ready clone publishes its own render-ready notification for its new owner.
-Moving a slot transfers its reference. A requested replacement polls the old
-program until it has loaded, then queues the replacement and releases the old
-reference only after acquiring the new one. Queued replacements retain the old
-program until processed but do not report the slot ready; material unload cancels
-queued writes and waits for in-flight shader loads before releasing slots.
-`Material::canDraw()` polls resource snapshots without waiting for compilation:
-created, loading, and thread-loaded programs remain pending; missing, stale,
-failed, and unloading resources are reported as failures. A ready transition
-publishes one render notification even if the property window inspected the
-shader first. The property window displays pending or failed state rather than
-spinning or substituting an unrelated program.
-Render-pass validation polls every required pass even when an earlier pass is
-pending, so later shader requests can start without waiting for it. It keeps a
-node out of the prepared queue until all required passes are ready. Main-pass
-material preparation is required for every node; other passes request only
-draw-enabled nodes in the bins that those passes actually render.
-The shader queue dispatches queued asynchronous loads only while fewer than 15
-are in flight; remaining entries stay queued. Immediate high-priority processing
-can bypass that limit, and cache hits release their counter immediately.
-Vulkan shader-load and reload notifications are queued by program GUID under a
-mutex. The render thread swaps the pending IDs into reusable storage at frame
-end and invalidates matching compiled pipelines without retaining queued program
-pointers; notifications arriving during the batch are processed next frame.
-Hot reload deliberately invalidates caches and reparses source. Configuration-derived constants (clustered-lighting budget, reflection-probe size/mips, binding maps, etc.) are injected into the generated shader header by `InitGLSW`. Feature-owned values that must stay synchronized with C++ are passed as module defines by their owning subsystem (for example, `Vegetation` supplies `MAX_VEGETATION_TREE_MESHES` to tree culling) rather than hard-coded into a shared shader atom. Every generated line passes through one helper that folds the stage name and line into an FNV-1a (`_ID`) fingerprint. GLSL, SPIR-V, and reflection caches live under `header-<fingerprint>/<preprocess-version>`, so generated-header changes invalidate them. New generated lines must use `AppendToShaderHeader`, not `glswAddDirectiveToken` directly; bump `s_shaderPreprocessCacheVersion` whenever preprocessing semantics change.
-The newest shader-atom timestamp is read and updated under `g_cacheLock`,
-including file-watcher updates racing asset-loader cache reads.
+`ShaderProgram` loads GLSL, preprocesses it, creates SPIR-V where needed,
+builds reflection data, and passes the results to the backend. OpenGL consumes
+GLSL; Vulkan consumes SPIR-V. Reflection is shared by both.
 
-Changes must cover source parsing, generated declarations, cache invalidation, SPIR-V generation, reflection compatibility, and both backend consumers.
+Generated shader headers can contain configuration and feature limits. Send
+each generated line through `AppendToShaderHeader` so its stage and content
+contribute to the cache fingerprint. Bump the relevant cache version when
+preprocessing, reflection, or compiled-binary semantics change.
 
-Vegetation compute reuses `PER_PASS` 14/15 for either grass or tree compacted
-instances/counts, rebinding the appropriate buffers at each dispatch. Both draw
-shaders read their own compacted buffer through `PER_DRAW` 13; the range offset
-is `NodeIndirectionData::_instanceDataOffset` (the third U32), not a loose uniform.
-`RenderingComponent::setInstanceShaderBuffer` selects the generic
-`STORAGE_BUFFER_INSTANCING` shader define, including after material replacement.
-It suppresses `OVERRIDE_DATA_IDX`: the indirect record's `baseInstance - 1`
-selects the node on both backends. Vulkan subtracts baseInstance from its
-instance index; OpenGL's instance ID is already draw-local. Per-instance vertex
-attributes cannot use this addressing mode; terrain and particles retain zero
-baseInstance and uniform node identity. Grass colour/LOD metadata survives
-instance reordering. Tree and grass draw stages have no loose-uniform block;
-their culling dispatches still use per-view/per-chunk uniforms.
+OpenGL's SPIR-V ingestion path is not supported by the current configuration;
+keep OpenGL on GLSL unless that path has been validated. Check
+`XML/config.xml` and the shader cache settings before changing backend inputs.
 
-OIT accumulation writes weighted colour, coverage-weighted normals plus coverage
-alpha, and coloured transmission modulation. There is no separate revealage
-fragment output. The normal target's separate alpha blend stores revealage;
-composition always samples it at `PER_DRAW` 1 alongside accumulation at 0,
-including colour-only variants. Shader contract tests cover both APIs, both
-sample modes, and accumulation output locations. Source/atom timestamps invalidate
-these source edits; generated-header and preprocessing semantics are unchanged.
+Preprocessing must fail explicitly on missing shader sections, unresolved
+includes, invalid reflection, or incompatible cache data. Do not silently drop
+shader source or pass incomplete binary data to a backend.
 
-### GLSL authoring and preprocessing
+Keep shader declarations, generated headers, reflection serialization, cache
+compatibility, and both backend consumers consistent. A source change that
+alters any of these contracts may require a cache-version update.
 
-- Effect files are GLSW collections; `ShaderModuleDescriptor` selects a `file.Stage.variant` section, and module/global defines select material, pass, and debug variants.
-- Shader-thread initialization resets the thread-local preprocessor tag cursor;
-  repeated initialization on the same thread must not append past its tag array.
-- Terrain's tessellation evaluation stage initializes the selection and LoD
-  varyings consumed by later stages; it reads selection from the same
-  per-node transform record as ordinary vertex shaders.
-- `waterComposite.cmn` contains expression-only Fresnel, wave-offset and planar
-  radiance mixing shared by the water shader and its CPU arithmetic regressions.
-- `ssaoResampling.cmn` shares half-resolution depth/normal block and AO
-  reconstruction coordinates with the CPU edge and footprint regressions.
-  The half-depth/normal target's alpha stores the selected 2x2 source offset;
-  half-resolution generation binds the full depth image at slot 2 for its
-  source dimensions rather than treating rounded-up target UVs as source UVs.
-- `spotShadowProjection.cmn` shares the biased homogeneous clip-volume predicate
-  between spot-shadow sampling and its CPU boundary regression tests.
-- `hizConservative.cmn` shares near-plane, depth-tolerance, mip-selection and
-  texel-footprint predicates with CPU regressions. Hi-Z queries use exact
-  `texelFetch` taps and retain partially clipped bounds.
-- `hizDispatchIndex.cmn` shares indirect-command cull grid indexing with CPU
-  boundary regressions. Padded workgroups must be rejected before computing a
-  command index, including when the command count approaches `U32_MAX`.
-- `treeWind.cmn` shares tree sway amplitude, height/LoD eligibility and maximum
-  displacement with CPU regressions and vegetation culling. Wind uses the same
-  `PER_FRAME` scene data in compute and draw variants.
-  The tree draw reads a per-pass wind flag that vegetation culling writes into
-  the draw entry (`TREE_WIND_ENABLED`); `VEGETATION_WIND_DISABLED` compiles
-  grass and tree sway out. Render infrastructure carries no deformation state.
-- `shadowStrength.cmn` shares shadow-strength and variance light-bleed arithmetic
-  with CPU regressions, including the maximum-bias boundary.
-- `csmShadow.cmn` shares cascade overlap, blend-weight and depth-scale
-  arithmetic between directional shadow sampling, frustum construction and
-  CPU regressions.
-- `PreprocessIncludes` runs **before** `PreProcessMacros`, so every `#include` must resolve even inside a disabled `#if`.
-- Include directives may end with whitespace or a single-line comment. Malformed, missing, cyclic, or nested includes beyond 64 levels stop source loading instead of being silently dropped by the macro preprocessor. Expansion uses an explicit stack; cached atoms retain their dependency depth so cache hits cannot bypass the limit. Only successfully expanded atoms are cached, and changing a dependency invalidates every cached parent.
-- A missing GLSW section or failed macro preprocessing aborts source loading before uniform extraction, shader compilation, or cache writes.
-- `PreProcessMacros` uses the vendored `Source/ThirdParty/fcpp`. Its `#if` evaluator (`eval` in `cpp5.c`) is locally patched: it no longer reads below its value stack when an expression starts with a prefix operator such as `(` or `!`. Windows ASan reports that read as a stack-buffer underflow. Keep the patch when updating fcpp.
-- Loose uniforms are collected into generated `std140` blocks at `PER_DRAW` slots `s_uniformsStartOffset` and `s_uniformsStartOffset + 1`; a third distinct layout fails shader loading. Equal layouts reuse their original slot even when other stages intervene. Stage processing follows descriptor file order, and cache/module names include the preceding stage descriptors so incompatible program contexts do not share compiled modules. Reflection-cache version 7 preserves each stage's loose-uniform declarations. Cache hits restore and check those declarations against the current program's assigned slots. Missing or incompatible SPIR-V or reflection causes the stage to be regenerated; OpenGL also requires cached GLSL. Regeneration writes all three cache entries.
-- `UniformBlockUploader` retains a CPU copy and commits loose-uniform data
-  immediately before a draw or dispatch. Identical bytes keep the existing
-  immutable GPU snapshot across frames; changed bytes receive a different arena
-  slot. Each consumer records its frame slot, even without a new uniform
-  command. Recompile, unload, and replacement retire the old allocation only
-  after every frame slot that used it has completed on every submitting window.
-  Generation-checked slots reject stale or duplicate releases. Arena pages are
-  retained to their high-water mark, independent of shader lifetime; see
-  [GPU resources](gpu-resources.md) and [threading](threading.md) before
-  changing their synchronization or teardown.
-- Reflected loose-uniform members, including array aliases, are stable-sorted
-  by name hash once during uploader construction. `ApplyUniformData` uses a
-  lower-bound lookup and updates every equal hash in its original relative
-  order; partial writes and identical-byte snapshot reuse retain their existing
-  semantics. The sorted order is a precondition of this private helper.
-  `FindBinding` retains only an index hint, validating both the current binding
-  count and target slot before reuse. Replaced or reordered descriptor sets
-  fall back to a scan. The complete buffer/range/queue-index/type/visibility
-  comparison still determines whether preparation changed the binding; no
-  native binding or GPU lifetime check is bypassed. These lookup paths add no
-  render-loop allocation. CPU-only regression access uses the
-  `UniformBlockUploaderTestAccess` attorney.
-- Cached SPIR-V must contain whole, nonempty words; incomplete binary reads are regenerated rather than passed to a backend.
-- SPIR-V reflection records vertex input locations, including matrix columns and array elements, and the reflection cache persists them. Built-in inputs are excluded; unsupported input types or locations fail reflection. Vulkan uses the reflected locations to omit unused vertex attributes from pipeline descriptions without inventing missing attributes. Shader reloads clear and rebuild this mask.
-- `SpirvHelper::UsesDrawIndex` scans each actual Vulkan shader module for
-  `DrawIndex` decorations, including member and decoration-group forms.
-  Alternative built-in decoration encodings conservatively disable batching;
-  malformed instruction lengths reject the module. Each compiled pipeline
-  aggregates compatibility from its loaded stages, so shader reloads cannot
-  reuse compatibility from a different module generation. See
-  [rendering](rendering.md#command-flow) for the adjacent-draw restrictions.
-- Prefer GLSL expression defines over helper functions so preprocessed shaders stay as inline as practical. Parenthesize macro arguments, keep bodies expression-only, and do not pass side-effecting or expensive expressions to macros that evaluate an argument more than once.
-- `GLSLToSPIRV` targets Vulkan 1.4 / SPIR-V 1.6 for Vulkan and the OpenGL 4.5 environment / SPIR-V 1.0 for OpenGL (`debug.renderer.useSPIRVForOpenGL` ingests the latter directly). The OpenGL SPIR-V path is currently broken (for example, vegetation `SHADOW` stages fail to build), so keep `useSPIRVForOpenGL` false and use GLSL. Compiled-binary and reflection cache paths include `s_compiledShaderCacheVersion`; bump it whenever compiler targets change.
-- `Source/UnitTests/Test-Engine/ShaderCompilerTests.cpp` exercises engine include expansion across the shader sources, loose-uniform cache restoration, OIT composition output and sampler variants, and Hi-Z culling plus representative terrain, water, vegetation, alpha-discard and shadow variants for both APIs. It links terrain display/prepass stages and grass OIT/prepass/shadow stages with and without overridden node indices. Shadow variants check that moment calculation precedes discard; alpha-discard variants check that surface and gradient preparation happens first. Terrain variants verify that their existing `NO_REFLECTIONS` configuration does not generate an IBL lookup. These CPU checks do not replace GPU execution or image-based rendering checks.
+## Descriptor ownership and layout
 
-## Descriptor ownership and invariants
+The descriptor-set usage order reflects update frequency:
 
-| Usage | Vulkan set index | Main resources |
-|---|---|---|
-| `PER_FRAME` | 0 | Environment, shadows, probes, scene globals |
-| `PER_PASS` | 1 | Scene inputs and clustered-light buffers |
-| `PER_BATCH` | 2 | Indirect commands, camera, transforms, indirection, materials |
-| `PER_DRAW` | 3 | Material textures, optional images, per-draw buffers |
+| Usage | Vulkan set index | Typical contents |
+|---|---:|---|
+| `PER_FRAME` | 0 | Environment and scene-wide data |
+| `PER_PASS` | 1 | Pass inputs and lighting data |
+| `PER_BATCH` | 2 | Camera, transforms, materials, and indirect commands |
+| `PER_DRAW` | 3 | Material textures and per-draw data |
 
-- Shaders use usage names, such as `DESCRIPTOR_SET_RESOURCE(PER_BATCH, 2)`, never raw set indices. Generated headers map bindings per API.
-- `DescriptorSetUsage` is ordered by update frequency; `PER_DRAW` must remain last. Vulkan uses the enum value directly; OpenGL maps `(usage, slot)` to flat bindings.
-- Changing enum order requires bumping `BYTE_BUFFER_VERSION`: cached reflection stores usage indices.
-- Every Vulkan pipeline layout uses real shared layouts for sets 0-2, even if unused by a program, and an identical `VK_SHADER_STAGE_ALL` 128-byte push-constant range. This preserves shared-set/push-constant compatibility across pipeline changes.
-- The `PER_PASS` light buffer at slot 9 is visible to vertex, fragment, and compute stages: debug light impostors read it in their vertex shader. Slots 8, 10, and 11 are fragment/compute only. The legacy `COMPUTE_AND_DRAW` name means fragment and compute, not all draw stages; use the explicit visibility names for new bindings.
-- OpenGL binding points are assigned in registration order across all stage visibilities, with separate counters for textures, images, uniform buffers and storage buffers (the latter two have distinct OpenGL namespaces). Do not give compute-only storage bindings a separate counter: aliased points let compute dispatches clobber persistently bound graphics buffers, and `GetDescriptorSlotForGLBinding` becomes ambiguous. This bug once broke OpenGL HiZ culling and tree compaction. Check the flattened storage index against the binding limit only on OpenGL; Vulkan's limit is per stage, not a limit on these OpenGL indices. The `PER_PASS` 14/15 compute-only SSBOs hold compacted vegetation instances and visible counts.
-- Partial push-constant commands merge only `dataFlags()`-selected slots into
-  the Vulkan replay cache; omitted slots retain their last explicit values.
-- Command coalescing accepts complementary or equal overlapping push slots,
-  rejecting conflicting overlapping values without mutating the earlier command.
-- Uniform-data coalescing treats shared storage as a no-op. Distinct sources
-  transfer their live bindings only after all overlapping types and sizes pass
-  validation; later values overwrite earlier ones, and successful transfers empty
-  the source. Rejected transfers leave both sides unchanged.
-- `UniformData::set` rejects dynamic vector objects: upload their `data()` and
-  `size()` instead. A binding's stored range cannot grow or shrink in place, so
-  use distinct persistent payloads when shader variants require different array
-  lengths.
-- Additional commands recorded by a `RenderPackage` can use
-  `additionalPushConstantsCmd()` to share its persistent uniform storage. This
-  lets vegetation culling supply chunk-specific uniforms without referring to a
-  stack object that expires before deferred command submission. Preparation
-  commands are copied separately before the view's render passes. Occlusion
-  commands are copied after current-view Hi-Z construction, with its texture
-  bound at `PER_DRAW` slot 0. Vegetation's occlusion variant receives the same
-  camera's view-projection matrix through persistent package uniforms. Ordinary
-  additional commands remain part of the draw packet. Packages are non-copyable
-  and remain at stable addresses when a rendering component adds packages for
-  new passes; queued commands retain pointers into those packages.
-- Vegetation compute and grass draws use the shared `PER_PASS` instance-buffer
-  slots. Tree draws bind their own buffer at `PER_DRAW` slot 13 and supply a
-  per-node absolute instance offset for the mesh's contiguous range inside its
-  chunk, so draw ordering and multiple terrains cannot select another range.
-  Slot 13 is also used for bones; a rendering component must not request both
-  instance and animation buffers.
-- `DebugView` explicitly initializes `skipLinearisation` to zero so shared
-  `fbPreview` programs do not inherit the splash screen's encoded-output mode.
-- OpenGL retains the same flagged-slot cache and replays known slots on pipeline
-  binds, including when no new push command follows a shader change. Partial
-  uploads use the merged cache rather than shader-local stale uniform values.
-- `PER_DRAW` is per-program and uses push descriptors. Pipeline creation assembles a local layout array; never overwrite the global shared-layout array with a program-specific layout.
-- Descriptor layout-cache identity must include creation flags, so push-descriptor layouts cannot alias ordinary layouts with the same bindings.
-- Push-descriptor validation uses queried `VkPhysicalDevicePushDescriptorProperties::maxPushDescriptors`, not dynamic-buffer limits.
+Use descriptor usage names in shaders, not raw set indices. Vulkan uses the
+usage order directly; OpenGL flattens usage and slot into binding points.
+`PER_DRAW` remains last. Changing the enum order requires updating serialized
+reflection data.
 
-The local-array, flag-aware cache, and push-descriptor limit notes were checked against commit `1508b95` during this reorganization; see `VK_API::createLayoutFromBindings`, pipeline layout creation, and the descriptor layout cache.
+Descriptor layouts and pipeline layouts are shared contracts. Keep shader
+declarations, generated binding maps, reflection, and backend layout creation
+in sync. Push descriptors are per-program; do not overwrite shared layouts with
+program-specific layouts.
 
 ## Binding and cache lifetime
 
-### Immutable material binding revisions
+Material resource bindings are published as immutable revisions. Recorded
+commands retain the revision they use, while package and view overrides remain
+separate. Replacing a resource publishes a new revision; existing commands may
+continue using the old one until their work completes.
 
-`Material::getResourceBindings` publishes an immutable `ResourceBindingSet`
-for a pass category, common-material-input requirement and texture visibility.
-Packages and deferred `BindShaderResourcesCommand`s share a retained handle;
-`_set` now contains only package/view overrides when `_resources` is present.
-Legacy/raw commands still use `_set` alone. Replay merges the base first and
-overrides second, preserving omitted-slot retention rather than treating a
-material record as a complete shader descriptor set. Shader-specific fallback
-resolution and loose-uniform commits still happen in the backend.
+Backend compiled-binding caches are non-owning. Their keys must identify the
+resource revision and descriptor slot. A cache miss may cost work; a false hit
+can bind stale resources. Clear these caches before tearing down the native
+device or context.
 
-The handle is reference counted, not a recycled raw index. Each publication
-has a monotonically increasing revision, and retains the generation-checked
-texture handles used by its sampled-image bindings. Sampler/texture/operation
-edits invalidate material caches; unchanged sampler edits and numeric material
-data do not publish a new texture revision. Shader layout reload does not
-cache native bindings in these records: completion for common material inputs
-uses the ready program, and native layout/fallback resolution remains per
-program. Resource replacement publishes a new record while old commands retain
-the previous one.
+Descriptor updates merge active slots until command-buffer flush. Omitted
+slots can retain an earlier binding, so callers must explicitly replace slots
+that are no longer valid. Fallback resolution may borrow an unchanged set or
+use reusable scratch storage; scratch data must not outlive the synchronous
+binding call.
 
-`GFXDevice::GFXDescriptorSet` retains an owner per merged slot, including slots
-omitted by later partial commands. Frame clear and GPU-idle renderer teardown
-release those owners. Dynamic object buffers and reflection/refraction
-overrides retain their existing package/scene ownership contracts. No native
-descriptor sets are retained by this feature. Backend compiled sampled-image
-operations are held in fixed-capacity, non-owning caches keyed by immutable
-revision and slot (OpenGL also includes descriptor usage). Cache collisions
-replace entries and cause misses, never false hits. Vulkan caches only the
-resolved combined-image-sampler type and image info; it still compares each
-per-draw slot and emits required push updates. OpenGL caches the flat binding
-slot and sampler handle, but resolves/touches the texture view and queues the
-binding on every use so view retirement and state-tracker restoration remain
-unchanged. Fallback-resolved and raw/override bindings bypass the cache.
-Both backend caches are cleared before their native device/context resources
-are torn down. Metrics report compiled-cache hits, misses and fixed storage. deletion still
-uses the existing backend retirement path.
+Command coalescing must compare active bindings, not unused capacity. Reject
+conflicting overlapping updates without partially changing the earlier
+command. Keep resource ownership, binding state, and GPU completion as separate
+concerns.
 
-Command-buffer pool deallocation and bulk reset clear recorded commands while
-retaining buffer capacity. Pool destruction destroys every constructed buffer,
-not just its backing memory. These boundaries must release retained revisions
-before backend teardown; marking buffers reusable without clearing their command
-owners leaves textures alive after their scene/material owners disappear.
+## Safe changes
 
-Records use the existing `MemoryPool`, serialized only on publication/final
-release. A revision also allocates a shared ownership control block through
-`dvd_allocator`. First use of a material/pass variant and later edits can
-allocate; ordinary recording/command copies do not allocate binding records or
-control blocks. Pool blocks retain their high-water capacity. This is not a
-claim that the entire renderer is allocation-free. Global content interning
-across different materials and backend-ready binding caches are not implemented.
+When changing descriptor or shader bindings, review the complete path:
 
-Command validation, printing and duplicate-command cleanup use effective
-base-plus-override bindings. Duplicate comparison includes descriptor usage
-and ignores inactive array capacity. Animation/instance slot 13 remains a
-package override, never shared material data.
+- `GFXDevice::initDescriptorSets()` and shader declarations.
+- Generated headers, reflection data, and cache versions.
+- OpenGL binding translation and Vulkan descriptor/push-descriptor layouts.
+- Pipeline compatibility, dynamic offsets, and cache invalidation.
+- Resource revisions, command-buffer ownership, and frame completion.
 
-`VK_API::bindShaderResources` caches resolved shared-set contents. New descriptor sets are allocated/written when resources change; otherwise only dynamic offsets change.
-Bound sets/offsets are tracked per bind point (graphics/compute) and command buffer.
-`PER_DRAW` push descriptors retain unchanged slots when the same pipeline layout
-is used; changed slots alone are written. Layout changes conservatively
-invalidate every pushed slot, and a new command recording resets both bind-point
-caches. Binding shared sets does not disturb the push set because their layouts
-and push-constant range are compatible across all pipeline layouts.
-`frameStarted` invalidates cached sets as descriptor pools flip.
-Vulkan descriptor-pool and descriptor-set allocation failures are logged and
-propagated; the affected draw or dispatch is skipped rather than binding an
-invalid or stale set. A later submission retries dirty descriptor state.
-
-OpenGL rebinds only uniform buffers when a clean `PER_DRAW` set changes solely
-because loose-uniform snapshots were committed. Dirty sets, shader pipeline
-changes, and changed sampler fallbacks still replay all bindings. Command-buffer
-boundaries mark sets dirty, renewing cached texture-view lifetimes before the
-next buffer is submitted.
-
-Both OpenGL and Vulkan resolve null and omitted active combined image samplers through `ShaderProgram::resolveSampledImages`. Descriptor updates merge slots, including `PER_DRAW`, until the command buffer is flushed: a non-null omitted slot can retain a previous draw's binding, so callers must explicitly replace slots whose old contents are not valid.
-OpenGL skips null sampled-image descriptors left after fallback resolution:
-unused slots keep their current tracked bindings during rendering. An explicit
-null view passed to `GL_API::makeTextureViewResident` still requests an unbind.
-Batching and frame-end reset semantics are described in
-[GPU resources](gpu-resources.md#opengl-memory).
-Resolution borrows the source set when no fallback is needed; otherwise it copies
-into reusable per-thread, per-usage scratch storage. The scratch set is consumed
-synchronously and must not escape the binding call. The fallback snapshot is
-refreshed for dirty sets, and a transition from a borrowed set to a fallback
-forces an update even if an older fallback snapshot happens to match.
-Snapshot comparison uses the free `DescriptorSet` `==`/`!=` operators, which
-compare only active bindings (`[0, _bindingCount)`); stale storage past the
-count is never bound and does not invalidate the snapshot.
-Standard two-stage material and depth programs with fragment-only texture access share albedo and opacity sampler declarations. `Material` supplies a real or default 2D-array texture at each of those slots for every draw package; their packed operations are `NONE` when the corresponding texture is absent. Material colour, prepass and shadow alpha keep the opacity-map, albedo-texture, base-colour priority, excluding disabled operations. Custom shader programs, raw shader text and programs with non-fragment texture access keep their existing texture defines and bindings. The cached material descriptor is copied and completed for the actual ready program rather than assuming all programs in a pass category share the same layout.
-The common texture-selection branches are uniform for the current per-material draw. A future multi-draw or instancing design that varies materials within a draw must also ensure valid texture-coordinate derivatives and per-draw resource indexing.
-When an OpenGL shader bind fails, ordinary descriptor updates still run without
-sampler resolution; a null active shader must not turn the existing draw-skip
-path into an assertion or dereference.
-Non-MSAA fallbacks share 1x1 black texel values and nearest/clamp sampling, with compatible dimensionality (including arrays/cubes), numeric format, and depth comparison.
-Missing active MSAA bindings are hard GPU assertions, never fallback textures.
-The current reflection cache (version 7) stores these sampler traits.
-These sampler notes were added by commit `7b09ed5`.
-
-`DescriptorSetBindingType::INDIRECT_BUFFER` is not a shader resource. `SetIndirectBuffer` at `PER_BATCH` slot 0 selects the indirect draw buffer (`GL_DRAW_INDIRECT_BUFFER` / `vkCmdDraw*Indirect`) and is skipped in GL binding tables and Vulkan layouts.
-The same command buffer is separately a writable SSBO at `PER_BATCH` slot 2 (`dvd_GPUCmds`) for compute Hi-Z culling. Synchronization follows `BufferUsageType::COMMAND_BUFFER` storage/indirect usage, not the descriptor binding type.
-Both bindings snapshot the command page's selected player/frame slot, and Hi-Z
-barriers target that same page.
-
-## Changing bindings safely
-
-Audit `GFXDevice::initDescriptorSets()`, shader declarations, generated headers, reflection serialization, GL binding translation, and Vulkan descriptor/push-descriptor/descriptor-buffer paths together.
-Check pipeline compatibility, dynamic-offset ordering, cache invalidation, and frame/pool lifetimes. See [GPU resources](gpu-resources.md) and [threading](threading.md) for resource/synchronization changes.
+Use `Source/UnitTests/Test-Engine/ShaderCompilerTests.cpp` for shader and
+reflection regressions. CPU-side checks do not replace backend execution or
+image-based validation.

@@ -2,299 +2,65 @@
 
 <!-- Copyright (c) 2026 DIVIDE-Studio -->
 
-## General guidelines
+## Project overview
 
-- Keep agent notes short and actionable. Focus on immediate, verifiable information needed to work in this repository.
-- Read only the subsystem guides relevant to the task; start with the [architecture index](docs/architecture/index.md).
+- Divide-Framework is a C++23 game engine and editor. Engine code is under `Source/`; assets are under `Assets/`.
+- `Source/EngineMain.cpp` starts the application. Executable entry points are `Source/Executable/main.cpp` and `Source/ProjectManager/ProjectManager.cpp`.
+- CMake configuration lives in the repository root and `Source/CMakeLists.txt`. Dependencies use recursive submodules and vcpkg.
 - Treat source code and build configuration as authoritative when notes disagree.
 
-## Documentation boundaries
+## Documentation
 
-- Keep `README.md` human-facing: purpose, features, screenshots, dependencies, and human build/run instructions.
-- Put AI-specific notes and agent/CI validation guidance here or in linked agent references, not in `README.md`.
-- Keep subsystem knowledge in `docs/architecture/` and reusable agent procedures in `.github/skills/`. Link rather than duplicate.
-- Every PR/change must keep the relevant documentation up to date alongside the implementation. Review the affected guides even when no documentation edit is needed.
-- If no relevant guide or entry exists, add one following the existing pattern: subsystem scope, source paths/symbols, ownership/data flow, invariants, safe-change guidance, and known limitations. Link new guides from `docs/architecture/index.md` and this file's routing table.
-- Use source paths and symbols rather than brittle line numbers.
-- Record durable architectural decisions and rationale in `docs/decisions/` when needed; do not create empty placeholders.
-- Keep temporary task logs, hypotheses, and unverified findings in session artifacts, not repository instructions.
-- Label planned features separately from implemented behavior. Recheck volatile capability claims against the current branch before relying on them.
+- Keep `README.md` focused on the project, dependencies, and human build/run instructions.
+- Keep project-wide agent guidance here. Put subsystem details in `docs/architecture/` and reusable procedures in `.github/skills/`.
+- Keep this file focused on stable concepts and coding standards. Omit temporary findings and one-off implementation details.
+- Update relevant guides when a code change affects documented behavior. Link new architecture guides from `docs/architecture/index.md` and the routing table below.
+- Record durable architectural decisions in `docs/decisions/` when needed. Keep temporary notes in session artifacts.
+- Use source paths and symbols in documentation. Distinguish implemented behavior from planned work.
 
-## Codebase and entry points
+## Coding standards
 
-- Small C++23 game engine/editor; engine code is under `Source/`, assets under `Assets/`.
-- `Source/EngineMain.cpp` starts the application with `Application::start("config.xml", ...)`.
-- `Source/CMakeLists.txt` builds `Divide-Framework-Lib` from `EngineMain.cpp` and `ENGINE_SOURCE_CODE`, plus the engine/editor and ProjectManager executables.
-- Executable entry points: `Source/Executable/main.cpp` and `Source/ProjectManager/ProjectManager.cpp`.
-- Build wiring: `CMakeLists.txt`, `Source/CMakeLists.txt`, `Source/CMakeHelpers/GlobSources.cmake`.
-- Dependencies: recursive submodules and vcpkg (`vcpkg.json`, presets/toolchain); the human dependency list is in `README.md`.
+- Favor data-oriented designs, contiguous storage, batching, and parallel work where they fit. Keep hot paths simple and avoid unnecessary allocations.
+- Keep system boundaries generic. Feature-specific policy belongs to the owning scene or subsystem, not shared infrastructure.
+- Prefer suitable EASTL containers and algorithms, using existing engine aliases where available. Preserve required ordering, lifetime, and thread-safety guarantees.
+- Use the `Attorney` pattern for controlled access to private or protected members. Attorney helpers must be declared as `class` and expose only the required operations.
+- Keep code portable across Windows, Linux, and macOS on x64 and arm64. Guard platform-specific APIs and provide portable alternatives where needed.
+- Reuse `APP_LIB_DIVIDE`, `APP_EXE_DIVIDE`, and `APP_EXE_PROJECT_MANAGER` in `Source/CMakeLists.txt`. Keep project and third-party compiler flags in their shared CMake lists.
+- Prefer engine numeric aliases (`U8`, `U16`, `U32`, `U64`, `I8`, `I16`, `I32`, `I64`, `F32`, `D64`) and `size_t` for container sizes and indices. In engine code, use numeric conversion helpers from `PlatformDataTypes.h` rather than unchecked numeric casts.
+- Keep common or heavy headers in the appropriate precompiled header. Avoid adding them to broadly included headers.
+- Put opening braces on their own lines. Put copyright headers before include guards; files using `#pragma once` may keep it first. End source, configuration, and documentation files with a newline.
+- Prefer clear function and variable names so code explains itself. Keep comments sparse. Comment only non-obvious algorithms or constraints, such as SIMD operations or hash steps; do not narrate straightforward code.
 
-## Conventions and safe changes
+## Build and validation
 
-- Start with a data-oriented design: favor batch processing, cache-friendly access, parallelism, and minimal overhead. Keep OOP, virtual dispatch, and large objects minimal; they are acceptable for high-level orchestration, not the default for performance-sensitive engine code.
-- Keep cross-system contracts generic. Scene/game features own their policy and translate it into bounds, masks, capabilities or invalidation requests; rendering infrastructure must not know feature names such as trees or wind. See [Rendering](docs/architecture/rendering.md#cross-system-boundaries).
-- Inline small GLSL `.cmn` helpers when they have only one shader-file consumer; keep shared includes extracted and avoid duplicating sizeable content across shader stages. Re-extract a helper if it gains another consumer.
-- Pass C++-owned shader limits through defines supplied by the owning subsystem instead of duplicating numeric literals or relying on comments that values must match.
-- Avoid unnecessary memory allocations. Prefer appropriately sized arrays, reusable capacity/high-water-mark allocations, and existing arena allocators. Keep `new`/`delete` and `malloc`/`free` out of the main rendering loop except where unavoidable and explicitly justified; reuse or preallocate storage instead.
-- Prefer value/POD-like records in pre-sized contiguous storage over a separate `unique_ptr` allocation per render record. Stable addresses alone do not justify per-record heap allocation when the capacity is bounded. Create executors and reserve predictable view storage during subsystem/scene initialization; document any remaining first-use or capacity-growth allocations rather than calling a high-water-mark path allocation-free.
-- For genuinely dynamic storage, prefer the existing `MemoryPool`, `ObjectPool`, uniform upload arena and backend allocators when suitable; do not introduce a custom allocator unnecessarily. Pool allocation still has block-growth, bookkeeping and possible synchronization costs, so preserve alignment, lifetime and thread ownership and measure the hot path.
-- Use the existing `Attorney` pattern for access to private/protected members, including test access. Attorney helpers must be declared as `class`, not `struct`. Expose only the required operations through the attorney; do not add direct caller/test friendship or make implementation details public to bypass encapsulation.
-- Prefer EASTL containers and algorithms over suitable STL equivalents, using existing engine aliases where available. Use a faster suitable alternative, such as a concurrent queue or flat hash map, when appropriate; preserve the required ordering, lifetime, and thread-safety guarantees. Evaluate performance-sensitive choices in the intended Debug configuration as well.
-- Keep code cross-platform across Windows, Linux, and macOS on both x64 and arm64. Avoid unguarded platform APIs or architecture-specific assumptions; provide appropriate portable paths for SIMD, alignment, and platform functionality.
-- Reuse target variables in `Source/CMakeLists.txt`: `APP_LIB_DIVIDE`, `APP_EXE_DIVIDE`, `APP_EXE_PROJECT_MANAGER`.
-- Keep compile flags centralized in `DIVIDE_COMPILE_OPTIONS` / `THIRD_PARTY_COMPILE_OPTIONS`; reuse shared lists instead of duplicating warning flags. Preserve third-party warning suppressions.
-- Preserve intentional formatting-only expressions used to align related code, even when they are functionally redundant (for example, `x * 1`, `y * 2`, `z * 3`). Do not simplify or remove these alignment anchors when editing nearby code.
-- Put copyright headers before include guards; files using `#pragma once` may keep that directive first, with the copyright header immediately after it.
-- Put opening braces for scopes on their own line.
-- End every source, configuration, and documentation file with a newline.
-- Prefer engine numeric aliases (`U8`, `U16`, `U32`, `U64`, `I8`, `I16`, `I32`, `I64`, `F32`, `D64`) over standard fixed-width aliases. Use `size_t` for container sizes and indices.
-- Keep common or heavy headers in `Source/EngineIncludes_pch.h` rather than adding them to individual implementation files or broadly included headers.
-- Name `static constexpr` functions in PascalCase.
-- Preserve CMake variables/presets; expose new feature flags through `CMakePresets.json`.
-- For platform changes, inspect `Source/Platform/` and platform cache variables in `CMakePresets.json`, such as `WINDOWS_OS_BUILD` and `MAC_OS_BUILD`.
-- Editing `Source/EngineIncludes_pch.h` or `Source/CEGUIIncludes_pch.h` can trigger a full rebuild.
-- In code that includes engine headers, use the engine's numeric conversion helpers (`to_U32`, `to_I32`, `to_U64`, `to_F32`, `to_size`, ...) from `Source/Platform/Headers/PlatformDataTypes.h` instead of `static_cast` to numeric types; they validate conversions at runtime. Sources that deliberately avoid engine headers (for example `Source/UnitTests/ShaderMathRunner.cpp` and `Source/Rendering/Lighting/Headers/ShadowPassState.h`) keep standard casts.
+- Clone with `--recurse-submodules`. The project requires CMake 3.29.2 or newer, Ninja, and a C++23 compiler.
+- Use a matching configure, build, and test preset from `CMakePresets.json`. Build the smallest affected target and run the relevant tests:
 
-## Build and agent/CI validation
+  ```shell
+  cmake --preset <configure-preset>
+  cmake --build --preset <build-preset> --target <target>
+  ctest --preset <test-preset>
+  ```
 
-- Clone with `--recurse-submodules`; vcpkg and third-party dependencies require it.
-- Select a matching configure/build preset from `CMakePresets.json` (for example `macos-clang-editor` or `windows-msvc-editor`). VSCode's CMake extension also supports preset selection.
-- Configure with `cmake --preset <configurePreset>`.
-- Build the smallest affected target with `cmake --build --preset <buildPreset> --target <target>`.
-- Presets control options such as `ENABLE_OPTICK_PROFILER`, `ENABLE_FUNCTION_PROFILING`, `ENABLE_MIMALLOC`, and `editor-build`.
-- Internal Catch2 tests live in `Source/UnitTests`; `BUILD_TESTING_INTERNAL` and `RUN_TESTING_INTERNAL` control them.
-- Consult `.github/workflows/Windows.yml`, `.github/workflows/Linux.yml`, `.github/workflows/MacOS.yml`, and their referenced actions for CI build configuration.
-- Start with the smallest relevant build/test selection; expand when results require it.
-- Add Catch2 unit tests in `Source/UnitTests` for new engine functionality.
-  Unit tests are for engine code only.
-  Do not add or retain Python-based or other external-tool-driven automated test harnesses.
-  Do not add or retain automated tests for CMake helpers, build-timing tools, CI orchestration, or the build environment.
-- Distinguish checks actually run from checks not run or blocked. Local success does not establish success on other platforms or in CI.
-- On runtime failures (asserts, crashes, GPU/device-loss, startup issues), inspect `Logs/errors.log` and `Logs/console.log` before concluding root cause. If files are locked while debugging, stop the process and re-read them immediately after exit.
-- Documentation-only changes require no build unless they affect an executable example or have a dedicated documentation check.
+- Engine unit tests use Catch2 under `Source/UnitTests`. Add focused tests for new engine behavior. Do not add external-tool-driven test harnesses or tests for build scripts and CI orchestration.
+- Start with targeted checks and expand only when their results require it. Report which checks ran; local success does not establish success on other platforms or in CI.
+- For runtime failures, inspect `Logs/errors.log` and `Logs/console.log` before concluding the cause.
+- Platform CI workflows are `.github/workflows/Windows.yml`, `.github/workflows/Linux.yml`, and `.github/workflows/MacOS.yml`.
 
-Keep the Catch2 warning push/pop in `Source/UnitTests/unitTestCommon.h` native-MSVC-only.
-Applying it to clang-cl restores diagnostics that Catch2 intentionally suppresses
-across the translation unit for later `__COUNTER__` macro expansions.
+## Architecture guides
 
-### Local framework smoke diagnosis
+Start with [the architecture index](docs/architecture/index.md), then read the guide for the affected subsystem.
 
-The opt-in Windows runner and its safety contract are described in
-[Rendering](docs/architecture/rendering.md#framework-smoke-diagnosis). Run
-`powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tools\FrameworkSmokeTest.ps1 -OutputRoot <absolute-directory-outside-checkout>`
-for one build/test/renderer attempt; use `-PreflightOnly` to check the local
-probe, debugger and process watchdog without launching the renderer. The runner
-chooses build parallelism from available CPU and memory; `-BuildJobs` overrides it.
-It reuses a verified instrumented CMake configuration when preset/dependency
-inputs are unchanged; Ninja still regenerates modified build files.
-Diagnose and repair the recorded failure before the next invocation. Device
-loss or a suspected GPU hang requires the same-GPU recovery probe before a
-new renderer run. Use `-ApproveStalledDeviceLoss` only after the user explicitly
-approves the pending no-progress pause. Artifacts and dumps remain local.
-The user approved logging, without aborting, the single best-practices advisory
-for `VK_EXT_custom_border_color`; every other Vulkan warning and every error
-remains fatal. A successful run can therefore contain that recorded advisory.
-
-### Canonical validation and dependency provisioning
-
-The project requires CMake >= 3.29.2, Ninja, and a C++23 compiler; CI pins tool
-versions in `.github/actions/common-config/action.yml`.
-For features and fixes, use Windows/MSVC Debug editor with both Optick and internal
-function profiling from an x64 Visual Studio developer shell:
-
-```shell
-cmake --preset windows-msvc-editor-instrumentation -DBUILD_TESTING_INTERNAL=ON -DRUN_TESTING_INTERNAL=OFF
-cmake --build --preset windows-msvc-debug-editor-instrumentation --parallel 2
-ctest --preset test-windows-msvc-debug-editor-instrumentation
-```
-
-For a targeted run on a pushed branch:
-
-```shell
-gh workflow run Windows.yml --ref <branch> -f validation_only=true
-```
-
-This targeted run does not report a full daily-matrix status. CTest failures fail
-CI. Tests depend on the full engine executable/dependency graph and are not GPU
-rendering validation.
-
-Shared setup restores vcpkg binary archives with the supported `files` provider and
-`actions/cache`, replacing the removed `x-gha` provider. Cache identity includes
-OS, host/target architecture, compiler/toolchain, pinned vcpkg revision, manifest,
-and overlays. vcpkg checks package ABIs before reuse. Per-run keys save new archives
-after configuration, before engine compilation, even if compilation/tests later fail.
-Installed trees and engine outputs are not cached. Compare archive counts and
-package-restoration logs across two runs to distinguish cold and warm builds.
-Platform CI checkout and shared cache actions use Node.js 24-compatible v5
-releases; other workflows may pin different checkout versions. Keep nested
-composite-action references aligned to avoid deprecated Node.js 20 runtimes.
-
-Actions-backed Copilot setup installs Ubuntu prerequisites and configures
-`linux-gcc` dependencies before its firewall activates, without destructive
-checkout cleanup. It shares matching Linux CI caches, not Windows binaries. Cold
-setup can exceed the 59-minute limit; prime caches in regular CI if needed. Setup
-must reach the default branch to affect future sessions.
-
-Copilot code review uses the separate `copilot-code-review.yml` setup workflow
-to avoid falling back to the cloud agent's full dependency provisioning.
-Keep it lightweight and manual-only (`workflow_dispatch`). It must still be a
-valid Actions workflow with a trigger and job steps; otherwise GitHub reports
-workflow-validation failures on pushes even without a push trigger.
-
-On configured Ubuntu agents, supplementary checks are:
-
-```shell
-cmake --build --preset linux-gcc-debug --parallel 2
-ctest --preset test-linux-gcc-debug
-```
-
-These do not replace Windows instrumented validation. Outside Actions-backed
-sessions, provision equivalent tools/dependencies; configure with
-`cmake --preset linux-gcc -DBUILD_TESTING_INTERNAL=ON -DRUN_TESTING_INTERNAL=OFF`
-if needed. Upstream downloads and redirect mirrors (including SourceForge) may
-require firewall access; prefer preloading dependencies over disabling the firewall.
-
-ASan/UBSan configuration applies to project targets, not preinstalled vcpkg
-dependencies. `ConfigureSanitizers.cmake` runs after manifest provisioning;
-its late `VCPKG_BUILD_TYPE` cache assignment does not rebuild or instrument
-dependencies. Do not report sanitizer runs as dependency instrumentation.
-
-The `test-*-asan-ubsan` presets inherit `test-sanitizer-common`: unlike
-`test-common`, it keeps running after a failing test, so one CTest pass lists
-every failure, and it sets `UBSAN_OPTIONS`/`ASAN_OPTIONS` for stack traces,
-error-type names and `addr2line` symbolization. `-fno-sanitize-recover=all` still
-aborts each test process at its first finding, and any failing test still fails
-the job.
-
-Windows matrix steps invoke CMake/CTest presets directly after MSVC setup.
-Do not reinitialize MSVC through `run-cmake`: its automatic `vcpkg env` lookup
-can select Visual Studio's bundled, manifest-only vcpkg instead of the pinned
-repository checkout.
-For Clang jobs, Windows setup prepends the selected Visual Studio installation's
-`VC\Tools\Llvm\x64\bin` to PATH before dependency-cache identification and CMake.
-This keeps `clang-cl`, `clang` and `llvm-rc` paired with that installation's MSVC
-STL instead of an older standalone LLVM earlier on the runner PATH. Setup checks
-STL compatibility with a syntax-only `<vector>` compile before provisioning.
-
-### Dependency configuration
-
-bzip2 and FreeType overlays preload byte-identical source archives from Debian
-and FreeType's official GitHub mirror, respectively, using the unchanged
-upstream SHA-512 hashes. They reuse build logic and patches from the pinned
-vcpkg submodule. When updating vcpkg, keep these overlay versions/features in
-sync with those builtin ports and recheck archive hashes; do not weaken hashes
-or substitute merely source-equivalent archives.
-
-Optick is fetched and linked only when `ENABLE_OPTICK_PROFILER` is enabled;
-the Windows and Linux instrumentation presets enable it. Catch2 is installed
-and discovered only with `BUILD_TESTING_INTERNAL=ON` (the vcpkg `tests`
-feature). mimalloc remains installed and discoverable in every build;
-`ENABLE_MIMALLOC` still controls the existing allocator integration.
-OpenAL, NRI and imgui-node-editor remain available.
-
-SDL_mixer is built for WAV, OGG/Vorbis, FLAC and MIDI/FluidSynth, without the
-other optional audio codecs. For `.mid` and `.midi` playback, set
-`DIVIDE_MIDI_SOUNDFONT` to a readable SoundFont file; missing or unreadable
-fonts are reported as load errors. SoundFonts are not bundled: choose one
-whose license permits your intended use and distribution.
-
-The Assimp overlay builds only the engine's supported 3DS, ASE, FBX, MD2,
-MD5, OBJ, X, COLLADA and GLTF importers. All exporters are disabled; the
-unused IFC/Blender triangulation and 3MF export dependencies are removed.
-DevIL remains the DDS loader, with optional image-codec features disabled.
-NVTT remains available for DDS cache compression until a replacement
-covers that functionality as well.
-The NVTT overlay removes upstream `-march=native`: cached dependency archives
-must use the target toolchain's baseline, not the cache producer's CPU ISA.
-It also accepts 48-bit user addresses in NVTT's debug pointer checks (see
-[Asset pipeline](docs/architecture/asset-pipeline.md)).
-
-Boost.Asio uses monotonic `steady_timer` deadlines, without its optional
-deadline-timer and coroutine/spawn features. Scene registration uses a local
-forwarding shared-pointer factory instead of Boost.Functional.
-
-Jolt's SIMD flags are explicit, selected before vcpkg's manifest installation
-through `ConfigureDependencies.cmake` and the overlay's SIMD features.
-`ValidateSIMDRequest.cmake` configures a dependency-free preflight using the same
-target/compiler detector as the engine. Unsupported requested x86 levels are
-rejected before installation rather than downgraded underneath Jolt's public flags.
-Preflight forwards direct custom toolchains or vcpkg's chainload toolchain using
-absolute paths; the vcpkg provisioning toolchain itself is excluded.
-SSE42 (and AUTO's conservative dependency baseline) disable AVX, AVX2, F16C,
-FMA, LZCNT and TZCNT; AVX does not enable AVX2-era instructions.
-ARM targets disable all x86 options. macOS x86_64 dependencies use AVX on Intel
-and SSE42 on detected Rosetta targets. Manual installs for AVX/AVX2/AVX512 builds must
-also select the corresponding `--x-feature=jolt-avx`, `jolt-avx2` or `jolt-avx512`.
-The macOS x86_64 presets default to AVX on Intel hosts. On Apple Silicon,
-`Toggle_Available_Vector_Extensions()` explicitly overrides Rosetta requests
-with SSE42 in both preflight and engine configuration. This logged portability
-override is the exception to strict rejection of unsupported x86 requests.
-
-### Dependency validation and timing
-
-- The vcpkg `tests` feature is synchronized with `BUILD_TESTING_INTERNAL` before `project()`. For manual dependency installation in a test build, add `--x-feature=tests`.
-- Resolve plans with `./vcpkg/vcpkg install --dry-run --triplet <triplet> --overlay-ports=Source/CMakeHelpers/OverlayPorts`; compare tests-off and tests-on plans separately.
-- Record timings with `python Source/CMakeHelpers/measure_build.py --scenario cold --output <session-dir>/cold.json --install "<vcpkg install command>" --configure "<cmake configure command>" --build "<cmake build command>"`.
-- Repeat with `warm` and `incremental`, keeping triplet, configuration, build parallelism and tool versions identical. For incremental measurements, edit a representative source file before running.
-- Scenario labels do not reset caches. Use isolated build/install/download directories and explicitly set `VCPKG_BINARY_SOURCES=clear` for a genuine cold run. Reuse the same install directory in the install and configure commands; otherwise configure will perform an additional installation.
-- The tool records each stage's duration, exit status and log, and stops on failure. Do not report a failed download/configure as a successful build-time baseline or claim engine speedups from dependency counts alone.
-- Commands also accept JSON arrays of strings. On Windows these arrays are required;
-  for example `[".\\vcpkg\\vcpkg.exe", "install", "--triplet", "x64-windows"]`.
-  POSIX shell-quoted command strings remain supported on Unix; no shell is executed.
-
-## Subsystem routing
-
-| Task | Read |
+| Area | Guide |
 |---|---|
-| Command submission, render stages, lighting, PostFX, feature integration | [Rendering](docs/architecture/rendering.md) |
-| Instrumented renderer profiling and frame-time investigations | [Performance diagnosis](docs/architecture/rendering.md#performance-diagnosis) |
-| Supervised GL/Vulkan smoke tests, validation, captures, GPU recovery | [Rendering](docs/architecture/rendering.md#framework-smoke-diagnosis), [GPU resources](docs/architecture/gpu-resources.md#vulkan-smoke-readback-and-recovery) |
-| GLSL/SPIR-V, reflection, shader caches, descriptor bindings | [Shaders and descriptors](docs/architecture/shader-descriptors.md) |
-| GL/Vulkan allocation, uploads, device capabilities, presentation conventions | [GPU resources](docs/architecture/gpu-resources.md) |
-| Mesh import, LoD, vertex layout, texture decode/cache | [Asset pipeline](docs/architecture/asset-pipeline.md) |
-| Project/scene selection, scene graph, transforms, bounds, XML and saves | [Scene loading](docs/architecture/scene-loading.md) |
-| Editor windows, docking, properties, undo, gizmos and output | [Editor windows](docs/architecture/editor.md) |
-| Task pools, dirty ranges, asynchronous work, queue synchronization | [Threading](docs/architecture/threading.md) |
-| Client connections, heartbeat timers, networking test fixtures | [Networking](docs/architecture/networking.md) |
+| Rendering stages, command submission, lighting, and feature integration | [Rendering](docs/architecture/rendering.md) |
+| Renderer profiling and frame-time investigations | [Performance diagnosis](docs/architecture/rendering.md#performance-diagnosis) |
+| Supervised graphics smoke tests and GPU recovery | [Rendering smoke diagnosis](docs/architecture/rendering.md#framework-smoke-diagnosis), [GPU resources](docs/architecture/gpu-resources.md#vulkan-smoke-readback-and-recovery) |
+| Shader bindings, reflection, and caches | [Shaders and descriptors](docs/architecture/shader-descriptors.md) |
+| GPU allocation, uploads, and device capabilities | [GPU resources](docs/architecture/gpu-resources.md) |
+| Mesh import, LoD, vertex layout, and texture caching | [Asset pipeline](docs/architecture/asset-pipeline.md) |
+| Scene loading, transforms, bounds, XML, and saves | [Scene loading](docs/architecture/scene-loading.md) |
+| Editor windows, docking, properties, and output | [Editor windows](docs/architecture/editor.md) |
+| Task pools, asynchronous work, and synchronization | [Threading](docs/architecture/threading.md) |
+| Client connections and heartbeat timers | [Networking](docs/architecture/networking.md) |
 | Assertions and fatal unexpected calls | [Assertion contract](docs/architecture/index.md#assertions-and-fatal-calls) |
-
-## Continuous integration
-
-CI checks `master` and all open pull requests daily at 00:00 UTC (GitHub may delay scheduled runs).
-To validate one open PR sooner, select `master` and enter its number under
-**Actions > Daily CI Scheduler > Run workflow**, or use
-`gh workflow run DailyCI.yml --ref master -f pull_request=<number>`. Manual
-runs select the PR's current head and queue only its missing or failed platform
-builds; already successful or pending builds are not duplicated. Rerun a
-cancelled platform workflow if it left its status pending.
-Scheduled Linux, Windows, and macOS builds run only for head commits not
-previously queued for that target. Commit statuses record queued and completed
-builds; scheduled runs do not rebuild unchanged commits after a failed build.
-Failed dispatches are retried at the next daily check.
-Platform reporters also publish each matrix job's result under its exact job name
-on `ci_sha`, preserving the existing per-job branch-protection requirements when
-workflow dispatches execute on a different commit. Missing, skipped, cancelled,
-or unsuccessful jobs never produce successful statuses. Keep the job-name lists
-in `.github/scripts/report-ci.cjs` aligned with the platform matrices.
-Failed Linux builds run existing test executables under GDB in list-only mode
-to capture startup crashes, including the faulting instruction and backtrace.
-The first check builds every current target. PRs are built at their head commit, not a test merge.
-The platform workflows use `workflow_dispatch` for the scheduler, not push or PR triggers.
-The scheduler and platform workflows must be present on the repository's default
-branch before scheduled or manual dispatch takes effect.
-Before the manual scheduler is available on `master`, a same-repository PR can
-be validated by dispatching `Linux.yml`, `Windows.yml`, and `MacOS.yml` from
-`master`, each with `ci_sha` set to the pushed PR head and `ci_target` set to
-`pr-<number>`. Do not use this fallback for fork heads.
-
-The daily scheduler executes only master and same-repository PR heads. Fork or
-unavailable head repositories receive an explicit error status without dispatch:
-default-branch runs expose default-branch cache-write credentials to source code,
-and ABI hashes do not authenticate archive contents. Fork execution is disabled
-until a PR-isolated validation/cache scope is implemented. Do not re-enable it
-by merely changing cache key prefixes or omitting cache-save steps.
-
-Platform workflows keep trusted local actions at `github.sha` in the workspace
-root. Target sources (`ci_sha`, including fork heads) go in `ci-source`; trusted
-vcpkg and CMake steps explicitly consume that directory. Do not check target
-sources over the root: subsequent local actions would then come from the PR.
