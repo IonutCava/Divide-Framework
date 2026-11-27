@@ -1033,7 +1033,9 @@ namespace Divide
         projectionKey._viewProjection[0] = 1.f;
         ShadowStaticCacheState projectionCache{};
         projectionCache.complete(projectionKey, false);
-        projectionKey._viewProjection[0] = std::nextafter(1.f, 2.f);
+        projectionKey._viewProjection[0] = 1.f + SHADOW_MATRIX_TOLERANCE * 0.5f;
+        CHECK_FALSE(projectionCache.needsRefresh(projectionKey, false));
+        projectionKey._viewProjection[0] = 1.f + SHADOW_MATRIX_TOLERANCE * 2.f;
         CHECK(projectionCache.needsRefresh(projectionKey, false));
 
         ShadowStaticCacheState cache{};
