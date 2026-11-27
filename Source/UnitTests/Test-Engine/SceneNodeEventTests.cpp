@@ -116,10 +116,10 @@ namespace Divide
         };
     }
 
-    TEST_CASE( "Scene node events retain overflow and defer reentrant events", "[scene_graph][threading][render_smoke]" )
+    TEST_CASE( "Scene node events retain large bursts and defer reentrant events", "[scene_graph][threading][render_smoke]" )
     {
         SceneNodeEventQueue queue;
-        constexpr U32 count = to_U32(SceneNodeEventQueue::CAPACITY) + 32u;
+        constexpr U32 count = 1024u + 32u;
         for (U32 i = 0u; i < count; ++i)
         {
             queue.push(MakeEvent(i));
@@ -199,6 +199,103 @@ namespace Divide
         queue.drain(record);
 
         CHECK(invalid == 0u);
+        for (const U32 count : received)
+        {
+            CHECK(count == 1u);
+        }
+    }
+
+    TEST_CASE( "Scene node events ignore empty drains and keep each producer's order", "[scene_graph][threading][render_smoke]" )
+    {
+        SceneNodeEventQueue queue;
+        U32 calls = 0u;
+        queue.drain([&](const ECS::CustomEvent&) { ++calls; });
+        CHECK(calls == 0u);
+
+        constexpr U32 producerCount = 3u;
+        constexpr U32 eventsPerProducer = 500u;
+        std::array<std::thread, producerCount> producers;
+        for (U32 producer = 0u; producer < producerCount; ++producer)
+        {
+            producers[producer] = std::thread([&, producer]
+            {
+                for (U32 i = 0u; i < eventsPerProducer; ++i)
+                {
+                    queue.push(MakeEvent(producer * eventsPerProducer + i));
+                }
+            });
+        }
+        for (std::thread& producer : producers)
+        {
+            producer.join();
+        }
+
+        std::array<U32, producerCount> next{};
+        U32 outOfOrder = 0u;
+        queue.drain([&](const ECS::CustomEvent& event)
+        {
+            const U32 producer = event._flag / eventsPerProducer;
+            if (producer >= producerCount || event._flag % eventsPerProducer != next[producer]++)
+            {
+                ++outOfOrder;
+            }
+        });
+        CHECK(outOfOrder == 0u);
+        for (const U32 count : next)
+        {
+            CHECK(count == eventsPerProducer);
+        }
+
+        calls = 0u;
+        queue.drain([&](const ECS::CustomEvent&) { ++calls; });
+        CHECK(calls == 0u);
+        queue.push(MakeEvent(7u));
+        queue.drain([&](const ECS::CustomEvent& event)
+        {
+            ++calls;
+            CHECK(event._flag == 7u);
+        });
+        CHECK(calls == 1u);
+    }
+
+    TEST_CASE( "Scene node events pushed during concurrent drains are never lost", "[scene_graph][threading][render_smoke]" )
+    {
+        SceneNodeEventQueue queue;
+        constexpr U32 producerCount = 4u;
+        constexpr U32 eventsPerProducer = 2000u;
+        constexpr U32 eventCount = producerCount * eventsPerProducer;
+        std::array<U32, eventCount> received{};
+        std::atomic_uint finished{0u};
+        std::array<std::thread, producerCount> producers;
+        for (U32 producer = 0u; producer < producerCount; ++producer)
+        {
+            producers[producer] = std::thread([&, producer]
+            {
+                for (U32 i = 0u; i < eventsPerProducer; ++i)
+                {
+                    queue.push(MakeEvent(producer * eventsPerProducer + i));
+                }
+                finished.fetch_add(1u);
+            });
+        }
+
+        const auto record = [&](const ECS::CustomEvent& event)
+        {
+            if (event._flag < eventCount)
+            {
+                ++received[event._flag];
+            }
+        };
+        while (finished.load() != producerCount)
+        {
+            queue.drain(record);
+        }
+        for (std::thread& producer : producers)
+        {
+            producer.join();
+        }
+        queue.drain(record);
+
         for (const U32 count : received)
         {
             CHECK(count == 1u);
@@ -292,6 +389,65 @@ namespace Divide
         }
         queue.drain([&](const I64 guid) { return &removed[to_size(guid)]; },
                     [](U32& occurrences) { ++occurrences; });
+        for (const U32 occurrences : removed)
+        {
+            CHECK(occurrences == 1u);
+        }
+    }
+
+    TEST_CASE( "Deferred removal clear discards pending requests and the queue stays usable", "[scene_graph][threading][render_smoke]" )
+    {
+        SceneNodeRemovalQueue queue;
+        RemovalTestGraph graph;
+        const auto resolve = [&](const I64 guid) { return graph.resolve(guid); };
+        const auto remove = [&](RemovalTestGraph::Node& node) { graph.remove(node); };
+
+        for (I64 guid = 0; guid < 200; ++guid)
+        {
+            queue.push(guid % 5);
+        }
+        queue.clear();
+        queue.drain(resolve, remove);
+        CHECK(graph._removed.empty());
+
+        queue.push(3);
+        queue.drain(resolve, remove);
+        CHECK(graph._removed == vector<I64>{ 3 });
+    }
+
+    TEST_CASE( "Deferred removal requests racing with a drain are retained exactly once", "[scene_graph][threading][render_smoke]" )
+    {
+        SceneNodeRemovalQueue queue;
+        constexpr U32 producerCount = 4u;
+        constexpr U32 perProducer = 500u;
+        constexpr U32 count = producerCount * perProducer;
+        std::array<U32, count> removed{};
+        std::atomic_uint finished{0u};
+        std::array<std::thread, producerCount> producers;
+        for (U32 producer = 0u; producer < producerCount; ++producer)
+        {
+            producers[producer] = std::thread([&, producer]
+            {
+                for (U32 index = 0u; index < perProducer; ++index)
+                {
+                    queue.push(to_I64(producer * perProducer + index));
+                }
+                finished.fetch_add(1u);
+            });
+        }
+
+        const auto resolve = [&](const I64 guid) { return &removed[to_size(guid)]; };
+        const auto remove = [](U32& occurrences) { ++occurrences; };
+        while (finished.load() != producerCount)
+        {
+            queue.drain(resolve, remove);
+        }
+        for (std::thread& producer : producers)
+        {
+            producer.join();
+        }
+        queue.drain(resolve, remove);
+
         for (const U32 occurrences : removed)
         {
             CHECK(occurrences == 1u);

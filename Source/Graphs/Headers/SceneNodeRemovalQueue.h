@@ -2,7 +2,6 @@
 
 #pragma once
 
-
 #include <algorithm>
 
 namespace Divide
@@ -12,16 +11,19 @@ namespace Divide
     public:
         void push(const I64 guid)
         {
-            LockGuard<Mutex> lock(_lock);
-            _pending.push_back(guid);
+            _pending.enqueue(guid);
         }
 
+        // Requests pushed from inside the remover wait for the next batch.
         template<typename Resolver, typename Remover>
         void drain(const Resolver& resolve, const Remover& remove)
         {
+            _processing.clear();
+            std::array<I64, 64u> chunk;
+            size_t count = 0u;
+            while ((count = _pending.try_dequeue_bulk(chunk.data(), chunk.size())) > 0u)
             {
-                LockGuard<Mutex> lock(_lock);
-                _processing.swap(_pending);
+                _processing.insert(_processing.end(), chunk.data(), chunk.data() + count);
             }
 
             std::sort(_processing.begin(), _processing.end());
@@ -38,13 +40,14 @@ namespace Divide
 
         void clear()
         {
-            LockGuard<Mutex> lock(_lock);
-            _pending.clear();
+            std::array<I64, 64u> chunk;
+            while (_pending.try_dequeue_bulk(chunk.begin(), chunk.size()) > 0u)
+            {
+            }
         }
 
     private:
-        Mutex _lock;
-        vector<I64> _pending;
+        moodycamel::ConcurrentQueue<I64> _pending;
         vector<I64> _processing;
     };
 }
