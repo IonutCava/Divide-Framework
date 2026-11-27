@@ -185,27 +185,28 @@ public:
         size_t _framesSinceLastUsed{ MAX_FRAME_LIFETIME };
     };
 
-    template<typename T, size_t COUNT, typename FREE_LIST_TYPE>
+    template<typename T, size_t COUNT, typename FREE_LIST_TYPE, bool ALLOW_OVERFLOW = true>
     struct PerNodeData
     {
-        using DataContainer = fixed_vector<T, COUNT, true>;
+        using DataContainer = fixed_vector<T, COUNT, ALLOW_OVERFLOW>;
         DataContainer _gpuData{};
 
         SharedMutex _freeListLock;
-        fixed_vector<FREE_LIST_TYPE, COUNT, true> _freeList{};
+        fixed_vector<FREE_LIST_TYPE, COUNT, ALLOW_OVERFLOW> _freeList{};
     };
 
-    using BufferTransformData = PerNodeData<NodeTransformData, Config::MAX_VISIBLE_NODES, bool>;
-    using BufferIndirectionData = PerNodeData<NodeIndirectionData, Config::MAX_VISIBLE_NODES, bool>;
-    using BufferMaterialData = PerNodeData<NodeMaterialData, Config::MAX_CONCURRENT_MATERIALS, MaterialLookupInfo>;
+    using BufferTransformData = PerNodeData<NodeTransformData, Config::MAX_VISIBLE_NODES, bool, true>;
+    using BufferIndirectionData = PerNodeData<NodeIndirectionData, Config::MAX_VISIBLE_NODES, bool, true>;
+    using BufferMaterialData = PerNodeData<NodeMaterialData, Config::MAX_CONCURRENT_MATERIALS, MaterialLookupInfo, false>;
+
+    static constexpr U64 EMPTY_PACKED_UPDATE_RANGE = (to_U64( U32_MAX ) << 32u);
 
     template<typename DataContainer>
     struct ExecutorBuffer
     {
         DataContainer _data;
 
-        SharedMutex _rangeLock;
-        BufferUpdateRange _updateRange;
+        std::atomic<U64> _pendingUpdateRange{ EMPTY_PACKED_UPDATE_RANGE };
         std::array<BufferUpdateRange, (Config::MAX_FRAMES_IN_FLIGHT + 1u) * Config::MAX_LOCAL_PLAYER_COUNT> _slotUpdateRanges{};
 
         ShaderBuffer_uptr _gpuBuffer{ nullptr };
@@ -393,6 +394,7 @@ private:
     RenderQueuePackages _renderQueuePackages{};
     vector<std::pair<RenderingComponent*, RenderPackage*>> _preparationOwners{};
     vector<RenderPackage*> _preparedPackages{};
+    vector<BufferLocks> _partitionBufferLocks{};
     BufferLocks _computeBatchRanges{};
 
     struct InstanceCountPatch
@@ -422,6 +424,7 @@ private:
     static ExecutorBuffer<BufferMaterialData>    s_materialBuffer;
     static ExecutorBuffer<BufferTransformData>   s_transformBuffer;
     static ExecutorBuffer<BufferIndirectionData> s_indirectionBuffer;
+    static std::atomic<size_t>                   s_materialUsedSlotBound;
 
     VisibleNodeList<> _visibleNodesCache;
 

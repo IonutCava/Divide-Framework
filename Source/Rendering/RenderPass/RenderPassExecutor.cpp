@@ -50,22 +50,41 @@ namespace Divide
         template<typename DataContainer>
         using ExecutorBuffer = RenderPassExecutor::ExecutorBuffer<DataContainer>;
 
-        void UpdateBufferRange( RenderPassExecutor::BufferUpdateRange& range, SharedMutex& mutex, const U32 minIdx, const U32 maxIdx )
+        [[nodiscard]] constexpr U64 PackUpdateRange( const U32 firstIdx, const U32 lastIdx ) noexcept
         {
-            LockGuard<SharedMutex> w_lock(mutex);
-            if (range._firstIDX > minIdx)
+            return (to_U64( firstIdx ) << 32u) | to_U64( lastIdx );
+        }
+
+        [[nodiscard]] constexpr RenderPassExecutor::BufferUpdateRange UnpackUpdateRange( const U64 packed ) noexcept
+        {
+            return { to_U32( packed >> 32u ), to_U32( packed & 0xFFFFFFFFu ) };
+        }
+
+        void UpdateBufferRange( std::atomic<U64>& packedRange, const U32 minIdx, const U32 maxIdx ) noexcept
+        {
+            U64 current = packedRange.load( std::memory_order_relaxed );
+            while ( true )
             {
-                range._firstIDX = minIdx;
-            }
-            if (range._lastIDX < maxIdx)
-            {
-                range._lastIDX = maxIdx;
+                const U32 curFirst = to_U32( current >> 32u );
+                const U32 curLast = to_U32( current & 0xFFFFFFFFu );
+                const U32 nextFirst = std::min( curFirst, minIdx );
+                const U32 nextLast = std::max( curLast, maxIdx );
+                if ( nextFirst == curFirst && nextLast == curLast )
+                {
+                    return;
+                }
+
+                const U64 desired = PackUpdateRange( nextFirst, nextLast );
+                if ( packedRange.compare_exchange_weak( current, desired, std::memory_order_acq_rel, std::memory_order_relaxed ) )
+                {
+                    return;
+                }
             }
         }
 
-        void UpdateBufferRange(RenderPassExecutor::BufferUpdateRange& range, SharedMutex& mutex, const U32 idx )
+        void UpdateBufferRange( std::atomic<U64>& packedRange, const U32 idx ) noexcept
         {
-            UpdateBufferRange(range, mutex, idx, idx);
+            UpdateBufferRange( packedRange, idx, idx );
         }
 
         template<typename DataContainer>
@@ -73,15 +92,13 @@ namespace Divide
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-            RenderPassExecutor::BufferUpdateRange uploadRange;
-            {
-                LockGuard<SharedMutex> w_lock( executorBuffer._rangeLock );
-                const size_t slotCount = executorBuffer._gpuBuffer->queueLength();
-                uploadRange = RenderPassExecutor::TakeBufferUpdateRange(
-                    executorBuffer._updateRange,
-                    std::span{ executorBuffer._slotUpdateRanges }.first( slotCount ),
-                    executorBuffer._gpuBuffer->queueIndex() );
-            }
+            RenderPassExecutor::BufferUpdateRange pending = UnpackUpdateRange(
+                executorBuffer._pendingUpdateRange.exchange( RenderPassExecutor::EMPTY_PACKED_UPDATE_RANGE, std::memory_order_acq_rel ) );
+            const size_t slotCount = executorBuffer._gpuBuffer->queueLength();
+            RenderPassExecutor::BufferUpdateRange uploadRange = RenderPassExecutor::TakeBufferUpdateRange(
+                pending,
+                std::span{ executorBuffer._slotUpdateRanges }.first( slotCount ),
+                executorBuffer._gpuBuffer->queueIndex() );
 
             if ( uploadRange.range() > 0u )
             {
@@ -94,16 +111,26 @@ namespace Divide
         }
 
         template<typename DataContainer>
-        void MarkFullBufferUpload( ExecutorBuffer<DataContainer>& executorBuffer )
+        void MarkFullBufferUpload( ExecutorBuffer<DataContainer>& executorBuffer ) noexcept
         {
-            LockGuard<SharedMutex> w_lock( executorBuffer._rangeLock );
             std::ranges::fill( executorBuffer._slotUpdateRanges, RenderPassExecutor::BufferUpdateRange{} );
-            executorBuffer._updateRange.reset();
-            if ( !executorBuffer._data._gpuData.empty() )
-            {
-                executorBuffer._updateRange._firstIDX = 0u;
-                executorBuffer._updateRange._lastIDX = to_U32( executorBuffer._data._gpuData.size() - 1u );
-            }
+            const U64 fullRange = executorBuffer._data._gpuData.empty()
+                ? RenderPassExecutor::EMPTY_PACKED_UPDATE_RANGE
+                : PackUpdateRange( 0u, to_U32( executorBuffer._data._gpuData.size() - 1u ) );
+            executorBuffer._pendingUpdateRange.store( fullRange, std::memory_order_release );
+        }
+
+        [[nodiscard]] size_t LoadMaterialHash( RenderPassExecutor::MaterialLookupInfo& material ) noexcept
+        {
+            static_assert( alignof( RenderPassExecutor::MaterialLookupInfo ) >= std::atomic_ref<size_t>::required_alignment );
+            static_assert( offsetof( RenderPassExecutor::MaterialLookupInfo, _hash ) %
+                           std::atomic_ref<size_t>::required_alignment == 0u );
+            return std::atomic_ref<size_t>{ material._hash }.load( std::memory_order_acquire );
+        }
+
+        void StoreMaterialHash( RenderPassExecutor::MaterialLookupInfo& material, const size_t hash ) noexcept
+        {
+            std::atomic_ref<size_t>{ material._hash }.store( hash, std::memory_order_release );
         }
 
         void MarkMaterialUsed( RenderPassExecutor::MaterialLookupInfo& material ) noexcept
@@ -111,7 +138,11 @@ namespace Divide
             static_assert( alignof( RenderPassExecutor::MaterialLookupInfo ) >= std::atomic_ref<size_t>::required_alignment );
             static_assert( offsetof( RenderPassExecutor::MaterialLookupInfo, _framesSinceLastUsed ) %
                            std::atomic_ref<size_t>::required_alignment == 0u );
-            std::atomic_ref<size_t>{ material._framesSinceLastUsed }.store( 0u, std::memory_order_relaxed );
+            auto ref = std::atomic_ref<size_t>{ material._framesSinceLastUsed };
+            if ( ref.load( std::memory_order_relaxed ) != 0u )
+            {
+                ref.store( 0u, std::memory_order_relaxed );
+            }
         }
 
         template<typename DataContainer>
@@ -123,11 +154,8 @@ namespace Divide
                 executorBuffer._data._freeList.clear();
                 executorBuffer._data._gpuData.clear();
             }
-            {
-                LockGuard<SharedMutex> w_lock(executorBuffer._rangeLock);
-                executorBuffer._updateRange.reset();
-                std::ranges::fill( executorBuffer._slotUpdateRanges, RenderPassExecutor::BufferUpdateRange{} );
-            }
+            executorBuffer._pendingUpdateRange.store( RenderPassExecutor::EMPTY_PACKED_UPDATE_RANGE, std::memory_order_release );
+            std::ranges::fill( executorBuffer._slotUpdateRanges, RenderPassExecutor::BufferUpdateRange{} );
         }
     }
 
@@ -137,6 +165,7 @@ namespace Divide
     ExecutorBuffer<RenderPassExecutor::BufferMaterialData>    RenderPassExecutor::s_materialBuffer;
     ExecutorBuffer<RenderPassExecutor::BufferTransformData>   RenderPassExecutor::s_transformBuffer;
     ExecutorBuffer<RenderPassExecutor::BufferIndirectionData> RenderPassExecutor::s_indirectionBuffer;
+    std::atomic<size_t>                                       RenderPassExecutor::s_materialUsedSlotBound{ 0u };
     
     std::array<Pipeline*, to_base( RenderPassExecutor::OITCompositionVariant::COUNT )> RenderPassExecutor::s_OITCompositionPipelines{};
     Pipeline* RenderPassExecutor::s_ResolveGBufferPipeline = nullptr;
@@ -262,6 +291,7 @@ namespace Divide
         s_transformBuffer._data._freeList.resize(Config::MAX_VISIBLE_NODES, true);
         s_materialBuffer._data._gpuData.resize(Config::MAX_CONCURRENT_MATERIALS);
         s_materialBuffer._data._freeList.resize(Config::MAX_CONCURRENT_MATERIALS);
+        s_materialUsedSlotBound.store( 0u, std::memory_order_release );
         ResizeGPUBuffers(gfx, Config::MAX_VISIBLE_NODES, Config::MAX_VISIBLE_NODES, Config::MAX_CONCURRENT_MATERIALS,
                          BufferQueueLengthForPlayers( 1u ));
     }
@@ -271,6 +301,7 @@ namespace Divide
         s_globalDataInit = false;
         s_OITCompositionPipelines.fill( nullptr );
         s_ResolveGBufferPipeline = nullptr;
+        s_materialUsedSlotBound.store( 0u, std::memory_order_release );
         Reset(s_materialBuffer);
         Reset(s_transformBuffer);
         Reset(s_indirectionBuffer);
@@ -323,10 +354,27 @@ namespace Divide
         }
         {
             PROFILE_SCOPE("Increment Lifetime", Profiler::Category::Scene);
-            for (auto& it : s_materialBuffer._data._freeList)
+            // Evict expired material slots here (single-threaded after all workers join) so
+            // populated slots stay immutable during parallel parseMaterialRange lookups.
+            size_t highestUsedSlot = 0u;
+            auto& freeList = s_materialBuffer._data._freeList;
+            const size_t bound = s_materialUsedSlotBound.load( std::memory_order_relaxed );
+            for ( size_t idx = 0u; idx < bound; ++idx )
             {
-                it._framesSinceLastUsed += (it._hash != INVALID_MAT_HASH) ? 1u : 0u;
+                auto& it = freeList[idx];
+                if ( it._hash != INVALID_MAT_HASH )
+                {
+                    if ( ++it._framesSinceLastUsed >= MaterialLookupInfo::MAX_FRAME_LIFETIME )
+                    {
+                        it._hash = INVALID_MAT_HASH;
+                    }
+                    else
+                    {
+                        highestUsedSlot = idx + 1u;
+                    }
+                }
             }
+            s_materialUsedSlotBound.store( highestUsedSlot, std::memory_order_release );
         }
     }
 
@@ -557,32 +605,32 @@ namespace Divide
         // Get the colour matrix (base colour, metallic, etc)
         rComp->getMaterialData( tempData );
 
-        // Match materials
+        // Match materials (lock-free fast path over fixed-capacity material table)
         const size_t materialHash = HashMaterialData( tempData );
+        auto& infoContainer = s_materialBuffer._data._freeList;
 
-        {// Try and match an existing material
-            SharedLock<SharedMutex> r_lock( s_materialBuffer._data._freeListLock);
+        {
             PROFILE_SCOPE( "processVisibleNode - try match material", Profiler::Category::Scene );
 
             // Usually, the material doesn't change, so check that first
-            if (materialIDX != NodeIndirectionData::INVALID_IDX &&
-                s_materialBuffer._data._freeList[materialIDX]._hash == materialHash)
+            if ( materialIDX < infoContainer.size() &&
+                 LoadMaterialHash( infoContainer[materialIDX] ) == materialHash ) [[likely]]
             {
-                MarkMaterialUsed( s_materialBuffer._data._freeList[materialIDX] );
+                MarkMaterialUsed( infoContainer[materialIDX] );
                 materialIDXOut = materialIDX;
                 return ret;
             }
 
-            auto& infoContainer = s_materialBuffer._data._freeList;
-            // Otherwise, we have an updated material, so try to match against a different one first
-            for ( size_t idx = 0u; idx < infoContainer.size(); ++idx )
+            // Otherwise, scan only up to the published high-water mark
+            const size_t usedBound = s_materialUsedSlotBound.load( std::memory_order_acquire );
+            for ( size_t idx = 0u; idx < usedBound; ++idx )
             {
                 auto& entry = infoContainer[idx];
-                if ( entry._hash == materialHash )
+                if ( LoadMaterialHash( entry ) == materialHash )
                 {
                     MarkMaterialUsed( entry );
                     materialIDX = to_U32( idx );
-                    Attorney::RenderingCompRenderPassExecutor::setMaterialIDX(rComp, materialIDX);
+                    Attorney::RenderingCompRenderPassExecutor::setMaterialIDX( rComp, materialIDX );
                     materialIDXOut = materialIDX;
 
                     ret._updateIndirection = true;
@@ -592,61 +640,55 @@ namespace Divide
             }
         }
 
-        // If we fail, try and find an empty slot and update it
+        // If we fail, acquire the write lock once to insert into a free slot
         PROFILE_SCOPE( "processVisibleNode - process unmatched material", Profiler::Category::Scene );
 
-        LockGuard<SharedMutex> w_lock(s_materialBuffer._data._freeListLock);
+        LockGuard<SharedMutex> w_lock( s_materialBuffer._data._freeListLock );
         materialIDX = NodeIndirectionData::INVALID_IDX;
 
-        auto& infoContainer = s_materialBuffer._data._freeList;
-        // No match found (cache miss) so try again and add a new entry if we still fail
-        for ( size_t idx = 0u; idx < infoContainer.size(); ++idx )
+        const size_t usedBound = s_materialUsedSlotBound.load( std::memory_order_relaxed );
+        // No match found (cache miss) so check again under the lock in case another worker just inserted it
+        for ( size_t idx = 0u; idx < usedBound; ++idx )
         {
             auto& entry = infoContainer[idx];
-            if (entry._hash == materialHash)
+            if ( entry._hash == materialHash )
             {
-                entry._framesSinceLastUsed = 0u;
-                materialIDX = to_U32(idx);
+                MarkMaterialUsed( entry );
+                materialIDX = to_U32( idx );
                 break;
             }
         }
 
         // Cache miss
-        if (materialIDX == NodeIndirectionData::INVALID_IDX)
+        if ( materialIDX == NodeIndirectionData::INVALID_IDX )
         {
-            for (size_t idx = 0u; idx < infoContainer.size(); ++idx )
+            for ( size_t idx = 0u; idx < infoContainer.size(); ++idx )
             {
                 auto& entry = infoContainer[idx];
-                if (entry._hash == INVALID_MAT_HASH ||
-                    entry._framesSinceLastUsed >= MaterialLookupInfo::MAX_FRAME_LIFETIME)
+                if ( entry._hash == INVALID_MAT_HASH )
                 {
-                    // ... in which case our current idx is what we are looking for ...
-                    entry._hash = materialHash;
-                    entry._framesSinceLastUsed = 0u;
-                    materialIDX = to_U32(idx);
+                    materialIDX = to_U32( idx );
+                    // Populate GPU data and lifetime before publishing the hash with release semantics.
+                    s_materialBuffer._data._gpuData[materialIDX] = tempData;
+                    MarkMaterialUsed( entry );
+                    StoreMaterialHash( entry, materialHash );
+                    if ( idx + 1u > usedBound )
+                    {
+                        s_materialUsedSlotBound.store( idx + 1u, std::memory_order_release );
+                    }
                     break;
                 }
             }
 
-            // Cache miss + resize required
-            if (materialIDX == NodeIndirectionData::INVALID_IDX)
+            if ( materialIDX == NodeIndirectionData::INVALID_IDX ) [[unlikely]]
             {
-                materialIDX = to_U32(s_materialBuffer._data._freeList.size());
-                s_materialBuffer._data._freeList.emplace_back(MaterialLookupInfo
-                {
-                    ._hash = materialHash,
-                    ._framesSinceLastUsed = 0u
-                });
-                s_resizeBufferQueued = true;
+                DIVIDE_UNEXPECTED_CALL_MSG( "MAX_CONCURRENT_MATERIALS exceeded!" );
             }
 
-            DIVIDE_ASSERT( materialIDX != NodeIndirectionData::INVALID_IDX );
-
             ret._updateBuffer = true;
-            s_materialBuffer._data._gpuData[materialIDX] = tempData;
         }
 
-        Attorney::RenderingCompRenderPassExecutor::setMaterialIDX(rComp, materialIDX);
+        Attorney::RenderingCompRenderPassExecutor::setMaterialIDX( rComp, materialIDX );
 
         ret._updateIndirection = true;
         s_indirectionBuffer._data._gpuData[indirectionIDXOut]._materialIDX = materialIDX;
@@ -678,7 +720,7 @@ namespace Divide
 
         if ( minTransform <= maxTransform)
         {
-            UpdateBufferRange(s_transformBuffer._updateRange, s_transformBuffer._rangeLock, minTransform, maxTransform);
+            UpdateBufferRange(s_transformBuffer._pendingUpdateRange, minTransform, maxTransform);
         }
     }
 
@@ -719,12 +761,12 @@ namespace Divide
 
         if (minMaterial <= maxMaterial)
         {
-            UpdateBufferRange( s_materialBuffer._updateRange, s_materialBuffer._rangeLock, minMaterial, maxMaterial );
+            UpdateBufferRange( s_materialBuffer._pendingUpdateRange, minMaterial, maxMaterial );
         }
 
         if (minIndirection <= maxIndirection)
         {
-            UpdateBufferRange( s_indirectionBuffer._updateRange, s_indirectionBuffer._rangeLock, minIndirection, maxIndirection );
+            UpdateBufferRange( s_indirectionBuffer._pendingUpdateRange, minIndirection, maxIndirection );
         }
     }
 
@@ -1050,10 +1092,21 @@ namespace Divide
         RenderStagePass stagePass = params._stagePass;
         const SceneRenderState& sceneRenderState = _parent.parent().projectManager()->activeProject()->getActiveScene()->state()->renderState();
         {
-            Mutex memCmdLock;
             std::atomic_bool pendingShader{ false };
 
             _renderQueue->clear();
+
+            const U32 iterCount = to_U32( _visibleNodesCache.size() );
+            const U32 partitionSize = std::min( g_nodesPerPrepareDrawPartition, std::max( iterCount, 1u ) );
+            const U32 partitionCount = iterCount == 0u ? 0u : (iterCount + partitionSize - 1u) / partitionSize;
+            if ( _partitionBufferLocks.size() < partitionCount )
+            {
+                _partitionBufferLocks.resize( partitionCount );
+            }
+            for ( U32 p = 0u; p < partitionCount; ++p )
+            {
+                _partitionBufferLocks[p].clear();
+            }
 
             const auto cbk = [&]( const Task* /*parentTask*/, const U32 start, const U32 end )
             {
@@ -1077,19 +1130,34 @@ namespace Divide
                     }
                 }
 
-                LockGuard<Mutex> w_lock(memCmdLock);
-                memCmdInOut._bufferLocks.insert(memCmdInOut._bufferLocks.cend(), postDrawMemCmd._bufferLocks.cbegin(), postDrawMemCmd._bufferLocks.cend());
+                if ( !postDrawMemCmd._bufferLocks.empty() )
+                {
+                    const U32 partitionIdx = start / partitionSize;
+                    DIVIDE_ASSERT( partitionIdx < partitionCount );
+                    _partitionBufferLocks[partitionIdx].insert( _partitionBufferLocks[partitionIdx].cend(),
+                                                                postDrawMemCmd._bufferLocks.cbegin(),
+                                                                postDrawMemCmd._bufferLocks.cend() );
+                }
             };
 
             const ParallelForDescriptor descriptor
             {
-                ._iterCount = to_U32( _visibleNodesCache.size() ),
+                ._iterCount = iterCount,
                 ._partitionSize = g_nodesPerPrepareDrawPartition,
                 ._priority = TaskPriority::DONT_CARE,
                 ._useCurrentThread = true
             };
 
             Parallel_For( _parent.parent().platformContext().taskPool( TaskPoolType::RENDERER ), descriptor, cbk );
+
+            for ( U32 p = 0u; p < partitionCount; ++p )
+            {
+                const BufferLocks& locks = _partitionBufferLocks[p];
+                if ( !locks.empty() )
+                {
+                    memCmdInOut._bufferLocks.insert( memCmdInOut._bufferLocks.cend(), locks.cbegin(), locks.cend() );
+                }
+            }
 
             _visibleNodesCache.removeIf( []( const VisibleNode& node )
             {
@@ -1156,10 +1224,19 @@ namespace Divide
 
         _renderQueue->clear( targetBin );
 
-        Mutex memCmdLock;
-
         const U32 nodeCount = to_U32( _visibleNodesCache.size() );
         const RenderQueue::PopulateQueueParams queueParams = RenderQueue::PopulateQueueParams::ForPass( stagePass, transparencyPass );
+
+        const U32 partitionSize = std::min( g_nodesPerPrepareDrawPartition, std::max( nodeCount, 1u ) );
+        const U32 partitionCount = nodeCount == 0u ? 0u : (nodeCount + partitionSize - 1u) / partitionSize;
+        if ( _partitionBufferLocks.size() < partitionCount )
+        {
+            _partitionBufferLocks.resize( partitionCount );
+        }
+        for ( U32 p = 0u; p < partitionCount; ++p )
+        {
+            _partitionBufferLocks[p].clear();
+        }
 
         const auto cbk = [&]( const Task* /*parentTask*/, const U32 start, const U32 end )
         {
@@ -1184,8 +1261,14 @@ namespace Divide
                 }
             }
 
-            LockGuard<Mutex> w_lock( memCmdLock );
-            memCmdInOut._bufferLocks.insert( memCmdInOut._bufferLocks.cend(), postDrawMemCmd._bufferLocks.cbegin(), postDrawMemCmd._bufferLocks.cend() );
+            if ( !postDrawMemCmd._bufferLocks.empty() )
+            {
+                const U32 partitionIdx = start / partitionSize;
+                DIVIDE_ASSERT( partitionIdx < partitionCount );
+                _partitionBufferLocks[partitionIdx].insert( _partitionBufferLocks[partitionIdx].cend(),
+                                                            postDrawMemCmd._bufferLocks.cbegin(),
+                                                            postDrawMemCmd._bufferLocks.cend() );
+            }
         };
 
         PROFILE_SCOPE( "prepareRenderQueues - parallel gather", Profiler::Category::Scene );
@@ -1197,6 +1280,15 @@ namespace Divide
             ._useCurrentThread = true
         };
         Parallel_For( _parent.parent().platformContext().taskPool( TaskPoolType::RENDERER ), descriptor, cbk );
+
+        for ( U32 p = 0u; p < partitionCount; ++p )
+        {
+            const BufferLocks& locks = _partitionBufferLocks[p];
+            if ( !locks.empty() )
+            {
+                memCmdInOut._bufferLocks.insert( memCmdInOut._bufferLocks.cend(), locks.cbegin(), locks.cend() );
+            }
+        }
 
         // Sort all bins
         _renderQueue->sort( stagePass, targetBin, renderOrder );
@@ -1833,10 +1925,10 @@ namespace Divide
         }
 
         s_indirectionBuffer._data._gpuData[indirectionIDX]._transformIDX = transformIDX;
-        UpdateBufferRange(s_indirectionBuffer._updateRange, s_indirectionBuffer._rangeLock, indirectionIDX);
+        UpdateBufferRange(s_indirectionBuffer._pendingUpdateRange, indirectionIDX);
 
         Attorney::RenderingCompRenderPassExecutor::setTransformIDX(rComp, transformIDX);
-        UpdateBufferRange(s_transformBuffer._updateRange, s_transformBuffer._rangeLock, transformIDX);
+        UpdateBufferRange(s_transformBuffer._pendingUpdateRange, transformIDX);
 
         if ( resizeBuffers )
         {
@@ -1851,7 +1943,7 @@ namespace Divide
         const U32 indirectionIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry( rComp );
         DIVIDE_ASSERT (indirectionIDX != NodeIndirectionData::INVALID_IDX);
         {
-            UpdateBufferRange(s_indirectionBuffer._updateRange, s_indirectionBuffer._rangeLock, indirectionIDX);
+            UpdateBufferRange(s_indirectionBuffer._pendingUpdateRange, indirectionIDX);
 
             LockGuard<SharedMutex> w_lock(s_indirectionBuffer._data._freeListLock);
             DIVIDE_ASSERT( !s_indirectionBuffer._data._freeList[indirectionIDX] );
@@ -1863,7 +1955,7 @@ namespace Divide
         const NodeIndirectionData& data = Attorney::RenderingCompRenderPassExecutor::getIndirectionNodeData(rComp);
         DIVIDE_ASSERT( data._transformIDX != NodeIndirectionData::INVALID_IDX );
         {
-            UpdateBufferRange(s_transformBuffer._updateRange, s_transformBuffer._rangeLock, data._transformIDX);
+            UpdateBufferRange(s_transformBuffer._pendingUpdateRange, data._transformIDX);
 
             LockGuard<SharedMutex> w_lock(s_transformBuffer._data._freeListLock);
             s_transformBuffer._data._freeList[data._transformIDX] = true;
