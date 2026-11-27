@@ -2473,6 +2473,163 @@ namespace Divide
         }
     }
 
+    namespace
+    {
+        constexpr U64 g_snapshotIdBinding = _ID( "snapshotId" );
+
+        [[nodiscard]] U32 ReadSnapshotId( const UniformData& uniforms )
+        {
+            U32 id = U32_MAX;
+            if ( !uniforms.entries().empty() && uniforms.entries().front()._bindingHash == g_snapshotIdBinding )
+            {
+                std::memcpy( &id, uniforms.data( uniforms.entries().front()._range._startOffset ), sizeof(id) );
+            }
+            return id;
+        }
+    }
+
+    TEST_CASE( "Uniform snapshots keep their addresses across page and overflow growth", "[render_smoke][uniforms][threading]" )
+    {
+        UniformDataSnapshots snapshots{ 1u };
+        const UniformData defaults;
+        constexpr U32 count = to_U32( UniformDataSnapshots::LOCK_FREE_CAPACITY ) + 300u;
+        vector<UniformData*> addresses;
+        addresses.reserve( count );
+        for ( U32 i = 0u; i < count; ++i )
+        {
+            snapshots.record( 5u, defaults, [&]( UniformData& uniforms )
+            {
+                uniforms.set( g_snapshotIdBinding, PushConstantType::UINT, i );
+                addresses.push_back( &uniforms );
+            } );
+        }
+
+        REQUIRE( addresses.size() == count );
+        for ( U32 i = 0u; i < count; ++i )
+        {
+            CHECK( ReadSnapshotId( *addresses[i] ) == i );
+            if ( i > 0u )
+            {
+                CHECK( addresses[i] != addresses[i - 1u] );
+            }
+        }
+
+        for ( U32 i = 0u; i < count; ++i )
+        {
+            snapshots.record( 6u, defaults, [&]( UniformData& uniforms )
+            {
+                CHECK( &uniforms == addresses[i] );
+            } );
+        }
+    }
+
+    TEST_CASE( "Concurrent uniform snapshots claim unique slots and restart each frame", "[render_smoke][uniforms][threading]" )
+    {
+        UniformDataSnapshots snapshots{ 4u };
+        const UniformData defaults;
+        constexpr U32 workerCount = 8u;
+        constexpr U32 perWorker = 400u;
+        constexpr U32 total = workerCount * perWorker;
+
+        const auto recordFrame = [&]( const U64 frame )
+        {
+            std::array<vector<UniformData*>, workerCount> recorded;
+            std::array<std::thread, workerCount> workers;
+            for ( U32 worker = 0u; worker < workerCount; ++worker )
+            {
+                workers[worker] = std::thread( [&, worker]
+                {
+                    for ( U32 i = 0u; i < perWorker; ++i )
+                    {
+                        const U32 id = worker * perWorker + i;
+                        snapshots.record( frame, defaults, [&]( UniformData& uniforms )
+                        {
+                            uniforms.set( g_snapshotIdBinding, PushConstantType::UINT, id );
+                            recorded[worker].push_back( &uniforms );
+                        } );
+                    }
+                } );
+            }
+            for ( std::thread& worker : workers )
+            {
+                worker.join();
+            }
+
+            vector<UniformData*> addresses;
+            addresses.reserve( total );
+            for ( U32 worker = 0u; worker < workerCount; ++worker )
+            {
+                for ( U32 i = 0u; i < perWorker; ++i )
+                {
+                    CHECK( ReadSnapshotId( *recorded[worker][i] ) == worker * perWorker + i );
+                    addresses.push_back( recorded[worker][i] );
+                }
+            }
+            std::sort( addresses.begin(), addresses.end() );
+            CHECK( std::adjacent_find( addresses.begin(), addresses.end() ) == addresses.end() );
+            return addresses;
+        };
+
+        const vector<UniformData*> firstFrame = recordFrame( 20u );
+        CHECK( firstFrame.size() == total );
+        const vector<UniformData*> secondFrame = recordFrame( 21u );
+        CHECK( secondFrame.size() == total );
+        CHECK( std::equal( firstFrame.begin(), firstFrame.end(), secondFrame.begin(), secondFrame.end() ) );
+    }
+
+    TEST_CASE( "Uniform snapshot callbacks run without blocking other recorders", "[render_smoke][uniforms][threading]" )
+    {
+        UniformDataSnapshots snapshots{ 2u };
+        const UniformData defaults;
+        std::atomic_bool entered{false};
+        std::atomic_bool release{false};
+        std::atomic_bool recordedWhileBlocked{false};
+        UniformData* blockedSlot = nullptr;
+        UniformData* otherSlot = nullptr;
+        UniformData* nestedSlot = nullptr;
+
+        std::thread blocker( [&]
+        {
+            snapshots.record( 9u, defaults, [&]( UniformData& uniforms )
+            {
+                blockedSlot = &uniforms;
+                snapshots.record( 9u, defaults, [&]( UniformData& nested ) { nestedSlot = &nested; } );
+                entered.store( true, std::memory_order_release );
+                while ( !release.load( std::memory_order_acquire ) )
+                {
+                    std::this_thread::yield();
+                }
+            } );
+        } );
+        while ( !entered.load( std::memory_order_acquire ) )
+        {
+            std::this_thread::yield();
+        }
+
+        std::thread other( [&]
+        {
+            snapshots.record( 9u, defaults, [&]( UniformData& uniforms ) { otherSlot = &uniforms; } );
+            recordedWhileBlocked.store( true, std::memory_order_release );
+        } );
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds( 5 );
+        while ( !recordedWhileBlocked.load( std::memory_order_acquire ) && std::chrono::steady_clock::now() < deadline )
+        {
+            std::this_thread::yield();
+        }
+        const bool finishedEarly = recordedWhileBlocked.load( std::memory_order_acquire );
+        release.store( true, std::memory_order_release );
+        blocker.join();
+        other.join();
+
+        CHECK( finishedEarly );
+        REQUIRE( blockedSlot != nullptr );
+        REQUIRE( otherSlot != nullptr );
+        REQUIRE( nestedSlot != nullptr );
+        CHECK( blockedSlot != otherSlot );
+        CHECK( blockedSlot != nestedSlot );
+        CHECK( otherSlot != nestedSlot );
+    }
+
     TEST_CASE( "HiZ view uniforms retain their entity counts and frusta until translation", "[renderer][hiz][uniforms][render_smoke]" )
     {
         UniformDataSnapshots snapshots;
