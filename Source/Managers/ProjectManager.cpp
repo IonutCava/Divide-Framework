@@ -860,6 +860,15 @@ namespace Divide
                 return false;
             }
 
+            if ( _autoSaveQueued )
+            {
+                _autoSaveQueued = false;
+                if ( !saveActiveScene( true, true ) )
+                {
+                    NOP();
+                }
+            }
+
             return Attorney::SceneProjectManager::frameEnded( activeProject()->getActiveScene() );
         }
 
@@ -934,10 +943,8 @@ namespace Divide
 
         if ( !RenderSmokeTest::Enabled() && _saveTimer >= Time::SecondsToMicroseconds<U64>( Config::Build::IS_DEBUG_BUILD ? 5 : 10 ) )
         {
-            if ( !saveActiveScene( true, true ) )
-            {
-                NOP();
-            }
+            // Serialized at frame end: the scene must not be read while the update loop is still changing it.
+            _autoSaveQueued = true;
             _saveTimer = 0ULL;
         }
         if ( dayNightData._skyInstance != nullptr )
@@ -1420,6 +1427,36 @@ namespace Divide
         return Attorney::SceneLoadSave::loadNodeFromXML( activeScene, node );
     }
 
+    bool LoadSave::serializeSceneCache( Scene* activeScene, ByteBuffer& dataOut )
+    {
+        dataOut.clear();
+        if ( activeScene->state()->saveLoadDisabled() )
+        {
+            return true;
+        }
+
+        dataOut << BYTE_BUFFER_VERSION;
+        return Attorney::SceneLoadSave::save( activeScene, dataOut );
+    }
+
+    bool LoadSave::writeSceneCache( const std::string_view sceneName, ByteBuffer& data )
+    {
+        if ( data.bufferEmpty() )
+        {
+            return true;
+        }
+
+        const ResourcePath path = Paths::g_saveLocation / sceneName;
+        if ( copyFile( path, g_saveFile, path, g_bakSaveFile, true ) != FileError::NONE )
+        {
+            return false;
+        }
+
+        const bool ret = data.dumpToFile( path, g_saveFile );
+        DIVIDE_ASSERT( ret );
+        return ret;
+    }
+
     bool LoadSave::saveScene( Scene* activeScene, const bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback )
     {
         if ( !toCache )
@@ -1427,29 +1464,8 @@ namespace Divide
             return Attorney::SceneLoadSave::saveXML( activeScene, msgCallback, finishCallback );
         }
 
-        bool ret = false;
-        if ( activeScene->state()->saveLoadDisabled() )
-        {
-            ret = true;
-        }
-        else
-        {
-            const Str<256>& sceneName = activeScene->resourceName();
-            const ResourcePath path = Paths::g_saveLocation / sceneName;
-
-            if ( copyFile( path, g_saveFile, path, g_bakSaveFile, true ) != FileError::NONE )
-            {
-                return false;
-            }
-
-            ByteBuffer save;
-            save << BYTE_BUFFER_VERSION;
-            if ( Attorney::SceneLoadSave::save( activeScene, save ) )
-            {
-                ret = save.dumpToFile( path, g_saveFile );
-                DIVIDE_ASSERT( ret );
-            }
-        }
+        ByteBuffer save;
+        const bool ret = serializeSceneCache( activeScene, save ) && writeSceneCache( activeScene->resourceName().c_str(), save );
         if ( finishCallback )
         {
             finishCallback( ret );
@@ -1483,11 +1499,30 @@ namespace Divide
             pool.wait( *_saveTask );
         }
 
-        _saveTask = CreateTask( nullptr,
-                               [activeScene, msgCallback, finishCallback, toCache]( const Task& /*parentTask*/ )
+        if ( toCache )
         {
-            LoadSave::saveScene( activeScene, toCache, msgCallback, finishCallback );
-        });
+            // Serialize here, on the calling thread; the task only writes the files.
+            auto saveData = std::make_shared<ByteBuffer>();
+            const bool serialized = LoadSave::serializeSceneCache( activeScene, *saveData );
+            const string sceneName = activeScene->resourceName().c_str();
+            _saveTask = CreateTask( nullptr,
+                                   [saveData, serialized, sceneName, finishCallback]( const Task& /*parentTask*/ )
+            {
+                const bool ret = serialized && LoadSave::writeSceneCache( sceneName, *saveData );
+                if ( finishCallback )
+                {
+                    finishCallback( ret );
+                }
+            });
+        }
+        else
+        {
+            _saveTask = CreateTask( nullptr,
+                                   [activeScene, msgCallback, finishCallback]( const Task& /*parentTask*/ )
+            {
+                LoadSave::saveScene( activeScene, false, msgCallback, finishCallback );
+            });
+        }
         pool.enqueue( *_saveTask, deferred ? TaskPriority::DONT_CARE_NO_IDLE : TaskPriority::REALTIME );
 
         return true;

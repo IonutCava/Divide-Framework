@@ -52,6 +52,11 @@ namespace Divide
         public:
         static bool loadScene( Scene* activeScene );
         static bool saveScene( Scene* activeScene, bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback );
+        // Reads live scene state, so call it on the main thread outside the scene update. Leaves dataOut empty when
+        // the scene has saving disabled.
+        [[nodiscard]] static bool serializeSceneCache( Scene* activeScene, ByteBuffer& dataOut );
+        // File I/O only; safe on any thread.
+        [[nodiscard]] static bool writeSceneCache( std::string_view sceneName, ByteBuffer& data );
 
         static bool saveNodeToXML( Scene* activeScene, const SceneGraphNode* node );
         static bool loadNodeFromXML( Scene* activeScene, SceneGraphNode* node );
@@ -347,6 +352,7 @@ namespace Divide
         std::array<Time::ProfileTimer*, to_base( RenderStage::COUNT )> _sceneGraphCullTimers;
 
         bool _playerQueueDirty = false;
+        bool _autoSaveQueued = false;
         eastl::queue<std::pair<Scene*, SceneGraphNode*>>  _playerAddQueue;
         eastl::queue<std::pair<Scene*, SceneGraphNode*>>  _playerRemoveQueue;
         AI::Navigation::DivideRecast_uptr _recast;

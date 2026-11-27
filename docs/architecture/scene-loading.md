@@ -58,9 +58,11 @@ Known exceptions to this rule:
 
 - Threaded task callbacks, including asset-load completions, are flushed at the
   start of every fixed update step rather than once at frame start.
-- `ProjectManager::updateSceneState()` starts the periodic autosave. The
-  low-priority task then serializes the live scene graph through
-  `Scene::save()` while later frames keep updating it.
+- The editor's manual XML save (`ProjectManager::saveActiveScene()` with
+  `toCache == false`) still reads the live scene from a low-priority task.
+  The periodic autosave is queued by `ProjectManager::updateSceneState()`,
+  serialized in `ProjectManager::frameEnded()`, and only written to disk by
+  the task.
 - `Scene::flushDirtySceneData()` runs inside the update and performs one-time
   vegetation instance finalization (`Vegetation::finalizeInstance()`).
 
