@@ -94,7 +94,7 @@ namespace Divide
         };
     };
 
-    static_assert(ArrayCount(Names::componentType) == to_base(ComponentType::COUNT) + 1u, "ComponentType name array out of sync!");
+    static_assert(std::size(Names::componentType) == to_base(ComponentType::COUNT) + 1u, "ComponentType name array out of sync!");
     namespace TypeUtil
     {
         [[nodiscard]] const char* ComponentTypeToString(const ComponentType compType) noexcept;

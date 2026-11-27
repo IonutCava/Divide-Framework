@@ -120,7 +120,7 @@ bool LoadMeshFile(NavModelData& outData, const ResourcePath& filePath, const cha
     while (src < srcEnd) {
         // Parse one row
         row[0] = '\0';
-        src = ParseRow(src, srcEnd, row, sizeof row / sizeof(char));
+        src = ParseRow(src, srcEnd, row, to_I32( std::size( row ) ));
         // Skip comments
         if (row[0] == '#')
             continue;

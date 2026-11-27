@@ -126,8 +126,6 @@ constexpr auto highLevelF(Args&&... args) -> decltype(lowLevelF(FWD(args)...)) \
     return lowLevelF(FWD(args)...);                                            \
 }
 
-ALIAS_TEMPLATE_FUNCTION(ArrayCount, std::size)
-
 //ref: https://vittorioromeo.info/index/blog/passing_functions_to_functions.html
 template <typename TSignature>
 class function_view;

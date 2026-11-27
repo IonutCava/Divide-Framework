@@ -71,7 +71,7 @@ namespace Divide
         info._availableRamInBytes = 0u;
 #if defined(IS_MACOS_BUILD)
         I32 mib[2] = { CTL_HW, HW_MEMSIZE };
-        U32 namelen = sizeof(mib) / sizeof(mib[0]);
+        const U32 namelen = to_U32(std::size(mib));
         U64 size;
         size_t len = sizeof(size);
         if (sysctl(mib, namelen, &size, &len, NULL, 0) < 0)

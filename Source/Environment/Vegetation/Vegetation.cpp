@@ -259,7 +259,7 @@ namespace Divide
         };
 
         vector<float3> vertices{};
-        constexpr U8 billboardsPlaneCount = to_U8( sizeof( transform ) / sizeof( transform[0] ) );
+        constexpr U8 billboardsPlaneCount = to_U8( std::size( transform ) );
         vertices.reserve( billboardsPlaneCount * 4 );
 
         for ( U8 i = 0u; i < billboardsPlaneCount; ++i )

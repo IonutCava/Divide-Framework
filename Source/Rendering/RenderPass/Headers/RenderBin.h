@@ -116,7 +116,7 @@ namespace Names {
     };
 };
 
-static_assert(ArrayCount( Names::renderBinType ) == to_base( RenderBinType::COUNT ) + 1, "RenderBinType name array out of sync!");
+static_assert(std::size( Names::renderBinType ) == to_base( RenderBinType::COUNT ) + 1, "RenderBinType name array out of sync!");
 
 struct RenderPackage;
 
