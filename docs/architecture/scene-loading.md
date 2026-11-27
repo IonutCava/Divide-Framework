@@ -54,15 +54,16 @@ drains, so that work overlaps GPU rendering instead of stretching the update.
 Scene code should request the change (`SceneGraph::removeNode()`, parent-change
 and event queues, player queues) rather than apply it during the update.
 
+Saves follow the same split. `ProjectManager::saveActiveScene()` serializes the
+scene on the calling thread, into a `ByteBuffer` for the cache or an
+`XML::SaveSnapshot` for the editor's XML save, and its low-priority task only
+writes files. `ProjectManager::updateSceneState()` queues the periodic autosave;
+`ProjectManager::frameEnded()` serializes it.
+
 Known exceptions to this rule:
 
 - Threaded task callbacks, including asset-load completions, are flushed at the
   start of every fixed update step rather than once at frame start.
-- The editor's manual XML save (`ProjectManager::saveActiveScene()` with
-  `toCache == false`) still reads the live scene from a low-priority task.
-  The periodic autosave is queued by `ProjectManager::updateSceneState()`,
-  serialized in `ProjectManager::frameEnded()`, and only written to disk by
-  the task.
 - `Scene::flushDirtySceneData()` runs inside the update and performs one-time
   vegetation instance finalization (`Vegetation::finalizeInstance()`).
 

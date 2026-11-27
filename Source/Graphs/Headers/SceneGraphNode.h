@@ -43,6 +43,10 @@
 
 namespace Divide
 {
+    namespace XML
+    {
+        struct SaveSnapshot;
+    }
 
     namespace GFX
     {
@@ -258,8 +262,8 @@ namespace Divide
         void RemoveComponents( U32 componentMask );
         [[nodiscard]] bool HasComponents( ComponentType componentType ) const;
         [[nodiscard]] bool HasComponents( U32 componentMask ) const;
-        /// Serialization: save to XML file
-        void saveToXML( const ResourcePath& sceneLocation, DELEGATE<void, std::string_view> msgCallback = {} ) const;
+        /// Serialization: adds this node's XML file and those of its children to snapshotOut
+        void saveToXML( const ResourcePath& sceneLocation, XML::SaveSnapshot& snapshotOut ) const;
         void loadFromXML( const ResourcePath& sceneLocation );
         /// Serialization: load from XML file (expressed as a boost property_tree)
         void loadFromXML( const boost::property_tree::ptree& pt );

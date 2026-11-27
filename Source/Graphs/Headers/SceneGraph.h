@@ -46,6 +46,10 @@ namespace ECS {
 namespace Divide {
 class SceneState;
 class SceneGraphNode;
+namespace XML
+{
+    struct SaveSnapshot;
+}
 
 struct Ray;
 struct SGNRayResult;
@@ -129,7 +133,8 @@ class SceneGraph final : NonCopyable,
     bool saveNodeToXML(const SceneGraphNode* node) const;
     bool loadNodeFromXML( const ResourcePath& assetsFile, SceneGraphNode* node) const;
 
-    void saveToXML( const ResourcePath& assetsFile, DELEGATE<void, std::string_view> msgCallback ) const;
+    // Adds the hierarchy file and every node's file to snapshotOut.
+    void saveToXML( const ResourcePath& assetsFile, XML::SaveSnapshot& snapshotOut ) const;
     void loadFromXML( const ResourcePath& assetsFile);
 
     ECSManager& GetECSManager() { return *_ecsManager; }

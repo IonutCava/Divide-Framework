@@ -51,7 +51,8 @@ namespace Divide
     {
         public:
         static bool loadScene( Scene* activeScene );
-        static bool saveScene( Scene* activeScene, bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback );
+        // Reads live scene state, so call it on the main thread outside the scene update.
+        [[nodiscard]] static bool snapshotSceneXML( const Scene* activeScene, XML::SaveSnapshot& snapshotOut );
         // Reads live scene state, so call it on the main thread outside the scene update. Leaves dataOut empty when
         // the scene has saving disabled.
         [[nodiscard]] static bool serializeSceneCache( Scene* activeScene, ByteBuffer& dataOut );

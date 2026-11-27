@@ -272,6 +272,48 @@ void writeXML(const ResourcePath& path, const ptree& tree)
     write_xml(path.string().c_str(), tree, std::locale(), settings);
 }
 
+bool writeSnapshot( const SaveSnapshot& snapshot, const DELEGATE<void, std::string_view>& msgCallback )
+{
+    for ( const ResourcePath& directory : snapshot._directories )
+    {
+        if ( createDirectory( directory ) != FileError::NONE )
+        {
+            NOP();
+        }
+    }
+
+    bool ret = true;
+    for ( const FileSnapshot& file : snapshot._files )
+    {
+        if ( msgCallback && !file._progressMessage.empty() )
+        {
+            msgCallback( file._progressMessage );
+        }
+
+        if ( file._backup != FileSnapshot::Backup::NONE )
+        {
+            const FileError backupError = copyFile( file._folder, file._backupSource, file._folder, file._backupSource + ".bak", true );
+            if ( file._backup == FileSnapshot::Backup::REQUIRED_TO_WRITE && backupError != FileError::NONE )
+            {
+                continue;
+            }
+            if ( backupError != FileError::NONE && backupError != FileError::FILE_NOT_FOUND && backupError != FileError::FILE_EMPTY )
+            {
+                ret = false;
+                if constexpr ( !Config::Build::IS_SHIPPING_BUILD )
+                {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
+                continue;
+            }
+        }
+
+        writeXML( file._folder / file._fileName, file._tree );
+    }
+
+    return ret;
+}
+
 void readXML(const ResourcePath& path, ptree& tree)
 {
     if (!fileExists(path))

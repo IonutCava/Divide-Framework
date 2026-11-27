@@ -881,29 +881,19 @@ namespace Divide
         }
     };
 
-    void SceneGraph::saveToXML( const ResourcePath& assetsFile, DELEGATE<void, std::string_view> msgCallback ) const
+    void SceneGraph::saveToXML( const ResourcePath& assetsFile, XML::SaveSnapshot& snapshotOut ) const
     {
         const ResourcePath sceneLocation = Scene::GetSceneFullPath(parentScene());
 
         {
-            boost::property_tree::ptree pt;
-            pt.put( "version", g_sceneGraphVersion );
-            pt.add_child( "entities.node", dumpSGNtoAssets( _root ) );
-
-            const FileError backupReturnCode = copyFile( sceneLocation, assetsFile.string(), sceneLocation, Util::StringFormat("{}.bak", assetsFile.string()), true );
-            if ( backupReturnCode != FileError::NONE &&
-                 backupReturnCode != FileError::FILE_NOT_FOUND &&
-                 backupReturnCode != FileError::FILE_EMPTY )
-            {
-                if constexpr( !Config::Build::IS_SHIPPING_BUILD )
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
-            }
-            else
-            {
-                XML::writeXML(sceneLocation / assetsFile, pt );
-            }
+            XML::FileSnapshot& file = snapshotOut._files.emplace_back();
+            file._folder = sceneLocation;
+            file._fileName = assetsFile.string();
+            file._backupSource = file._fileName;
+            file._backup = XML::FileSnapshot::Backup::IF_PRESENT;
+            file._progressMessage = "Saving scene graph data ...";
+            file._tree.put( "version", g_sceneGraphVersion );
+            file._tree.add_child( "entities.node", dumpSGNtoAssets( _root ) );
         }
 
         const SceneGraphNode::ChildContainer& children = _root->getChildren();
@@ -911,7 +901,7 @@ namespace Divide
         const U32 childCount = children._count;
         for ( U32 i = 0u; i < childCount; ++i )
         {
-            children._data[i]->saveToXML( sceneLocation, msgCallback );
+            children._data[i]->saveToXML( sceneLocation, snapshotOut );
         }
     }
 
@@ -986,8 +976,9 @@ namespace Divide
 
     bool SceneGraph::saveNodeToXML( const SceneGraphNode* node ) const
     {
-        node->saveToXML( Scene::GetSceneFullPath( parentScene() ) );
-        return true;
+        XML::SaveSnapshot snapshot{};
+        node->saveToXML( Scene::GetSceneFullPath( parentScene() ), snapshot );
+        return XML::writeSnapshot( snapshot, {} );
     }
 
     bool SceneGraph::loadNodeFromXML( [[maybe_unused]] const ResourcePath& assetsFile, SceneGraphNode* node ) const

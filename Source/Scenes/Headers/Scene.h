@@ -287,8 +287,9 @@ class Scene : public Resource, public PlatformContextComponent {
         [[nodiscard]] virtual bool save(ByteBuffer& outputBuffer) const;
         [[nodiscard]] virtual bool load(ByteBuffer& inputBuffer);
 
-        /// Can save at any time, I guess?
-        [[nodiscard]] virtual bool saveXML(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback) const;
+        /// Builds every scene XML file in memory. Reads live scene state, so call it on the main thread outside the
+        /// scene update; XML::writeSnapshot() can then write the files on any thread.
+        [[nodiscard]] virtual bool saveXML(XML::SaveSnapshot& snapshotOut) const;
 
         [[nodiscard]]         bool saveNodeToXML(const SceneGraphNode* node) const;
         [[nodiscard]]         bool loadNodeFromXML(SceneGraphNode* node) const;
@@ -514,8 +515,8 @@ class SceneLoadSave {
         return scene->loadNodeFromXML(node);
     }  
     
-    static bool saveXML(Scene* scene, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback ) {
-        return scene->saveXML(msgCallback, finishCallback);
+    static bool saveXML(const Scene* scene, XML::SaveSnapshot& snapshotOut) {
+        return scene->saveXML(snapshotOut);
     }
 
     friend class Divide::LoadSave;

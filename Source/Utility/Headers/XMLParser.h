@@ -101,6 +101,37 @@ namespace XML
 
     void writeXML( const ResourcePath& path, const boost::property_tree::ptree& tree );
     void readXML( const ResourcePath& path, boost::property_tree::ptree& tree );
+
+    // An XML file built in memory, to be written later (possibly on another thread).
+    struct FileSnapshot
+    {
+        enum class Backup : U8
+        {
+            NONE,
+            // Copy _backupSource to "<_backupSource>.bak" first. A missing or empty source is fine; any other
+            // copy error skips the write.
+            IF_PRESENT,
+            // Write only after _backupSource was copied to "<_backupSource>.bak".
+            REQUIRED_TO_WRITE
+        };
+
+        boost::property_tree::ptree _tree;
+        ResourcePath _folder;
+        string _fileName;
+        string _backupSource;
+        string _progressMessage;
+        Backup _backup{ Backup::NONE };
+    };
+
+    struct SaveSnapshot
+    {
+        vector<ResourcePath> _directories;
+        vector<FileSnapshot> _files;
+    };
+
+    // File I/O only; safe on any thread. Creates the directories, then writes the files in order, reporting each
+    // non-empty progress message first. Returns false if a file was skipped because its backup failed.
+    [[nodiscard]] bool writeSnapshot( const SaveSnapshot& snapshot, const DELEGATE<void, std::string_view>& msgCallback );
     /// Child Functions
     void loadDefaultKeyBindings( const ResourcePath& file, const Scene* scene );
     void loadMusicPlaylist( const ResourcePath& scenePath, const Str<64>& fileName, Scene* scene, [[maybe_unused]] const Configuration& config );

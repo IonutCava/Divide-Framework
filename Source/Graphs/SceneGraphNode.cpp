@@ -1261,38 +1261,31 @@ bool SceneGraphNode::loadCache(ByteBuffer& inputBuffer)
            _sceneGraph->GetECSManager().loadCache(this, inputBuffer);
 }
 
-void SceneGraphNode::saveToXML(const ResourcePath& sceneLocation, DELEGATE<void, std::string_view> msgCallback) const
+void SceneGraphNode::saveToXML(const ResourcePath& sceneLocation, XML::SaveSnapshot& snapshotOut) const
 {
     if (!serialize())
     {
         return;
     }
 
-    if (msgCallback)
-    {
-        msgCallback(Util::StringFormat("Saving node [ {} ] ...", name().c_str()).c_str());
-    }
+    XML::FileSnapshot& file = snapshotOut._files.emplace_back();
+    file._folder = sceneLocation / Paths::g_nodesSaveLocation;
+    file._fileName = Util::MakeXMLSafe( Util::StringFormat("{}_{}.xml", parent()->name(), name()) ).c_str();
+    file._progressMessage = Util::StringFormat("Saving node [ {} ] ...", name().c_str()).c_str();
+    file._tree.put("static", usageContext() == NodeUsageContext::NODE_STATIC);
 
-    boost::property_tree::ptree pt;
-    pt.put("static", usageContext() == NodeUsageContext::NODE_STATIC);
-
-    getNode().saveToXML(pt);
+    getNode().saveToXML(file._tree);
 
     for (const EditorComponent* editorComponent : Hacks._editorComponents)
     {
-        Attorney::EditorComponentSceneGraphNode::saveToXML(*editorComponent, pt);
+        Attorney::EditorComponentSceneGraphNode::saveToXML(*editorComponent, file._tree);
     }
-
-    const auto targetFile =  Util::MakeXMLSafe( Util::StringFormat("{}_{}.xml", parent()->name(), name()) );
-    const ResourcePath savePath = sceneLocation / Paths::g_nodesSaveLocation /  targetFile;
-
-    XML::writeXML(savePath, pt);
 
     SharedLock<SharedMutex> r_lock(_children._lock);
     const U32 childCount = _children._count;
     for (U32 i = 0u; i < childCount; ++i)
     {
-        _children._data[i]->saveToXML(sceneLocation, msgCallback);
+        _children._data[i]->saveToXML(sceneLocation, snapshotOut);
     }
 }
 

@@ -190,9 +190,8 @@ namespace Divide
         return sceneGraph()->loadNodeFromXML( ResourcePath{ "assets.xml" }, node );
     }
 
-    bool Scene::saveXML( const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback ) const
+    bool Scene::saveXML( XML::SaveSnapshot& snapshotOut ) const
     {
-        using boost::property_tree::ptree;
         const ResourcePath assetsFile{ "assets.xml" };
 
         Console::printfn( LOCALE_STR( "XML_SAVE_SCENE_START" ), resourceName().c_str() );
@@ -201,34 +200,21 @@ namespace Divide
         const Str<256> sceneSaveFile = sceneName + ".xml";
         const ResourcePath scenesLocation = GetSceneRootFolder( parent() );
         const ResourcePath sceneLocation = GetSceneFullPath( *this );
-        const ResourcePath sceneDataFile = scenesLocation / sceneSaveFile;
 
-        if ( msgCallback )
-        {
-            msgCallback( "Validating directory structure ..." );
-        }
-
-        if ( createDirectory( sceneLocation / "collisionMeshes") != FileError::NONE )
-        {
-            NOP();
-        }
-        if ( createDirectory( sceneLocation / "navMeshes" ) != FileError::NONE )
-        {
-            NOP();
-        }
-        if ( createDirectory( sceneLocation / Paths::g_nodesSaveLocation ) != FileError::NONE )
-        {
-            NOP();
-        }
+        snapshotOut._directories.emplace_back( sceneLocation / "collisionMeshes" );
+        snapshotOut._directories.emplace_back( sceneLocation / "navMeshes" );
+        snapshotOut._directories.emplace_back( sceneLocation / Paths::g_nodesSaveLocation );
 
         // A scene does not necessarily need external data files. Data can be added in code for simple scenes
         {
-            if ( msgCallback )
-            {
-                msgCallback( "Saving scene settings ..." );
-            }
+            XML::FileSnapshot& file = snapshotOut._files.emplace_back();
+            file._folder = scenesLocation;
+            file._fileName = sceneSaveFile.c_str();
+            file._backupSource = file._fileName;
+            file._backup = XML::FileSnapshot::Backup::IF_PRESENT;
+            file._progressMessage = "Saving scene settings ...";
 
-            ptree pt;
+            boost::property_tree::ptree& pt = file._tree;
             pt.put( "assets", assetsFile.string() );
             pt.put( "musicPlaylist", "musicPlaylist.xml" );
 
@@ -266,49 +252,19 @@ namespace Divide
             pt.put( "dayNight.location.<xmlattr>.latitude", _dayNightData._location._latitude );
             pt.put( "dayNight.location.<xmlattr>.longitude", _dayNightData._location._longitude );
             pt.put( "dayNight.timeOfDay.<xmlattr>.timeFactor", _dayNightData._speedFactor );
-
-            const FileError backupReturnCode = copyFile( scenesLocation, sceneSaveFile.c_str(), scenesLocation, (sceneSaveFile + ".bak").c_str(), true );
-            if ( backupReturnCode != FileError::NONE &&
-                 backupReturnCode != FileError::FILE_NOT_FOUND &&
-                 backupReturnCode != FileError::FILE_EMPTY )
-            {
-                if constexpr( !Config::Build::IS_SHIPPING_BUILD )
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
-            }
-            else
-            {
-                XML::writeXML( sceneDataFile, pt );
-            }
         }
 
-        if ( msgCallback )
-        {
-            msgCallback( "Saving scene graph data ..." );
-        }
-        sceneGraph()->saveToXML( assetsFile, msgCallback );
+        sceneGraph()->saveToXML( assetsFile, snapshotOut );
 
         //save music
         {
-            if ( msgCallback )
-            {
-                msgCallback( "Saving music data ..." );
-            }
-
-            ptree pt = {}; //ToDo: Save music data :)
-
-            if ( copyFile( sceneLocation, "musicPlaylist.xml", sceneLocation, "musicPlaylist.xml.bak", true ) == FileError::NONE )
-            {
-                XML::writeXML( sceneLocation / "musicPlaylist.xml.dev", pt );
-            }
-        }
-
-        Console::printfn( LOCALE_STR( "XML_SAVE_SCENE_END" ), sceneDataFile );
-
-        if ( finishCallback )
-        {
-            finishCallback( true );
+            //ToDo: Save music data :)
+            XML::FileSnapshot& file = snapshotOut._files.emplace_back();
+            file._folder = sceneLocation;
+            file._fileName = "musicPlaylist.xml.dev";
+            file._backupSource = "musicPlaylist.xml";
+            file._backup = XML::FileSnapshot::Backup::REQUIRED_TO_WRITE;
+            file._progressMessage = "Saving music data ...";
         }
 
         return true;

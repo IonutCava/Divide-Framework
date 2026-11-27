@@ -1457,20 +1457,9 @@ namespace Divide
         return ret;
     }
 
-    bool LoadSave::saveScene( Scene* activeScene, const bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback )
+    bool LoadSave::snapshotSceneXML( const Scene* activeScene, XML::SaveSnapshot& snapshotOut )
     {
-        if ( !toCache )
-        {
-            return Attorney::SceneLoadSave::saveXML( activeScene, msgCallback, finishCallback );
-        }
-
-        ByteBuffer save;
-        const bool ret = serializeSceneCache( activeScene, save ) && writeSceneCache( activeScene->resourceName().c_str(), save );
-        if ( finishCallback )
-        {
-            finishCallback( ret );
-        }
-        return ret;
+        return Attorney::SceneLoadSave::saveXML( activeScene, snapshotOut );
     }
 
     bool ProjectManager::saveActiveScene( bool toCache, const bool deferred, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback )
@@ -1499,9 +1488,9 @@ namespace Divide
             pool.wait( *_saveTask );
         }
 
+        // Serialize here, on the calling thread; the task only writes the files.
         if ( toCache )
         {
-            // Serialize here, on the calling thread; the task only writes the files.
             auto saveData = std::make_shared<ByteBuffer>();
             const bool serialized = LoadSave::serializeSceneCache( activeScene, *saveData );
             const string sceneName = activeScene->resourceName().c_str();
@@ -1517,10 +1506,18 @@ namespace Divide
         }
         else
         {
+            auto snapshot = std::make_shared<XML::SaveSnapshot>();
+            const bool snapshotted = LoadSave::snapshotSceneXML( activeScene, *snapshot );
+            const string sceneName = activeScene->resourceName().c_str();
             _saveTask = CreateTask( nullptr,
-                                   [activeScene, msgCallback, finishCallback]( const Task& /*parentTask*/ )
+                                   [snapshot, snapshotted, sceneName, msgCallback, finishCallback]( const Task& /*parentTask*/ )
             {
-                LoadSave::saveScene( activeScene, false, msgCallback, finishCallback );
+                const bool ret = snapshotted && XML::writeSnapshot( *snapshot, msgCallback );
+                Console::printfn( LOCALE_STR( "XML_SAVE_SCENE_END" ), sceneName );
+                if ( finishCallback )
+                {
+                    finishCallback( ret );
+                }
             });
         }
         pool.enqueue( *_saveTask, deferred ? TaskPriority::DONT_CARE_NO_IDLE : TaskPriority::REALTIME );
