@@ -46,15 +46,6 @@ namespace Divide
     {
         constexpr I16 g_renderRangeLimit = I16_MAX;
 
-        [[nodiscard]] U32 DrawPackageCacheKey( const RenderStagePass& renderStagePass ) noexcept
-        {
-            return to_U32( renderStagePass._index ) |
-                   (to_U32( to_base( renderStagePass._pass ) ) << 16u) |
-                   (to_U32( to_base( renderStagePass._variant ) ) << 19u) |
-                   (to_U32( to_base( renderStagePass._passType ) ) << 21u) |
-                   (to_U32( to_base( renderStagePass._stage ) ) << 24u);
-        }
-
         void SetInstanceBufferDefine( Material& material, const bool enabled )
         {
             const auto& bindings = material.shaderAttributes()._vertexBindings;
@@ -291,9 +282,9 @@ namespace Divide
         auto& packagesPerVariant = packagesPerPassType[to_base( pass )];
         for ( auto& packagesPerPassIndex : packagesPerVariant )
         {
-            for ( auto& pacakgesPerIndex : packagesPerPassIndex )
+            for ( auto& packagesPerIndex : packagesPerPassIndex )
             {
-                for ( const auto& entry : pacakgesPerIndex )
+                for ( const auto& entry : packagesPerIndex._entries )
                 {
                     Clear( entry->_package );
                 }
@@ -317,9 +308,9 @@ namespace Divide
             {
                 for ( auto& packagesPerPassIndex : packagesPerVariant )
                 {
-                    for ( auto& pacakgesPerIndex : packagesPerPassIndex )
+                    for ( auto& packagesPerIndex : packagesPerPassIndex )
                     {
-                        for ( const auto& entry : pacakgesPerIndex )
+                        for ( const auto& entry : packagesPerIndex._entries )
                         {
                             Clear( entry->_package );
                         }
@@ -899,29 +890,25 @@ namespace Divide
 
     RenderPackage& RenderingComponent::getDrawPackage( const RenderStagePass& renderStagePass )
     {
-        const U32 cacheKey = DrawPackageCacheKey( renderStagePass );
-        if ( _drawPackageCacheKey.load( std::memory_order_acquire ) == cacheKey ) [[likely]]
-        {
-            RenderPackage* cachedPackage = _drawPackageCache.load( std::memory_order_relaxed );
-            if ( cachedPackage != nullptr )
-            {
-                return *cachedPackage;
-            }
-        }
-
         PackagesPerPassType& packagesPerPassType = _renderPackages[to_base( renderStagePass._stage )];
         PackagesPerVariant& packagesPerVariant = packagesPerPassType[to_base( renderStagePass._passType )];
         PackagesPerPassIndex& packagesPerPassIndex = packagesPerVariant[to_base( renderStagePass._variant )];
-        PackagesPerIndex& pacakgesPerIndex = packagesPerPassIndex[to_base( renderStagePass._pass )];
+        PackagesPerIndex& packagesPerIndex = packagesPerPassIndex[to_base( renderStagePass._pass )];
+
+        if ( renderStagePass._index == 0u ) [[likely]]
+        {
+            if ( RenderPackage* defaultPkg = packagesPerIndex._defaultPackage.load( std::memory_order_acquire ); defaultPkg != nullptr ) [[likely]]
+            {
+                return *defaultPkg;
+            }
+        }
 
         {
             SharedLock<SharedMutex> r_lock( _renderPackagesLock );
-            for ( const auto& entry : pacakgesPerIndex )
+            for ( const auto& entry : packagesPerIndex._entries )
             {
                 if ( entry->_index == renderStagePass._index )
                 {
-                    _drawPackageCache.store( &entry->_package, std::memory_order_relaxed );
-                    _drawPackageCacheKey.store( cacheKey, std::memory_order_release );
                     return entry->_package;
                 }
             }
@@ -929,12 +916,10 @@ namespace Divide
 
         LockGuard<SharedMutex> w_lock( _renderPackagesLock );
         // check again
-        for ( const auto& entry : pacakgesPerIndex )
+        for ( const auto& entry : packagesPerIndex._entries )
         {
             if ( entry->_index == renderStagePass._index )
             {
-                _drawPackageCache.store( &entry->_package, std::memory_order_relaxed );
-                _drawPackageCacheKey.store( cacheKey, std::memory_order_release );
                 return entry->_package;
             }
         }
@@ -942,10 +927,12 @@ namespace Divide
         auto entry = std::make_unique<PackageEntry>();
         entry->_index = renderStagePass._index;
         RenderPackage& package = entry->_package;
-        pacakgesPerIndex.emplace_back( MOV(entry) );
+        packagesPerIndex._entries.emplace_back( MOV(entry) );
 
-        _drawPackageCache.store( &package, std::memory_order_relaxed );
-        _drawPackageCacheKey.store( cacheKey, std::memory_order_release );
+        if ( renderStagePass._index == 0u )
+        {
+            packagesPerIndex._defaultPackage.store( &package, std::memory_order_release );
+        }
 
         return package;
     }

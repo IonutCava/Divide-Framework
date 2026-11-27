@@ -278,7 +278,13 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
         U16 _index{ 0u };
     };
 
-    using PackagesPerIndex = vector<std::unique_ptr<PackageEntry>>;
+    struct PackageSlot
+    {
+        std::atomic<RenderPackage*> _defaultPackage{ nullptr };
+        vector<std::unique_ptr<PackageEntry>> _entries;
+    };
+
+    using PackagesPerIndex = PackageSlot;
     using PackagesPerPassIndex = std::array<PackagesPerIndex, to_base(RenderStagePass::PassIndex::COUNT)>;
     using PackagesPerVariant = std::array<PackagesPerPassIndex, to_base(RenderStagePass::VariantType::COUNT)>;
     using PackagesPerPassType = std::array<PackagesPerVariant, to_base(RenderPassType::COUNT)>;
@@ -306,8 +312,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     std::pair<Handle<Texture>, SamplerDescriptor> _refractionCube{ INVALID_HANDLE<Texture>, {} };
 
     std::atomic_size_t _indexBufferOffsetCount{0u}; ///< Number of indices to skip in the batched index buffer
-    std::atomic<U32> _drawPackageCacheKey{ U32_MAX };
-    std::atomic<RenderPackage*> _drawPackageCache{ nullptr };
     std::array<std::pair<size_t, size_t>, MAX_LOD_LEVEL> _lodIndexOffsets{};
     std::array<U8, to_base(RenderStage::COUNT)> _lodLevels{};
     std::array<std::pair<bool, U8>, to_base(RenderStage::COUNT)> _lodLockLevels{};
