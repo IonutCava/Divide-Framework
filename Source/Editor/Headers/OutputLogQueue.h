@@ -41,7 +41,8 @@ namespace Divide
 
         void clear()
         {
-            static_cast<void>(drain([](const Console::OutputEntry&) noexcept {}));
+            auto ret = drain([](const Console::OutputEntry&) noexcept {});
+            DIVIDE_UNUSED(ret);
         }
 
     private:

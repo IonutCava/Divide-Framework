@@ -18,18 +18,22 @@ namespace Divide
     TEST_CASE("Material coverage revisions track alpha, cull, shader and resource changes", "[materials][worldAO]")
     {
         Material material{ResourceDescriptor<Material>{"coverage-revision-test"}};
-        static_cast<void>(material.update(0u));
+        auto ret = material.update(0u);
+        DIVIDE_UNUSED(ret);
         U64 revision = material.coverageRevision();
-        static_cast<void>(material.update(0u));
+        ret = material.update(0u);
+        DIVIDE_UNUSED(ret);
         CHECK(material.coverageRevision() == revision);
 
         material.properties().baseColour(FColour4(1.f, 1.f, 1.f, 0.5f));
-        static_cast<void>(material.update(0u));
+        ret = material.update(0u);
+        DIVIDE_UNUSED(ret);
         CHECK(material.coverageRevision() > revision);
         revision = material.coverageRevision();
 
         material.properties().doubleSided(true);
-        static_cast<void>(material.update(0u));
+        ret = material.update(0u);
+        DIVIDE_UNUSED(ret);
         CHECK(material.coverageRevision() > revision);
         revision = material.coverageRevision();
 
@@ -44,7 +48,8 @@ namespace Divide
     TEST_CASE("Material shader defines toggle once and request a shader rebuild", "[materials][shader]")
     {
         Material material{ResourceDescriptor<Material>{"shader-define-toggle-test"}};
-        static_cast<void>(material.update(0u));
+        auto ret = material.update(0u);
+        DIVIDE_UNUSED(ret);
         const auto hasDefine = [&material](const ShaderType type)
         {
             const ModuleDefines& defines = material.shaderDefines(type);
@@ -397,7 +402,8 @@ namespace Divide
         REQUIRE( material.getDescriptorSet( pass, custom, result ) );
         CHECK( result._bindings[0]._shaderStageVisibility == to_base( ShaderStageVisibility::ALL_DRAW ) );
         material.properties().baseColour( FColour4( 1.f, 1.f, 1.f, 0.5f ) );
-        static_cast<void>( material.update( 0u ) );
+        auto ret = material.update( 0u );
+        DIVIDE_UNUSED( ret );
         CHECK( cached._bindingCount == 0u );
     }
 
@@ -579,7 +585,8 @@ namespace Divide
     TEST_CASE( "Material runtime alpha updates preserve pending shader changes", "[materials][transparency][render_smoke]" )
     {
         Material material{ ResourceDescriptor<Material>{ "transparency-dirty-test" } };
-        static_cast<void>( material.update( 0u ) );
+        auto ret = material.update( 0u );
+        DIVIDE_UNUSED( ret );
         material.properties().isStatic( true );
         material.properties().baseColour( DefaultColours::WHITE );
         const U32 pendingUpdate = material.update( 0u );
@@ -588,12 +595,14 @@ namespace Divide
         material.properties().baseColour( FColour4( 1.f, 1.f, 1.f, 0.5f ) );
         material.setTextureOperation( TextureSlot::UNIT0, TextureOperation::REPLACE );
         CHECK( material.properties().transparencyUpdated() );
-        static_cast<void>( material.update( 0u ) );
+        ret = material.update( 0u );
+        DIVIDE_UNUSED( ret );
         CHECK( material.properties().translucencySource() == TranslucencySource::ALBEDO_COLOUR );
 
         material.properties().ignoreTexDiffuseAlpha( true );
         CHECK( material.properties().transparencyUpdated() );
-        static_cast<void>( material.update( 0u ) );
+        ret = material.update( 0u );
+        DIVIDE_UNUSED( ret );
         CHECK_FALSE( material.properties().transparencyUpdated() );
     }
 
@@ -653,7 +662,8 @@ namespace Divide
     TEST_CASE( "Material shader inspection preserves the render-ready notification", "[materials][startup]" )
     {
         Material material{ ResourceDescriptor<Material>{ "readiness-test" } };
-        static_cast<void>( material.update( 0u ) );
+        auto ret = material.update( 0u );
+        DIVIDE_UNUSED( ret );
         const RenderStagePass pass{ RenderStage::DISPLAY, RenderPassType::MAIN_PASS };
         ShaderProgramInfo& info = MaterialTestAccess::Slot( material, pass );
         CHECK( material.computeAndGetProgramHandle( pass ) == INVALID_HANDLE<ShaderProgram> );
@@ -680,7 +690,8 @@ namespace Divide
         platformInitRunListener::PlatformInit();
         const platformInitRunListener::LocalizationScope localization{};
         Material material{ ResourceDescriptor<Material>{ "missing-shader-test" } };
-        static_cast<void>( material.update( 0u ) );
+        auto ret = material.update( 0u );
+        DIVIDE_UNUSED( ret );
         const RenderStagePass pass{ RenderStage::DISPLAY, RenderPassType::MAIN_PASS };
         ShaderProgramInfo& info = MaterialTestAccess::Slot( material, pass );
         info._shaderCompStage = ShaderBuildStage::COMPUTED;
@@ -695,7 +706,8 @@ namespace Divide
     TEST_CASE( "Material defers a stale shader when instancing changes", "[materials][instancing][startup]" )
     {
         Material material{ ResourceDescriptor<Material>{ "instancing-readiness-test" } };
-        static_cast<void>( material.update( 0u ) );
+        auto ret = material.update( 0u );
+        DIVIDE_UNUSED( ret );
         const RenderStagePass pass{ RenderStage::SHADOW, RenderPassType::MAIN_PASS };
         ShaderProgramInfo& info = MaterialTestAccess::Slot( material, pass );
         info._shaderRef = Handle<ShaderProgram>{ ._generation = 0u, ._index = 0u };
@@ -763,7 +775,8 @@ namespace Divide
         Material material{ ResourceDescriptor<Material>{ "noop-texture-test" } };
         const SamplerDescriptor sampler{};
         CHECK( material.setTexture( TextureSlot::UNIT0, INVALID_HANDLE<Texture>, sampler, TextureOperation::NONE, false ) );
-        static_cast<void>( material.update( 0u ) );
+        auto ret = material.update( 0u );
+        DIVIDE_UNUSED( ret );
 
         const U64 revision = material.coverageRevision();
         CHECK( material.setTexture( TextureSlot::UNIT0, INVALID_HANDLE<Texture>, sampler, TextureOperation::REPLACE, true ) );
