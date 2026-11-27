@@ -46,13 +46,13 @@ namespace Divide
 
     ImGuiContext& Gizmo::getContext() noexcept
     {
-        assert( _imguiContext != nullptr );
+        DIVIDE_ASSERT( _imguiContext != nullptr );
         return *_imguiContext;
     }
 
     const ImGuiContext& Gizmo::getContext() const noexcept
     {
-        assert( _imguiContext != nullptr );
+        DIVIDE_ASSERT( _imguiContext != nullptr );
         return *_imguiContext;
     }
 
@@ -205,7 +205,7 @@ namespace Divide
         g_undoEntry._dataSetter = []( const std::pair<TransformCache, NodeCache>& data )
         {
             const SceneGraphNode* node = data.second.back();
-            assert( node != nullptr );
+            DIVIDE_ASSERT( node != nullptr );
             TransformComponent* tComp = node->get<TransformComponent>();
             tComp->setTransform( data.first.back() );
         };
@@ -214,7 +214,7 @@ namespace Divide
     void Gizmo::renderMultipleSelections()
     {
         //ToDo: This is still very buggy! -Ionut
-        assert( _selectedNodes.front().tComp != nullptr );
+        DIVIDE_ASSERT( _selectedNodes.front().tComp != nullptr );
 
         if ( !_wasUsed )
         {

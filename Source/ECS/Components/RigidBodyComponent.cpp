@@ -37,7 +37,7 @@ namespace Divide {
         //handle collision
         if (_collisionCbk) {
             if (filterCollision(collider)) {
-                assert(parentSGN()->getGUID() != collider.parentSGN()->getGUID());
+                DIVIDE_ASSERT(parentSGN()->getGUID() != collider.parentSGN()->getGUID());
                 _collisionCbk(collider);
             }
         }

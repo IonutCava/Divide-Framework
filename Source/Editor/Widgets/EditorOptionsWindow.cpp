@@ -102,7 +102,7 @@ namespace Divide {
         if (ImGui::Button("Cancel", ImVec2(120, 0)))
         {
             open = false;
-            assert(_changeCount <= _context.editor().UndoStackSize());
+            DIVIDE_ASSERT(_changeCount <= _context.editor().UndoStackSize());
             for (U16 i = 0; i < _changeCount; ++i)
             {
                 if (!_context.editor().Undo())

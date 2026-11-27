@@ -55,7 +55,7 @@ void SceneNode::prepareRender([[maybe_unused]] SceneGraphNode* sgn,
                               [[maybe_unused]] const CameraSnapshot& cameraSnapshot,
                               [[maybe_unused]] bool refreshData)
 {
-    assert(getState() == ResourceState::RES_LOADED);
+    DIVIDE_ASSERT(getState() == ResourceState::RES_LOADED);
 }
 
 void SceneNode::postLoad(SceneGraphNode* sgn)

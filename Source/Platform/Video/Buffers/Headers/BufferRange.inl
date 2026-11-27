@@ -53,7 +53,7 @@ namespace Divide {
     {
         const size_t endOffset = std::max(lhs.endOffset(), rhs.endOffset());
         lhs._startOffset = std::min(lhs._startOffset, rhs._startOffset);
-        assert(endOffset > lhs._startOffset);
+        DIVIDE_ASSERT(endOffset > lhs._startOffset);
 
         lhs._length = endOffset - lhs._startOffset;
     }

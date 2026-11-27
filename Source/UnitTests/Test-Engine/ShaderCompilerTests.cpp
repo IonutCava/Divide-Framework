@@ -547,7 +547,7 @@ TEST_CASE( "Shader diagnostics accept full-length source text", "[shader][render
     SCOPE_EXIT
     {
         [[maybe_unused]] const bool unbound = Console::UnbindConsoleOutput( callbackID );
-        assert( unbound );
+        CHECK( unbound );
     };
 
     std::vector<unsigned int> spirv;
@@ -575,7 +575,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
     SCOPE_EXIT
     {
         [[maybe_unused]] const bool unbound = Console::UnbindConsoleOutput( callbackID );
-        assert( unbound );
+        CHECK( unbound );
     };
 
     const auto oldBindings = Attorney::ShaderProgramTestAccess::Bindings();
@@ -649,16 +649,16 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             for ( const auto& path : deepFiles )
             {
                 std::filesystem::remove( path, error );
-                assert( !error );
+                CHECK( !error );
             }
             std::filesystem::remove( wrapperFile, error );
-            assert( !error );
+            CHECK( !error );
             std::filesystem::remove( childFile, error );
-            assert( !error );
+            CHECK( !error );
             std::filesystem::remove( parentFile, error );
-            assert( !error );
+            CHECK( !error );
             std::filesystem::remove( tempDir, error );
-            assert( !error );
+            CHECK( !error );
         };
         Attorney::ShaderProgramTestAccess::CommonAtomLocation() = ResourcePath{ tempDir.string() };
 
@@ -1032,7 +1032,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         SCOPE_EXIT
         {
             [[maybe_unused]] const bool unbound = Console::UnbindConsoleOutput( callbackID );
-            assert( unbound );
+            CHECK( unbound );
         };
 
         const auto oldBindings = Attorney::ShaderProgramTestAccess::Bindings();
@@ -1151,7 +1151,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         SCOPE_EXIT
         {
             [[maybe_unused]] const bool unbound = Console::UnbindConsoleOutput( callbackID );
-            assert( unbound );
+            CHECK( unbound );
         };
 
         const auto oldBindings = Attorney::ShaderProgramTestAccess::Bindings();
@@ -1304,7 +1304,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         SCOPE_EXIT
         {
             [[maybe_unused]] const bool unbound = Console::UnbindConsoleOutput( callbackID );
-            assert( unbound );
+            CHECK( unbound );
         };
 
         const auto oldBindings = Attorney::ShaderProgramTestAccess::Bindings();
@@ -1411,7 +1411,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         SCOPE_EXIT
         {
             [[maybe_unused]] const bool unbound = Console::UnbindConsoleOutput( callbackID );
-            assert( unbound );
+            CHECK( unbound );
         };
 
         const auto oldBindings = Attorney::ShaderProgramTestAccess::Bindings();
@@ -1541,9 +1541,9 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         {
             std::error_code error;
             std::filesystem::remove( cacheFile, error );
-            assert( !error );
+            CHECK( !error );
             std::filesystem::remove( tempDir, error );
-            assert( !error );
+            CHECK( !error );
         };
 
         ShaderProgram::LoadData original{};

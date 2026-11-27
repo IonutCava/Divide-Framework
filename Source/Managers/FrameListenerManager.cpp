@@ -15,8 +15,8 @@ FrameListenerManager::FrameListenerManager()
 void FrameListenerManager::registerFrameListener(FrameListener* listener, const U32 callOrder) {
     PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-    assert(Runtime::isMainThread());
-    assert(listener != nullptr);
+    DIVIDE_ASSERT(Runtime::isMainThread());
+    DIVIDE_ASSERT(listener != nullptr);
 
     erase_if(_listeners, [listener](const FrameListener* registered) noexcept
     {
@@ -40,9 +40,9 @@ void FrameListenerManager::registerFrameListener(FrameListener* listener, const 
 void FrameListenerManager::removeFrameListener(FrameListener* const listener) {
     PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-    assert(Runtime::isMainThread());
+    DIVIDE_ASSERT(Runtime::isMainThread());
 
-    assert(listener != nullptr);
+    DIVIDE_ASSERT(listener != nullptr);
     listener->enabled(false);
     if (!dvd_erase_if(_listeners,
                       [targetGUID = listener->getGUID()](FrameListener const* fl) noexcept {
@@ -57,7 +57,7 @@ void FrameListenerManager::removeFrameListener(FrameListener* const listener) {
 /// If any Listener returns false, the whole manager returns false for this specific step
 /// If the manager returns false at any step, the application exists
 bool FrameListenerManager::frameEvent(const FrameEvent& evt) {
-    assert(Runtime::isMainThread());
+    DIVIDE_ASSERT(Runtime::isMainThread());
 
     switch (evt._type)
     {

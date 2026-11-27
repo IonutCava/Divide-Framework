@@ -86,7 +86,7 @@ namespace
                 indices[index++] = rowStart + x + 1;
             }
         }
-        assert(index == TessellationParams::QUAD_LIST_INDEX_COUNT);
+        DIVIDE_ASSERT(index == TessellationParams::QUAD_LIST_INDEX_COUNT);
 
         return indices;
     }
@@ -783,7 +783,7 @@ void Terrain::createVegetation( PlatformContext& context )
     VegetationDescriptor vegDetails = {};
     vegDetails.parentTerrain = this;
     vegDetails.chunkSize = getQuadtree().targetChunkDimension();
-    assert( vegDetails.chunkSize > 0u );
+    DIVIDE_ASSERT( vegDetails.chunkSize > 0u );
 
     for ( I32 i = 1; i < 5; ++i )
     {
@@ -946,7 +946,7 @@ void Terrain::postLoad(SceneGraphNode* sgn)
     vegetationParentNode._nodeHandle = FromHandle( vegTransformHandle );
 
     SceneGraphNode* vegParent = sgn->addChildNode( vegetationParentNode );
-    assert( vegParent != nullptr );
+    DIVIDE_ASSERT( vegParent != nullptr );
 
     SceneGraphNodeDescriptor vegetationNodeDescriptor;
     vegetationNodeDescriptor._serialize = false;
@@ -1184,7 +1184,7 @@ Terrain::Vert Terrain::getVert(const F32 x_clampf, const F32 z_clampf, const boo
 
 Terrain::Vert Terrain::getSmoothVert(const F32 x_clampf, const F32 z_clampf) const
 {
-    assert(!(x_clampf < 0.0f || z_clampf < 0.0f || 
+    DIVIDE_ASSERT(!(x_clampf < 0.0f || z_clampf < 0.0f || 
              x_clampf > 1.0f || z_clampf > 1.0f));
 
     const vec2<U16>& dim   = _descriptor._dimensions;
@@ -1203,7 +1203,7 @@ Terrain::Vert Terrain::getSmoothVert(const F32 x_clampf, const F32 z_clampf) con
         posI.height = dim.height - 2;
     }
 
-    assert(posI.width  >= 0 && posI.width  < to_I32(dim.width)  - 1 &&
+    DIVIDE_ASSERT(posI.width  >= 0 && posI.width  < to_I32(dim.width)  - 1 &&
            posI.height >= 0 && posI.height < to_I32(dim.height) - 1);
 
     const VertexBuffer::Vertex& tempVert1 = _physicsVerts[TER_COORD(posI.width,     posI.height,     to_I32(dim.width))];
@@ -1257,7 +1257,7 @@ Terrain::Vert Terrain::getSmoothVert(const F32 x_clampf, const F32 z_clampf) con
 
 Terrain::Vert Terrain::getVert(const F32 x_clampf, const F32 z_clampf) const
 {
-    assert(!(x_clampf < 0.0f || z_clampf < 0.0f ||
+    DIVIDE_ASSERT(!(x_clampf < 0.0f || z_clampf < 0.0f ||
              x_clampf > 1.0f || z_clampf > 1.0f));
 
     const vec2<U16>& dim = _descriptor._dimensions;
@@ -1273,7 +1273,7 @@ Terrain::Vert Terrain::getVert(const F32 x_clampf, const F32 z_clampf) const
         posI.height = dim.height - 2;
     }
 
-    assert(posI.width  >= 0 && posI.width  < to_I32(dim.width)  - 1 &&
+    DIVIDE_ASSERT(posI.width  >= 0 && posI.width  < to_I32(dim.width)  - 1 &&
            posI.height >= 0 && posI.height < to_I32(dim.height) - 1);
 
     const VertexBuffer::Vertex& tempVert1 = _physicsVerts[TER_COORD(posI.width, posI.height, to_I32(dim.width))];

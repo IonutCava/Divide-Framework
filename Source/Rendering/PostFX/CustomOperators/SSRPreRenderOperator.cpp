@@ -99,7 +99,7 @@ void SSRPreRenderOperator::reshape(const U16 width, const U16 height)
 
 bool SSRPreRenderOperator::execute( const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut)
 {
-    assert(_enabled);
+    DIVIDE_ASSERT(_enabled);
 
     RTAttachment* screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
     RTAttachment* depthAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::DEPTH);

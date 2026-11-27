@@ -59,7 +59,7 @@ namespace Divide {
         }
 
         void apply() override {
-            assert(_dataSetter != nullptr);
+            DIVIDE_ASSERT(_dataSetter != nullptr);
             _dataSetter(_oldVal);
             if (_onChangedCbk) {
                 _onChangedCbk(_name.c_str());

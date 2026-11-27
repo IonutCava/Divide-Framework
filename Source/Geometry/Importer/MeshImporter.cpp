@@ -95,7 +95,7 @@ namespace Import
     bool ImportData::saveToFile([[maybe_unused]] PlatformContext& context, const ResourcePath& path, const std::string_view fileName)
     {
         ByteBuffer tempBuffer;
-        assert(_vertexBuffer != nullptr);
+        DIVIDE_ASSERT(_vertexBuffer != nullptr);
         tempBuffer << BYTE_BUFFER_VERSION;
         tempBuffer << _ID("BufferEntryPoint");
         tempBuffer << _modelName;

@@ -12,9 +12,9 @@ namespace Divide
             case RenderStage::DISPLAY:
             case RenderStage::NODE_PREVIEW:
             {
-                assert( renderStagePass._variant == RenderStagePass::VariantType::VARIANT_0 );
-                assert( renderStagePass._pass == RenderStagePass::PassIndex::PASS_0 );
-                assert( renderStagePass._index == 0u );
+                DIVIDE_ASSERT( renderStagePass._variant == RenderStagePass::VariantType::VARIANT_0 );
+                DIVIDE_ASSERT( renderStagePass._pass == RenderStagePass::PassIndex::PASS_0 );
+                DIVIDE_ASSERT( renderStagePass._index == 0u );
                 return renderStagePass._index + to_U16(renderStagePass._pass);
             }
             case RenderStage::REFLECTION:
@@ -27,7 +27,7 @@ namespace Divide
                     }
                     case static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR):
                     {
-                        assert(renderStagePass._pass == RenderStagePass::PassIndex::PASS_0);
+                        DIVIDE_ASSERT(renderStagePass._pass == RenderStagePass::PassIndex::PASS_0);
                         return GetNodeReflectionIndexOffset() +
                                (Config::MAX_REFLECTIVE_CUBE_NODES_IN_VIEW * 6u) + 
                                renderStagePass._index;
@@ -50,7 +50,7 @@ namespace Divide
                     }
                     case static_cast<RenderStagePass::VariantType>(RefractorType::PLANAR):
                     {
-                        assert(renderStagePass._pass == RenderStagePass::PassIndex::PASS_0);
+                        DIVIDE_ASSERT(renderStagePass._pass == RenderStagePass::PassIndex::PASS_0);
                         return GetNodeRefractionIndexOffset() +
                                (Config::MAX_REFRACTIVE_CUBE_NODES_IN_VIEW * 6u) + 
                                renderStagePass._index;
@@ -90,7 +90,7 @@ namespace Divide
                     }
                     case to_base( ShadowType::SINGLE ):
                     {
-                        assert( lightPass == 0u );
+                        DIVIDE_ASSERT( lightPass == 0u );
                         return lightIndex + offsetSpot;
                     }
                     default: DIVIDE_UNEXPECTED_CALL();

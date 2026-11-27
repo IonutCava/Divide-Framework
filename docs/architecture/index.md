@@ -29,6 +29,14 @@ validation-gating behavior. Use a recoverable assertion or explicit error
 return when a fallback is intended; changing the unexpected-call contract
 affects all its callers.
 
+Engine code uses `DIVIDE_ASSERT` rather than `assert`. Its condition is
+evaluated in every build and tested inline, so `Assert::Callback` runs only on
+failure and the check stays usable in `constexpr` functions. Raw `assert`
+remains only in the numeric conversion checks in `PlatformDefines.h` and
+`PlatformDataTypes.h`, the VMA heavy-assert hook, and the standalone project
+manager executable, which does not link the engine library. Unit tests use
+Catch2 checks.
+
 ## Debugging routes
 
 - Both GL and Vulkan fail: start in shared `GFXDevice`, `ShaderProgram`, `RenderPassExecutor`, and descriptor setup.

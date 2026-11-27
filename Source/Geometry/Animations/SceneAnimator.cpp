@@ -262,7 +262,7 @@ void SceneAnimator::load(PlatformContext& context, ByteBuffer& dataIn)
 {
     // make sure to clear this before writing new data
     release(true);
-    assert(_animations.empty());
+    DIVIDE_ASSERT(_animations.empty());
 
     _skeleton.reset(loadSkeleton(dataIn, nullptr));
     _skeletonDepthCache = to_U8(std::min(_skeleton->hierarchyDepth(), to_size(U8_MAX)));

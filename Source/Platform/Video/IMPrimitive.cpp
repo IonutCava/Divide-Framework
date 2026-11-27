@@ -239,7 +239,7 @@ void IMPrimitive::endBatch() noexcept
     // now upload each attribute array one after another
     for (auto& [index, data] : batchData.m_Attributes)
     {
-        assert(index != 0u);
+        DIVIDE_ASSERT(index != 0u);
         auto& attribBuffer = _vertexBuffers[bufferIdx];
         if (!attribBuffer)
         {

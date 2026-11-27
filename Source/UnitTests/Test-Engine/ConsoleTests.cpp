@@ -67,7 +67,7 @@ namespace Divide
                 if (_id != SIZE_MAX)
                 {
                     [[maybe_unused]] const bool unbound = Console::UnbindConsoleOutput(_id);
-                    assert(unbound);
+                    CHECK( unbound );
                 }
             }
 

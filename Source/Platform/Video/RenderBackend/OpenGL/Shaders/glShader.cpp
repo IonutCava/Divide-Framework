@@ -120,7 +120,7 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
                 continue;
             }
 
-            assert(!data._compiled);
+            DIVIDE_ASSERT(!data._compiled);
 
             stageUsed[to_base(data._type)] = true;
             if constexpr(Config::ENABLE_GPU_VALIDATION)
@@ -262,7 +262,7 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
 
         if (shouldLink)
         {
-            assert(!_linked);
+            DIVIDE_ASSERT(!_linked);
             gl46core::glLinkProgram(_handle);
             _linked = true;
         }
@@ -401,7 +401,7 @@ bool glShader::load(const ShaderProgram::ShaderLoadData& data)
             continue;
         }
 
-        assert(!it._sourceCodeGLSL.empty() || !it._sourceCodeSpirV.empty());
+        DIVIDE_ASSERT(!it._sourceCodeGLSL.empty() || !it._sourceCodeSpirV.empty());
         _stageMask |= GetStageMask(it._type);
 
         _pushConstantsState = mergePushConstantsState(_pushConstantsState, it._reflectionData._pushConstantsState);

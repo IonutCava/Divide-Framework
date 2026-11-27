@@ -1796,12 +1796,12 @@ namespace Divide
         const std::string blockNode = Util::StringFormat( "{}.RenderStateIndex", entryName).c_str();
         for ( const auto& [tag, data] : pt.get_child( blockNode, g_emptyPtree ) )
         {
-            assert( tag == "PerStagePass" );
+            DIVIDE_ASSERT( tag == "PerStagePass" );
 
-            const U32 b = data.get<U32>( "<xmlattr>.index", U32_MAX );                                    assert( b != U32_MAX );
-            const U8  s = data.get<U8>( "<xmlattr>.stage", to_U8( RenderStage::COUNT ) );                  assert( s != to_U8( RenderStage::COUNT ) );
-            const U8  p = data.get<U8>( "<xmlattr>.pass", to_U8( RenderPassType::COUNT ) );               assert( p != to_U8( RenderPassType::COUNT ) );
-            const U8  v = data.get<U8>( "<xmlattr>.variant", to_U8( RenderStagePass::VariantType::COUNT ) ); assert( v != to_U8( RenderStagePass::VariantType::COUNT ) );
+            const U32 b = data.get<U32>( "<xmlattr>.index", U32_MAX );                                    DIVIDE_ASSERT( b != U32_MAX );
+            const U8  s = data.get<U8>( "<xmlattr>.stage", to_U8( RenderStage::COUNT ) );                  DIVIDE_ASSERT( s != to_U8( RenderStage::COUNT ) );
+            const U8  p = data.get<U8>( "<xmlattr>.pass", to_U8( RenderPassType::COUNT ) );               DIVIDE_ASSERT( p != to_U8( RenderPassType::COUNT ) );
+            const U8  v = data.get<U8>( "<xmlattr>.variant", to_U8( RenderStagePass::VariantType::COUNT ) ); DIVIDE_ASSERT( v != to_U8( RenderStagePass::VariantType::COUNT ) );
 
             const auto& it = previousBlocks.find( b );
             if ( it != cend( previousBlocks ) )

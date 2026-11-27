@@ -138,7 +138,7 @@ namespace Divide
 
         WAIT_FOR_CONDITION_TIMEOUT( getState() != ResourceState::RES_LOADING, Time::Milliseconds( 3000 ) );
 
-        assert( getState() != ResourceState::RES_LOADING );
+        DIVIDE_ASSERT( getState() != ResourceState::RES_LOADING );
         for ( auto& [source, material] : _treeMaterials )
         {
             DIVIDE_UNUSED( source );
@@ -1087,7 +1087,7 @@ namespace Divide
         VegetationInstance* instance = findInstance( sgn->dataFlag() );
         if ( instance != nullptr && instance->_drawState.hasInstances() )
         {
-            assert( getState() == ResourceState::RES_LOADED );
+            DIVIDE_ASSERT( getState() == ResourceState::RES_LOADED );
             LockGuard<Mutex> w_lock( _sceneUpdateLock );
             const F32 windX = sceneState.windDirX();
             const F32 windZ = sceneState.windDirZ();
@@ -1176,7 +1176,7 @@ namespace Divide
             U16 id = _lodPartitions[i];
             if ( id == U16_MAX )
             {
-                assert( i > 0 );
+                DIVIDE_ASSERT( i > 0 );
                 id = prevID;
             }
             rComp->setLoDIndexOffset( i, _buffer->getPartitionOffset( id ), _buffer->getPartitionIndexCount( id ) );
@@ -1448,7 +1448,7 @@ namespace Divide
                 }
                 const F32 slopeScaleFactor = 1.f - MAP( angle.value, 0.f, slopeLimit, 0.f, 0.9f);
 
-                assert( vert._position != VECTOR3_ZERO );
+                DIVIDE_ASSERT( vert._position != VECTOR3_ZERO );
 
                 UColour4 colour{ 0u, 0u, 0u, 0u };
                 if ( treeData )
@@ -1488,7 +1488,7 @@ namespace Divide
                 const F32 scale = CLAMPED( (colourVal + 1.f) / 256.0f * xmlScale, minXmlScale, maxXmlScale ) *
                                   (treeData ? 1.f : slopeScaleFactor);
 
-                assert( scale > EPSILON_F32 );
+                DIVIDE_ASSERT( scale > EPSILON_F32 );
 
                 //vert._position.y = (((0.0f*heightExtent) + vert._position.y) - ((0.0f*scale) + vert._position.y)) + vert._position.y;
                 VegetationData entry = {};

@@ -53,7 +53,7 @@ bool RenderTarget::create()
     std::ranges::fill(_attachmentsAutoResolve, false);
 
     // Avoid invalid dimensions
-    assert(getWidth() != 0 && getHeight() != 0 && "glFramebuffer error: Invalid frame buffer dimensions!");
+    DIVIDE_ASSERT(getWidth() != 0 && getHeight() != 0, "glFramebuffer error: Invalid frame buffer dimensions!");
 
     const auto updateAttachment = [&](const RTAttachmentDescriptor& attDesc)
     {
@@ -65,7 +65,7 @@ bool RenderTarget::create()
             case RTAttachmentType::DEPTH:
             case RTAttachmentType::DEPTH_STENCIL:
             {
-                assert(attDesc._slot == RTColourAttachmentSlot::SLOT_0 );
+                DIVIDE_ASSERT(attDesc._slot == RTColourAttachmentSlot::SLOT_0 );
                 printWarning = _attachments[RT_DEPTH_ATTACHMENT_IDX] != nullptr;
                 _attachments[RT_DEPTH_ATTACHMENT_IDX] = std::make_unique<RTAttachment>(*this, attDesc);
                 att = _attachments[RT_DEPTH_ATTACHMENT_IDX].get();

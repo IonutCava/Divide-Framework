@@ -901,7 +901,7 @@ namespace Assert
     [[noreturn]] void UnexpectedCall(std::string_view file, int line, std::string_view failMessage) noexcept;
 }
 
-#define DIVIDE_ASSERT_2_ARGS(expression, msg) Divide::Assert::Callback(expression, #expression, __FILE__, __LINE__, msg)
+#define DIVIDE_ASSERT_2_ARGS(expression, msg) (static_cast<bool>(expression) || Divide::Assert::Callback(false, #expression, __FILE__, __LINE__, msg))
 #define DIVIDE_ASSERT_1_ARGS(expression) DIVIDE_ASSERT_2_ARGS(expression, "UNEXPECTED CALL")
 
 #define ___DETAIL_DIVIDE_ASSERT(...) EXP(GET_3RD_ARG(__VA_ARGS__, DIVIDE_ASSERT_2_ARGS, DIVIDE_ASSERT_1_ARGS, ))

@@ -87,14 +87,14 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContaine
         
         U16 prevID = 0;
         RenderingComponent* rComp = sgn->get<RenderingComponent>();
-        assert(rComp != nullptr);
+        DIVIDE_ASSERT(rComp != nullptr);
 
         for (U8 i = 0; i < to_U8(_geometryPartitionIDs.size()); ++i)
         {
             U16 id = _geometryPartitionIDs[i];
             if (id == U16_MAX)
             {
-                assert(i > 0);
+                DIVIDE_ASSERT(i > 0);
                 id = prevID;
             }
 
@@ -220,7 +220,7 @@ bool Object3D::loadCache(ByteBuffer& inputBuffer)
         {
             string tempName = {};
             inputBuffer >> tempName;
-            assert(tempName == resourceName().c_str());
+            DIVIDE_ASSERT(tempName == resourceName().c_str());
         }
 
         return true;
@@ -249,12 +249,12 @@ void Object3D::loadFromXML(const boost::property_tree::ptree& pt)
     if (IsPrimitive(type()))
     {
         temp = pt.get("model", Names::sceneNodeType[to_base( type() )]);
-        assert(temp == Names::sceneNodeType[to_base( type() )]);
+        DIVIDE_ASSERT(temp == Names::sceneNodeType[to_base( type() )]);
     }
     else
     {
         temp = pt.get("model", resourceName().c_str());
-        assert(temp == resourceName().c_str());
+        DIVIDE_ASSERT(temp == resourceName().c_str());
     }
 
     SceneNode::loadFromXML(pt);

@@ -11,17 +11,17 @@ namespace Divide::AI::Navigation {
 DivideDtCrowd::DivideDtCrowd(NavigationMesh* navMesh)
     : _recast(navMesh)
 {
-    assert(_recast);
+    DIVIDE_ASSERT(_recast);
     _crowd = dtAllocCrowd();
     if (!_crowd) {
         Console::errorfn(LOCALE_STR("ERROR_DETOUR_CROWD_INSTANCE"));
-        assert(_crowd != nullptr);
+        DIVIDE_ASSERT(_crowd != nullptr);
     }
 
     memset(_trails, 0, sizeof _trails);
 
     _vod = dtAllocObstacleAvoidanceDebugData();
-    assert(_vod != nullptr);
+    DIVIDE_ASSERT(_vod != nullptr);
     _vod->init(2048);
 
     memset(&_agentDebug, 0, sizeof _agentDebug);
@@ -29,7 +29,7 @@ DivideDtCrowd::DivideDtCrowd(NavigationMesh* navMesh)
     _agentDebug.vod = _vod;
 
     dtNavMesh* nav = Attorney::NavigationMeshCrowd::getNavigationMesh(*_recast);
-    assert(nav);
+    DIVIDE_ASSERT(nav);
 
     dtCrowd* crowd = _crowd;
 

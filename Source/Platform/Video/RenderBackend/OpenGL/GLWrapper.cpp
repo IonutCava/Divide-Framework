@@ -136,7 +136,7 @@ namespace Divide
 
             bool getAvailableContext( SDL_GLContext& ctx ) noexcept
             {
-                assert( !_contexts.empty() );
+                DIVIDE_ASSERT( !_contexts.empty() );
                 for ( SDLContextEntry& contextEntry : _contexts )
                 {
                     if ( !contextEntry._inUse )
@@ -1275,7 +1275,7 @@ namespace Divide
             return true;
         }
 
-        assert(cmd._sourceBuffers != nullptr);
+        DIVIDE_ASSERT(cmd._sourceBuffers != nullptr);
 
         bool ret = true;
         bool hasIndexBuffer = false;
@@ -1511,7 +1511,7 @@ namespace Divide
 
                 if ( GL_API::s_stateTracker._activeRenderTarget == nullptr )
                 {
-                    assert( GL_API::s_stateTracker._activeRenderTargetID == SCREEN_TARGET_ID );
+                    DIVIDE_ASSERT( GL_API::s_stateTracker._activeRenderTargetID == SCREEN_TARGET_ID );
                     if ( !GFXDevice::GetDeviceInformation()._screenSRGB )
                     {
                         gl46core::glEnable( gl46core::GL_FRAMEBUFFER_SRGB );
@@ -1619,7 +1619,7 @@ namespace Divide
                 PROFILE_SCOPE( "BIND_PIPELINE", Profiler::Category::Graphics );
 
                 const Pipeline* pipeline = cmd->As<GFX::BindPipelineCommand>()->_pipeline;
-                assert( pipeline != nullptr );
+                DIVIDE_ASSERT( pipeline != nullptr );
                 if ( BindPipeline(_context, *pipeline ) == ShaderResult::Failed )
                 {
                     const auto handle = pipeline->descriptor()._shaderProgramHandle;
@@ -2036,10 +2036,10 @@ namespace Divide
     {
         // Double check so that we don't run into a race condition!
         LockGuard<Mutex> lock( GLUtil::s_glSecondaryContextMutex );
-        assert( SDL_GL_GetCurrentContext() == NULL );
+        DIVIDE_ASSERT( SDL_GL_GetCurrentContext() == NULL );
 
         // This also makes the context current
-        assert( GLUtil::s_glSecondaryContext == nullptr && "GL_API::syncToThread: double init context for current thread!" );
+        DIVIDE_ASSERT( GLUtil::s_glSecondaryContext == nullptr, "GL_API::syncToThread: double init context for current thread!" );
         const bool ctxFound = g_ContextPool.getAvailableContext( GLUtil::s_glSecondaryContext );
         DIVIDE_GPU_ASSERT( ctxFound, "GL_API::syncToThread: context not found for current thread!" );
 
@@ -2499,7 +2499,7 @@ namespace Divide
 
     GLUtil::GLMemory::GLMemoryType GL_API::GetMemoryTypeForUsage( const gl46core::GLenum usage ) noexcept
     {
-        assert( usage != gl46core::GL_NONE );
+        DIVIDE_ASSERT( usage != gl46core::GL_NONE );
         if ( usage == gl46core::GL_SHADER_STORAGE_BUFFER )
         {
              return GLUtil::GLMemory::GLMemoryType::SHADER_BUFFER;

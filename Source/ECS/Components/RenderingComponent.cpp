@@ -1194,7 +1194,7 @@ namespace Divide
             case  ECS::CustomEvent::Type::TransformUpdated:
             {
                 const TransformComponent* tComp = static_cast<TransformComponent*>(data._sourceCmp);
-                assert( tComp != nullptr );
+                DIVIDE_ASSERT( tComp != nullptr );
                 updateNearestProbes( tComp->getWorldPosition() );
 
                 _axisGizmoLinesDescriptor.worldMatrix = GetMat4( tComp->getWorldOrientation() );

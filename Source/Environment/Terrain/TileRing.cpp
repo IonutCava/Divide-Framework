@@ -26,13 +26,13 @@ TileRing::TileRing(const I32 holeWidth, const I32 outerWidth, const F32 tileSize
 	_outerWidth(outerWidth),
 	_ringWidth((outerWidth - holeWidth) / 2)
 {
-	assert((outerWidth - holeWidth) % 2 == 0);
+	DIVIDE_ASSERT((outerWidth - holeWidth) % 2 == 0);
 }
 
 bool TileRing::InRing(const I32 x, const I32 y) const noexcept
 {
-	assert(x >= 0 && x < _outerWidth);
-	assert(y >= 0 && y < _outerWidth);
+	DIVIDE_ASSERT(x >= 0 && x < _outerWidth);
+	DIVIDE_ASSERT(y >= 0 && y < _outerWidth);
 	return x < _ringWidth || y < _ringWidth || x >= _outerWidth - _ringWidth || y >= _outerWidth - _ringWidth;
 }
 
@@ -115,7 +115,7 @@ vector<TileRing::InstanceData> TileRing::createInstanceDataVB(const I32 ringID)
 			}
 		}
 	}
-	assert(index == tileCount());
+	DIVIDE_ASSERT(index == tileCount());
 	return ret;
 }
 

@@ -35,7 +35,7 @@ bool SpirvHelper::s_isInit = false;
 
 void SpirvHelper::Init()
 {
-    assert( !s_isInit );
+    DIVIDE_ASSERT( !s_isInit );
 
     glslang::InitializeProcess();
     s_isInit = true;
@@ -474,7 +474,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
     {
         if ( renderAPI == Divide::RenderAPI::OpenGL )
         {
-            assert( bindingSet == 0u );
+            DIVIDE_ASSERT( bindingSet == 0u );
 
             const auto [set, slot] = Divide::ShaderProgram::GetDescriptorSlotForGLBinding( bindingSlot, type );
             bindingSet = to_base( set );

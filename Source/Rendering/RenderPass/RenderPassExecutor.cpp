@@ -832,7 +832,7 @@ namespace Divide
                 }
                 nodeCount += queueSize;
             }
-            assert( nodeCount < Config::MAX_VISIBLE_NODES );
+            DIVIDE_ASSERT( nodeCount < Config::MAX_VISIBLE_NODES );
         }
         {
             PROFILE_SCOPE( "buildDrawCommands - process nodes: Materials", Profiler::Category::Scene );
@@ -1342,7 +1342,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        assert( params._stagePass._passType == RenderPassType::PRE_PASS );
+        DIVIDE_ASSERT( params._stagePass._passType == RenderPassType::PRE_PASS );
 
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = " - PrePass";
 
@@ -1416,7 +1416,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        assert( params._stagePass._passType == RenderPassType::MAIN_PASS );
+        DIVIDE_ASSERT( params._stagePass._passType == RenderPassType::MAIN_PASS );
 
         auto mainScope = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut );
         if ( IsShadowPass( params._stagePass ) )
@@ -1483,7 +1483,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        assert( params._stagePass._passType == RenderPassType::OIT_PASS );
+        DIVIDE_ASSERT( params._stagePass._passType == RenderPassType::OIT_PASS );
 
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = " - W-OIT Pass";
 
@@ -1548,7 +1548,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        assert( params._stagePass._passType == RenderPassType::TRANSPARENCY_PASS );
+        DIVIDE_ASSERT( params._stagePass._passType == RenderPassType::TRANSPARENCY_PASS );
 
         //Grab all transparent geometry
         GFX::BeginRenderPassCommand beginRenderPassTransparentCmd{};
@@ -1657,7 +1657,7 @@ namespace Divide
                                           const bool independentView )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
-        assert( params._stagePass._stage == _stage );
+        DIVIDE_ASSERT( params._stagePass._stage == _stage );
         _lightDataBinding = lightData;
         const CameraSnapshot& activeCameraSnapshot =
             _parent.parent().projectManager()->activeProject()->getActiveScene()->playerCamera( playerIdx )->snapshot();
@@ -1806,7 +1806,7 @@ namespace Divide
         if ( doOcclusionPass )
         {
             //ToDo: Find a way to skip occlusion culling for low number of nodes in view but also keep light culling up and running -Ionut
-            assert( params._stagePass._passType == RenderPassType::PRE_PASS );
+            DIVIDE_ASSERT( params._stagePass._passType == RenderPassType::PRE_PASS );
 
             // This also renders into our HiZ texture that we may want to use later in PostFX
             occlusionPass( *prepared._commandBuffer, camSnapshot, prepared._visibleNodeCount, params._target, params._targetHIZ, bufferInOut );

@@ -1582,7 +1582,7 @@ namespace Divide
             }
 
             const ResourcePath& filePath = shaderAtomLocationPrefix[to_U32( typeIndex )];
-            assert( !filePath.empty() );
+            DIVIDE_ASSERT( !filePath.empty() );
             string source;
             if ( readFile( filePath, includeFile, FileType::TEXT, source ) != FileError::NONE )
             {
@@ -1799,10 +1799,10 @@ namespace Divide
             for ( const ShaderModuleDescriptor& data : loadDataPerFile._modules )
             {
                 const ShaderType type = data._moduleType;
-                assert( type != ShaderType::COUNT );
+                DIVIDE_ASSERT( type != ShaderType::COUNT );
 
                 ShaderProgram::LoadData& stageData = loadDataPerFile._loadData[to_base( data._moduleType )];
-                assert( stageData._type == ShaderType::COUNT );
+                DIVIDE_ASSERT( stageData._type == ShaderType::COUNT );
 
                 stageData._type = data._moduleType;
                 stageData._sourceFile = data._sourceFile.c_str();

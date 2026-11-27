@@ -99,7 +99,7 @@ namespace Divide
     template<typename T, typename A>
     void pop_front( eastl::vector<T, A>& vec )
     {
-        assert( !vec.empty() );
+        DIVIDE_ASSERT( !vec.empty() );
         vec.erase( eastl::begin( vec ) );
     }
 
@@ -159,7 +159,7 @@ namespace Divide
         {
             return data;
         }
-        assert( indicesToDelete.size() <= data.size() );
+        DIVIDE_ASSERT( indicesToDelete.size() <= data.size() );
 
         eastl::vector<T, A1> ret;
         ret.reserve( data.size() - indicesToDelete.size() );

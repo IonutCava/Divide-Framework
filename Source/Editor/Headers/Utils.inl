@@ -289,7 +289,7 @@ inline bool inputOrSlider(Editor& parent, const char* label, const F32 stepIn, c
     const ComponentType min   = static_cast<ComponentType>(field._range.min);
     const ComponentType max   = static_cast<ComponentType>(field._range.max);
 
-    assert(min <= max);
+    DIVIDE_ASSERT(min <= max);
 
     // Validate bool flags vs input flags
     DIVIDE_ASSERT(!field._readOnly || (flags & ImGuiInputTextFlags_ReadOnly));

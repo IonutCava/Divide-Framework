@@ -110,7 +110,7 @@ namespace Divide
 
     const RenderBinItem& RenderBin::getItem( const U16 index ) const
     {
-        assert( index < _renderBinIndex.load() );
+        DIVIDE_ASSERT( index < _renderBinIndex.load() );
         return _renderBinStack[index];
     }
 

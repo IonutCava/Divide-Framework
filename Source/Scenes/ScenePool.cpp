@@ -34,7 +34,7 @@ namespace SceneList
 ScenePool::ScenePool(Project& parentMgr)
   : _parentProject(parentMgr)
 {
-    assert(!SceneList::sceneFactoryMap().empty());
+    DIVIDE_ASSERT(!SceneList::sceneFactoryMap().empty());
 }
 
 ScenePool::~ScenePool()

@@ -512,7 +512,7 @@ namespace Divide
 
     ErrorCode GFXDevice::createAPIInstance( const RenderAPI API )
     {
-        assert( _api == nullptr && "GFXDevice error: initRenderingAPI called twice!" );
+        DIVIDE_ASSERT( _api == nullptr, "GFXDevice error: initRenderingAPI called twice!" );
 
         ErrorCode err = ErrorCode::NO_ERR;
         switch ( API )
@@ -1517,7 +1517,7 @@ namespace Divide
         RenderPassExecutor::OnShutdown( *this );
         Texture::OnShutdown();
         ShaderProgram::DestroyStaticData();
-        assert( ShaderProgram::ShaderProgramCount() == 0 );
+        DIVIDE_ASSERT( ShaderProgram::ShaderProgramCount() == 0 );
         _uniformUploadArena.reset();
         // Close the rendering API
         _api->closeRenderingAPI();
@@ -2748,13 +2748,13 @@ namespace Divide
 
     void GFXDevice::PushDebugMessage(const char* message, const U32 id)
     {
-        assert(s_debugScopeDepth < Config::MAX_DEBUG_SCOPE_DEPTH);
+        DIVIDE_ASSERT(s_debugScopeDepth < Config::MAX_DEBUG_SCOPE_DEPTH);
         s_debugScope[s_debugScopeDepth++] = { message, id };
     }
 
     void GFXDevice::PopDebugMessage()
     {
-        assert(s_debugScopeDepth > 0u);
+        DIVIDE_ASSERT(s_debugScopeDepth > 0u);
         s_debugScope[--s_debugScopeDepth] = {};
     }
 
@@ -2775,7 +2775,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        assert( depthBuffer != HiZTarget );
+        DIVIDE_ASSERT( depthBuffer != HiZTarget );
 
         const RTAttachment* SrcAtt = _rtPool->getRenderTarget( depthBuffer )->getAttachment( RTAttachmentType::DEPTH );
         const RTAttachment* HiZAtt = _rtPool->getRenderTarget( HiZTarget )->getAttachment( RTAttachmentType::COLOUR );
@@ -3716,13 +3716,13 @@ namespace Divide
 
     ShaderComputeQueue& GFXDevice::shaderComputeQueue() noexcept
     {
-        assert( _shaderComputeQueue != nullptr );
+        DIVIDE_ASSERT( _shaderComputeQueue != nullptr );
         return *_shaderComputeQueue;
     }
 
     const ShaderComputeQueue& GFXDevice::shaderComputeQueue() const noexcept
     {
-        assert( _shaderComputeQueue != nullptr );
+        DIVIDE_ASSERT( _shaderComputeQueue != nullptr );
         return *_shaderComputeQueue;
     }
 

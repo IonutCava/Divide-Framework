@@ -58,8 +58,8 @@ std::pair<JoystickElementType, U8> joystickElementByName(const string& elementNa
     ret.first = JoystickElementType::BUTTON_PRESS;
 
     vector<string> buttonElements = Util::Split<vector<string>, string>(elementName.c_str(), '_');
-    assert(buttonElements.size() == 2 && "Invalid joystick element name!");
-    assert(Util::CompareIgnoreCase(buttonElements[0], "BUTTON"));
+    DIVIDE_ASSERT(buttonElements.size() == 2, "Invalid joystick element name!");
+    DIVIDE_ASSERT(Util::CompareIgnoreCase(buttonElements[0], "BUTTON"));
     ret.second = to_U8(charToInt(buttonElements[1].c_str(), 0));
 
     return MOV(ret);

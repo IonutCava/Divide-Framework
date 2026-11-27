@@ -48,7 +48,7 @@ void NavMeshDebugDraw::beginBatch() {
         _primitive->setPipelineDescriptor(pipeDesc);
     }
 
-    assert(_primitive != nullptr);
+    DIVIDE_ASSERT(_primitive != nullptr);
 
     if (_dirty) {
         _primitive->beginBatch(true, 1024, 1);

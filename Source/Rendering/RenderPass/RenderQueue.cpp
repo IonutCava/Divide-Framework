@@ -113,11 +113,11 @@ namespace Divide
         {
             const RenderingComponent* const renderingCmp = sgn->get<RenderingComponent>();
             // We need a rendering component to render the node
-            assert( renderingCmp != nullptr );
+            DIVIDE_ASSERT( renderingCmp != nullptr );
             rbType = getBinForNode( sgn, renderingCmp->getMaterialInstance() );
         }
 
-        assert( rbType != RenderBinType::COUNT );
+        DIVIDE_ASSERT( rbType != RenderBinType::COUNT );
         if ( targetBinType == RenderBinType::COUNT || rbType == targetBinType )
         {
             getBin( rbType ).addNodeToBin( sgn, stagePass, minDistToCameraSq );

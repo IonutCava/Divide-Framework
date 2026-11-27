@@ -90,7 +90,7 @@ Console::ScopedFlags::ScopedFlags(const U32 enabledMask, const U32 disabledMask)
     : _previousEnabled(g_enabledOverrides)
     , _previousDisabled(g_disabledOverrides)
 {
-    assert((enabledMask & disabledMask) == 0u);
+    DIVIDE_ASSERT((enabledMask & disabledMask) == 0u);
     g_enabledOverrides = (g_enabledOverrides & ~disabledMask) | enabledMask;
     g_disabledOverrides = (g_disabledOverrides & ~enabledMask) | disabledMask;
 }

@@ -136,7 +136,7 @@ bool Chunk::containsBlock(const Block &block) const
 ChunkAllocator::ChunkAllocator(const size_t size) noexcept
     : _size(size)
 {
-    assert(size > 0u && isPowerOfTwo(size));
+    DIVIDE_ASSERT(size > 0u && isPowerOfTwo(size));
 }
 
 std::unique_ptr<Chunk> ChunkAllocator::allocate(const size_t alignedSize,

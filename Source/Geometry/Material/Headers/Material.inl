@@ -107,7 +107,7 @@ inline const Material::TextureInfo& Material::getTextureInfo(const TextureSlot u
 
 inline const ModuleDefines& Material::shaderDefines(const ShaderType type) const
 {
-    assert(type != ShaderType::COUNT);
+    DIVIDE_ASSERT(type != ShaderType::COUNT);
     return _extraShaderDefines[to_base(type)];
 }
 

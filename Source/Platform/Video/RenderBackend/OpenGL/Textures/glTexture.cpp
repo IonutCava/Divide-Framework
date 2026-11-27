@@ -46,7 +46,7 @@ void glTexture::reserveStorage( const bool makeImmutable )
     {
         case TextureType::TEXTURE_1D:
         {
-            assert(_depth == 1u && _layerCount == 1u);
+            DIVIDE_ASSERT(_depth == 1u && _layerCount == 1u);
             gl46core::glTextureStorage1D( _loadingHandle,
                                           mipCount(),
                                           glInternalFormat._format,
@@ -140,7 +140,7 @@ ImageUsage glTexture::prepareTextureData( const vec3<U16>& dimensions, const U16
     gl46core::glCreateTextures(_type, 1, &_loadingHandle);
     _hasStorage = false;
 
-    assert(_loadingHandle != 0 && "glTexture error: failed to generate new texture handle!");
+    DIVIDE_ASSERT(_loadingHandle != 0, "glTexture error: failed to generate new texture handle!");
     if constexpr(Config::ENABLE_GPU_VALIDATION)
     {
         GLUtil::SetObjectLabel( gl46core::GL_TEXTURE, _loadingHandle, resourceName().c_str() );
@@ -209,7 +209,7 @@ void glTexture::loadDataInternal(const ImageTools::ImageData& imageData, const P
         for ( U16 m = 0u; m < numMips; ++m )
         {
             const ImageTools::LayerData* mip = layer.getMip( m );
-            assert( mip->_size > 0u );
+            DIVIDE_ASSERT( mip->_size > 0u );
 
             loadDataInternal( {(const Byte*)mip->data(), mip->_size}, m, vec3<U16>{0u, 0u, l}, mip->_dimensions, pixelUnpackAlignment);
         }
@@ -232,7 +232,7 @@ void glTexture::loadDataInternal( const std::span<const Byte> data, const U16 ta
     {
         case TextureType::TEXTURE_1D:
         {
-            assert(offset.z == 0u);
+            DIVIDE_ASSERT(offset.z == 0u);
 
             if (isCompressed)
             {
@@ -245,7 +245,7 @@ void glTexture::loadDataInternal( const std::span<const Byte> data, const U16 ta
         } break;
         case TextureType::TEXTURE_1D_ARRAY:
         {
-            assert(offset.y == 0u && dimensions.height == 1u);
+            DIVIDE_ASSERT(offset.y == 0u && dimensions.height == 1u);
 
             if (isCompressed)
             {
@@ -258,7 +258,7 @@ void glTexture::loadDataInternal( const std::span<const Byte> data, const U16 ta
         } break;
         case TextureType::TEXTURE_2D:
         {
-            assert( offset.z == 0u );
+            DIVIDE_ASSERT( offset.z == 0u );
 
             if (isCompressed)
             {
@@ -395,7 +395,7 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, con
 
     const TextureType srcType = source->_descriptor._texType;
     const TextureType dstType = destination->_descriptor._texType;
-    assert(srcType != TextureType::COUNT && dstType != TextureType::COUNT);
+    DIVIDE_ASSERT(srcType != TextureType::COUNT && dstType != TextureType::COUNT);
 
     if (srcType != TextureType::COUNT && dstType != TextureType::COUNT)
     {

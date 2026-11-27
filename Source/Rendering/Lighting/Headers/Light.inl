@@ -49,15 +49,15 @@ namespace Divide
 
     inline const Light::ShadowProperties& Light::getShadowProperties() const noexcept { return _shadowProperties; }
 
-    inline const mat4<F32>& Light::getShadowVPMatrix( const U8 index ) const noexcept { assert( index < 6 ); return _shadowProperties._lightVP[index]; }
+    inline const mat4<F32>& Light::getShadowVPMatrix( const U8 index ) const noexcept { DIVIDE_ASSERT( index < 6 ); return _shadowProperties._lightVP[index]; }
 
-    inline F32 Light::getShadowFloatValues( const U8 index ) const noexcept { assert( index < 6 ); return _shadowProperties._lightPosition[index].w; }
+    inline F32 Light::getShadowFloatValues( const U8 index ) const noexcept { DIVIDE_ASSERT( index < 6 ); return _shadowProperties._lightPosition[index].w; }
 
-    inline const float4& Light::getShadowLightPos( const U8 index ) const noexcept { assert( index < 6 ); return _shadowProperties._lightPosition[index]; }
+    inline const float4& Light::getShadowLightPos( const U8 index ) const noexcept { DIVIDE_ASSERT( index < 6 ); return _shadowProperties._lightPosition[index]; }
 
-    inline void Light::setShadowVPMatrix( const U8 index, const mat4<F32>& newValue ) noexcept { assert( index < 6 ); _shadowProperties._lightVP[index].set( newValue ); _shadowProperties._dirty = true; }
+    inline void Light::setShadowVPMatrix( const U8 index, const mat4<F32>& newValue ) noexcept { DIVIDE_ASSERT( index < 6 ); _shadowProperties._lightVP[index].set( newValue ); _shadowProperties._dirty = true; }
 
-    inline void Light::setShadowFloatValue( const U8 index, const F32 newValue ) noexcept { assert( index < 6 ); _shadowProperties._lightPosition[index].w = newValue; _shadowProperties._dirty = true; }
+    inline void Light::setShadowFloatValue( const U8 index, const F32 newValue ) noexcept { DIVIDE_ASSERT( index < 6 ); _shadowProperties._lightPosition[index].w = newValue; _shadowProperties._dirty = true; }
 
     inline void Light::setShadowLightPos( const U8 index, const float3& newValue ) noexcept { _shadowProperties._lightPosition[index].xyz = newValue; _shadowProperties._dirty = true; }
 

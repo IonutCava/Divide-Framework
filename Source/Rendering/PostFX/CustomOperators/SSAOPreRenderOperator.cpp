@@ -568,7 +568,7 @@ void SSAOPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX:
 
 bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, [[maybe_unused]] const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut)
 {
-    assert(_enabled);
+    DIVIDE_ASSERT(_enabled);
 
     UniformData& generateConstants = generationConstants();
     generateConstants.set(_ID("_zPlanes"), PushConstantType::VEC2, cameraSnapshot._zPlanes);

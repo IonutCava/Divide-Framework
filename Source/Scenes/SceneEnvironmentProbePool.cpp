@@ -647,7 +647,7 @@ void SceneEnvironmentProbePool::registerProbe(EnvironmentProbeComponent* probe)
 
     LockGuard<SharedMutex> w_lock(_probeLock);
 
-    assert(_envProbes.size() < U16_MAX - 2u);
+    DIVIDE_ASSERT(_envProbes.size() < U16_MAX - 2u);
     _envProbes.emplace_back(probe);
     probe->poolIndex(to_U16(_envProbes.size() - 1u));
 }

@@ -49,9 +49,9 @@ void ProfileTimer::reset() noexcept
 void ProfileTimer::addChildTimer(ProfileTimer& child) 
 {
     // must not have a parent
-    assert(child._parent > Config::Profile::MAX_PROFILE_TIMERS);
+    DIVIDE_ASSERT(child._parent > Config::Profile::MAX_PROFILE_TIMERS);
     // must be unique child
-    assert(!hasChildTimer(child));
+    DIVIDE_ASSERT(!hasChildTimer(child));
 
     _children.push_back(child._globalIndex);
     child._parent = _globalIndex;

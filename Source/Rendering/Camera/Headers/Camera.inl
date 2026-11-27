@@ -240,8 +240,8 @@ namespace Divide
     {
         mat4<F32> ret{ MAT4_ZERO };
 
-        assert( !IS_ZERO( aspect ) );
-        assert( zFar > zNear );
+        DIVIDE_ASSERT( !IS_ZERO( aspect ) );
+        DIVIDE_ASSERT( zFar > zNear );
 
         Angle::RADIANS_F tanHalfFovy = std::tan( Angle::to_RADIANS( fovy ) * 0.5f );
 

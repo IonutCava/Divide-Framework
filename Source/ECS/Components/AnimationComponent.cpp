@@ -216,7 +216,7 @@ bool AnimationComponent::playPreviousAnimation() noexcept
 
 const vector<Line>& AnimationComponent::skeletonLines() const
 {
-    assert(_animator != nullptr);
+    DIVIDE_ASSERT(_animator != nullptr);
 
     const D64 animTimeStamp = Time::MillisecondsToSeconds<D64>(std::max(_currentTimeStamp, 0.0));
     // update possible animation
@@ -235,14 +235,14 @@ I32 AnimationComponent::frameCount(const U32 animationID) const
     {
         return 0;
     }
-    assert(_animator != nullptr);
+    DIVIDE_ASSERT(_animator != nullptr);
 
     return _animator->frameCount(animationID);
 }
 
 U8 AnimationComponent::boneCount() const
 {
-    assert(_animator != nullptr);
+    DIVIDE_ASSERT(_animator != nullptr);
 
     return  _animator->boneCount();
 }
@@ -254,7 +254,7 @@ bool AnimationComponent::frameTicked() const noexcept
 
 AnimEvaluator& AnimationComponent::getAnimationByIndex(const U32 animationID) const
 {
-    assert(_animator != nullptr && animationID != U32_MAX);
+    DIVIDE_ASSERT(_animator != nullptr && animationID != U32_MAX);
 
     return _animator->animationByIndex(animationID);
 }

@@ -81,7 +81,7 @@ protected:
 struct ImageLayer {
     template<typename T>
     [[nodiscard]] T* allocateMip(const T* data, size_t len, U16 width, U16 height, U16 depth, const U8 numComponents) {
-        assert(_mips.size() < U8_MAX - 1);
+        DIVIDE_ASSERT(_mips.size() < U8_MAX - 1);
 
         _mips.emplace_back(std::make_unique<ImageMip<T>>(data, len, width, height, depth, numComponents));
         return static_cast<T*>(_mips.back()->data());
@@ -147,8 +147,8 @@ struct ImageData final : NonCopyable
     /// image width, height and depth
     [[nodiscard]] const vec3<U16>& dimensions(const U32 layer, const U8 mipLevel = 0u) const
     {
-        assert(mipLevel < mipCount());
-        assert(layer < _layers.size());
+        DIVIDE_ASSERT(mipLevel < mipCount());
+        DIVIDE_ASSERT(layer < _layers.size());
 
         return _layers[layer].getMip(mipLevel)->_dimensions;
     }

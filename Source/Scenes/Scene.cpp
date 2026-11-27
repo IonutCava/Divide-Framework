@@ -418,7 +418,7 @@ namespace Divide
 
     void Scene::loadAsset( const Task* parentTask, const XML::SceneNode& sceneNode, SceneGraphNode* parent )
     {
-        assert( parent != nullptr );
+        DIVIDE_ASSERT( parent != nullptr );
 
         const ResourcePath targetFile = ResourcePath{ Util::StringFormat("{}_{}", parent->name().c_str(), sceneNode.name.c_str()) };
         const ResourcePath nodePath = GetSceneFullPath( *this ) / Paths::g_nodesSaveLocation / (Util::MakeXMLSafe( targetFile ).string() + ".xml");
@@ -1264,7 +1264,7 @@ namespace Divide
 
         // We always add a sky
         const auto& skies = sceneGraph()->getNodesByType( SceneNodeType::TYPE_SKY );
-        assert( !skies.empty() );
+        DIVIDE_ASSERT( !skies.empty() );
         Sky& currentSky = skies[0]->getNode<Sky>();
         const auto& dirLights = _lightPool->getLights( LightType::DIRECTIONAL );
 
@@ -1358,7 +1358,7 @@ namespace Divide
 
     void Scene::postLoadMainThread()
     {
-        assert( Runtime::isMainThread() );
+        DIVIDE_ASSERT( Runtime::isMainThread() );
         setState( ResourceState::RES_LOADED );
     }
 
@@ -1426,7 +1426,7 @@ namespace Divide
             NOP();
         }
 
-        assert( playerCount() == 0 );
+        DIVIDE_ASSERT( playerCount() == 0 );
         addPlayerInternal( false );
     }
 
@@ -1489,9 +1489,9 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-        assert( idx < Config::MAX_LOCAL_PLAYER_COUNT);
+        DIVIDE_ASSERT( idx < Config::MAX_LOCAL_PLAYER_COUNT);
         Player_ptr& player = _scenePlayers[getSceneIndexForPlayer( idx )];
-        assert( player != nullptr );
+        DIVIDE_ASSERT( player != nullptr );
 
         Attorney::ProjectManagerScene::removePlayer( _parent.parent(), this, player->getBoundNode(), true );
     }
@@ -1520,7 +1520,7 @@ namespace Divide
         }
         _sceneGraph->getRoot()->removeChildNode( player->getBoundNode() );
 
-        assert( idx < Config::MAX_LOCAL_PLAYER_COUNT);
+        DIVIDE_ASSERT( idx < Config::MAX_LOCAL_PLAYER_COUNT);
         _scenePlayers[getSceneIndexForPlayer( idx )] = nullptr;
         --_playerCount;
     }

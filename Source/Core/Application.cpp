@@ -23,8 +23,8 @@ Application::Application() noexcept
 
 ErrorCode Application::start(const string& entryPoint, const I32 argc, char** argv)
 {
-    assert( !entryPoint.empty() );
-    assert( _kernel == nullptr );
+    DIVIDE_ASSERT( !entryPoint.empty() );
+    DIVIDE_ASSERT( _kernel == nullptr );
 
     Console::ToggleFlag(Console::Flags::PRINT_IMMEDIATE, true);
     Console::printfn(LOCALE_STR("START_APPLICATION"));

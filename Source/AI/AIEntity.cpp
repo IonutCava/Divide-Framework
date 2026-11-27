@@ -101,7 +101,7 @@ void AIEntity::receiveMessage(AIEntity& sender,
 void AIEntity::processMessage(AIEntity& sender,
                               const AIMsg msg,
                               const std::any& msg_content) {
-    assert(_processor);
+    DIVIDE_ASSERT(_processor);
     SharedLock<SharedMutex> r_lock(_updateMutex);
     _processor->processMessage(sender, msg, msg_content);
 }

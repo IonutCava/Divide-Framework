@@ -14,7 +14,7 @@
 int main(int argc, char **argv)
 {
     _MM_SET_FLUSH_ZERO_MODE( _MM_FLUSH_ZERO_ON );
-    std::set_new_handler( []() noexcept{ assert( false && "Out of memory!" ); } );
+    std::set_new_handler( []() noexcept{ DIVIDE_UNEXPECTED_CALL_MSG( "Out of memory!" ); } );
 
     const Divide::ErrorCode err = Divide::Engine::Run(argc, argv);
 

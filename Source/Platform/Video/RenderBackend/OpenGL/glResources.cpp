@@ -738,7 +738,7 @@ namespace Divide
 
                     if ( idx != U32_MAX )
                     {
-                        assert( _usageMap[idx] != State::FREE );
+                        DIVIDE_ASSERT( _usageMap[idx] != State::FREE );
                         _usageMap[idx] = State::USED;
                         _lifeLeft[idx] += 1;
                         return std::make_pair( _handles[idx], true );

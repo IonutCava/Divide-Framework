@@ -1158,13 +1158,13 @@ namespace Divide
             }break;
             case EditorComponentFieldType::TRANSFORM:
             {
-                assert( !field._dataSetter && "Need direct access to memory" );
+                DIVIDE_ASSERT( !field._dataSetter, "Need direct access to memory" );
                 ret = processTransform( field.getPtr<TransformComponent>(), field._readOnly, field._hexadecimal );
             }break;
 
             case EditorComponentFieldType::MATERIAL:
             {
-                assert( !field._dataSetter && "Need direct access to memory" );
+                DIVIDE_ASSERT( !field._dataSetter, "Need direct access to memory" );
                 ret = processMaterial( field.getPtr<Material>(), field._readOnly, field._hexadecimal );
             }break;
             default:

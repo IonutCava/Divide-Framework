@@ -41,13 +41,13 @@ namespace Divide
 
     inline BoneMatrices& AnimEvaluator::transformMatrices(const U32 frameIndex)
     {
-        assert(frameIndex < to_U32(_transformMatrices.size()));
+        DIVIDE_ASSERT(frameIndex < to_U32(_transformMatrices.size()));
         return _transformMatrices[frameIndex];
     }
 
     inline const BoneMatrices& AnimEvaluator::transformMatrices(const U32 frameIndex) const
     {
-        assert(frameIndex < to_U32(_transformMatrices.size()));
+        DIVIDE_ASSERT(frameIndex < to_U32(_transformMatrices.size()));
         return _transformMatrices[frameIndex];
     }
 

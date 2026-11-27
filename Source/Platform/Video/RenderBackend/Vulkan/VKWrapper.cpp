@@ -1024,7 +1024,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         VKPerWindowState& windowState = _perWindowState[window.getGUID()];
-        assert( windowState._window != nullptr );
+        DIVIDE_ASSERT( windowState._window != nullptr );
 
         SCOPE_EXIT{
             GetStateTracker()._activeWindow = nullptr;
@@ -3023,7 +3023,7 @@ namespace Divide
             const U8 msaaSamples = GetStateTracker()._activeMSAASamples;
             if ( msaaSamples > 0u )
             {
-                assert( isPowerOfTwo( msaaSamples ) );
+                DIVIDE_ASSERT( isPowerOfTwo( msaaSamples ) );
                 msaaSampleFlags = static_cast<VkSampleCountFlagBits>(msaaSamples);
             }
             // The initializer disables forced per-sample shading, matching OpenGL. Sample-qualified shaders still run per sample.
@@ -3476,7 +3476,7 @@ namespace Divide
                 PROFILE_SCOPE( "BIND_PIPELINE", Profiler::Category::Graphics );
 
                 const Pipeline* pipeline = cmd->As<GFX::BindPipelineCommand>()->_pipeline;
-                assert( pipeline != nullptr );
+                DIVIDE_ASSERT( pipeline != nullptr );
                 if ( bindPipeline( *pipeline, cmdBuffer ) == ShaderResult::Failed )
                 {
                     const auto handle = pipeline->descriptor()._shaderProgramHandle;

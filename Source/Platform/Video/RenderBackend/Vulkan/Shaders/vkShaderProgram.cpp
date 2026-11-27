@@ -78,9 +78,9 @@ namespace Divide {
         if (data._type != ShaderType::COUNT)
         {
 
-            assert(_handle == VK_NULL_HANDLE);
+            DIVIDE_ASSERT(_handle == VK_NULL_HANDLE);
 
-            assert(!data._sourceCodeSpirV.empty());
+            DIVIDE_ASSERT(!data._sourceCodeSpirV.empty());
 
             bool usesDrawIndex = false;
             if ( !SpirvHelper::UsesDrawIndex( data._sourceCodeSpirV, usesDrawIndex ) )
@@ -159,7 +159,7 @@ namespace Divide {
         {
             for (auto& [fileHash, loadDataPerFile] : fileData)
             {
-                assert(!loadDataPerFile._modules.empty());
+                DIVIDE_ASSERT(!loadDataPerFile._modules.empty());
 
                 for (auto& loadData : loadDataPerFile._loadData)
                 {

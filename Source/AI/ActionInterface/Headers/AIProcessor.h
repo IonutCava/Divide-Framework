@@ -115,7 +115,7 @@ NOINITVTABLE_CLASS(AIProcessor) : NonCopyable
 
         _activeGoal = _activeGoals.back();
         _currentStep = U32_MAX;
-        assert(_activeGoal != nullptr);
+        DIVIDE_ASSERT(_activeGoal != nullptr);
 
         return _activeGoal;
     }
@@ -174,7 +174,7 @@ NOINITVTABLE_CLASS(AIProcessor) : NonCopyable
             return false;
         }
 
-        assert(_currentStep < U32_MAX - 1u);
+        DIVIDE_ASSERT(_currentStep < U32_MAX - 1u);
 
         _currentStep++;
         const GOAPAction* crtAction = getActiveAction();
@@ -211,7 +211,7 @@ NOINITVTABLE_CLASS(AIProcessor) : NonCopyable
 
     inline const GOAPAction* getActiveAction() const
     {
-        assert(_activeGoal != nullptr);
+        DIVIDE_ASSERT(_activeGoal != nullptr);
         const GOAPPlan& plan = _activeGoal->getCurrentPlan();
         if ( _currentStep == U32_MAX || _currentStep >= plan.size())
         {

@@ -44,7 +44,7 @@ void GUIInterface::onLanguageChange([[maybe_unused]] std::string_view newLanguag
 }
 
 void GUIInterface::addElement(const U64 id, GUIElement* element) {
-    assert(Runtime::isMainThread());
+    DIVIDE_ASSERT(Runtime::isMainThread());
 
     const U8 typeIndex = to_U8(element->type());
     GUIMap& targetMap = _guiElements[typeIndex];
@@ -117,7 +117,7 @@ GUIButton* GUIInterface::addButton(const char* name,
                                    const string& rootSheetID) {
     const U64 guiID = _ID(name);
 
-    assert(getGUIElement<GUIButton>(guiID) == nullptr);
+    DIVIDE_ASSERT(getGUIElement<GUIButton>(guiID) == nullptr);
 
     CEGUI::Window* parent = nullptr;
     if (_context->getCEGUIContext()) {
@@ -152,7 +152,7 @@ GUIMessageBox* GUIInterface::addMsgBox(const char* name,
                                        const int2 offsetFromCentre) {
     const U64 guiID = _ID(name);
 
-    assert(getGUIElement<GUIMessageBox>(guiID) == nullptr);
+    DIVIDE_ASSERT(getGUIElement<GUIMessageBox>(guiID) == nullptr);
 
     GUIMessageBox* box = new GUIMessageBox(name,
                                            title,
@@ -173,7 +173,7 @@ GUIText* GUIInterface::addText(const char* name,
                                const U8 fontSize) {
     const U64 guiID = _ID(name);
 
-    assert(getGUIElement<GUIText>(guiID) == nullptr);
+    DIVIDE_ASSERT(getGUIElement<GUIText>(guiID) == nullptr);
 
     GUIText* t = new GUIText(name,
                              text,
@@ -192,7 +192,7 @@ GUIFlash* GUIInterface::addFlash(const char* name,
                                  [[maybe_unused]] const RelativePosition2D& position,
                                  [[maybe_unused]] const RelativeScale2D& size) {
     const U64 guiID = _ID(name);
-    assert(getGUIElement<GUIFlash>(guiID) == nullptr);
+    DIVIDE_ASSERT(getGUIElement<GUIFlash>(guiID) == nullptr);
     
     GUIFlash* flash = new GUIFlash(name, _context->rootSheet());
     addElement(guiID, flash);
@@ -210,7 +210,7 @@ GUIText* GUIInterface::modifyText(const char* name, const string& text, const bo
     }
 
     GUIText* textElement = static_cast<GUIText*>(it->second.first);
-    assert(textElement != nullptr);
+    DIVIDE_ASSERT(textElement != nullptr);
 
     textElement->text(text.c_str(), multiLine);
 

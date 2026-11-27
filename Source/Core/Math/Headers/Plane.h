@@ -192,7 +192,7 @@ using PlaneDynamicList = vector<Plane<F32>>;
 template<typename T>
 FORCE_INLINE vec3<T> GetIntersection(const Plane<T>& a, const Plane<T>& b, const Plane<T>& c) noexcept {
     const T denom = Dot(Cross(a._normal, b._normal), c._normal);
-    assert(!IS_ZERO(denom));
+    DIVIDE_ASSERT(!IS_ZERO(denom));
     return (-(a._distance * Cross(b._normal, c._normal)) -
               b._distance * Cross(c._normal, a._normal) -
               c._distance * Cross(a._normal, b._normal)) / denom;

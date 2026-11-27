@@ -47,7 +47,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-        assert( isValid() );
+        DIVIDE_ASSERT( isValid() );
 
         if ( GUID != _parentNode->getGUID() )
         {
@@ -88,7 +88,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-        assert(isValid());
+        DIVIDE_ASSERT(isValid());
         SharedLock<SharedMutex> r_lock( _updateMutex );
 
         switch ( type )

@@ -43,12 +43,12 @@ PlatformContext::PlatformContext(Application& app)
 PlatformContext::~PlatformContext()
 {
     ShutdownConditionalWait(*this);
-    assert(_gfx == nullptr);
+    DIVIDE_ASSERT(_gfx == nullptr);
 }
 
 void PlatformContext::init(Kernel& kernel)
 {
-    assert(_gfx == nullptr);
+    DIVIDE_ASSERT(_gfx == nullptr);
 
     _kernel = &kernel;
 
@@ -142,13 +142,13 @@ const DisplayWindow& PlatformContext::activeWindow() const noexcept
 
 Kernel& PlatformContext::kernel() noexcept
 {
-    assert( _kernel != nullptr );
+    DIVIDE_ASSERT( _kernel != nullptr );
     return *_kernel;
 }
 
 const Kernel& PlatformContext::kernel() const noexcept
 {
-    assert(_kernel != nullptr);
+    DIVIDE_ASSERT(_kernel != nullptr);
     return *_kernel;
 }
 

@@ -289,7 +289,7 @@ namespace Divide
 
     void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer) noexcept
     {
-        assert( buffer != nullptr );
+        DIVIDE_ASSERT( buffer != nullptr );
 
         dataInOut._buffer = { buffer, {0u, buffer->getPrimitiveCount()}, buffer->queueIndex() };
         dataInOut._type = buffer->getUsage() == BufferUsageType::CONSTANT_BUFFER ? DescriptorSetBindingType::UNIFORM_BUFFER_STATIC
@@ -298,7 +298,7 @@ namespace Divide
 
     void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, const BufferRange<> range ) noexcept
     {
-        assert( buffer != nullptr );
+        DIVIDE_ASSERT( buffer != nullptr );
         dataInOut._buffer = { buffer, range, buffer->queueIndex() };
         dataInOut._type = buffer->getUsage() == BufferUsageType::CONSTANT_BUFFER ? DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC
                                                                                  : DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC;
@@ -306,7 +306,7 @@ namespace Divide
 
     void SetIndirectBuffer( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, const BufferRange<> range ) noexcept
     {
-        assert( buffer != nullptr && buffer->getUsage() == BufferUsageType::COMMAND_BUFFER );
+        DIVIDE_ASSERT( buffer != nullptr && buffer->getUsage() == BufferUsageType::COMMAND_BUFFER );
         dataInOut._buffer = { buffer, range, buffer->queueIndex() };
         dataInOut._type = DescriptorSetBindingType::INDIRECT_BUFFER;
     }

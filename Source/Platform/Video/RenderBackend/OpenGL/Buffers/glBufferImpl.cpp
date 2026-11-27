@@ -185,7 +185,7 @@ namespace Divide
             gl46core::glCopyNamedBufferSubData( _memoryBlock._bufferHandle, _copyBufferTarget, _memoryBlock._offset + offsetInBytes, 0u, rangeInBytes );
 
             const Byte* bufferData = (Byte*)gl46core::glMapNamedBufferRange( _copyBufferTarget, 0u, rangeInBytes, gl46core::MapBufferAccessMask::GL_MAP_READ_BIT );
-            assert( bufferData != nullptr );
+            DIVIDE_ASSERT( bufferData != nullptr );
             memcpy( outData.first, bufferData, rangeInBytes );
             gl46core::glUnmapNamedBuffer( _copyBufferTarget );
 

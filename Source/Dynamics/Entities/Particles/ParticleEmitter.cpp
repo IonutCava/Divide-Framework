@@ -56,7 +56,7 @@ ParticleEmitter::ParticleEmitter( const ResourceDescriptor<ParticleEmitter>& des
 
 ParticleEmitter::~ParticleEmitter()
 { 
-    assert(_particles == nullptr);
+    DIVIDE_ASSERT(_particles == nullptr);
 }
 
 bool ParticleEmitter::load( PlatformContext& context )

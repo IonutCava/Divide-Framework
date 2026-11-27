@@ -399,7 +399,7 @@ namespace Divide
 
         if ( textureCount == 1 )
         {
-            assert(textureHandles != nullptr && samplerHandles != nullptr);
+            DIVIDE_ASSERT(textureHandles != nullptr && samplerHandles != nullptr);
             return bindTexture( unitOffset, textureHandles[0], samplerHandles[0]);
         }
 
@@ -800,7 +800,7 @@ namespace Divide
 
         const bool enable = blendingProperties.enabled();
 
-        assert( drawBufferIdx < GFXDevice::GetDeviceInformation()._maxRTColourAttachments );
+        DIVIDE_ASSERT( drawBufferIdx < GFXDevice::GetDeviceInformation()._maxRTColourAttachments );
 
         if ( _blendEnabled[drawBufferIdx] == gl46core::GL_TRUE != enable )
         {

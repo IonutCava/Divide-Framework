@@ -263,13 +263,13 @@ namespace Divide
              {
                  bool foundInCache = false;
                  Scene* loadedScene = _scenePool.getOrCreateScene( parent().platformContext(), *this, scene, foundInCache );
-                 assert( loadedScene != nullptr && foundInCache );
+                 DIVIDE_ASSERT( loadedScene != nullptr && foundInCache );
                  
                  if ( loadedScene->getState() == ResourceState::RES_LOADING )
                  {
                      Attorney::SceneProjectManager::postLoadMainThread( loadedScene );
                  }
-                 assert( loadedScene->getState() == ResourceState::RES_LOADED );
+                 DIVIDE_ASSERT( loadedScene->getState() == ResourceState::RES_LOADED );
                  setActiveScene( loadedScene );
                  
                  if ( unloadPrevious && sceneToUnload != nullptr )
@@ -305,7 +305,7 @@ namespace Divide
 
     bool Project::unloadScene( Scene* scene )
     {
-        assert( scene != nullptr );
+        DIVIDE_ASSERT( scene != nullptr );
         Attorney::ProjectManagerProject::waitForSaveTask( parent() );
 
         parent().platformContext().gui().onUnloadScene( scene );
@@ -315,7 +315,7 @@ namespace Divide
 
     void Project::setActiveScene( Scene* const scene )
     {
-        assert( scene != nullptr );
+        DIVIDE_ASSERT( scene != nullptr );
 
         Attorney::ProjectManagerProject::waitForSaveTask( parent() );
         Attorney::SceneProjectManager::onRemoveActive( _scenePool.defaultSceneActive() ? _scenePool.defaultScene()
@@ -733,7 +733,7 @@ namespace Divide
 
         const auto IsNodeInRect = [&screenRect, &camera, &gfx]( SceneGraphNode* node )
         {
-            assert( node != nullptr );
+            DIVIDE_ASSERT( node != nullptr );
             const SceneNode& sNode = node->getNode();
             if ( Is3DObject( sNode.type() ))
             {
@@ -871,7 +871,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Scene* activeScene = activeProject()->getActiveScene();
-        assert( activeScene->getState() == ResourceState::RES_LOADED );
+        DIVIDE_ASSERT( activeScene->getState() == ResourceState::RES_LOADED );
         // Update internal timers
         _elapsedGameTime += deltaGameTimeUS;
         _elapsedGameTimeMS = Time::MicrosecondsToMilliseconds<U32>( _elapsedGameTime );
@@ -1447,7 +1447,7 @@ namespace Divide
             if ( Attorney::SceneLoadSave::save( activeScene, save ) )
             {
                 ret = save.dumpToFile( path, g_saveFile );
-                assert( ret );
+                DIVIDE_ASSERT( ret );
             }
         }
         if ( finishCallback )

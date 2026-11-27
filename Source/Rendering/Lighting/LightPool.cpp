@@ -250,7 +250,7 @@ namespace Divide
     void LightPool::invalidateShadowLayers(const BoundingSphere& volume, const U32 layerMask, const LightType lightType,
                                            const std::optional<BoundingSphere>& influenceBounds)
     {
-        assert(layerMask != 0u);
+        DIVIDE_ASSERT(layerMask != 0u);
         LockGuard<SharedMutex> w_lock(_movedSceneVolumesLock);
         _movedSceneVolumes.push_back({volume, false, layerMask, lightType, influenceBounds});
     }
@@ -376,7 +376,7 @@ namespace Divide
                 continue;
             }
             const I32 shadowIndex = slots.reserve( typeIndex, typeLimit );
-            assert( shadowIndex >= 0 );
+            DIVIDE_ASSERT( shadowIndex >= 0 );
             light->shadowPropertyIndex( shadowIndex );
 
             const Light::ShadowProperties& propsSource = light->getShadowProperties();
@@ -750,7 +750,7 @@ namespace Divide
         {
             const BoundingSphere& lightBounds = light->boundingVolume();
             SharedLock<SharedMutex> r_lock( _movedSceneVolumesLock );
-            assert( movedVolumeCount <= _movedSceneVolumes.size() );
+            DIVIDE_ASSERT( movedVolumeCount <= _movedSceneVolumes.size() );
             for ( size_t i = 0u; i < movedVolumeCount; ++i )
             {
                 const MovingVolume& volume = _movedSceneVolumes[i];

@@ -11,15 +11,15 @@ namespace Divide {
 namespace {
     [[nodiscard]] inline gl46core::GLenum getMagFilterMode(const TextureFilter magFilter)
     {
-        assert(magFilter != TextureFilter::COUNT);
+        DIVIDE_ASSERT(magFilter != TextureFilter::COUNT);
 
         return magFilter == TextureFilter::LINEAR ? gl46core::GL_LINEAR : gl46core::GL_NEAREST;
     }
 
     [[nodiscard]] inline gl46core::GLenum getMinFilterMode(const TextureFilter minFilter, const TextureMipSampling mipSampling)
     {
-        assert(minFilter != TextureFilter::COUNT);
-        assert(mipSampling != TextureMipSampling::COUNT);
+        DIVIDE_ASSERT(minFilter != TextureFilter::COUNT);
+        DIVIDE_ASSERT(mipSampling != TextureMipSampling::COUNT);
 
         if (mipSampling == TextureMipSampling::NONE)
         {

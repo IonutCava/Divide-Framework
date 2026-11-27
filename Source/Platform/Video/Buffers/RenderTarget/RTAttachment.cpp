@@ -30,7 +30,7 @@ Handle<Texture> RTAttachment::texture() const
 
 void RTAttachment::setTexture( const Handle<Texture> renderTexture, const Handle<Texture> resolveTexture ) noexcept
 {
-    assert( renderTexture != INVALID_HANDLE<Texture>);
+    DIVIDE_ASSERT( renderTexture != INVALID_HANDLE<Texture>);
 
     _renderTexture = renderTexture;
     _resolvedTexture = resolveTexture;

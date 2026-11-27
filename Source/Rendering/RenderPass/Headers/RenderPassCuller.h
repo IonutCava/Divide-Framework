@@ -116,7 +116,7 @@ struct VisibleNodeList
 
     void append(const VisibleNodeList& other) noexcept
     {
-        assert(_index + other._index < _nodes.size());
+        DIVIDE_ASSERT(_index + other._index < _nodes.size());
 
         std::memcpy(_nodes.data() + _index, other._nodes.data(), other._index * sizeof(T));
         _index += other._index;
@@ -130,7 +130,7 @@ struct VisibleNodeList
     void remove(const size_t idx)
     {
         const size_t lastPos = _index.fetch_sub(1);
-        assert(idx <= lastPos);
+        DIVIDE_ASSERT(idx <= lastPos);
         _nodes[idx] = _nodes[lastPos - 1];
         _nodes[lastPos - 1] = {};
     }
@@ -154,13 +154,13 @@ struct VisibleNodeList
 
     [[nodiscard]] const T& node(const size_t idx) const noexcept
     { 
-        assert(idx < _index.load());
+        DIVIDE_ASSERT(idx < _index.load());
         return _nodes[idx]; 
     }
 
     [[nodiscard]] T& node(const size_t idx) noexcept
     {
-        assert(idx < _index.load());
+        DIVIDE_ASSERT(idx < _index.load());
         return _nodes[idx];
     }
 

@@ -44,13 +44,13 @@ namespace Divide
     [[nodiscard]] constexpr F32 CSMOverlapNearFraction(const F32 cameraNear, const F32 clipRange,
                                                         const F32 previousStart, const F32 previousEnd) noexcept
     {
-        assert(clipRange > 0.f);
+        DIVIDE_ASSERT(clipRange > 0.f);
         return std::clamp((CSM_BLEND_START(previousStart, previousEnd) - cameraNear) / clipRange, 0.f, 1.f);
     }
 
     [[nodiscard]] constexpr U32 ShadowLayerMask(const U8 layerCount) noexcept
     {
-        assert(layerCount <= 32u);
+        DIVIDE_ASSERT(layerCount <= 32u);
         return layerCount == 32u ? ~U32{0u} : (U32{1u} << layerCount) - 1u;
     }
 
@@ -120,14 +120,14 @@ namespace Divide
 
     [[nodiscard]] constexpr F32 ShadowBlurTexelScale(const U8 firstLayer) noexcept
     {
-        assert(firstLayer < 32u);
+        DIVIDE_ASSERT(firstLayer < 32u);
         return 1.f / static_cast<F32>(U32{1u} << firstLayer);
     }
 
     template<typename Callback>
     void ForEachShadowLayerRange(const U32 mask, const U8 layerCount, Callback&& callback)
     {
-        assert(layerCount <= 32u);
+        DIVIDE_ASSERT(layerCount <= 32u);
         for (U8 layer = 0u; layer < layerCount;)
         {
             if (!ShadowLayerSelected(mask, layer))
@@ -245,7 +245,7 @@ namespace Divide
 
         [[nodiscard]] bool hasCapacity(const size_t type, const U32 typeLimit) const noexcept
         {
-            assert(type < TypeCount);
+            DIVIDE_ASSERT(type < TypeCount);
             return _total < _totalLimit && _perType[type] < typeLimit;
         }
 
@@ -290,7 +290,7 @@ namespace Divide
             size_t consumed = 0u;
             if (_active)
             {
-                assert(_count <= pendingCount);
+                DIVIDE_ASSERT(_count <= pendingCount);
                 consumed = _count;
                 _invalidateAll = false;
             }

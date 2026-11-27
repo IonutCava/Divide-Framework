@@ -38,7 +38,7 @@ namespace Divide
     template<typename Properties, typename Lights>
     [[nodiscard]] bool PatchLightShadowIndices(Properties& properties, const Lights& lights) noexcept
     {
-        assert(properties.size() == lights.size());
+        DIVIDE_ASSERT(properties.size() == lights.size());
         bool anyShadowCaster = false;
         for (size_t i = 0u; i < properties.size(); ++i)
         {

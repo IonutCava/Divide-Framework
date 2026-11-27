@@ -17,7 +17,7 @@ namespace GFX {
 
 static string ToString(const BindPipelineCommand& cmd, U16 indent)
 {
-    assert(cmd._pipeline != nullptr);
+    DIVIDE_ASSERT(cmd._pipeline != nullptr);
 
     const auto blendStateToString = [](const BlendingSettings& state) -> string {
         if (!state.enabled()) {

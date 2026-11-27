@@ -173,7 +173,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         const TransformComponent* tComp = static_cast<TransformComponent*>(event._sourceCmp);
-        assert( tComp != nullptr );
+        DIVIDE_ASSERT( tComp != nullptr );
 
         bool transformChanged = false;
         if ( _type != LightType::DIRECTIONAL && ( event._flag & to_U32( TransformType::TRANSLATION ) ) )

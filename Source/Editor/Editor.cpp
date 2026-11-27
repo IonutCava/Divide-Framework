@@ -350,7 +350,7 @@ namespace Divide
         _nodePreviewCamera->speedFactor().zoom = 175.f;
 
         IMGUI_CHECKVERSION();
-        assert( _imguiContexts[to_base( ImGuiContextType::Editor )] == nullptr );
+        DIVIDE_ASSERT( _imguiContexts[to_base( ImGuiContextType::Editor )] == nullptr );
 
         ImGuiCustom::g_ImAllocatorUserData._context = &context();
 
@@ -1893,7 +1893,7 @@ namespace Divide
         if ( focusedWindow == nullptr )
         {
             focusedWindow = g_windowManager->mainWindow();
-            assert( focusedWindow != nullptr );
+            DIVIDE_ASSERT( focusedWindow != nullptr );
         }
 
         Rect<I32> viewportSize( -1 );
@@ -2008,7 +2008,7 @@ namespace Divide
                 if ( ctx->IO.WantSetMousePos )
                 {
                     // Only one override at a time per context
-                    assert( !_mouseCaptured);
+                    DIVIDE_ASSERT( !_mouseCaptured);
 
                     _mouseCaptured = true;
                     tempCoords = ctx->IO.MousePos;
@@ -2385,7 +2385,7 @@ namespace Divide
 
             IMGUICallbackData* data = static_cast<IMGUICallbackData*>(imCmd->UserCallbackData);
 
-            assert( data->_cmdBuffer != nullptr );
+            DIVIDE_ASSERT( data->_cmdBuffer != nullptr );
             GFX::CommandBuffer& buffer = *(data->_cmdBuffer);
 
             bool isArrayTexture = false;
@@ -2450,7 +2450,7 @@ namespace Divide
 
         if ( opened )
         {
-            assert( tex != INVALID_HANDLE<Texture> );
+            DIVIDE_ASSERT( tex != INVALID_HANDLE<Texture> );
 
             static IMGUICallbackData defaultData{
                 ._flip = false
@@ -2463,7 +2463,7 @@ namespace Divide
             
             const U8 numChannels = NumChannels( texPtr->descriptor()._baseFormat );
 
-            assert( numChannels > 0 );
+            DIVIDE_ASSERT( numChannels > 0 );
 
             bool isArray = false;
             if ( g_modalTextureData._isDepthTexture )

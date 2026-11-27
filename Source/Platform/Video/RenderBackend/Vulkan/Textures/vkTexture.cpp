@@ -394,7 +394,7 @@ namespace Divide
         sampleFlagBits( VK_SAMPLE_COUNT_1_BIT );
         if ( _descriptor._msaaSamples > 0u )
         {
-            assert( isPowerOfTwo( _descriptor._msaaSamples ) );
+            DIVIDE_ASSERT( isPowerOfTwo( _descriptor._msaaSamples ) );
             sampleFlagBits( static_cast<VkSampleCountFlagBits>(_descriptor._msaaSamples) );
         }
 
@@ -1538,7 +1538,7 @@ namespace Divide
 
         const TextureType srcType = source->_descriptor._texType;
         const TextureType dstType = destination->_descriptor._texType;
-        assert( srcType != TextureType::COUNT && dstType != TextureType::COUNT );
+        DIVIDE_ASSERT( srcType != TextureType::COUNT && dstType != TextureType::COUNT );
 
         U32 layerOffset = params._layerRange.offset;
         U32 layerCount = params._layerRange.count == ALL_LAYERS ? source->_depth : params._layerRange.count;

@@ -39,7 +39,7 @@ void glShaderProgram::Idle( [[maybe_unused]] PlatformContext& platformContext )
         }
     }
 
-    assert(s_validationOutputCache._handle != GL_NULL_HANDLE);
+    DIVIDE_ASSERT(s_validationOutputCache._handle != GL_NULL_HANDLE);
     
     gl46core::glValidateProgramPipeline(s_validationOutputCache._handle);
 
@@ -160,7 +160,7 @@ ShaderResult glShaderProgram::validatePreBind(const Configuration& config, const
     {
         if (!_stagesBound && rebind)
         {
-            assert(getState() == ResourceState::RES_LOADED);
+            DIVIDE_ASSERT(getState() == ResourceState::RES_LOADED);
             if (_glHandle == GL_NULL_HANDLE)
             {
                 gl46core::glCreateProgramPipelines(1, &_glHandle);
@@ -175,7 +175,7 @@ ShaderResult glShaderProgram::validatePreBind(const Configuration& config, const
 
             if (rebind)
             {
-                assert(_glHandle != GL_NULL_HANDLE);
+                DIVIDE_ASSERT(_glHandle != GL_NULL_HANDLE);
 
                 for ( glShaderEntry& shader : _shaderStage)
                 {
@@ -211,7 +211,7 @@ bool glShaderProgram::loadInternal(hashMap<U64, PerFileShaderData>& fileData, co
 
         for (auto& [fileHash, loadDataPerFile] : fileData)
         {
-            assert(!loadDataPerFile._modules.empty());
+            DIVIDE_ASSERT(!loadDataPerFile._modules.empty());
 
             bool found = false;
             U32 targetGeneration = 0u;

@@ -675,7 +675,7 @@ namespace Divide
         }
         constexpr RTTransitionMask s_defaultTransitionMask = {true, true, true, true, true };
 
-        assert(pipelineRenderingCreateInfoOut.sType == VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO);
+        DIVIDE_ASSERT(pipelineRenderingCreateInfoOut.sType == VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO);
 
         const U16 targetMipWriteLevel = descriptor._mipWriteLevel == ALL_MIPS ? 0u : descriptor._mipWriteLevel;
         _renderInfoState._mipLevel = targetMipWriteLevel;

@@ -72,7 +72,7 @@ namespace Divide {
     void EditorComponent::registerField(EditorComponentField&& field)
     {
         dvd_erase_if(_fields, [&field](const EditorComponentField& it) { return it._name.compare(field._name) == 0 && it._type == field._type; });
-        assert(field._basicTypeSize == PushConstantSize::DWORD || field.supportsByteCount());
+        DIVIDE_ASSERT(field._basicTypeSize == PushConstantSize::DWORD || field.supportsByteCount());
 
         field._undoOwnerGUID = getGUID();
         field._onUndoRedo = [this](const std::string_view name)

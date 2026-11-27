@@ -169,7 +169,7 @@ namespace Divide
 
     void GUI::onChangeScene( Scene* newScene )
     {
-        assert( newScene != nullptr );
+        DIVIDE_ASSERT( newScene != nullptr );
         SharedLock<SharedMutex> r_lock( _guiStackLock );
         if ( _activeScene != nullptr && _activeScene->getGUID() != newScene->getGUID() )
         {
@@ -198,7 +198,7 @@ namespace Divide
 
     void GUI::onUnloadScene( Scene* const scene )
     {
-        assert( scene != nullptr );
+        DIVIDE_ASSERT( scene != nullptr );
         LockGuard<SharedMutex> w_lock( _guiStackLock );
         const GUIMapPerScene::const_iterator it = _guiStack.find( scene->getGUID() );
         if ( it != std::cend( _guiStack ) )
@@ -695,7 +695,7 @@ namespace Divide
 
             {
                 LockGuard<SharedMutex> w_lock( _guiStackLock );
-                assert( _guiStack.empty() );
+                DIVIDE_ASSERT( _guiStack.empty() );
                 for ( U8 i = 0; i < to_base( GUIType::COUNT ); ++i )
                 {
                     for ( auto& [nameHash, entry] : _guiElements[i] )

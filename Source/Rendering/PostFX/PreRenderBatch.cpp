@@ -455,7 +455,7 @@ PreRenderOperator* PreRenderBatch::getOperator(const FilterType type) const
                                             return op->operatorType() == type;
                                         });
 
-    assert(it != std::cend(batch));
+    DIVIDE_ASSERT(it != std::cend(batch));
     return (*it).get();
 }
 

@@ -24,7 +24,7 @@ SFXDevice::~SFXDevice()
 }
 
 ErrorCode SFXDevice::initAudioAPI() {
-    assert(_api == nullptr && "SFXDevice error: initAudioAPI called twice!");
+    DIVIDE_ASSERT(_api == nullptr, "SFXDevice error: initAudioAPI called twice!");
 
     switch (_apiID)
     {

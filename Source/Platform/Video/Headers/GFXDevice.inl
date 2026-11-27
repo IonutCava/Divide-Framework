@@ -116,7 +116,7 @@ void DebugPrimitiveHandler<Descriptor, N>::addLocked( const I64 ID, const Descri
 
 inline Renderer& GFXDevice::getRenderer() const
 {
-    assert(_renderer != nullptr);
+    DIVIDE_ASSERT(_renderer != nullptr);
     return *_renderer;
 }
 

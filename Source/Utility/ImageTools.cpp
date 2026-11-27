@@ -116,7 +116,7 @@ namespace nvttHelpers
 
     [[nodiscard]] static nvtt::Format getNVTTFormat(const ImageOutputFormat outputFormat, const bool isNormalMap, const bool hasAlpha, const bool isGreyscale) noexcept
     {
-        assert(outputFormat != ImageOutputFormat::COUNT);
+        DIVIDE_ASSERT(outputFormat != ImageOutputFormat::COUNT);
 
         if constexpr(g_KeepDevILDDSCompatibility)
         {
@@ -1550,7 +1550,7 @@ namespace
     [[nodiscard]] T ReadImageComponent( const LayerData& mip, const size_t index ) noexcept
     {
         const size_t offset = index * sizeof( T );
-        assert( offset <= mip._size && sizeof( T ) <= mip._size - offset );
+        DIVIDE_ASSERT( offset <= mip._size && sizeof( T ) <= mip._size - offset );
         T value{};
         std::memcpy( &value, static_cast<const U8*>( mip.data() ) + offset, sizeof( T ) );
         return value;
@@ -1559,9 +1559,9 @@ namespace
 
 void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& c, const U32 layer, const U8 mipLevel, const U16 slice) const
 {
-    assert(comp < 4);
-    assert(!IsCompressed(_format) || mipLevel == 0);
-    assert(_layers.size() > layer);
+    DIVIDE_ASSERT(comp < 4);
+    DIVIDE_ASSERT(!IsCompressed(_format) || mipLevel == 0);
+    DIVIDE_ASSERT(_layers.size() > layer);
 
     if (!HasAlphaChannel(_format) && comp == 3)
     {
@@ -1570,8 +1570,8 @@ void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& 
     }
 
     const LayerData* mip = _layers[layer].getMip(mipLevel);
-    assert(mip != nullptr);
-    assert(x >= 0 && x < mip->_dimensions.width && y >= 0 && y < mip->_dimensions.height && slice < mip->_dimensions.depth);
+    DIVIDE_ASSERT(mip != nullptr);
+    DIVIDE_ASSERT(x >= 0 && x < mip->_dimensions.width && y >= 0 && y < mip->_dimensions.height && slice < mip->_dimensions.depth);
 
     const U8 channelCount = IsCompressed(_format) ? 4u : NumChannels(_format);
     if (comp >= channelCount)
@@ -1585,7 +1585,7 @@ void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& 
     if (IsCompressed(_format))
     {
         const vector<U8>& decoded = _layers[layer].decompressedData();
-        assert(idx < decoded.size());
+        DIVIDE_ASSERT(idx < decoded.size());
         c = decoded[idx];
     }
     else

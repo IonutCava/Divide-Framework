@@ -131,13 +131,13 @@ inline const DisplayWindow* WindowManager::getHoveredWindow() const noexcept
 
 inline DisplayWindow& WindowManager::getWindow(const U32 index)
 {
-    assert(index < to_U32(_windows.size()));
+    DIVIDE_ASSERT(index < to_U32(_windows.size()));
     return *_windows[index];
 }
 
 inline const DisplayWindow& WindowManager::getWindow(const U32 index) const
 {
-    assert(index < to_U32(_windows.size()));
+    DIVIDE_ASSERT(index < to_U32(_windows.size()));
     return *_windows[index];
 }
 

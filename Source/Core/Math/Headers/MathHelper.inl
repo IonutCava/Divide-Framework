@@ -271,7 +271,7 @@ namespace Divide
 
     constexpr I8 FLOAT_TO_CHAR_SNORM( const F32_SNORM value ) noexcept
     {
-        assert( value >= -1.f && value <= 1.f );
+        DIVIDE_ASSERT( value >= -1.f && value <= 1.f );
         return to_I8( (value >= 1.0f ? 127 : (value <= -1.0f ? -127 : to_I32( SIGN( value ) * FLOOR_CONSTEXPR(ABS_CONSTEXPR( value ) * 128.0f ) ))) );
     }
 
@@ -282,7 +282,7 @@ namespace Divide
 
     constexpr U8 PACKED_FLOAT_TO_CHAR_UNORM( const F32_SNORM value ) noexcept
     {
-        assert( value >= -1.f && value <= 1.f );
+        DIVIDE_ASSERT( value >= -1.f && value <= 1.f );
 
         const F32_NORM normValue = (value + 1) * 0.5f;
         return FLOAT_TO_CHAR_UNORM( normValue );
@@ -302,7 +302,7 @@ namespace Divide
 
     constexpr U8 FLOAT_TO_CHAR_UNORM( const F32_NORM value ) noexcept
     {
-        assert( value >= 0.f && value <= 1.f );
+        DIVIDE_ASSERT( value >= 0.f && value <= 1.f );
         return to_U8( (value >= 1.0f ? 255 : (value <= 0.0f ? 0 : to_I32(FLOOR_CONSTEXPR( value * 256.0f ) ))) );
     }
 
@@ -311,9 +311,9 @@ namespace Divide
         // Pack 3 values into 1 float
         inline F32 PACK_VEC3( const F32_SNORM x, const F32_SNORM y, const F32_SNORM z ) noexcept
         {
-            assert( x >= -1.0f && x <= 1.0f );
-            assert( y >= -1.0f && y <= 1.0f );
-            assert( z >= -1.0f && z <= 1.0f );
+            DIVIDE_ASSERT( x >= -1.0f && x <= 1.0f );
+            DIVIDE_ASSERT( y >= -1.0f && y <= 1.0f );
+            DIVIDE_ASSERT( z >= -1.0f && z <= 1.0f );
 
             //Scale and bias
             return PACK_VEC3( to_U8( ((x + 1.0f) * 0.5f) * 255.0f ),

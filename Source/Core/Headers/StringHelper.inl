@@ -46,7 +46,7 @@ namespace Divide
         template<typename T_vec, typename T_str> requires is_vector<T_vec, T_str> && is_string<T_str>
         void Split( const char* input, const char delimiter, T_vec& elems )
         {
-            assert( input != nullptr );
+            DIVIDE_ASSERT( input != nullptr );
 
             const T_str original( input );
             if ( !original.empty() )
@@ -231,7 +231,7 @@ namespace Divide
         {
             const size_t inputLength = input.length();
             count = std::min( inputLength, count );
-            assert( count > 0 );
+            DIVIDE_ASSERT( count > 0 );
             return input.substr( inputLength - count, inputLength ).data();
         }
 
@@ -240,7 +240,7 @@ namespace Divide
         {
             const size_t inputLength = input.length();
             count = std::min( inputLength, count );
-            assert( count > 0 );
+            DIVIDE_ASSERT( count > 0 );
             return input.substr( 0, inputLength - count );
         }
 

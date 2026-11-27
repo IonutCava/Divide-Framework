@@ -37,7 +37,7 @@ void Quadtree::drawBBox(GFXDevice& context) const {
 
 QuadtreeNode* Quadtree::findLeaf(const float2 pos) const noexcept
 {
-    assert(_root);
+    DIVIDE_ASSERT(_root);
 
     QuadtreeNode* node = _root.get();
     while (!node->isALeaf()) {
@@ -70,7 +70,7 @@ void Quadtree::build(const BoundingBox& terrainBBox,
 }
 
 const BoundingBox& Quadtree::computeBoundingBox() const {
-    assert(_root);
+    DIVIDE_ASSERT(_root);
     BoundingBox rootBB = _root->getBoundingBox();
     DIVIDE_EXPECTED_CALL( _root->computeBoundingBox(rootBB) );
 

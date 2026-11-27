@@ -980,7 +980,7 @@ namespace Divide
         // lambdas and capturing one.
         readNode( node_pt, rootNode, readNode );
         // This may not be needed;
-        assert( rootNode.typeHash == _ID( "TRANSFORM" ) );
+        DIVIDE_ASSERT( rootNode.typeHash == _ID( "TRANSFORM" ) );
         Attorney::SceneGraph::addSceneGraphToLoad( &parentScene(), MOV( rootNode ) );
     }
 

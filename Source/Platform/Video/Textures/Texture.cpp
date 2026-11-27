@@ -350,7 +350,7 @@ namespace Divide
         if ( _loadedFromFile )
         {
             const GFXDataFormat requestedFormat = _descriptor._dataType;
-            assert( requestedFormat == GFXDataFormat::UNSIGNED_BYTE ||  // Regular image format
+            DIVIDE_ASSERT( requestedFormat == GFXDataFormat::UNSIGNED_BYTE ||  // Regular image format
                     requestedFormat == GFXDataFormat::UNSIGNED_SHORT || // 16Bit
                     requestedFormat == GFXDataFormat::FLOAT_16 ||       // 16Bit
                     requestedFormat == GFXDataFormat::FLOAT_32 ||       // HDR

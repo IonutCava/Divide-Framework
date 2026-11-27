@@ -77,7 +77,7 @@ namespace Divide::AI::Navigation
         if ( _buildJobGUID != -1 )
         {
             _buildJobGUID = -1;
-            assert( _buildTask );
+            DIVIDE_ASSERT( _buildTask );
             _context.taskPool(TaskPoolType::HIGH_PRIORITY).wait( *_buildTask );
         }
     }
@@ -312,7 +312,7 @@ namespace Divide::AI::Navigation
 
     bool NavigationMesh::generateMesh()
     {
-        assert( _sgn != nullptr );
+        DIVIDE_ASSERT( _sgn != nullptr );
 
         const Str<256> nodeName( GenerateMeshName( _sgn ) );
 
