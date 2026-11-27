@@ -672,6 +672,9 @@ void OptimiseSubMeshGeometry( vector<U32>& indices, vector<Import::SubMeshData::
     constexpr F32 kMinLoDReduction = 0.05f;
     constexpr std::array<F32, Import::MAX_LOD_LEVELS> kLoDIndexRatios{ 1.f, 0.75f, 0.5f, 0.25f };
     constexpr size_t kVertexStride = sizeof( Import::SubMeshData::Vertex );
+    // meshoptimizer's suggested normal weight. UVs stay unweighted: their error is in texture space, so a fixed weight
+    // over-constrains tiled textures, and UV seams are already preserved as topology.
+    constexpr std::array<F32, 3> kNormalErrorWeights{ 0.5f, 0.5f, 0.5f };
 
     subMeshData._lodCount = 0u;
     for ( vector<U32>& lodIndices : subMeshData._indices )
@@ -699,6 +702,7 @@ void OptimiseSubMeshGeometry( vector<U32>& indices, vector<Import::SubMeshData::
     }
 
     const F32* positions = &subMeshData._vertices[0].position.x;
+    const F32* normals = &subMeshData._vertices[0].normal.x;
     const size_t vertexCount = subMeshData._vertices.size();
 
     const auto optimiseIndexOrder = [positions, vertexCount]( vector<U32>& lodIndices )
@@ -722,8 +726,9 @@ void OptimiseSubMeshGeometry( vector<U32>& indices, vector<Import::SubMeshData::
 
             vector<U32>& lodIndices = subMeshData._indices[lod];
             lodIndices.resize( lod0.size() );
-            const size_t simplifiedCount = meshopt_simplify( lodIndices.data(), lod0.data(), lod0.size(), positions, vertexCount, kVertexStride,
-                                                             targetCount, kLoDTargetError, meshopt_SimplifyLockBorder, nullptr );
+            const size_t simplifiedCount = meshopt_simplifyWithAttributes( lodIndices.data(), lod0.data(), lod0.size(), positions, vertexCount, kVertexStride,
+                                                                           normals, kVertexStride, kNormalErrorWeights.data(), kNormalErrorWeights.size(), nullptr,
+                                                                           targetCount, kLoDTargetError, meshopt_SimplifyLockBorder, nullptr );
 
             if ( simplifiedCount == 0u || to_F32( simplifiedCount ) > to_F32( previousCount ) * (1.f - kMinLoDReduction) )
             {

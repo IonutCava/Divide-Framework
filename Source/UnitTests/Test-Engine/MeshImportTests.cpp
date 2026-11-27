@@ -386,14 +386,24 @@ namespace Divide
         };
 
         // Every triangle gets its own three vertices so the optimiser has to weld them back together.
-        UnweldedGrid MakeUnweldedGrid( const U32 cellsPerSide )
+        UnweldedGrid MakeUnweldedGrid( const U32 cellsPerSide, const bool rippledNormals = false )
         {
             UnweldedGrid grid{};
-            const auto corner = [cellsPerSide]( const U32 x, const U32 z )
+            const auto corner = [cellsPerSide, rippledNormals]( const U32 x, const U32 z )
             {
                 Import::SubMeshVertex vertex{};
                 vertex.position.set( to_F32( x ), 0.f, to_F32( z ) );
-                vertex.normal.set( 0.f, 1.f, 0.f );
+                if ( rippledNormals )
+                {
+                    // Smooth shading that varies across a geometrically flat surface, like a baked bevel or normal-smoothed hull.
+                    float3 normal{ std::sin( to_F32( x ) * 2.f ), 1.f, std::cos( to_F32( z ) * 2.f ) };
+                    normal.normalize();
+                    vertex.normal = normal;
+                }
+                else
+                {
+                    vertex.normal.set( 0.f, 1.f, 0.f );
+                }
                 vertex.texcoord.set( to_F32( x ) / to_F32( cellsPerSide ), to_F32( z ) / to_F32( cellsPerSide ), 0.f );
                 return vertex;
             };
@@ -502,6 +512,35 @@ namespace Divide
             const size_t uniqueCount = to_size( eastl::count( referenced.begin(), referenced.end(), true ) );
             CHECK( maxIndex + 1u == uniqueCount );
         }
+    }
+
+    TEST_CASE( "Submesh LoDs keep more triangles where simplification would distort shading", "[mesh_import]" )
+    {
+        constexpr U32 cellsPerSide = 64u;
+        const auto totalLoDIndices = []( const Import::SubMeshData& subMesh )
+        {
+            // A level that was not generated renders with the previous one
+            size_t total = 0u;
+            size_t previous = 0u;
+            for ( U8 lod = 0u; lod < Import::MAX_LOD_LEVELS; ++lod )
+            {
+                previous = lod < subMesh._lodCount ? subMesh._indices[lod].size() : previous;
+                total += previous;
+            }
+            return total;
+        };
+
+        UnweldedGrid flatGrid = MakeUnweldedGrid( cellsPerSide );
+        Import::SubMeshData flat{};
+        DVDConverter::detail::OptimiseSubMeshGeometry( flatGrid._indices, flatGrid._vertices, flat );
+
+        UnweldedGrid rippledGrid = MakeUnweldedGrid( cellsPerSide, true );
+        Import::SubMeshData rippled{};
+        DVDConverter::detail::OptimiseSubMeshGeometry( rippledGrid._indices, rippledGrid._vertices, rippled );
+
+        REQUIRE( flat._lodCount == Import::MAX_LOD_LEVELS );
+        CHECK( rippled._indices[0].size() == flat._indices[0].size() );
+        CHECK( totalLoDIndices( rippled ) > totalLoDIndices( flat ) );
     }
 
     TEST_CASE( "Small submeshes skip automatic LoD generation", "[mesh_import]" )
