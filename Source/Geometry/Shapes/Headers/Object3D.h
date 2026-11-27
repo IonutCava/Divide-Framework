@@ -51,6 +51,8 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
     void setMaterialTemplate( Handle<Material> material, const AttributeMap & geometryAttributes ) override;
 
     [[nodiscard]] virtual VertexBuffer* geometryBuffer();
+    /// Unlike geometryBuffer(), this never asserts: nodes that draw without a vertex buffer of their own (terrain) can chain to Object3D safely.
+    [[nodiscard]] virtual bool hasGeometryBuffer() const noexcept;
 
     VertexBuffer* geometryBuffer(GFXDevice& context, const VertexBuffer::Descriptor& descriptor) noexcept;
 

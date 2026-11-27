@@ -48,6 +48,7 @@ void Mesh::setMaterialTemplate( const Handle<Material> material, const Attribute
 
 void Mesh::buildDrawCommands( SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut )
 {
+    // The mesh owns the shared geometry buffer but is only a container: its submeshes draw, so skip Object3D's draw command
     SceneNode::buildDrawCommands( sgn, cmdsOut );
 }
 

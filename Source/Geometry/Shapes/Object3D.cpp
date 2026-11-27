@@ -25,6 +25,11 @@ Object3D::Object3D( const ResourceDescriptorBase& descriptor, const SceneNodeTyp
     _geometryPartitionIDs[0] = 0u;
 }
 
+bool Object3D::hasGeometryBuffer() const noexcept
+{
+    return _geometryBuffer != nullptr;
+}
+
 VertexBuffer* Object3D::geometryBuffer()
 {
     DIVIDE_ASSERT(_geometryBuffer != nullptr);
@@ -53,7 +58,7 @@ void Object3D::prepareRender(SceneGraphNode* sgn,
                              const CameraSnapshot& cameraSnapshot,
                              bool refreshData)
 {
-    if (geometryBuffer() != nullptr)
+    if (hasGeometryBuffer())
     {
         geometryBuffer()->commitData(postDrawMemCmd);
         rComp.setIndexBufferElementOffset(geometryBuffer()->firstIndexOffsetCount());
@@ -66,7 +71,7 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContaine
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-    if (geometryBuffer() != nullptr)
+    if (hasGeometryBuffer())
     {
         if (cmdsOut.size() == 0u)
         {

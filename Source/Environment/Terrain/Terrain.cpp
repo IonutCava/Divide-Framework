@@ -1147,7 +1147,7 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
     uniforms->set(_ID("dvd_tessTriangleWidth"),  PushConstantType::FLOAT, triangleWidth);
     uniforms->set(_ID("dvd_frustumPlanes"), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
 
-    SceneNode::prepareRender(sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData);
+    Object3D::prepareRender(sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData);
 }
 
 void Terrain::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut)
@@ -1164,7 +1164,7 @@ void Terrain::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer
         cmd._cmd.instanceCount += to_U32( tileRing.tileCount() );
     }
 
-    SceneNode::buildDrawCommands(sgn, cmdsOut);
+    Object3D::buildDrawCommands(sgn, cmdsOut);
 }
 
 const vector<VertexBuffer::Vertex>& Terrain::getVerts() const noexcept
