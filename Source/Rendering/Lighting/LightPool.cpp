@@ -285,14 +285,21 @@ namespace Divide
         const std::array<F32, 2> visibilityDistances{renderState.generalVisibility(), renderState.treeVisibility()};
         const std::array<U8, 3> sampleCounts{shadowSettings.csm.MSAASamples, shadowSettings.point.MSAASamples,
                                            shadowSettings.spot.MSAASamples};
-        const bool renderPolicyChanged = _shadowRenderMask != renderMask || _shadowVisibilityDistances != visibilityDistances ||
-                                         _shadowSampleCounts != sampleCounts;
+        const bool visibilityChanged = !ShadowValuesEqual( _shadowVisibilityDistances, visibilityDistances, SHADOW_DISTANCE_TOLERANCE );
+        const bool renderPolicyChanged = _shadowRenderMask != renderMask || visibilityChanged || _shadowSampleCounts != sampleCounts;
         _shadowRenderMask = renderMask;
-        _shadowVisibilityDistances = visibilityDistances;
         _shadowSampleCounts = sampleCounts;
+        // Stored only on change so slow drift below the tolerance still accumulates into a detected change.
+        if ( visibilityChanged )
+        {
+            _shadowVisibilityDistances = visibilityDistances;
+        }
         const std::array<F32, 3> rangeCameraEye{camera._eye.x, camera._eye.y, camera._eye.z};
-        const bool rangeCameraMoved = _shadowRangeCameraEye != rangeCameraEye;
-        _shadowRangeCameraEye = rangeCameraEye;
+        const bool rangeCameraMoved = !ShadowValuesEqual( _shadowRangeCameraEye, rangeCameraEye, SHADOW_POSITION_TOLERANCE );
+        if ( rangeCameraMoved )
+        {
+            _shadowRangeCameraEye = rangeCameraEye;
+        }
         const bool cameraChanged = _directionalShadowCamera.update(
             camera._viewMatrix, camera._projectionMatrix, camera._zPlanes.x, camera._zPlanes.y );
 

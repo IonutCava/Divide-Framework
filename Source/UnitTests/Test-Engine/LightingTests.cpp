@@ -768,10 +768,10 @@ namespace Divide
             int _value = 0;
             unsigned* _comparisons = nullptr;
 
-            bool operator!=(const CountingMatrix& other) const noexcept
+            bool compare(const CountingMatrix& other, [[maybe_unused]] const F32 epsilon) const noexcept
             {
                 ++*_comparisons;
-                return _value != other._value;
+                return _value == other._value;
             }
         };
         unsigned viewComparisons = 0u;
@@ -793,6 +793,62 @@ namespace Divide
         CHECK(state.update(view, projection, 0.2f, 200.f));
         CHECK(viewComparisons == 2u);
         CHECK(projectionComparisons == 1u);
+    }
+
+    TEST_CASE("Shadow static cache keys compare floats within per-field tolerances", "[lighting][shadows]")
+    {
+        ShadowStaticCacheKey base{};
+        base._owner = 7;
+        base._viewProjection.fill(0.25f);
+        base._visibilityDistances = {300.f, 150.f};
+        base._rangeCameraEye = {10.f, 2.f, -4.f};
+
+        const auto withinAndBeyond = [&](auto mutate, const F32 tolerance)
+        {
+            ShadowStaticCacheKey within = base;
+            mutate(within, tolerance * 0.5f);
+            CHECK(within == base);
+
+            ShadowStaticCacheKey beyond = base;
+            mutate(beyond, tolerance * 2.f);
+            CHECK_FALSE(beyond == base);
+        };
+
+        withinAndBeyond([](ShadowStaticCacheKey& key, const F32 delta) { key._viewProjection[13] += delta; }, SHADOW_MATRIX_TOLERANCE);
+        withinAndBeyond([](ShadowStaticCacheKey& key, const F32 delta) { key._rangeCameraEye[1] += delta; }, SHADOW_POSITION_TOLERANCE);
+        withinAndBeyond([](ShadowStaticCacheKey& key, const F32 delta) { key._visibilityDistances[0] -= delta; }, SHADOW_DISTANCE_TOLERANCE);
+
+        ShadowStaticCacheKey otherOwner = base;
+        otherOwner._owner = 8;
+        CHECK_FALSE(otherOwner == base);
+        ShadowStaticCacheKey otherRevision = base;
+        otherRevision._coverageRevision = 1u;
+        CHECK_FALSE(otherRevision == base);
+    }
+
+    TEST_CASE("Shadow state changes below the tolerance accumulate instead of being lost", "[lighting][shadows]")
+    {
+        ShadowRangeState range;
+        CHECK(range.update(10.f));
+        F32 value = 10.f;
+        bool detected = false;
+        for (U32 step = 0u; step < 10u && !detected; ++step)
+        {
+            value += SHADOW_DISTANCE_TOLERANCE * 0.4f;
+            detected = range.update(value);
+        }
+        CHECK(detected);
+
+        using Matrix = std::array<float, 16>;
+        ShadowCameraState<Matrix> camera;
+        Matrix view{};
+        const Matrix projection{};
+        CHECK(camera.update(view, projection, 0.1f, 100.f));
+        view[12] = SHADOW_MATRIX_TOLERANCE * 0.5f;
+        CHECK_FALSE(camera.update(view, projection, 0.1f, 100.f));
+        view[12] = SHADOW_MATRIX_TOLERANCE * 1.5f;
+        CHECK(camera.update(view, projection, 0.1f, 100.f));
+        CHECK_FALSE(camera.update(view, projection, 0.1f + SHADOW_DISTANCE_TOLERANCE * 0.5f, 100.f));
     }
 
     TEST_CASE("Shadow range changes invalidate cached maps", "[lighting][shadows]")

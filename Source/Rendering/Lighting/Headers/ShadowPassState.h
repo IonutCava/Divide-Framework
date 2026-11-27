@@ -14,6 +14,40 @@
 
 namespace Divide
 {
+    // Clip-space-normalised matrix entries
+    constexpr F32 SHADOW_MATRIX_TOLERANCE = 1e-5f;
+    // World units
+    constexpr F32 SHADOW_POSITION_TOLERANCE = 1e-3f;
+    // World units
+    constexpr F32 SHADOW_DISTANCE_TOLERANCE = 1e-2f;
+
+    template<size_t N>
+    [[nodiscard]] constexpr bool ShadowValuesEqual(const std::array<F32, N>& lhs, const std::array<F32, N>& rhs,
+                                                   const F32 tolerance) noexcept
+    {
+        for (size_t i = 0u; i < N; ++i)
+        {
+            if (!COMPARE_TOLERANCE(lhs[i], rhs[i], tolerance))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    template<typename Matrix>
+    [[nodiscard]] bool ShadowMatricesEqual(const Matrix& lhs, const Matrix& rhs) noexcept
+    {
+        if constexpr (requires { lhs.compare(rhs, SHADOW_MATRIX_TOLERANCE); })
+        {
+            return lhs.compare(rhs, SHADOW_MATRIX_TOLERANCE);
+        }
+        else
+        {
+            return ShadowValuesEqual(lhs, rhs, SHADOW_MATRIX_TOLERANCE);
+        }
+    }
+
     struct WorldAOCacheKey
     {
         I64 _sceneGUID = -1;
@@ -31,7 +65,7 @@ namespace Divide
         [[nodiscard]] bool needsRefresh(const WorldAOCacheKey& key, const bool pendingCasters) const noexcept
         {
             return !_valid || pendingCasters || key._sceneGUID != _key._sceneGUID ||
-                   key._revision != _key._revision || key._height != _key._height ||
+                   key._revision != _key._revision || !ShadowValuesEqual(key._height, _key._height, SHADOW_DISTANCE_TOLERANCE) ||
                    key._renderMask != _key._renderMask ||
                    std::abs(key._center[0] - _key._center[0]) >= RECENTER_DISTANCE ||
                    std::abs(key._center[1] - _key._center[1]) >= RECENTER_DISTANCE;
@@ -89,7 +123,15 @@ namespace Divide
         U8 _samples = 0u;
         U8 _splitCount = 0u;
 
-        bool operator==(const ShadowStaticCacheKey&) const = default;
+        [[nodiscard]] bool operator==(const ShadowStaticCacheKey& other) const noexcept
+        {
+            return _owner == other._owner && _coverageRevision == other._coverageRevision &&
+                   _renderMask == other._renderMask && _resolution == other._resolution &&
+                   _samples == other._samples && _splitCount == other._splitCount &&
+                   ShadowValuesEqual(_viewProjection, other._viewProjection, SHADOW_MATRIX_TOLERANCE) &&
+                   ShadowValuesEqual(_visibilityDistances, other._visibilityDistances, SHADOW_DISTANCE_TOLERANCE) &&
+                   ShadowValuesEqual(_rangeCameraEye, other._rangeCameraEye, SHADOW_POSITION_TOLERANCE);
+        }
     };
 
     struct ShadowStaticCacheState
@@ -317,8 +359,10 @@ namespace Divide
         [[nodiscard]] bool update(const Matrix& view, const Matrix& projection,
                                   const F32 nearPlane, const F32 farPlane) noexcept
         {
-            const bool changed = !_valid || _nearPlane != nearPlane || _farPlane != farPlane ||
-                                 _view != view || _projection != projection;
+            const bool changed = !_valid ||
+                                 !COMPARE_TOLERANCE(_nearPlane, nearPlane, SHADOW_DISTANCE_TOLERANCE) ||
+                                 !COMPARE_TOLERANCE(_farPlane, farPlane, SHADOW_DISTANCE_TOLERANCE) ||
+                                 !ShadowMatricesEqual(_view, view) || !ShadowMatricesEqual(_projection, projection);
             if (changed)
             {
                 _view = view;
@@ -343,7 +387,7 @@ namespace Divide
       public:
         [[nodiscard]] bool update(const F32 range) noexcept
         {
-            if (!_valid || _range != range)
+            if (!_valid || !COMPARE_TOLERANCE(_range, range, SHADOW_DISTANCE_TOLERANCE))
             {
                 _range = range;
                 _valid = true;
@@ -363,7 +407,8 @@ namespace Divide
       public:
         [[nodiscard]] bool update(const F32 nearClipOffset, const std::array<bool, SplitCount>& sceneFit) noexcept
         {
-            const bool changed = !_valid || _nearClipOffset != nearClipOffset || _sceneFit != sceneFit;
+            const bool changed = !_valid || !COMPARE_TOLERANCE(_nearClipOffset, nearClipOffset, SHADOW_DISTANCE_TOLERANCE) ||
+                                 _sceneFit != sceneFit;
             if (changed)
             {
                 _nearClipOffset = nearClipOffset;

@@ -83,7 +83,7 @@ namespace Divide
 
     void Light::range( const F32 value ) noexcept
     {
-        if ( _range != value )
+        if ( !COMPARE( _range, value ) )
         {
             _range = value;
             staticShadowsDirty( true );
