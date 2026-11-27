@@ -23,6 +23,8 @@
 - Favor data-oriented designs, contiguous storage, batching, and parallel work where they fit. Keep hot paths simple and avoid unnecessary allocations.
 - Keep system boundaries generic. Feature-specific policy belongs to the owning scene or subsystem, not shared infrastructure.
 - Prefer suitable EASTL containers and algorithms, using existing engine aliases where available. Preserve required ordering, lifetime, and thread-safety guarantees.
+- Prefer lock-free handoff (`moodycamel::ConcurrentQueue`, atomics, per-worker output) over locks guarding STL or EASTL containers. When a lock is unavoidable, keep it off per-frame paths, hold it briefly, and never hold it across a task wait.
+- Do not load, unload, or validate resources or scene-graph structure inside the per-frame scene update. Queue the work and apply it at frame start or frame end, while the GPU is busy rendering. See [Scene loading](docs/architecture/scene-loading.md#frame-phases).
 - Use the `Attorney` pattern for controlled access to private or protected members. Attorney helpers must be declared as `class` and expose only the required operations.
 - Keep code portable across Windows, Linux, and macOS on x64 and arm64. Guard platform-specific APIs and provide portable alternatives where needed.
 - Reuse `APP_LIB_DIVIDE`, `APP_EXE_DIVIDE`, and `APP_EXE_PROJECT_MANAGER` in `Source/CMakeLists.txt`. Keep project and third-party compiler flags in their shared CMake lists.

@@ -29,6 +29,41 @@ Asset loading uses the bounded pool described in [Threading](threading.md).
 Scene activation waits for required resources and a render warmup before
 exposing the editor; later shader work may continue asynchronously.
 
+## Frame phases
+
+`Kernel::onLoop()` runs each frame in this order:
+
+1. **Frame start.** `ResourceCache::OnFrameStart()`, then `FRAME_EVENT_STARTED`.
+   `SceneGraph::frameStarted()` rebuilds the node list if nodes were added or
+   removed.
+2. **Fixed update loop** (`Kernel::mainLoopScene()`, up to four steps). It
+   flushes threaded task callbacks, then runs `Scene::processInput()` and
+   `Scene::processTasks()`. `ProjectManager::updateSceneState()` follows: the
+   ECS updates, per-node `sceneUpdate()`, queued node events,
+   `Scene::flushDirtySceneData()`, static-geometry bounds, and AI.
+3. **Render.** `Kernel::presentToScreen()` records and submits the frame.
+4. **Frame end.** `FRAME_EVENT_PROCESS` and `FRAME_EVENT_ENDED`.
+   `SceneGraph::frameEnded()` applies queued parent changes and node deletions.
+   `Kernel::idle()` then lets `ProjectManager::idle()` apply queued player
+   additions and removals and lets the scene poll its tasks. Finally
+   `ResourceCache::OnFrameEnd()` runs.
+
+The fixed update loop is simulation only. Loading, unloading, and validating
+resources or graph structure belong in a queue that frame start or frame end
+drains, so that work overlaps GPU rendering instead of stretching the update.
+Scene code should request the change (`SceneGraph::removeNode()`, parent-change
+and event queues, player queues) rather than apply it during the update.
+
+Known exceptions to this rule:
+
+- Threaded task callbacks, including asset-load completions, are flushed at the
+  start of every fixed update step rather than once at frame start.
+- `ProjectManager::updateSceneState()` starts the periodic autosave. The
+  low-priority task then serializes the live scene graph through
+  `Scene::save()` while later frames keep updating it.
+- `Scene::flushDirtySceneData()` runs inside the update and performs one-time
+  vegetation instance finalization (`Vegetation::finalizeInstance()`).
+
 ## Invariants and safe changes
 
 - Keep scene selection, scene XML, graph XML, and per-node component data in sync. Update readers and writers together when serialized data changes.

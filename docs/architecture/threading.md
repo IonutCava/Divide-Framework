@@ -48,6 +48,33 @@ the same camera, package, buffer range, or uniform snapshot.
 See [Rendering](rendering.md#stage-dependencies) for the stage contract and
 [GPU resources](gpu-resources.md) for frame-slot completion.
 
+## Locks and contention
+
+Cross-thread handoff should use lock-free queues, atomics, or per-worker output
+merged after a join. Locks are acceptable on creation, destruction, and
+first-use paths, but not on per-node, per-draw, or per-frame paths.
+
+Current state of the hot paths:
+
+- `TaskPool` queues are `moodycamel` concurrent queues. `_taskFinishedMutex`
+  and `_taskFinishedCV` only park waiting threads.
+- `RenderBin` appends through an atomic index, and `RenderQueue` takes no locks.
+- `RenderPassExecutor` material lookups use a read-only fast path and take
+  `_freeListLock` only on a cache miss. The transform and indirection free
+  lists take it only when a `RenderingComponent` is created or destroyed.
+- `RenderingComponent` guards its packages and draw commands with per-node
+  shared locks. Concurrent stage tasks that visit the same node share the
+  reader count but do not block each other.
+- `CommandBufferPool` takes an exclusive lock per allocation and release, a few
+  times per render stage per frame.
+
+Known contention risks:
+
+- The transform and indirection free lists are scanned linearly under the
+  exclusive lock, and their `fixed_vector` storage may reallocate past
+  `Config::MAX_VISIBLE_NODES` while render workers write into it.
+- `CommandBufferPool` could replace its exclusive lock with a lock-free free list.
+
 ## Shared state and lifetime
 
 Protect shared mutable state with the owning subsystem's synchronization.
