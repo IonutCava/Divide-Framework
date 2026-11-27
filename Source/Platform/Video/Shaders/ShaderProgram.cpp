@@ -2053,15 +2053,12 @@ namespace Divide
         }
     }
 
-    bool ShaderProgram::commitUniformData( DescriptorSet& set )
+    UniformCommitResult ShaderProgram::commitUniformData( DescriptorSet& set )
     {
-        bool ret = false;
+        UniformCommitResult ret = UniformCommitResult::UNCHANGED;
         for ( auto& blockBuffer : _uniformBlockBuffers )
         {
-            if ( blockBuffer.commit( set ) )
-            {
-                ret = true;
-            }
+            ret = CombineUniformCommitResults( ret, blockBuffer.commit( set ) );
         }
 
         return ret;

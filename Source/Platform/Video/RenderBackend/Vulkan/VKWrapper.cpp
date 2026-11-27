@@ -2240,7 +2240,7 @@ namespace Divide
         {
             bindingCounters._compiledBindingCacheBytes = _stableImageBindingCache.StorageBytes();
         }
-        const bool uniformBindingsChanged = [&]()
+        const UniformCommitResult uniformCommit = [&]()
         {
             PROFILE_SCOPE( "Commit binding uniforms", Profiler::Category::Graphics );
             return program->commitUniformData( _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl() );
@@ -2248,9 +2248,9 @@ namespace Divide
         if ( measureBindings )
         {
             ++bindingCounters._uniformCommits;
-            bindingCounters._uniformChanges += uniformBindingsChanged ? 1u : 0u;
+            bindingCounters._uniformChanges += uniformCommit == UniformCommitResult::CHANGED ? 1u : 0u;
         }
-        if ( _context.uniformUploadFailed() )
+        if ( uniformCommit == UniformCommitResult::MISSING )
         {
             return false;
         }
@@ -2450,7 +2450,7 @@ namespace Divide
                 bindingCounters._fallbackSets += hasFallback ? 1u : 0u;
             }
             const bool alreadyDirty = entry._isDirty ||
-                                      (entry._usage == DescriptorSetUsage::PER_DRAW && uniformBindingsChanged);
+                                      (entry._usage == DescriptorSetUsage::PER_DRAW && uniformCommit == UniformCommitResult::CHANGED);
             entry._isDirty = resolutionCache.update( hasFallback, alreadyDirty ) || alreadyDirty;
             if ( hasFallback )
             {
@@ -3546,7 +3546,7 @@ namespace Divide
 
                 const auto& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
 
-                if ( !_context.uniformUploadFailed() && stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
+                if ( stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
                     if ( !stateTracker._pushConstantsValid && _hasLastPushConstants )
                     {
@@ -3589,7 +3589,7 @@ namespace Divide
             case GFX::CommandType::DISPATCH_SHADER_TASK:
             {
                 PROFILE_SCOPE( "DISPATCH_SHADER_TASK", Profiler::Category::Graphics );
-                if ( !_context.uniformUploadFailed() && stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
+                if ( stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
                     if ( !stateTracker._pushConstantsValid && _hasLastPushConstants )
                     {

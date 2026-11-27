@@ -595,7 +595,7 @@ namespace Divide
         }
 
         _uniformUploadArena = std::make_unique<UniformUploadArena>( *this );
-        _uniformUploadFailed = false;
+        _uniformUploadFailurePolicy = {};
         _rtPool = std::make_unique<GFXRTPool>( *this );
 
         const I32 configuredLightsPerCluster = config.rendering.numLightsPerCluster;
@@ -1673,23 +1673,34 @@ namespace Divide
         return true;
     }
 
-    void GFXDevice::reportUniformUploadFailure( const std::string_view shaderName, const std::string_view blockName ) noexcept
+    void GFXDevice::reportUniformUploadFailure( const std::string_view shaderName, const std::string_view blockName, const UniformUploadResult result ) noexcept
     {
-        if ( !_uniformUploadFailed )
+        switch ( result )
         {
-            Console::errorfn( "Renderer: uniform upload failed for shader '{}' block '{}'", shaderName, blockName );
+            case UniformUploadResult::INVALID_BLOCK:
+                Console::errorfn( "Renderer: uniform block '{}' of shader '{}' can never be uploaded; draws using it are skipped", blockName, shaderName );
+                break;
+            case UniformUploadResult::ALLOCATION_FAILED:
+                if ( _uniformUploadFailurePolicy.onFailure( result ) )
+                {
+                    Console::warnfn( "Renderer: uniform upload allocation failed for shader '{}' block '{}'; retrying every frame", shaderName, blockName );
+                }
+                break;
+            case UniformUploadResult::INTERNAL_ERROR:
+                DIVIDE_UNUSED( _uniformUploadFailurePolicy.onFailure( result ) );
+                DIVIDE_ASSERT( false, "Renderer: uniform upload arena bookkeeping failed" );
+                Console::errorfn( "Renderer: uniform upload arena bookkeeping failed for shader '{}' block '{}'", shaderName, blockName );
+                break;
+            case UniformUploadResult::OK:
+            case UniformUploadResult::COUNT:
+                break;
         }
-        _uniformUploadFailed = true;
     }
 
     bool GFXDevice::frameStarted( [[maybe_unused]] const FrameEvent& evt )
     {
         _resourceBindingMetrics.beginFrame( RenderSmokeTest::PerfModeRequested() );
         _drawBatchingMetrics.beginFrame( RenderSmokeTest::PerfModeRequested() );
-        if ( _uniformUploadFailed )
-        {
-            return false;
-        }
         for ( GFXDescriptorSet& set : _descriptorSets )
         {
             set.clear();
@@ -1720,6 +1731,7 @@ namespace Divide
             {
                 return false;
             }
+            _uniformUploadFailurePolicy.beginFrame();
             _context.app().windowManager().drawToWindow(context().mainWindow());
             return true;
         }
@@ -1786,7 +1798,17 @@ namespace Divide
         _gfxBuffers.onEndFrame();
         _performanceMetrics._uniformBufferVRAMUsage = _uniformUploadArena->totalBufferSize();
 
-        if ( !_api->frameEnded() || _uniformUploadFailed )
+        const bool keepRunning = _uniformUploadFailurePolicy.endFrame();
+        if ( _uniformUploadFailurePolicy.recovered() )
+        {
+            Console::printfn( "Renderer: uniform uploads recovered" );
+        }
+        else if ( !keepRunning && !_uniformUploadFailurePolicy.fatal() )
+        {
+            Console::errorfn( "Renderer: uniform uploads failed for {} consecutive frames", _uniformUploadFailurePolicy.consecutiveFailureFrames() );
+        }
+
+        if ( !_api->frameEnded() || !keepRunning )
         {
             return false;
         }
@@ -2442,7 +2464,7 @@ namespace Divide
 #pragma region Command buffers, occlusion culling, etc
     bool GFXDevice::validateAndUploadDescriptorSets()
     {
-        if ( _uniformUploadFailed )
+        if ( _uniformUploadFailurePolicy.fatal() )
         {
             return false;
         }

@@ -121,6 +121,98 @@ namespace Divide
         };
     }
 
+    TEST_CASE( "A transient uniform upload failure recovers and resets the failure streak", "[renderer][uniform-upload]" )
+    {
+        UniformUploadFailurePolicy policy;
+
+        policy.beginFrame();
+        CHECK( policy.onFailure( UniformUploadResult::ALLOCATION_FAILED ) );
+        CHECK_FALSE( policy.onFailure( UniformUploadResult::ALLOCATION_FAILED ) );
+        CHECK( policy.endFrame() );
+        CHECK( policy.consecutiveFailureFrames() == 1u );
+        CHECK_FALSE( policy.recovered() );
+
+        policy.beginFrame();
+        CHECK_FALSE( policy.onFailure( UniformUploadResult::ALLOCATION_FAILED ) );
+        CHECK( policy.endFrame() );
+        CHECK( policy.consecutiveFailureFrames() == 2u );
+
+        policy.beginFrame();
+        CHECK( policy.endFrame() );
+        CHECK( policy.recovered() );
+        CHECK( policy.consecutiveFailureFrames() == 0u );
+
+        policy.beginFrame();
+        CHECK( policy.onFailure( UniformUploadResult::ALLOCATION_FAILED ) );
+        CHECK( policy.endFrame() );
+    }
+
+    TEST_CASE( "Sustained uniform upload failures stop the renderer", "[renderer][uniform-upload]" )
+    {
+        UniformUploadFailurePolicy policy;
+        for ( U32 frame = 1u; frame < UniformUploadFailurePolicy::MAX_CONSECUTIVE_FAILURE_FRAMES; ++frame )
+        {
+            policy.beginFrame();
+            DIVIDE_UNUSED( policy.onFailure( UniformUploadResult::ALLOCATION_FAILED ) );
+            REQUIRE( policy.endFrame() );
+        }
+
+        policy.beginFrame();
+        DIVIDE_UNUSED( policy.onFailure( UniformUploadResult::ALLOCATION_FAILED ) );
+        CHECK_FALSE( policy.endFrame() );
+        CHECK_FALSE( policy.fatal() );
+    }
+
+    TEST_CASE( "Uniform upload internal errors stop the renderer immediately", "[renderer][uniform-upload]" )
+    {
+        UniformUploadFailurePolicy policy;
+        policy.beginFrame();
+        CHECK_FALSE( policy.onFailure( UniformUploadResult::INTERNAL_ERROR ) );
+        CHECK( policy.fatal() );
+        CHECK_FALSE( policy.endFrame() );
+    }
+
+    TEST_CASE( "Invalid uniform blocks never stop the renderer", "[renderer][uniform-upload]" )
+    {
+        UniformUploadFailurePolicy policy;
+        for ( U32 frame = 0u; frame < UniformUploadFailurePolicy::MAX_CONSECUTIVE_FAILURE_FRAMES * 2u; ++frame )
+        {
+            policy.beginFrame();
+            CHECK_FALSE( policy.onFailure( UniformUploadResult::INVALID_BLOCK ) );
+            REQUIRE( policy.endFrame() );
+        }
+        CHECK( policy.consecutiveFailureFrames() == 0u );
+        CHECK_FALSE( policy.fatal() );
+    }
+
+    TEST_CASE( "A missing uniform block outranks changed and unchanged commits", "[renderer][uniform-upload]" )
+    {
+        using enum UniformCommitResult;
+        CHECK( CombineUniformCommitResults( UNCHANGED, UNCHANGED ) == UNCHANGED );
+        CHECK( CombineUniformCommitResults( UNCHANGED, CHANGED ) == CHANGED );
+        CHECK( CombineUniformCommitResults( CHANGED, UNCHANGED ) == CHANGED );
+        CHECK( CombineUniformCommitResults( CHANGED, MISSING ) == MISSING );
+        CHECK( CombineUniformCommitResults( MISSING, UNCHANGED ) == MISSING );
+    }
+
+    TEST_CASE( "A slot handed back after a failed page allocation is reused for the retry", "[renderer][uniform-upload]" )
+    {
+        UniformUploadPageCursor cursor;
+        REQUIRE( cursor.beginFrame( 3u ) );
+
+        const UniformUploadPageCursor::Allocation failed = cursor.reserve();
+        REQUIRE( cursor.release( failed, {} ) );
+
+        const UniformUploadPageCursor::Allocation retry = cursor.reserve();
+        CHECK( retry._page == failed._page );
+        CHECK( retry._slot == failed._slot );
+        CHECK( retry._generation > failed._generation );
+
+        const UniformUploadPageCursor::Allocation next = cursor.reserve();
+        CHECK( next._page == 0u );
+        CHECK( next._slot == 1u );
+    }
+
     TEST_CASE("Uniform upload cursor allocates unique slots across pages", "[renderer][uniform-upload]")
     {
         STATIC_CHECK(UniformUploadPageCursor::SlotsPerPage == 64u);

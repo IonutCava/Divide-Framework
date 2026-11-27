@@ -209,7 +209,7 @@ namespace Divide
         virtual ShaderResult validatePreBind( const Configuration& config, bool rebind = true );
 
         void uploadUniformData( const UniformData& data ) noexcept;
-        [[nodiscard]] bool commitUniformData( DescriptorSet& set );
+        [[nodiscard]] UniformCommitResult commitUniformData( DescriptorSet& set );
         // On false, the caller must use entry._set rather than resolvedSet.
         [[nodiscard]] bool resolveSampledImages( const DescriptorSetEntry& entry, DescriptorSet& resolvedSet ) const;
 

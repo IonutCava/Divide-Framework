@@ -1750,7 +1750,7 @@ namespace Divide
             {
                 PROFILE_SCOPE( "DRAW_COMMANDS", Profiler::Category::Graphics );
 
-                if ( !_context.uniformUploadFailed() && s_stateTracker._activePipeline != nullptr )
+                if ( s_stateTracker._activePipeline != nullptr )
                 {
                     U32 drawCount = 0u;
                     const auto& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
@@ -1780,7 +1780,7 @@ namespace Divide
             {
                 PROFILE_SCOPE( "DISPATCH_SHADER_TASK", Profiler::Category::Graphics );
 
-                if ( !_context.uniformUploadFailed() && s_stateTracker._activePipeline != nullptr )
+                if ( s_stateTracker._activePipeline != nullptr )
                 {
                     const GFX::DispatchShaderTaskCommand* crtCmd = cmd->As<GFX::DispatchShaderTaskCommand>();
 
@@ -2112,18 +2112,19 @@ namespace Divide
         {
             bindingCounters._compiledBindingCacheBytes = _stableSampledBindingCache.StorageBytes();
         }
-        const bool uniformBindingsChanged = [&]()
+        const UniformCommitResult uniformCommit = [&]()
         {
             PROFILE_SCOPE( "Commit binding uniforms", Profiler::Category::Graphics );
-            return s_stateTracker._activeShaderProgram != nullptr &&
-                   s_stateTracker._activeShaderProgram->commitUniformData( _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl() );
+            return s_stateTracker._activeShaderProgram != nullptr
+                ? s_stateTracker._activeShaderProgram->commitUniformData( _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl() )
+                : UniformCommitResult::UNCHANGED;
         }();
         if ( measureBindings )
         {
             ++bindingCounters._uniformCommits;
-            bindingCounters._uniformChanges += uniformBindingsChanged ? 1u : 0u;
+            bindingCounters._uniformChanges += uniformCommit == UniformCommitResult::CHANGED ? 1u : 0u;
         }
-        if ( _context.uniformUploadFailed() )
+        if ( uniformCommit == UniformCommitResult::MISSING )
         {
             return false;
         }
@@ -2145,7 +2146,7 @@ namespace Divide
             }
             const GLDescriptorUpdateScope updateScope = SelectGLDescriptorUpdateScope(
                 entry._isDirty, cache.update( hasFallback, entry._isDirty ),
-                entry._usage == DescriptorSetUsage::PER_DRAW, uniformBindingsChanged );
+                entry._usage == DescriptorSetUsage::PER_DRAW, uniformCommit == UniformCommitResult::CHANGED );
             if ( hasFallback )
             {
                 entry._set = &cache._resolvedSet;

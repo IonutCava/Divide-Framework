@@ -36,6 +36,7 @@
 #include "Platform/Video/Headers/PushConstants.h"
 #include "Platform/Video/Headers/DescriptorSetsFwd.h"
 #include "UniformUploadPageCursor.h"
+#include "UniformUploadFailurePolicy.h"
 
 namespace Divide
 {
@@ -201,7 +202,7 @@ public:
     [[nodiscard]] static bool CalculateSlotStride( size_t byteCount, size_t maxRange, size_t offsetAlignment,
                                                    size_t nonCoherentAtomSize, size_t& strideOut ) noexcept;
     [[nodiscard]] bool beginFrame( U64 frameNumber );
-    [[nodiscard]] bool upload( Byte* data, size_t byteCount, Allocation& allocationOut );
+    [[nodiscard]] UniformUploadResult upload( Byte* data, size_t byteCount, Allocation& allocationOut );
     [[nodiscard]] bool release( Allocation allocation, const UniformUploadPageCursor::Usage& usage );
     [[nodiscard]] size_t totalBufferSize() const noexcept { return _totalBufferSize; }
 
@@ -224,6 +225,8 @@ private:
     Mutex _mutex;
     vector<SizeClass> _sizeClasses;
     U64 _frameNumber{ 0u };
+    // Page creation is not retried again in the frame it failed in.
+    U64 _allocationFailedFrame{ U64_MAX };
     size_t _totalBufferSize{ 0u };
 };
 
@@ -250,7 +253,7 @@ public:
     UniformBlockUploader& operator=( UniformBlockUploader&& ) = delete;
 
     void uploadUniformData( const UniformData& uniforms ) noexcept;
-    [[nodiscard]] bool commit( DescriptorSet& set );
+    [[nodiscard]] UniformCommitResult commit( DescriptorSet& set );
     void toggleStageVisibility( U16 visibilityMask, bool state);
     void toggleStageVisibility( ShaderStageVisibility visibility, bool state);
 
@@ -274,6 +277,7 @@ private:
     UniformUploadArena::Allocation _allocation{};
     UniformUploadSnapshotState _snapshot;
     U8 _bindingIndexHint{ U8_MAX };
+    bool _disabled{ false };
 };
 
 }; // namespace Divide

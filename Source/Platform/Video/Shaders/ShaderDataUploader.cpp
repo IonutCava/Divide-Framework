@@ -412,7 +412,7 @@ namespace Divide
         return true;
     }
 
-    bool UniformUploadArena::upload( Byte* data, const size_t byteCount, Allocation& allocationOut )
+    UniformUploadResult UniformUploadArena::upload( Byte* data, const size_t byteCount, Allocation& allocationOut )
     {
         const DeviceInformation& device = GFXDevice::GetDeviceInformation();
         size_t stride = 0u;
@@ -420,8 +420,7 @@ namespace Divide
              !CalculateSlotStride( byteCount, device._maxSizeBytesUBO, device._offsetAlignmentBytesUBO,
                                    device._nonCoherentAtomSize, stride ) )
         {
-            Console::errorfn( "Renderer: invalid uniform upload size or device alignment ({} bytes)", byteCount );
-            return false;
+            return UniformUploadResult::INVALID_BLOCK;
         }
 
         LockGuard<Mutex> lock( _mutex );
@@ -443,19 +442,31 @@ namespace Divide
             if ( !sizeClass->_cursor.beginFrame( _frameNumber ) )
             {
                 Console::errorfn( "Renderer: failed to initialize uniform upload slots" );
-                return false;
+                return UniformUploadResult::INTERNAL_ERROR;
             }
         }
 
         const UniformUploadPageCursor::Allocation slot = sizeClass->_cursor.reserve();
         auto& pages = sizeClass->_pages;
+        // Hands the slot back so a later frame can retry creating its page.
+        const auto failPageAllocation = [&]()
+        {
+            _allocationFailedFrame = _frameNumber;
+            DIVIDE_EXPECTED_CALL( sizeClass->_cursor.release( slot, {} ) );
+            return UniformUploadResult::ALLOCATION_FAILED;
+        };
+
         if ( slot._page == pages.size() )
         {
+            if ( _allocationFailedFrame == _frameNumber )
+            {
+                return failPageAllocation();
+            }
+
             const size_t pageSize = stride * UniformUploadPageCursor::SlotsPerPage;
             if ( _totalBufferSize > SIZE_MAX - pageSize )
             {
-                Console::errorfn( "Renderer: uniform upload arena size overflow" );
-                return false;
+                return failPageAllocation();
             }
 
             ShaderBufferDescriptor descriptor{};
@@ -469,8 +480,7 @@ namespace Divide
             ShaderBuffer_uptr page = _context.newShaderBuffer( descriptor );
             if ( page == nullptr || !page->supportsPersistentWrites() || page->alignedBufferSize() != stride )
             {
-                Console::errorfn( "Renderer: uniform upload page is not persistently mapped with the required stride" );
-                return false;
+                return failPageAllocation();
             }
 
             pages.push_back( MOV( page ) );
@@ -479,7 +489,7 @@ namespace Divide
         else if ( slot._page > pages.size() )
         {
             Console::errorfn( "Renderer: uniform upload page cursor skipped a page" );
-            return false;
+            return UniformUploadResult::INTERNAL_ERROR;
         }
 
         ShaderBuffer* page = pages[slot._page].get();
@@ -489,11 +499,11 @@ namespace Divide
              write._range._startOffset != to_size( slot._slot ) * stride || write._range._length != byteCount )
         {
             Console::errorfn( "Renderer: uniform upload page write did not complete as a direct mapped write" );
-            return false;
+            return UniformUploadResult::INTERNAL_ERROR;
         }
 
         allocationOut = { page, sizeClassIndex, slot._page, slot._slot, slot._generation };
-        return true;
+        return UniformUploadResult::OK;
     }
 
     bool UniformUploadArena::release( const Allocation allocation, const UniformUploadPageCursor::Usage& usage )
@@ -701,36 +711,53 @@ namespace Divide
         return indexHint < set._bindingCount ? &set._bindings[indexHint] : nullptr;
     }
 
-    bool UniformBlockUploader::commit( DescriptorSet& set )
+    UniformCommitResult UniformBlockUploader::commit( DescriptorSet& set )
     {
-        if ( _uniformBlock._bindingSlot == Reflection::INVALID_BINDING_INDEX || _localDataCopy.empty() ||
-             _context.uniformUploadFailed() )
+        if ( _uniformBlock._bindingSlot == Reflection::INVALID_BINDING_INDEX || _localDataCopy.empty() )
         {
-            return false;
+            return UniformCommitResult::UNCHANGED;
         }
 
-        const U64 frameNumber = GFXDevice::FrameCount();
+        if ( _disabled )
+        {
+            return UniformCommitResult::MISSING;
+        }
+
         if ( _snapshot.needsUpload() )
         {
             UniformUploadArena::Allocation nextAllocation{};
-            if ( !_context.uniformUploadArena().upload( _localDataCopy.data(), _localDataCopy.size(), nextAllocation ) )
+            const UniformUploadResult result = _context.uniformUploadArena().upload( _localDataCopy.data(), _localDataCopy.size(), nextAllocation );
+            if ( result == UniformUploadResult::OK )
             {
-                _context.reportUniformUploadFailure( _parentShaderName.c_str(), _uniformBlock._name.c_str() );
-                return false;
+                if ( _allocation._buffer != nullptr &&
+                     !_context.uniformUploadArena().release( _allocation, _snapshot.usage() ) )
+                {
+                    DIVIDE_UNUSED( _context.uniformUploadArena().release( nextAllocation, {} ) );
+                    _context.reportUniformUploadFailure( _parentShaderName.c_str(), _uniformBlock._name.c_str(), UniformUploadResult::INTERNAL_ERROR );
+                    return UniformCommitResult::MISSING;
+                }
+                _allocation = nextAllocation;
+                _snapshot.markUploaded();
             }
-            if ( _allocation._buffer != nullptr &&
-                 !_context.uniformUploadArena().release( _allocation, _snapshot.usage() ) )
+            else
             {
-                DIVIDE_UNUSED( _context.uniformUploadArena().release( nextAllocation, {} ) );
-                _context.reportUniformUploadFailure( _parentShaderName.c_str(), _uniformBlock._name.c_str() );
-                return false;
+                _context.reportUniformUploadFailure( _parentShaderName.c_str(), _uniformBlock._name.c_str(), result );
+                if ( result == UniformUploadResult::INVALID_BLOCK )
+                {
+                    _disabled = true;
+                    return UniformCommitResult::MISSING;
+                }
+
+                // The snapshot stays dirty so the next commit retries. Until then, draw with the previous upload.
+                if ( result == UniformUploadResult::INTERNAL_ERROR || _allocation._buffer == nullptr )
+                {
+                    return UniformCommitResult::MISSING;
+                }
             }
-            _allocation = nextAllocation;
-            _snapshot.markUploaded();
         }
 
-        _snapshot.markUsed( frameNumber );
-        return prepare( set );
+        _snapshot.markUsed( GFXDevice::FrameCount() );
+        return prepare( set ) ? UniformCommitResult::CHANGED : UniformCommitResult::UNCHANGED;
     }
 
     bool UniformBlockUploader::prepare( DescriptorSet& set )

@@ -44,6 +44,7 @@
 #include "IMPrimitiveDescriptors.h"
 #include "ResourceBindingMetrics.h"
 #include "DrawBatchingMetrics.h"
+#include "Platform/Video/Shaders/Headers/UniformUploadFailurePolicy.h"
 
 #include "Core/Math/Headers/Line.h"
 #include "Core/Headers/FrameListener.h"
@@ -460,8 +461,7 @@ public:
     /// or a 'Shader Storage Block Object' otherwise
     [[nodiscard]] ShaderBuffer_uptr     newShaderBuffer(const ShaderBufferDescriptor& descriptor);
     [[nodiscard]] UniformUploadArena& uniformUploadArena() noexcept { return *_uniformUploadArena; }
-    [[nodiscard]] bool uniformUploadFailed() const noexcept { return _uniformUploadFailed; }
-    void reportUniformUploadFailure( std::string_view shaderName, std::string_view blockName ) noexcept;
+    void reportUniformUploadFailure( std::string_view shaderName, std::string_view blockName, UniformUploadResult result ) noexcept;
     /// Create and return a new graphics pipeline. This is only used for caching and doesn't use the object arena
     [[nodiscard]] Pipeline*             newPipeline(const PipelineDescriptor& descriptor);
 
@@ -580,7 +580,7 @@ private:
     RenderAPIWrapper_uptr _api;
     Renderer_uptr _renderer;
     std::unique_ptr<UniformUploadArena> _uniformUploadArena;
-    bool _uniformUploadFailed{ false };
+    UniformUploadFailurePolicy _uniformUploadFailurePolicy{};
 
     std::unique_ptr<ShaderComputeQueue> _shaderComputeQueue;
 
