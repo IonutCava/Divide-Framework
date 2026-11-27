@@ -1658,6 +1658,11 @@ namespace Divide
         _api->flushWindow( window );
     }
 
+    bool GFXDevice::requiresRenderContextForResourceInit() const noexcept
+    {
+        return _api != nullptr && _api->requiresRenderContextForResourceInit();
+    }
+
     bool GFXDevice::framePreRender( [[maybe_unused]] const FrameEvent& evt )
     {
         return true;

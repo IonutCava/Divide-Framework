@@ -297,6 +297,9 @@ protected:
     virtual void flushCommand(GFX::CommandBase* cmd) = 0;
     virtual void postFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) = 0;
     [[nodiscard]] virtual bool supportsIndirectDrawBatching( const GenericDrawCommand& ) const noexcept { return false; }
+    /// True if creating GPU resources must happen on a render pool thread that owns the API's context (e.g. OpenGL),
+    /// instead of on any worker or the calling thread.
+    [[nodiscard]] virtual bool requiresRenderContextForResourceInit() const noexcept { return false; }
 
     /// Records GPU timestamp `index` (< GPU_PASS_TIMESTAMP_CAPACITY) at the current submission point of the main window's frame.
     virtual void writePassTimestamp( [[maybe_unused]] U32 index ) {}

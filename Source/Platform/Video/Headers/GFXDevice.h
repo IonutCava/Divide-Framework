@@ -483,6 +483,7 @@ public:
 
     PROPERTY_RW(MaterialDebugFlag, materialDebugFlag, MaterialDebugFlag::COUNT);
     PROPERTY_RW(RenderAPI, renderAPI, RenderAPI::COUNT);
+    [[nodiscard]] bool requiresRenderContextForResourceInit() const noexcept;
     PROPERTY_RW(bool, queryPerformanceStats, false);
     /// Opt-in vertex/primitive/tessellation counters. Much more expensive than the GPU timer (~10x frame time on GL/AMD).
     PROPERTY_RW(bool, queryPipelineStatistics, false);

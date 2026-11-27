@@ -95,6 +95,7 @@ private:
     [[nodiscard]] bool frameStarted() override;
     [[nodiscard]] bool frameEnded() override;
     [[nodiscard]] bool waitForGPUIdle() noexcept override;
+    [[nodiscard]] bool requiresRenderContextForResourceInit() const noexcept override { return true; }
 
     void endPerformanceQueries();
     /// GPU_TIME is last in GlobalQueryTypes, so the cheap timer-only path starts the query loops there.

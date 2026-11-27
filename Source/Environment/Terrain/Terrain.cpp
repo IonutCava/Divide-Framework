@@ -759,13 +759,13 @@ bool Terrain::loadResources( PlatformContext& context )
     ParallelForDescriptor vegetationJobs{};
     vegetationJobs._iterCount = to_U32( chunks.size() );
     vegetationJobs._partitionSize = 1u;
-    const bool needsGLContext = context.gfx().renderAPI() == RenderAPI::OpenGL;
-    if ( needsGLContext )
+    const bool needsRenderContext = context.gfx().requiresRenderContextForResourceInit();
+    if ( needsRenderContext )
     {
         vegetationJobs._useCurrentThread = false;
         vegetationJobs._allowPoolIdle = false;
     }
-    Parallel_For( context.taskPool( needsGLContext ? TaskPoolType::RENDERER : TaskPoolType::HIGH_PRIORITY ), vegetationJobs,
+    Parallel_For( context.taskPool( needsRenderContext ? TaskPoolType::RENDERER : TaskPoolType::HIGH_PRIORITY ), vegetationJobs,
                   [&chunks, &context, vegetation = _vegetation]( const Task*, const U32 start, const U32 end )
     {
         for ( U32 i = start; i < end; ++i )
