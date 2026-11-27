@@ -10,10 +10,44 @@ namespace Divide
     {
         std::atomic_uint g_taskIDCounter = 0u;
 
+        // Lazily allocates a single contiguous flat array per thread that uses AllocateTask,
+        // keeping cache locality without reserving 8 MiB of static TLS (.tbss) on every OS thread.
         thread_local std::unique_ptr<Task[]> g_taskAllocator;
         thread_local U32 g_allocatedTasks = 0u;
 
-        void WaitForChildren( Mutex& mutex, std::condition_variable& finished, const Task& task )
+        template<typename Predicate>
+        void WaitForSignal( Mutex& mutex,
+                            std::condition_variable& finished,
+                            std::atomic_uint& waiterCount,
+                            const std::chrono::milliseconds timeout,
+                            Predicate&& predicate )
+        {
+            waiterCount.fetch_add( 1u, std::memory_order_seq_cst );
+            SCOPE_EXIT
+            {
+                waiterCount.fetch_sub( 1u, std::memory_order_seq_cst );
+            };
+
+            if ( predicate() )
+            {
+                return;
+            }
+
+            UniqueLock<Mutex> lock( mutex );
+            if ( timeout.count() > 0 )
+            {
+                finished.wait_for( lock, timeout, FWD( predicate ) );
+            }
+            else
+            {
+                finished.wait( lock, FWD( predicate ) );
+            }
+        }
+
+        void WaitForChildren( Mutex& mutex,
+                              std::condition_variable& finished,
+                              std::atomic_uint& waiterCount,
+                              const Task& task )
         {
             const U32 pendingJobs = task._unfinishedJobs.load();
             if ( pendingJobs <= 1u )
@@ -21,8 +55,7 @@ namespace Divide
                 return;
             }
 
-            UniqueLock<Mutex> lock( mutex );
-            finished.wait_for( lock, std::chrono::milliseconds( 2 ), [&task, pendingJobs]() noexcept
+            WaitForSignal( mutex, finished, waiterCount, std::chrono::milliseconds( 2 ), [&task, pendingJobs]() noexcept
             {
                 return task._unfinishedJobs.load() != pendingJobs;
             } );
@@ -92,7 +125,12 @@ namespace Divide
     {
         join();
         _threads.clear();
-        _taskCallbacks.clear();
+
+        DELEGATE<void> discarded;
+        while ( _threadedCallbackBuffer.try_dequeue( discarded ) )
+        {
+            discarded = {};
+        }
     }
 
     void TaskPool::waitForAllTasks(const bool flushCallbacks)
@@ -113,8 +151,7 @@ namespace Divide
                 PlatformContextIdleCall();
                 flushCallbackQueue();
 
-                UniqueLock<Mutex> lock(_taskFinishedMutex);
-                _taskFinishedCV.wait_for(lock, 2ms, [this]() noexcept
+                WaitForSignal(_taskFinishedMutex, _taskFinishedCV, _waiterCount, 2ms, [this]() noexcept
                 {
                     return _runningTaskCount.load() == 0u;
                 });
@@ -123,8 +160,7 @@ namespace Divide
         }
         else if (_runningTaskCount.load() > 0u)
         {
-            UniqueLock<Mutex> lock(_taskFinishedMutex);
-            _taskFinishedCV.wait(lock, [this]() noexcept
+            WaitForSignal(_taskFinishedMutex, _taskFinishedCV, _waiterCount, std::chrono::milliseconds(0), [this]() noexcept
             {
                 return _runningTaskCount.load() == 0u;
             });
@@ -167,16 +203,16 @@ namespace Divide
                     PlatformContextIdleCall();
                     if (flushCallbackQueue() == 0u && !threadWaiting())
                     {
-                        WaitForChildren( _taskFinishedMutex, _taskFinishedCV, task );
+                        WaitForChildren( _taskFinishedMutex, _taskFinishedCV, _waiterCount, task );
                     }
                 }
                 else if (!threadWaiting())
                 {
-                    WaitForChildren( _taskFinishedMutex, _taskFinishedCV, task );
+                    WaitForChildren( _taskFinishedMutex, _taskFinishedCV, _waiterCount, task );
                 }
             }
 
-            runTask(task, false);
+            runTask(task);
             if (onCompletionFunction)
             {
                 onCompletionFunction();
@@ -184,32 +220,9 @@ namespace Divide
             return;
         }
 
-        bool hasOnCompletionFunction = false;
-        if ( onCompletionFunction )
-        {
-            hasOnCompletionFunction = true;
-            LockGuard<SharedMutex> w_lock( _taskCallbacksLock );
-            bool found = false;
-            for ( CallbackEntry& entry : _taskCallbacks )
-            {
-                if ( entry._taskID == U32_MAX)
-                {
-                    entry._taskID = task._globalId;
-                    entry._cbk = MOV(onCompletionFunction);
-                    found = true;
-                    break;
-                }
-            }
-
-            if ( !found )
-            {
-                _taskCallbacks.emplace_back( MOV(onCompletionFunction), task._globalId );
-            }
-        }
-
         // Returning false from a PoolTask lambda will just reschedule it for later execution again. 
         // This may leave the task in an infinite loop, always re-queuing!
-        auto poolTask = [this, &task, priority, hasOnCompletionFunction](const bool isIdleCall)
+        auto poolTask = [this, &task, priority, onCompletion = MOV(onCompletionFunction)](const bool isIdleCall) mutable
         {
             while (task._unfinishedJobs.load() > 1u)
             {
@@ -222,7 +235,7 @@ namespace Divide
                 // Else, we wait until our child tasks finish running. We also try and do some other work while waiting
                 if ( !threadWaiting() )
                 {
-                    WaitForChildren( _taskFinishedMutex, _taskFinishedCV, task );
+                    WaitForChildren( _taskFinishedMutex, _taskFinishedCV, _waiterCount, task );
                 }
             }
 
@@ -231,7 +244,7 @@ namespace Divide
                 return false;
             }
 
-            runTask(task, hasOnCompletionFunction);
+            runTask(task, MOV(onCompletion));
 
             return true;
         };
@@ -239,7 +252,7 @@ namespace Divide
         DIVIDE_EXPECTED_CALL( getQueue(priority).enqueue(MOV(poolTask)) );
     }
 
-    void TaskPool::runTask( Task& task, const bool hasCompletionCallback)
+    void TaskPool::runTask( Task& task, DELEGATE<void>&& onCompletionFunction )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
@@ -256,16 +269,19 @@ namespace Divide
             task._parent->_unfinishedJobs.fetch_sub(1);
         }
 
-        if (hasCompletionCallback)
+        if (onCompletionFunction)
         {
-            _threadedCallbackBuffer.enqueue(task._globalId);
+            DIVIDE_EXPECTED_CALL( _threadedCallbackBuffer.enqueue( MOV(onCompletionFunction) ) );
         }
 
         task._unfinishedJobs.fetch_sub(1);
         _runningTaskCount.fetch_sub(1);
 
-        LockGuard<Mutex> lock(_taskFinishedMutex);
-        _taskFinishedCV.notify_all();
+        if ( _waiterCount.load( std::memory_order_seq_cst ) > 0u )
+        {
+            LockGuard<Mutex> lock(_taskFinishedMutex);
+            _taskFinishedCV.notify_all();
+        }
     }
 
     void TaskPool::wait( const Task& task )
@@ -281,11 +297,10 @@ namespace Divide
                 continue;
             }
 
-            UniqueLock<Mutex> lock( _taskFinishedMutex );
-            _taskFinishedCV.wait_for( lock, 2ms, [&task]() noexcept
-                                      {
-                                          return Finished( task );
-                                      } );
+            WaitForSignal( _taskFinishedMutex, _taskFinishedCV, _waiterCount, 2ms, [&task]() noexcept
+            {
+                return Finished( task );
+            } );
         }
     }
 
@@ -295,29 +310,28 @@ namespace Divide
 
         DIVIDE_ASSERT( Runtime::isMainThread() );
 
+        constexpr size_t maxDequeueItems = 16u;
+        std::array<DELEGATE<void>, maxDequeueItems> completedCallbacks{};
+
         size_t ret = 0u;
-        U32 completedTaskIndex = 0u;
-        while ( _threadedCallbackBuffer.try_dequeue( completedTaskIndex ) )
+        while ( true )
         {
-            DELEGATE<void> callback;
+            const size_t count = _threadedCallbackBuffer.try_dequeue_bulk( completedCallbacks.data(), maxDequeueItems );
+            if ( count == 0u )
             {
-                LockGuard<SharedMutex> w_lock( _taskCallbacksLock );
-                for (CallbackEntry& entry : _taskCallbacks)
+                break;
+            }
+
+            for ( size_t i = 0u; i < count; ++i )
+            {
+                if ( completedCallbacks[i] )
                 {
-                    if ( entry._taskID == completedTaskIndex)
-                    {
-                        callback = MOV(entry._cbk);
-                        entry = {};
-                        break;
-                    }
+                    completedCallbacks[i]();
+                    completedCallbacks[i] = {};
                 }
             }
 
-            if (callback)
-            {
-                callback();
-            }
-            ++ret;
+            ret += count;
         }
 
         return ret;
@@ -381,7 +395,7 @@ namespace Divide
 
         if ( !task( isIdleCall ) )
         {
-            DIVIDE_EXPECTED_CALL( getQueue(priorityOut).enqueue( task ) );
+            DIVIDE_EXPECTED_CALL( getQueue(priorityOut).enqueue( MOV(task) ) );
             return false;
         }
 
@@ -488,8 +502,8 @@ namespace Divide
                         const U32 pendingJobs = jobCount.load();
                         if ( pendingJobs > 0u )
                         {
-                            UniqueLock<Mutex> lock( pool._taskFinishedMutex );
-                            pool._taskFinishedCV.wait_for( lock, std::chrono::milliseconds( 2 ), [&jobCount, pendingJobs]() noexcept
+                            WaitForSignal( pool._taskFinishedMutex, pool._taskFinishedCV, pool._waiterCount,
+                                           std::chrono::milliseconds( 2 ), [&jobCount, pendingJobs]() noexcept
                             {
                                 return jobCount.load() != pendingJobs;
                             } );

@@ -153,7 +153,7 @@ class TaskPool final : public GUIDWrapper {
     friend void Parallel_For(TaskPool& pool, const ParallelForDescriptor& descriptor,
                              const DELEGATE<void, const Task*, U32, U32>& cbk);
 
-    void runTask(Task& task, bool hasCompletionCallback);
+    void runTask(Task& task, DELEGATE<void>&& onCompletionFunction = {});
 
     /// Join all of the threads and block until all running tasks have completed.
     void join();
@@ -167,22 +167,7 @@ class TaskPool final : public GUIDWrapper {
   private:
      const string _threadNamePrefix;
 
-     struct CallbackEntry
-     {
-         CallbackEntry() = default;
-         CallbackEntry(DELEGATE<void>&& cbk, U32 taskID) noexcept
-             : _cbk(MOV(cbk)), _taskID(taskID)
-         {
-         }
-
-         DELEGATE<void> _cbk;
-         U32 _taskID = U32_MAX;
-     };
-
-     SharedMutex _taskCallbacksLock;
-     fixed_vector<CallbackEntry, 1 << 9, true> _taskCallbacks;
-
-     moodycamel::ConcurrentQueue<U32> _threadedCallbackBuffer{};
+     moodycamel::ConcurrentQueue<DELEGATE<void>> _threadedCallbackBuffer{};
 
      QueueType _normalQueue;
      QueueType _highPriorityqueue;
@@ -190,10 +175,11 @@ class TaskPool final : public GUIDWrapper {
      Mutex _taskFinishedMutex;
      std::condition_variable _taskFinishedCV;
 
-     std::atomic_uint _runningTaskCount = 0u;
      std::atomic_size_t _activeThreads{ 0u };
+     std::atomic_uint _runningTaskCount{ 0u };
+     std::atomic_uint _waiterCount{ 0u };
 
-     std::atomic_bool _isRunning;
+     std::atomic_bool _isRunning{ false };
 };
 
 template<class Predicate>
