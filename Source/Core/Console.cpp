@@ -32,22 +32,27 @@ std::array<bool, to_base(Console::StreamType::COUNT)> Console::s_streamDirty;
 //https://github.com/cameron314/concurrentqueue
 namespace
 {
-    NO_DESTROY std::array<Console::OutputEntry, 16> g_outputCache;
-    NO_DESTROY RecursiveMutex g_outputMutex;
+    struct QueuedEntry
+    {
+        U64 _ticket{ 0u };
+        Console::OutputEntry _entry;
+    };
+
+    // g_outputMutex guards flushing, the file streams, the callback list and the plain flags below.
+    // They are only ever touched by the thread that holds it, which is also the only thread that can see g_dispatching set.
+    NO_DESTROY std::array<QueuedEntry, 16> g_outputCache;
+    NO_DESTROY vector<QueuedEntry> g_drainScratch;
+    NO_DESTROY Mutex g_outputMutex;
     size_t g_nextCallbackId = 0u;
-    bool g_dispatching = false;
     bool g_flushRequested = false;
     bool g_stopping = false;
     bool g_stopRequested = false;
+    std::atomic<U64> g_entryTicket{ 0u };
+    thread_local bool t_dispatching = false;
     thread_local U32 g_enabledOverrides = 0u;
     thread_local U32 g_disabledOverrides = 0u;
 
-    struct OutputQueue
-    {
-        moodycamel::BlockingConcurrentQueue<Console::OutputEntry> _queue;
-        // Console::Output holds g_outputMutex across enqueue, so this token preserves that order across threads.
-        moodycamel::ProducerToken _producer{ _queue };
-    };
+    using OutputQueue = moodycamel::ConcurrentQueue<QueuedEntry>;
 
     OutputQueue& OutBuffer()
     {
@@ -55,15 +60,29 @@ namespace
         return s_OutputBuffer;
     }
 
+    // Per-thread order is the queue's FIFO order; the ticket restores cross-thread order when a batch is flushed.
     void EnqueueOutput(const Console::OutputEntry& entry)
     {
         OutputQueue& outputQueue = OutBuffer();
-        if (!outputQueue._queue.enqueue(outputQueue._producer, entry))
+        thread_local moodycamel::ProducerToken producer{ outputQueue };
+        const U64 ticket = g_entryTicket.fetch_add(1u, std::memory_order_relaxed);
+        if (!outputQueue.enqueue(producer, QueuedEntry{ ticket, entry }))
         {
             ::fprintf(stderr, "Console output queue allocation failed: %s", entry._text.c_str());
             ::fflush(stderr);
             std::abort();
         }
+    }
+
+    // A thread that is already dispatching holds g_outputMutex, so re-entrant calls must not lock it again.
+    [[nodiscard]] UniqueLock<Mutex> LockOutput()
+    {
+        UniqueLock<Mutex> lock( g_outputMutex, std::defer_lock );
+        if (!t_dispatching)
+        {
+            lock.lock();
+        }
+        return lock;
     }
 }
 
@@ -127,7 +146,7 @@ void Console::DecorateAndPrint(std::ostream& outStream, const std::string_view t
 
 void Console::Output(std::ostream& outStream, const std::string_view text, const bool newline, const EntryType type)
 {
-    LockGuard<RecursiveMutex> lock(g_outputMutex);
+    const UniqueLock<Mutex> lock = LockOutput();
     const U32 flags = EffectiveFlags();
     if (flags & to_base(Flags::ENABLE_OUTPUT)) [[likely]]
     {
@@ -137,47 +156,52 @@ void Console::Output(std::ostream& outStream, const std::string_view text, const
 
 void Console::Output(const std::string_view text, const bool newline, const EntryType type)
 {
-    LockGuard<RecursiveMutex> lock(g_outputMutex);
     const U32 flags = EffectiveFlags();
-    if ( flags & to_base( Flags::ENABLE_OUTPUT ) )
+    if ( !(flags & to_base( Flags::ENABLE_OUTPUT )) )
     {
-        stringstream outStream;
-        DecorateAndPrint(outStream, text, newline, type, flags);
+        return;
+    }
 
-        const OutputEntry entry
-        {
-            ._text = outStream.str().c_str(),
-            ._type = type
-        };
+    stringstream outStream;
+    DecorateAndPrint(outStream, text, newline, type, flags);
 
-        const bool immediate = (flags & to_base(Flags::PRINT_IMMEDIATE)) != 0u;
-        const bool flushOnPrint = (flags & to_base(Flags::FLUSH_ON_PRINT)) != 0u &&
-                                  (type != EntryType::INFO || immediate);
-        if (immediate && s_running.load(std::memory_order_relaxed) && !g_dispatching)
+    const OutputEntry entry
+    {
+        ._text = outStream.str().c_str(),
+        ._type = type
+    };
+
+    const bool immediate = (flags & to_base(Flags::PRINT_IMMEDIATE)) != 0u;
+    const bool flushOnPrint = (flags & to_base(Flags::FLUSH_ON_PRINT)) != 0u &&
+                              (type != EntryType::INFO || immediate);
+
+    if (immediate && !t_dispatching && s_running.load(std::memory_order_relaxed))
+    {
+        const UniqueLock<Mutex> lock( g_outputMutex );
+        if (s_running.load(std::memory_order_relaxed))
         {
             {
-                g_dispatching = true;
-                SCOPE_EXIT { g_dispatching = false; };
+                t_dispatching = true;
+                SCOPE_EXIT { t_dispatching = false; };
                 PrintToFile(entry);
             }
             if (flushOnPrint || g_flushRequested)
             {
-                Flush();
+                FlushLocked();
             }
             else if (g_stopRequested && !g_stopping)
             {
                 g_stopRequested = false;
-                Stop();
+                StopLocked();
             }
+            return;
         }
-        else
-        {
-            EnqueueOutput(entry);
-            if (immediate || flushOnPrint)
-            {
-                Flush();
-            }
-        }
+    }
+
+    EnqueueOutput(entry);
+    if (immediate || flushOnPrint)
+    {
+        Flush();
     }
 }
 
@@ -244,52 +268,81 @@ void Console::FlushOutputStreams()
 
 void Console::Flush()
 {
-    LockGuard<RecursiveMutex> lock(g_outputMutex);
+    if (t_dispatching)
+    {
+        if (s_running.load(std::memory_order_relaxed))
+        {
+            g_flushRequested = true;
+        }
+        return;
+    }
+
+    const UniqueLock<Mutex> lock( g_outputMutex );
+    FlushLocked();
+}
+
+void Console::FlushLocked()
+{
     if (!s_running.load(std::memory_order_relaxed))
     {
         return;
     }
-    if (g_dispatching)
+    if (t_dispatching)
     {
         g_flushRequested = true;
         return;
     }
 
     {
-        g_dispatching = true;
-        SCOPE_EXIT { g_dispatching = false; };
-        size_t count{};
-        do
+        t_dispatching = true;
+        SCOPE_EXIT { t_dispatching = false; };
+        OutputQueue& queue = OutBuffer();
+        for (;;)
         {
-            count = OutBuffer()._queue.try_dequeue_bulk(std::begin(g_outputCache), g_outputCache.size());
-
-            for (size_t i = 0u; i < count; ++i)
+            g_drainScratch.clear();
+            size_t count{};
+            while ((count = queue.try_dequeue_bulk(std::begin(g_outputCache), g_outputCache.size())) > 0u)
             {
-                PrintToFile(g_outputCache[i]);
+                for (size_t i = 0u; i < count; ++i)
+                {
+                    g_drainScratch.push_back(std::move(g_outputCache[i]));
+                }
             }
-        } while (count > 0u);
+
+            if (g_drainScratch.empty())
+            {
+                break;
+            }
+
+            std::ranges::sort(g_drainScratch, {}, &QueuedEntry::_ticket);
+            for (const QueuedEntry& queued : g_drainScratch)
+            {
+                PrintToFile(queued._entry);
+            }
+        }
     }
     g_flushRequested = false;
     FlushOutputStreams();
     if (g_stopRequested && !g_stopping)
     {
         g_stopRequested = false;
-        Stop();
+        StopLocked();
     }
 }
 
 void Console::Start(const ResourcePath& parentPath, const std::string_view logFilePath, const std::string_view errorFilePath, const bool printCopyright ) noexcept
 {
-    LockGuard<RecursiveMutex> lock(g_outputMutex);
-    if (g_dispatching)
+    if (t_dispatching)
     {
         ::fputs("Console::Start cannot be called from an output callback.\n", stderr);
         ::fflush(stderr);
         std::abort();
     }
+
+    const UniqueLock<Mutex> lock( g_outputMutex );
     if (s_running.load(std::memory_order_relaxed))
     {
-        Flush();
+        FlushLocked();
     }
     s_flags.store(DEFAULT_FLAGS, std::memory_order_relaxed);
 
@@ -324,17 +377,31 @@ void Console::Start(const ResourcePath& parentPath, const std::string_view logFi
 
     s_streamDirty.fill( true );
     s_running.store(true, std::memory_order_relaxed);
-    Flush();
+    FlushLocked();
 }
 
-void Console::Stop() 
+void Console::Stop()
 {
-    LockGuard<RecursiveMutex> lock(g_outputMutex);
+    if (t_dispatching)
+    {
+        if (s_running.load(std::memory_order_relaxed))
+        {
+            g_stopRequested = true;
+        }
+        return;
+    }
+
+    const UniqueLock<Mutex> lock( g_outputMutex );
+    StopLocked();
+}
+
+void Console::StopLocked()
+{
     if (!s_running.load(std::memory_order_relaxed))
     {
         return;
     }
-    if (g_dispatching)
+    if (t_dispatching)
     {
         g_stopRequested = true;
         return;
@@ -342,7 +409,7 @@ void Console::Stop()
 
     g_stopping = true;
     SCOPE_EXIT { g_stopping = false; };
-    Flush();
+    FlushLocked();
     s_running.store(false, std::memory_order_relaxed);
     s_flags.store(DEFAULT_FLAGS, std::memory_order_relaxed);
     s_logStream << "------------------------------------------\n\n\n\n";
@@ -353,7 +420,7 @@ void Console::Stop()
 
 size_t Console::BindConsoleOutput( const ConsolePrintCallback& guiConsoleCallback )
 {
-    LockGuard<RecursiveMutex> lock(g_outputMutex);
+    const UniqueLock<Mutex> lock = LockOutput();
     auto& entry = s_guiConsoleCallbacks.emplace_back();
     entry._cbk = guiConsoleCallback;
     entry._id = g_nextCallbackId++;
@@ -363,7 +430,7 @@ size_t Console::BindConsoleOutput( const ConsolePrintCallback& guiConsoleCallbac
 
 bool Console::UnbindConsoleOutput( size_t& index )
 {
-    LockGuard<RecursiveMutex> lock(g_outputMutex);
+    const UniqueLock<Mutex> lock = LockOutput();
 
     const auto it = eastl::find_if( s_guiConsoleCallbacks.begin(), s_guiConsoleCallbacks.end(), [index]( const ConsolePrintCallbackEntry& entry )
     {

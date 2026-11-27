@@ -12,44 +12,40 @@ namespace Divide
 
         void push(const Console::OutputEntry& entry)
         {
-            LockGuard<Mutex> lock(_lock);
-            if (_size == CAPACITY)
+            // Reserve the slot before publishing so a concurrent drain can never subtract more than was added.
+            const size_t previous = _count.fetch_add(1u, std::memory_order_relaxed);
+            _queue.enqueue(entry);
+            if (previous >= CAPACITY)
             {
-                _entries[_head] = entry;
-                _head = (_head + 1u) % CAPACITY;
-            }
-            else
-            {
-                _entries[(_head + _size) % CAPACITY] = entry;
-                ++_size;
+                Console::OutputEntry dropped;
+                if (_queue.try_dequeue(dropped))
+                {
+                    _count.fetch_sub(1u, std::memory_order_relaxed);
+                }
             }
         }
 
         template<typename Consumer>
         size_t drain(Consumer&& consume)
         {
-            LockGuard<Mutex> lock(_lock);
-            const size_t count = _size;
-            while (_size > 0u)
+            size_t count = 0u;
+            Console::OutputEntry entry;
+            while (_queue.try_dequeue(entry))
             {
-                consume(_entries[_head]);
-                _head = (_head + 1u) % CAPACITY;
-                --_size;
+                consume(entry);
+                ++count;
             }
+            _count.fetch_sub(count, std::memory_order_relaxed);
             return count;
         }
 
         void clear()
         {
-            LockGuard<Mutex> lock(_lock);
-            _head = 0u;
-            _size = 0u;
+            static_cast<void>(drain([](const Console::OutputEntry&) noexcept {}));
         }
 
     private:
-        std::array<Console::OutputEntry, CAPACITY> _entries{};
-        size_t _head = 0u;
-        size_t _size = 0u;
-        Mutex _lock;
+        moodycamel::ConcurrentQueue<Console::OutputEntry> _queue;
+        std::atomic<size_t> _count{ 0u };
     };
 }

@@ -141,4 +141,51 @@ namespace Divide
             CHECK(count == 1u);
         }
     }
+
+    TEST_CASE( "Editor output stays bounded when concurrent producers overflow it", "[editor][console][threading][render_smoke]" )
+    {
+        OutputLogQueue queue;
+        constexpr U32 producerCount = 4u;
+        constexpr U32 entriesPerProducer = static_cast<U32>(OutputLogQueue::CAPACITY);
+        constexpr U32 total = producerCount * entriesPerProducer;
+        std::array<std::thread, producerCount> producers;
+        for (U32 producer = 0u; producer < producerCount; ++producer)
+        {
+            producers[producer] = std::thread([&, producer]
+            {
+                for (U32 i = 0u; i < entriesPerProducer; ++i)
+                {
+                    queue.push({Util::StringFormat<string>("id-{}", producer * entriesPerProducer + i), Console::EntryType::INFO});
+                }
+            });
+        }
+        for (std::thread& producer : producers)
+        {
+            producer.join();
+        }
+
+        std::array<U32, total> seen{};
+        U32 invalid = 0u;
+        const size_t drained = queue.drain([&](const Console::OutputEntry& entry)
+        {
+            const std::string_view text{entry._text.c_str(), entry._text.length()};
+            U32 id = 0u;
+            if (!text.starts_with("id-") ||
+                std::from_chars(text.data() + 3u, text.data() + text.size(), id).ec != std::errc{} || id >= total)
+            {
+                ++invalid;
+                return;
+            }
+            ++seen[id];
+        });
+
+        CHECK(invalid == 0u);
+        CHECK(drained >= OutputLogQueue::CAPACITY);
+        CHECK(drained < 2u * OutputLogQueue::CAPACITY);
+        for (const U32 count : seen)
+        {
+            CHECK(count <= 1u);
+        }
+        CHECK(queue.drain([](const Console::OutputEntry&) {}) == 0u);
+    }
 }

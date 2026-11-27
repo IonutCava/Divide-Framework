@@ -175,6 +175,8 @@ struct Console : NonCopyable
         static void PrintToFile(const OutputEntry& entry);
 
         static void FlushOutputStreams();
+        static void FlushLocked();
+        static void StopLocked();
     private:
         [[nodiscard]] static U32 EffectiveFlags() noexcept;
 

@@ -164,6 +164,124 @@ namespace Divide
         }
     }
 
+    TEST_CASE( "Console keeps each producer's output in order while flushing concurrently", "[console][threading][render_smoke]" )
+    {
+        const ConsoleTestScope console;
+        constexpr U32 producerCount = 4u;
+        constexpr U32 entriesPerProducer = 512u;
+        std::array<U32, producerCount> next{};
+        U32 invalid = 0u;
+        ConsoleCallbackScope callback;
+        callback._id = Console::BindConsoleOutput([&](const Console::OutputEntry& entry)
+        {
+            const std::string_view text{entry._text.c_str(), entry._text.length()};
+            const size_t dash = text.find('-');
+            U32 producer = 0u;
+            U32 index = 0u;
+            if (!text.starts_with('p') || dash == std::string_view::npos || !text.ends_with('\n') ||
+                std::from_chars(text.data() + 1u, text.data() + dash, producer).ec != std::errc{} ||
+                std::from_chars(text.data() + dash + 1u, text.data() + text.size() - 1u, index).ec != std::errc{} ||
+                producer >= producerCount)
+            {
+                ++invalid;
+                return;
+            }
+            if (index != next[producer]++)
+            {
+                ++invalid;
+            }
+        });
+
+        std::atomic_bool start{false};
+        std::atomic_uint finished{0u};
+        std::array<std::thread, producerCount> producers;
+        for (U32 producer = 0u; producer < producerCount; ++producer)
+        {
+            producers[producer] = std::thread([&, producer]
+            {
+                while (!start.load(std::memory_order_acquire))
+                {
+                    std::this_thread::yield();
+                }
+                for (U32 i = 0u; i < entriesPerProducer; ++i)
+                {
+                    Console::printfn("p{}-{}", producer, i);
+                }
+                finished.fetch_add(1u, std::memory_order_release);
+            });
+        }
+        std::thread flusher([&]
+        {
+            while (finished.load(std::memory_order_acquire) != producerCount)
+            {
+                Console::Flush();
+                std::this_thread::yield();
+            }
+        });
+        start.store(true, std::memory_order_release);
+        for (std::thread& producer : producers)
+        {
+            producer.join();
+        }
+        flusher.join();
+        Console::Flush();
+
+        CHECK(invalid == 0u);
+        for (const U32 count : next)
+        {
+            CHECK(count == entriesPerProducer);
+        }
+    }
+
+    TEST_CASE( "Queued console output does not wait for an in-flight flush", "[console][threading][render_smoke]" )
+    {
+        const ConsoleTestScope console;
+        std::atomic_bool entered{false};
+        std::atomic_bool release{false};
+        std::atomic_bool queued{false};
+        vector<string> received;
+        ConsoleCallbackScope callback;
+        callback._id = Console::BindConsoleOutput([&](const Console::OutputEntry& entry)
+        {
+            received.push_back(entry._text);
+            if (entry._text == "blocker\n")
+            {
+                entered.store(true, std::memory_order_release);
+                while (!release.load(std::memory_order_acquire))
+                {
+                    std::this_thread::yield();
+                }
+            }
+        });
+
+        Console::printfn("blocker");
+        std::thread flusher([] { Console::Flush(); });
+        while (!entered.load(std::memory_order_acquire))
+        {
+            std::this_thread::yield();
+        }
+        std::thread producer([&]
+        {
+            Console::printfn("queued");
+            queued.store(true, std::memory_order_release);
+        });
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (!queued.load(std::memory_order_acquire) && std::chrono::steady_clock::now() < deadline)
+        {
+            std::this_thread::yield();
+        }
+        const bool queuedWhileFlushing = queued.load(std::memory_order_acquire);
+        release.store(true, std::memory_order_release);
+        producer.join();
+        flusher.join();
+        Console::Flush();
+
+        CHECK(queuedWhileFlushing);
+        REQUIRE(received.size() == 2u);
+        CHECK(received[0] == "blocker\n");
+        CHECK(received[1] == "queued\n");
+    }
+
     TEST_CASE( "Immediate console output preserves previously deferred entries", "[console][threading][render_smoke]" )
     {
         const ConsoleTestScope console;
