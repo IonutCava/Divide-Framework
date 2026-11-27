@@ -335,7 +335,6 @@ namespace Divide
         bool materialReady = true;
         if ( _materialInstance != INVALID_HANDLE<Material> )
         {
-            LockGuard<SharedMutex> w_lock( _drawCommands._dataLock );
             materialReady = Get(_materialInstance)->canDraw( renderStagePass, shaderJustFinishedLoading );
         }
 
@@ -358,7 +357,6 @@ namespace Divide
 
     bool RenderingComponent::shaderPending( const RenderStagePass& renderStagePass ) const
     {
-        SharedLock<SharedMutex> r_lock( _drawCommands._dataLock );
         return _materialInstance != INVALID_HANDLE<Material> && Get(_materialInstance)->shaderPending( renderStagePass );
     }
 

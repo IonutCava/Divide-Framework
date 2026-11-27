@@ -368,7 +368,7 @@ class Material final : public CachedResource {
     void invalidateDescriptorSets() noexcept;
     void setTextureOperationLocked( TextureSlot slot, TextureOperation operation );
     [[nodiscard]] bool getDescriptorSetLocked( const RenderStagePass& renderStagePass,
-                                               const ShaderProgramDescriptor& shaderDescriptor,
+                                               bool commonInputs,
                                                DescriptorSet& descriptorOut );
 
     void recomputeShaders();
@@ -376,6 +376,7 @@ class Material final : public CachedResource {
     void setShaderProgramInternal(RenderStagePass stagePass);
     void reportShaderFailure(ShaderProgramInfo& info, RenderStagePass stagePass, ResourceState state);
     [[nodiscard]] bool prepareShader(RenderStagePass stagePass, bool& shaderJustFinishedLoading, bool consumeNotification);
+    [[nodiscard]] bool advanceShaderBuildLocked(ShaderProgramInfo& info, RenderStagePass stagePass);
 
     void computeAndAppendShaderDefines( ShaderProgramDescriptor& shaderDescriptor, RenderStagePass renderStagePass) const;
     void appendTextureShaderDefines(ShaderProgramDescriptor& shaderDescriptor, bool isPrePass, bool isShadowPass) const;
@@ -417,6 +418,8 @@ class Material final : public CachedResource {
     };
 
     StatePassesPerStage<ShaderProgramInfo> _shaderInfo{};
+    /// Serialises cold shader-build transitions only; READY/FAILED are read lock-free via ShaderProgramInfo::_shaderCompStage
+    Mutex _shaderBuildLock;
     StatePassesPerStage<RenderStateBlockEntry> _defaultRenderStates{};
 
     std::array<ModuleDefines, to_base(ShaderType::COUNT)> _extraShaderDefines{};

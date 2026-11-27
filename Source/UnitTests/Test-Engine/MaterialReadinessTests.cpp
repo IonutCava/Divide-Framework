@@ -635,17 +635,17 @@ namespace Divide
         ShaderProgramInfo info{};
         info._shaderCompStage = ShaderBuildStage::COMPUTED;
         CHECK( info.updateReadiness( ResourceState::RES_LOADING, 23 ) == ShaderResourceStatus::PENDING );
-        CHECK( info._shaderCompStage == ShaderBuildStage::COMPUTED );
+        CHECK( info._shaderCompStage.load() == ShaderBuildStage::COMPUTED );
         CHECK_FALSE( info.takeReadyNotification() );
         CHECK( info.updateReadiness( ResourceState::RES_LOADED, 23 ) == ShaderResourceStatus::READY );
-        CHECK( info._shaderCompStage == ShaderBuildStage::READY );
+        CHECK( info._shaderCompStage.load() == ShaderBuildStage::READY );
         CHECK( info._shaderKeyCache == 23 );
         CHECK( info.takeReadyNotification() );
         CHECK_FALSE( info.takeReadyNotification() );
 
         info._shaderCompStage = ShaderBuildStage::COMPUTED;
         CHECK( info.updateReadiness( ResourceState::RES_THREAD_LOAD_FAILED, I64_LOWEST ) == ShaderResourceStatus::FAILED );
-        CHECK( info._shaderCompStage == ShaderBuildStage::FAILED );
+        CHECK( info._shaderCompStage.load() == ShaderBuildStage::FAILED );
         CHECK( info._shaderKeyCache == I64_LOWEST );
         CHECK_FALSE( info.takeReadyNotification() );
     }
@@ -688,7 +688,7 @@ namespace Divide
         bool justFinished = true;
         CHECK_FALSE( material.canDraw( pass, justFinished ) );
         CHECK_FALSE( justFinished );
-        CHECK( info._shaderCompStage == ShaderBuildStage::FAILED );
+        CHECK( info._shaderCompStage.load() == ShaderBuildStage::FAILED );
         CHECK_FALSE( material.shaderPending( pass ) );
     }
 
@@ -714,11 +714,11 @@ namespace Divide
         CHECK_FALSE( material.canDraw( pass, justFinished ) );
         CHECK_FALSE( justFinished );
         CHECK( material.shaderPending( pass ) );
-        CHECK( info._shaderCompStage == ShaderBuildStage::READY );
+        CHECK( info._shaderCompStage.load() == ShaderBuildStage::READY );
 
         const U32 update = material.update( 0u );
         CHECK( (update & to_base( MaterialUpdateResult::NEW_SHADER )) != 0u );
-        CHECK( info._shaderCompStage == ShaderBuildStage::REQUESTED );
+        CHECK( info._shaderCompStage.load() == ShaderBuildStage::REQUESTED );
         CHECK( material.shaderPending( pass ) );
 
         info._shaderCompStage = ShaderBuildStage::COMPUTED;
@@ -735,9 +735,40 @@ namespace Divide
             ShaderProgramInfo source{};
             source._shaderCompStage = stage;
             const ShaderProgramInfo clone = source.clone();
-            CHECK( clone._shaderCompStage == ShaderBuildStage::REQUESTED );
+            CHECK( clone._shaderCompStage.load() == ShaderBuildStage::REQUESTED );
             CHECK( clone._shaderRef == INVALID_HANDLE<ShaderProgram> );
         }
+    }
+
+    TEST_CASE( "Shader info keeps its atomic state across moves and clones", "[materials][resources][startup]" )
+    {
+        ShaderProgramInfo source{};
+        source._shaderCompStage = ShaderBuildStage::COMPUTED;
+        REQUIRE( source.updateReadiness( ResourceState::RES_LOADED, 41 ) == ShaderResourceStatus::READY );
+        source._hasCommonMaterialInputs = true;
+
+        ShaderProgramInfo moved{ std::move( source ) };
+        CHECK( source._shaderCompStage.load() == ShaderBuildStage::COUNT );
+        CHECK_FALSE( source.takeReadyNotification() );
+        CHECK_FALSE( source._hasCommonMaterialInputs.load() );
+        CHECK( moved._shaderCompStage.load() == ShaderBuildStage::READY );
+        CHECK( moved._hasCommonMaterialInputs.load() );
+        CHECK( moved._shaderKeyCache == 41 );
+        CHECK( moved.takeReadyNotification() );
+        CHECK_FALSE( moved.takeReadyNotification() );
+    }
+
+    TEST_CASE( "Material ignores texture assignments that change nothing", "[materials][bindings]" )
+    {
+        Material material{ ResourceDescriptor<Material>{ "noop-texture-test" } };
+        const SamplerDescriptor sampler{};
+        CHECK( material.setTexture( TextureSlot::UNIT0, INVALID_HANDLE<Texture>, sampler, TextureOperation::NONE, false ) );
+        static_cast<void>( material.update( 0u ) );
+
+        const U64 revision = material.coverageRevision();
+        CHECK( material.setTexture( TextureSlot::UNIT0, INVALID_HANDLE<Texture>, sampler, TextureOperation::REPLACE, true ) );
+        CHECK( material.coverageRevision() == revision );
+        CHECK_FALSE( material.properties().needsNewShader() );
     }
 
     TEST_CASE( "Resource snapshots survive asynchronous completion and deallocation", "[resources][threading][startup]" )

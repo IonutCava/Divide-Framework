@@ -73,9 +73,10 @@ struct ShaderProgramInfo
     I64 _shaderKeyCache = I64_LOWEST;
 
     Handle<ShaderProgram> _shaderRef = INVALID_HANDLE<ShaderProgram>;
-    ShaderBuildStage _shaderCompStage = ShaderBuildStage::COUNT;
+    std::atomic<ShaderBuildStage> _shaderCompStage{ ShaderBuildStage::COUNT };
     std::atomic_bool _shaderQueued{ false };
-    bool _readyNotificationPending{ false };
+    std::atomic_bool _readyNotificationPending{ false };
+    std::atomic_bool _hasCommonMaterialInputs{ false };
 };
 
 }; //namespace Divide
