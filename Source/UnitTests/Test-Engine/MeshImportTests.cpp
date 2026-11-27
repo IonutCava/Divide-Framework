@@ -6,6 +6,7 @@
 #include "Geometry/Animations/Headers/AnimationUtils.h"
 #include "Geometry/Animations/Headers/Bone.h"
 #include "Geometry/Importer/Headers/DVDConverter.h"
+#include "Geometry/Importer/Headers/MeshImporter.h"
 #include "Geometry/Shapes/Headers/Mesh.h"
 #include "Graphs/Headers/SceneNode.h"
 #include "Graphs/Headers/SceneGraphNode.h"
@@ -374,5 +375,145 @@ namespace Divide
 
         CHECK( sharedBindings > 0u );
         CHECK( nextBoneIndex == bones.size() );
+    }
+
+    namespace
+    {
+        struct UnweldedGrid
+        {
+            vector<U32> _indices;
+            vector<Import::SubMeshVertex> _vertices;
+        };
+
+        // Every triangle gets its own three vertices so the optimiser has to weld them back together.
+        UnweldedGrid MakeUnweldedGrid( const U32 cellsPerSide )
+        {
+            UnweldedGrid grid{};
+            const auto corner = [cellsPerSide]( const U32 x, const U32 z )
+            {
+                Import::SubMeshVertex vertex{};
+                vertex.position.set( to_F32( x ), 0.f, to_F32( z ) );
+                vertex.normal.set( 0.f, 1.f, 0.f );
+                vertex.texcoord.set( to_F32( x ) / to_F32( cellsPerSide ), to_F32( z ) / to_F32( cellsPerSide ), 0.f );
+                return vertex;
+            };
+
+            for ( U32 z = 0u; z < cellsPerSide; ++z )
+            {
+                for ( U32 x = 0u; x < cellsPerSide; ++x )
+                {
+                    for ( const auto& [cx, cz] : { std::pair{x, z}, std::pair{x, z + 1u}, std::pair{x + 1u, z},
+                                                   std::pair{x + 1u, z}, std::pair{x, z + 1u}, std::pair{x + 1u, z + 1u} } )
+                    {
+                        grid._indices.push_back( to_U32( grid._vertices.size() ) );
+                        grid._vertices.push_back( corner( cx, cz ) );
+                    }
+                }
+            }
+
+            return grid;
+        }
+
+        bool IsGridBorder( const float3& position, const U32 cellsPerSide )
+        {
+            const F32 edge = to_F32( cellsPerSide );
+            return position.x == 0.f || position.z == 0.f || position.x == edge || position.z == edge;
+        }
+    }
+
+    TEST_CASE( "Submesh optimisation welds vertices and builds a shrinking LoD chain", "[mesh_import]" )
+    {
+        constexpr U32 cellsPerSide = 64u;
+        UnweldedGrid grid = MakeUnweldedGrid( cellsPerSide );
+        const size_t sourceIndexCount = grid._indices.size();
+
+        Import::SubMeshData subMesh{};
+        DVDConverter::detail::OptimiseSubMeshGeometry( grid._indices, grid._vertices, subMesh );
+
+        CHECK( subMesh._vertices.size() == SQUARED( cellsPerSide + 1u ) );
+        REQUIRE( subMesh._lodCount == Import::MAX_LOD_LEVELS );
+        CHECK( subMesh._indices[0].size() == sourceIndexCount );
+
+        constexpr std::array<F32, Import::MAX_LOD_LEVELS> expectedRatios{ 1.f, 0.75f, 0.5f, 0.25f };
+        for ( U8 lod = 1u; lod < subMesh._lodCount; ++lod )
+        {
+            CAPTURE( lod );
+            const size_t lodIndexCount = subMesh._indices[lod].size();
+            CHECK( lodIndexCount % 3u == 0u );
+            CHECK( lodIndexCount <= to_size( to_F32( sourceIndexCount ) * expectedRatios[lod] ) );
+            CHECK( to_F32( lodIndexCount ) <= to_F32( subMesh._indices[lod - 1u].size() ) * 0.95f );
+        }
+    }
+
+    TEST_CASE( "Submesh LoDs keep open borders so neighbouring submeshes stay sealed", "[mesh_import]" )
+    {
+        constexpr U32 cellsPerSide = 64u;
+        UnweldedGrid grid = MakeUnweldedGrid( cellsPerSide );
+
+        Import::SubMeshData subMesh{};
+        DVDConverter::detail::OptimiseSubMeshGeometry( grid._indices, grid._vertices, subMesh );
+        REQUIRE( subMesh._lodCount > 1u );
+
+        size_t borderVertexCount = 0u;
+        for ( const Import::SubMeshVertex& vertex : subMesh._vertices )
+        {
+            borderVertexCount += IsGridBorder( vertex.position, cellsPerSide ) ? 1u : 0u;
+        }
+        REQUIRE( borderVertexCount == 4u * cellsPerSide );
+
+        for ( U8 lod = 0u; lod < subMesh._lodCount; ++lod )
+        {
+            CAPTURE( lod );
+            vector<bool> referenced( subMesh._vertices.size(), false );
+            for ( const U32 index : subMesh._indices[lod] )
+            {
+                referenced[index] = true;
+            }
+
+            size_t referencedBorderCount = 0u;
+            for ( size_t i = 0u; i < subMesh._vertices.size(); ++i )
+            {
+                referencedBorderCount += referenced[i] && IsGridBorder( subMesh._vertices[i].position, cellsPerSide ) ? 1u : 0u;
+            }
+            CHECK( referencedBorderCount == borderVertexCount );
+        }
+    }
+
+    TEST_CASE( "Coarser submesh LoDs read a compact prefix of the shared vertex buffer", "[mesh_import]" )
+    {
+        UnweldedGrid grid = MakeUnweldedGrid( 64u );
+
+        Import::SubMeshData subMesh{};
+        DVDConverter::detail::OptimiseSubMeshGeometry( grid._indices, grid._vertices, subMesh );
+        REQUIRE( subMesh._lodCount > 1u );
+
+        for ( U8 lod = 0u; lod < subMesh._lodCount; ++lod )
+        {
+            CAPTURE( lod );
+            const vector<U32>& indices = subMesh._indices[lod];
+            vector<bool> referenced( subMesh._vertices.size(), false );
+            U32 maxIndex = 0u;
+            for ( const U32 index : indices )
+            {
+                referenced[index] = true;
+                maxIndex = std::max( maxIndex, index );
+            }
+
+            const size_t uniqueCount = to_size( eastl::count( referenced.begin(), referenced.end(), true ) );
+            CHECK( maxIndex + 1u == uniqueCount );
+        }
+    }
+
+    TEST_CASE( "Small submeshes skip automatic LoD generation", "[mesh_import]" )
+    {
+        UnweldedGrid grid = MakeUnweldedGrid( 8u );
+
+        Import::SubMeshData subMesh{};
+        DVDConverter::detail::OptimiseSubMeshGeometry( grid._indices, grid._vertices, subMesh );
+
+        CHECK( subMesh._lodCount == 1u );
+        CHECK( subMesh._indices[0].size() == 8u * 8u * 6u );
+        CHECK( subMesh._indices[1].empty() );
+        CHECK( subMesh._vertices.size() == 9u * 9u );
     }
 }

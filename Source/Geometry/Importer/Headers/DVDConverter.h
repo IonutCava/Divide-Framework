@@ -81,6 +81,7 @@ namespace Divide {
         struct NodeData;
         struct ImportData;
         struct SubMeshData;
+        struct SubMeshVertex;
         struct MaterialData;
     };
 
@@ -112,6 +113,11 @@ namespace DVDConverter {
         void LoadSubMeshGeometry(const aiMesh* source, 
                                  Import::SubMeshData& subMeshData,
                                  Import::ImportData& target);
+
+        // Welds and reorders the input geometry into LoD 0, then generates up to Import::MAX_LOD_LEVELS - 1 simplified levels sharing the same vertices
+        void OptimiseSubMeshGeometry(vector<U32>& indices,
+                                     vector<Import::SubMeshVertex>& vertices,
+                                     Import::SubMeshData& subMeshData);
 
         void LoadSubMeshMaterial(Import::MaterialData& material,
                                  const aiScene* source,

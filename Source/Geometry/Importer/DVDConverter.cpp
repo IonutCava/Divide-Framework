@@ -659,114 +659,103 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
         subMeshData._useAttribute[to_base( AttribLocation::BONE_WEIGHT )] = true;
     }
 
-    constexpr F32 kThreshold = 1.02f;   // allow up to 2% worse ACMR to get more reordering opportunities for overdraw
-    constexpr D64 target_factor = 0.75; // index count reduction factor per LoD
-    constexpr F32 target_error = 1e-3f; // max allowed error between lod levels
+    OptimiseSubMeshGeometry( input_indices, vertices, subMeshData );
+}
 
-    { // Generate LoD 0 (max detail)
-        auto& target_indices = subMeshData._indices[0];
+void OptimiseSubMeshGeometry( vector<U32>& indices, vector<Import::SubMeshData::Vertex>& vertices, Import::SubMeshData& subMeshData )
+{
+    // Allow up to 2% worse ACMR to get more reordering opportunities for overdraw
+    constexpr F32 kOverdrawThreshold = 1.02f;
+    // Relative to the mesh extents
+    constexpr F32 kLoDTargetError = 1e-2f;
+    // A level must drop at least this fraction of the previous level's indices to be kept
+    constexpr F32 kMinLoDReduction = 0.05f;
+    constexpr std::array<F32, Import::MAX_LOD_LEVELS> kLoDIndexRatios{ 1.f, 0.75f, 0.5f, 0.25f };
+    constexpr size_t kVertexStride = sizeof( Import::SubMeshData::Vertex );
 
-        //Remap VB & IB
-        vector<U32> remap(source->mNumVertices);
-        const size_t vertex_count = meshopt_generateVertexRemap( remap.data(),
-                                                                 input_indices.data(),
-                                                                 input_indices.size(),
-                                                                 vertices.data(),
-                                                                 source->mNumVertices,
-                                                                 sizeof( Import::SubMeshData::Vertex ) );
-        const size_t index_count = input_indices.size();
-        target_indices.resize( index_count );
-        meshopt_remapIndexBuffer(target_indices.data(),
-                                 input_indices.data(),
-                                 input_indices.size(),
-                                 remap.data() );
-
-        // Don't need these anymore. Each LoD level will be calculated from the previous level's data
-        input_indices.clear();
-
-        subMeshData._vertices.resize( vertex_count );
-        meshopt_remapVertexBuffer( subMeshData._vertices.data(),
-                                   vertices.data(),
-                                   source->mNumVertices,
-                                   sizeof( Import::SubMeshData::Vertex ),
-                                   remap.data() );
-        vertices.clear();
-        
-        // Optimise VB & IB
-        meshopt_optimizeVertexCache( target_indices.data(),
-                                     target_indices.data(),
-                                     index_count,
-                                     subMeshData._vertices.size() );
-
-        meshopt_optimizeOverdraw( target_indices.data(),
-                                  target_indices.data(),
-                                  index_count,
-                                  &subMeshData._vertices[0].position.x,
-                                  subMeshData._vertices.size(),
-                                  sizeof( Import::SubMeshData::Vertex ),
-                                  kThreshold );
-
-        // vertex fetch optimization should go last as it depends on the final index order
-        const size_t next_vertices = meshopt_optimizeVertexFetch( subMeshData._vertices.data(),
-                                                                  target_indices.data(),
-                                                                  index_count,
-                                                                  subMeshData._vertices.data(),
-                                                                  subMeshData._vertices.size(),
-                                                                  sizeof( Import::SubMeshData::Vertex ) );
-        subMeshData._vertices.resize( next_vertices );
-
-        subMeshData._lodCount = 1u;
+    subMeshData._lodCount = 0u;
+    for ( vector<U32>& lodIndices : subMeshData._indices )
+    {
+        lodIndices.clear();
     }
-    { // Generate LoDs [1 ... Import::MAX_LOD_LEVELS-1] data and place inside VB & IB with proper offsets
-        if (subMeshData._indices[0].size() >= g_minIndexCountForAutoLoD)
+
+    if ( indices.empty() || vertices.empty() )
+    {
+        subMeshData._vertices.clear();
+        return;
+    }
+
+    {
+        vector<U32> remap( vertices.size() );
+        const size_t uniqueVertexCount = meshopt_generateVertexRemap( remap.data(), indices.data(), indices.size(), vertices.data(), vertices.size(), kVertexStride );
+
+        subMeshData._indices[0].resize( indices.size() );
+        meshopt_remapIndexBuffer( subMeshData._indices[0].data(), indices.data(), indices.size(), remap.data() );
+        indices.clear();
+
+        subMeshData._vertices.resize( uniqueVertexCount );
+        meshopt_remapVertexBuffer( subMeshData._vertices.data(), vertices.data(), vertices.size(), kVertexStride, remap.data() );
+        vertices.clear();
+    }
+
+    const F32* positions = &subMeshData._vertices[0].position.x;
+    const size_t vertexCount = subMeshData._vertices.size();
+
+    const auto optimiseIndexOrder = [positions, vertexCount]( vector<U32>& lodIndices )
+    {
+        meshopt_optimizeVertexCache( lodIndices.data(), lodIndices.data(), lodIndices.size(), vertexCount );
+        meshopt_optimizeOverdraw( lodIndices.data(), lodIndices.data(), lodIndices.size(), positions, vertexCount, kVertexStride, kOverdrawThreshold );
+    };
+
+    const vector<U32>& lod0 = subMeshData._indices[0];
+    optimiseIndexOrder( subMeshData._indices[0] );
+    subMeshData._lodCount = 1u;
+
+    if ( lod0.size() >= g_minIndexCountForAutoLoD )
+    {
+        // Every level is simplified from LoD 0 so errors don't accumulate down the chain.
+        // Borders are locked because sibling submeshes share their open edges.
+        for ( U8 lod = 1u; lod < Import::MAX_LOD_LEVELS; ++lod )
         {
-            F32 threshold = target_factor;
+            const size_t previousCount = subMeshData._indices[lod - 1u].size();
+            const size_t targetCount = to_size( to_F32( lod0.size() ) * kLoDIndexRatios[lod] ) / 3u * 3u;
 
-            for (U8 i = 1u; i < Import::MAX_LOD_LEVELS; ++i)
+            vector<U32>& lodIndices = subMeshData._indices[lod];
+            lodIndices.resize( lod0.size() );
+            const size_t simplifiedCount = meshopt_simplify( lodIndices.data(), lod0.data(), lod0.size(), positions, vertexCount, kVertexStride,
+                                                             targetCount, kLoDTargetError, meshopt_SimplifyLockBorder, nullptr );
+
+            if ( simplifiedCount == 0u || to_F32( simplifiedCount ) > to_F32( previousCount ) * (1.f - kMinLoDReduction) )
             {
-                auto& target_indices = subMeshData._indices[i];
-                auto& source_indices = subMeshData._indices[i - 1u];
-
-                const size_t target_index_count = size_t(source_indices.size() * threshold) / 9;
-
-                target_indices.resize( source_indices.size() );
-
-                const size_t next_indices = meshopt_simplify( target_indices.data(),
-                                                              source_indices.data(),
-                                                              source_indices.size(),
-                                                              &subMeshData._vertices[0].position.x,
-                                                              subMeshData._vertices.size(),
-                                                              sizeof( Import::SubMeshData::Vertex ),
-                                                              target_index_count,
-                                                              target_error );
-
-                if (next_indices == source_indices.size() )
-                {
-                    target_indices.clear();
-                    // We failed to simplify further, so no point in adding this as an LoD level
-                    break;
-                }
-                target_indices.resize( next_indices );
-
-                // reorder indices for overdraw, balancing overdraw and vertex cache efficiency
-                meshopt_optimizeVertexCache(target_indices.data(),
-                                            target_indices.data(),
-                                            target_indices.size(),
-                                            subMeshData._vertices.size());
-
-                meshopt_optimizeOverdraw( target_indices.data(),
-                                          target_indices.data(),
-                                          target_indices.size(),
-                                          &subMeshData._vertices[0].position.x,
-                                          subMeshData._vertices.size(),
-                                          sizeof( Import::SubMeshData::Vertex ),
-                                          kThreshold );
-                                          
-                ++subMeshData._lodCount;
-                threshold *= threshold;
+                lodIndices.clear();
+                break;
             }
+
+            lodIndices.resize( simplifiedCount );
+            optimiseIndexOrder( lodIndices );
+            ++subMeshData._lodCount;
         }
     }
+
+    // All levels share one vertex buffer. Ordering fetches coarsest level first keeps each lower LoD in a compact prefix.
+    vector<U32> combinedIndices;
+    for ( U8 lod = subMeshData._lodCount; lod > 0u; --lod )
+    {
+        const vector<U32>& lodIndices = subMeshData._indices[lod - 1u];
+        combinedIndices.insert( combinedIndices.end(), lodIndices.begin(), lodIndices.end() );
+    }
+
+    vector<U32> fetchRemap( vertexCount );
+    const size_t usedVertexCount = meshopt_optimizeVertexFetchRemap( fetchRemap.data(), combinedIndices.data(), combinedIndices.size(), vertexCount );
+    for ( U8 lod = 0u; lod < subMeshData._lodCount; ++lod )
+    {
+        vector<U32>& lodIndices = subMeshData._indices[lod];
+        meshopt_remapIndexBuffer( lodIndices.data(), lodIndices.data(), lodIndices.size(), fetchRemap.data() );
+    }
+
+    vector<Import::SubMeshData::Vertex> fetchOrderedVertices( usedVertexCount );
+    meshopt_remapVertexBuffer( fetchOrderedVertices.data(), subMeshData._vertices.data(), vertexCount, kVertexStride, fetchRemap.data() );
+    subMeshData._vertices = MOV( fetchOrderedVertices );
 }
 
 void LoadSubMeshMaterial(Import::MaterialData& material,

@@ -23,7 +23,8 @@
 namespace Divide {
 
 namespace {
-    constexpr U16 BYTE_BUFFER_VERSION = 2u;
+    constexpr U16 BYTE_BUFFER_VERSION = 3u;
+    static_assert(Import::MAX_LOD_LEVELS <= Object3D::MAX_GEOMETRY_PARTITIONS);
     const char* g_parsedAssetGeometryExt = "DVDGeom";
     const char* g_parsedAssetAnimationExt = "DVDAnim";
 };
