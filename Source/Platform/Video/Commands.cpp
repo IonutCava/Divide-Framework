@@ -298,7 +298,7 @@ static string ToString(const SetCameraCommand& cmd, [[maybe_unused]] U16 indent)
 
 static string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
 {
-    const DescriptorSet bindings = cmd.effectiveBindings();
+    const DescriptorSet bindings = EffectiveBindings( cmd );
     U8 bufferCount = 0u;
     U8 imageCount = 0u;
     for (U8 i = 0u; i < bindings._bindingCount; ++i)

@@ -374,7 +374,7 @@ namespace
                     PROFILE_SCOPE( "Clean Descriptor Sets", Profiler::Category::Graphics );
 
                     auto bindCmd = cmd->As<BindShaderResourcesCommand>();
-                    if ( bindCmd->_usage != DescriptorSetUsage::COUNT && (prevDescriptorSet == nullptr || !prevDescriptorSet->sameBindings( *bindCmd )) )
+                    if ( bindCmd->_usage != DescriptorSetUsage::COUNT && (prevDescriptorSet == nullptr || !SameBindings( *prevDescriptorSet, *bindCmd )) )
                     {
                         prevDescriptorSet = bindCmd;
                     }
@@ -639,7 +639,7 @@ namespace
                     {
                         return { ErrorType::INVALID_DESCRIPTOR_SET, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                     }
-                    const DescriptorSet bindings = resCmd->effectiveBindings();
+                    const DescriptorSet bindings = EffectiveBindings( *resCmd );
                     for ( U8 i = 0u; i < bindings._bindingCount; ++i )
                     {
                         const DescriptorSetBinding& binding = bindings._bindings[i];

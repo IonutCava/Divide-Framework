@@ -175,15 +175,20 @@ DEFINE_COMMAND_BEGIN(BindShaderResourcesCommand, CommandType::BIND_SHADER_RESOUR
     ResourceBindingHandle _resources{};
     DescriptorSet _set{};
     DescriptorSetUsage _usage{ DescriptorSetUsage::COUNT };
-    [[nodiscard]] DescriptorSet effectiveBindings() const { return ComposeResourceBindings( _resources, _set ); }
-    [[nodiscard]] bool sameBindings( const BindShaderResourcesCommand& other ) const
-    {
-        return _usage == other._usage &&
-               (_resources == other._resources
-                   ? EqualActiveBindings( _set, other._set )
-                   : EqualActiveBindings( effectiveBindings(), other.effectiveBindings() ));
-    }
 DEFINE_COMMAND_END(BindShaderResourcesCommand);
+
+[[nodiscard]] inline DescriptorSet EffectiveBindings( const BindShaderResourcesCommand& cmd )
+{
+    return ComposeResourceBindings( cmd._resources, cmd._set );
+}
+
+[[nodiscard]] inline bool SameBindings( const BindShaderResourcesCommand& lhs, const BindShaderResourcesCommand& rhs )
+{
+    return lhs._usage == rhs._usage &&
+           (lhs._resources == rhs._resources
+               ? EqualActiveBindings( lhs._set, rhs._set )
+               : EqualActiveBindings( EffectiveBindings( lhs ), EffectiveBindings( rhs ) ));
+}
 
 DEFINE_COMMAND_BEGIN(BeginDebugScopeCommand, CommandType::BEGIN_DEBUG_SCOPE);
     Str<64> _scopeName;

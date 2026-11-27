@@ -225,18 +225,18 @@ namespace Divide
         image._subRange._mipLevels._offset = 2u;
         Set( AddBinding( second._set, 0u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
         Set( AddBinding( second._set, 10u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
-        const DescriptorSet composed = second.effectiveBindings();
+        const DescriptorSet composed = GFX::EffectiveBindings( second );
         CHECK( composed._bindingCount == 2u );
         CHECK( composed._bindings[0]._data._sampledImage._image == image );
-        CHECK( first.effectiveBindings()._bindingCount == 1u );
+        CHECK( GFX::EffectiveBindings( first )._bindingCount == 1u );
         CHECK( first._resources->_bindings._bindings[0]._data._sampledImage._image._subRange._mipLevels._offset == 0u );
-        CHECK_FALSE( first.sameBindings( second ) );
+        CHECK_FALSE( GFX::SameBindings( first, second ) );
         GFX::BindShaderResourcesCommand raw{};
         raw._usage = DescriptorSetUsage::PER_DRAW;
         raw._set = composed;
-        CHECK( raw.sameBindings( second ) );
+        CHECK( GFX::SameBindings( raw, second ) );
         raw._usage = DescriptorSetUsage::PER_PASS;
-        CHECK_FALSE( raw.sameBindings( second ) );
+        CHECK_FALSE( GFX::SameBindings( raw, second ) );
     }
 
     TEST_CASE( "Merged resource slots retain their own immutable revision", "[renderer][bindings][render_smoke]" )
