@@ -178,7 +178,10 @@ void Kernel::onLoop()
         Time::ScopedTimer timer(_appLoopTimerMain);
 
         ResourceCache::OnFrameStart();
-        RenderSmokeTest::BeginFrame();
+        if ( RenderSmokeTest::Enabled() ) [[unlikely]]
+        {
+            RenderSmokeTest::BeginFrame();
+        }
 
         if (!keepAlive())
         {
@@ -243,7 +246,7 @@ void Kernel::onLoop()
                 keepAlive(false);
             }
 
-            if ( RenderSmokeTest::ReadyToStop() )
+            if ( RenderSmokeTest::Enabled() && RenderSmokeTest::ReadyToStop() ) [[unlikely]]
             {
                 _platformContext.app().RequestShutdown( false );
             }
@@ -638,7 +641,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
         _renderTimer.erase(begin(_renderTimer) + i);
     }
 
-    if ( playerCount > 0u )
+    if ( playerCount > 0u && RenderSmokeTest::Enabled() ) [[unlikely]]
     {
         RenderSmokeTest::MarkSceneFrame();
     }

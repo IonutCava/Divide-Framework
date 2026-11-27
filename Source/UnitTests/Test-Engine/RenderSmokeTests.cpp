@@ -721,4 +721,25 @@ namespace Divide
         CHECK_FALSE( IsSuccessfulResult( true, false, true ) );
         CHECK_FALSE( IsSuccessfulResult( true, true, false ) );
     }
+
+    TEST_CASE( "Smoke accessors stay disabled until a run is configured", "[render_smoke][runtime]" )
+    {
+        // Ordinary runs and unit tests never call Configure(), so every per-frame hook guard must read as off.
+        CHECK_FALSE( RenderSmokeTest::Enabled() );
+        CHECK_FALSE( RenderSmokeTest::PausedEditorRequested() );
+        CHECK_FALSE( RenderSmokeTest::WindowCaptureRequested() );
+        CHECK_FALSE( RenderSmokeTest::RenderDocCaptureRequested() );
+        CHECK_FALSE( RenderSmokeTest::PipelineTraceRequested() );
+        CHECK_FALSE( RenderSmokeTest::PerfModeRequested() );
+        CHECK_FALSE( RenderSmokeTest::GPUScopeTimingsRequested() );
+        CHECK_FALSE( RenderSmokeTest::SerialViewRecordingRequested() );
+        CHECK_FALSE( RenderSmokeTest::BindingCacheDisabledRequested() );
+        CHECK_FALSE( RenderSmokeTest::ReadyToStop() );
+
+        RenderSmokeTest::BeginFrame();
+        RenderSmokeTest::MarkSceneFrame();
+        RenderSmokeTest::RecordPresent( true, true, false );
+        CHECK_FALSE( RenderSmokeTest::TryBeginCapture() );
+        CHECK( RenderSmokeTest::PresentCount() == 0u );
+    }
 }

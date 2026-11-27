@@ -229,17 +229,44 @@ namespace Divide::RenderSmokeTest
         bool _requireWindowCapture;
     };
 
+    namespace RuntimeOptions
+    {
+        enum class OptionBit : U32
+        {
+            ENABLED = 1u << 0u,
+            PAUSED_EDITOR = 1u << 1u,
+            WINDOW_CAPTURE = 1u << 2u,
+            RENDERDOC_CAPTURE = 1u << 3u,
+            PIPELINE_TRACE = 1u << 4u,
+            PERF_MODE = 1u << 5u,
+            GPU_SCOPE_TIMINGS = 1u << 6u,
+            SERIAL_VIEW_RECORDING = 1u << 7u,
+            BINDING_CACHE_DISABLED = 1u << 8u
+        };
+
+        // Written once by Configure() before the engine starts any other thread, then only read.
+        // Only bits of an enabled run are ever set, so every accessor below already implies Enabled().
+        inline std::atomic<U32> g_options{ 0u };
+
+        [[nodiscard]] inline bool HasOption( const OptionBit option ) noexcept
+        {
+            return ( g_options.load( std::memory_order_relaxed ) & to_base( option ) ) != 0u;
+        }
+    }
+
     [[nodiscard]] bool Configure( I32 argc, char** argv );
-    [[nodiscard]] bool Enabled() noexcept;
+
+    // These guard hooks on every frame or draw, so they are a single inlined load rather than a call.
+    [[nodiscard]] inline bool Enabled() noexcept { return RuntimeOptions::HasOption( RuntimeOptions::OptionBit::ENABLED ); }
+    [[nodiscard]] inline bool PausedEditorRequested() noexcept { return RuntimeOptions::HasOption( RuntimeOptions::OptionBit::PAUSED_EDITOR ); }
+    [[nodiscard]] inline bool WindowCaptureRequested() noexcept { return RuntimeOptions::HasOption( RuntimeOptions::OptionBit::WINDOW_CAPTURE ); }
+    [[nodiscard]] inline bool RenderDocCaptureRequested() noexcept { return RuntimeOptions::HasOption( RuntimeOptions::OptionBit::RENDERDOC_CAPTURE ); }
+    [[nodiscard]] inline bool PipelineTraceRequested() noexcept { return RuntimeOptions::HasOption( RuntimeOptions::OptionBit::PIPELINE_TRACE ); }
+    [[nodiscard]] inline bool PerfModeRequested() noexcept { return RuntimeOptions::HasOption( RuntimeOptions::OptionBit::PERF_MODE ); }
+    [[nodiscard]] inline bool GPUScopeTimingsRequested() noexcept { return RuntimeOptions::HasOption( RuntimeOptions::OptionBit::GPU_SCOPE_TIMINGS ); }
+    [[nodiscard]] inline bool SerialViewRecordingRequested() noexcept { return RuntimeOptions::HasOption( RuntimeOptions::OptionBit::SERIAL_VIEW_RECORDING ); }
+    [[nodiscard]] inline bool BindingCacheDisabledRequested() noexcept { return RuntimeOptions::HasOption( RuntimeOptions::OptionBit::BINDING_CACHE_DISABLED ); }
     [[nodiscard]] Backend SelectedBackend() noexcept;
-    [[nodiscard]] bool PausedEditorRequested() noexcept;
-    [[nodiscard]] bool WindowCaptureRequested() noexcept;
-    [[nodiscard]] bool RenderDocCaptureRequested() noexcept;
-    [[nodiscard]] bool PipelineTraceRequested() noexcept;
-    [[nodiscard]] bool PerfModeRequested() noexcept;
-    [[nodiscard]] bool GPUScopeTimingsRequested() noexcept;
-    [[nodiscard]] bool SerialViewRecordingRequested() noexcept;
-    [[nodiscard]] bool BindingCacheDisabledRequested() noexcept;
     [[nodiscard]] const std::string& OutputDirectory() noexcept;
     [[nodiscard]] const std::string& ExpectedGPU() noexcept;
     [[nodiscard]] const std::string& Project() noexcept;

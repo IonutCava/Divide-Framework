@@ -35,7 +35,7 @@
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glShaderBuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glFramebuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glGenericVertexData.h"
-#include "Platform/Video/RenderBackend/OpenGL/Headers/glUniformFences.h"
+#include "Platform/Video/RenderBackend/OpenGL/Headers/glFenceUtils.h"
 #include <glbinding/Binding.h>
 
 namespace Divide
@@ -863,8 +863,9 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const bool mainWindow = window.getGUID() == _context.context().mainWindow().getGUID();
-        const U32 presentsBeforeCapture = RenderSmokeTest::PresentCount();
-        const bool capture = mainWindow && _screenPassRecorded && RenderSmokeTest::TryBeginCapture();
+        const bool smokeEnabled = RenderSmokeTest::Enabled();
+        const U32 presentsBeforeCapture = smokeEnabled ? RenderSmokeTest::PresentCount() : 0u;
+        const bool capture = smokeEnabled && mainWindow && _screenPassRecorded && RenderSmokeTest::TryBeginCapture();
         ImageReadbackData sceneData{};
         vector<Byte> editorPixels{};
         if ( capture )
@@ -886,10 +887,13 @@ namespace Divide
             swapSucceeded = SDL_GL_SwapWindow( window.getRawWindow() );
         }
 
-        RenderSmokeTest::RecordPresent( mainWindow && _screenPassRecorded, swapSucceeded, false );
-        if ( RenderSmokeTest::Enabled() && !swapSucceeded )
+        if ( smokeEnabled ) [[unlikely]]
         {
-            RenderSmokeTest::Fail( "present", SDL_GetError(), RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            RenderSmokeTest::RecordPresent( mainWindow && _screenPassRecorded, swapSucceeded, false );
+            if ( !swapSucceeded )
+            {
+                RenderSmokeTest::Fail( "present", SDL_GetError(), RenderSmokeTest::CAPTURE_FAILURE_EXIT );
+            }
         }
         if ( capture )
         {
@@ -931,7 +935,8 @@ namespace Divide
         else if ( window.userData()._glContext != _context.context().mainWindow().userData()._glContext )
         {
             gl46core::GLsync fence = CreateFenceSync();
-            if ( fence == nullptr )
+            DIVIDE_GPU_ASSERT( fence != nullptr, "OpenGL: failed to create a window uniform upload completion fence" );
+            if ( fence == nullptr ) [[unlikely]]
             {
                 Console::errorfn( "OpenGL: failed to create a window uniform upload completion fence" );
                 _uniformContextFenceFailed = true;
@@ -1070,7 +1075,8 @@ namespace Divide
         _runPipelineStatQueries = _runQueries && _context.queryPipelineStatistics();
 
         gl46core::GLsync frameFence = CreateFenceSync();
-        if ( frameFence == nullptr )
+        DIVIDE_GPU_ASSERT( frameFence != nullptr, "OpenGL: failed to create a frame completion fence" );
+        if ( frameFence == nullptr ) [[unlikely]]
         {
             Console::errorfn( "OpenGL: failed to create a frame completion fence" );
             return false;
@@ -1107,13 +1113,14 @@ namespace Divide
             return false;
         }
 
-        const bool fencesCompleted = !_uniformContextFenceFailed && GLUtil::FinishUniformContextFences(
+        const bool fencesCompleted = !_uniformContextFenceFailed && GLUtil::FinishFenceGroups(
             std::span{ _uniformContextFences },
             []( const gl46core::GLsync fence ) { return WaitForUniformFence( fence ); },
             []
             {
                 gl46core::GLsync fence = CreateFenceSync();
-                if ( fence == nullptr )
+                DIVIDE_GPU_ASSERT( fence != nullptr, "OpenGL: failed to create a shutdown completion fence" );
+                if ( fence == nullptr ) [[unlikely]]
                 {
                     Console::errorfn( "OpenGL: failed to create a shutdown completion fence" );
                     return false;

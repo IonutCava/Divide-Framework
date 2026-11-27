@@ -612,7 +612,7 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/RenderBackend/OpenGL/Headers/glResources.h
                              Platform/Video/RenderBackend/OpenGL/Headers/glResources.inl
                              Platform/Video/RenderBackend/OpenGL/Headers/glStateTracker.h
-                             Platform/Video/RenderBackend/OpenGL/Headers/glUniformFences.h
+                             Platform/Video/RenderBackend/OpenGL/Headers/glFenceUtils.h
                              Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h
                              Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShader.h
                              Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShaderProgram.h

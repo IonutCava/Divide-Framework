@@ -68,7 +68,6 @@ namespace Divide::RenderSmokeTest
             FirstFailureLatch _failureLatch{};
             std::mutex _eventMutex{};
             std::FILE* _events{ nullptr };
-            bool _enabled{ false };
             bool _normalStop{ false };
         };
 
@@ -645,7 +644,21 @@ namespace Divide::RenderSmokeTest
         }
 
         state._progress.reset( state._options._targetPresents, state._options._windowCapture );
-        state._enabled = true;
+        {
+            using RuntimeOptions::OptionBit;
+            const Options& options = state._options;
+            const auto bit = []( const bool set, const OptionBit option ) noexcept { return set ? to_base( option ) : 0u; };
+            RuntimeOptions::g_options.store( bit( true, OptionBit::ENABLED ) |
+                                     bit( options._pausedEditor, OptionBit::PAUSED_EDITOR ) |
+                                     bit( options._windowCapture, OptionBit::WINDOW_CAPTURE ) |
+                                     bit( options._renderDocCapture, OptionBit::RENDERDOC_CAPTURE ) |
+                                     bit( options._pipelineTrace, OptionBit::PIPELINE_TRACE ) |
+                                     bit( options._perfMode, OptionBit::PERF_MODE ) |
+                                     bit( options._perfMode && options._gpuScopeTimings, OptionBit::GPU_SCOPE_TIMINGS ) |
+                                     bit( options._serialViewRecording, OptionBit::SERIAL_VIEW_RECORDING ) |
+                                     bit( options._perfMode && options._disableBindingCache, OptionBit::BINDING_CACHE_DISABLED ),
+                                     std::memory_order_relaxed );
+        }
         Emit( "START run=%s target=%u backend=%s project=%s scene=%s", state._options._runID.c_str(), state._options._targetPresents,
               state._options._backend == Backend::VULKAN ? "Vulkan" : "OpenGL",
               state._options._project.empty() ? "<default>" : state._options._project.c_str(),
@@ -670,54 +683,9 @@ namespace Divide::RenderSmokeTest
         return true;
     }
 
-    bool Enabled() noexcept
-    {
-        return State()._enabled;
-    }
-
     Backend SelectedBackend() noexcept
     {
         return State()._options._backend;
-    }
-
-    bool PausedEditorRequested() noexcept
-    {
-        return Enabled() && State()._options._pausedEditor;
-    }
-
-    bool WindowCaptureRequested() noexcept
-    {
-        return Enabled() && State()._options._windowCapture;
-    }
-
-    bool RenderDocCaptureRequested() noexcept
-    {
-        return Enabled() && State()._options._renderDocCapture;
-    }
-
-    bool PipelineTraceRequested() noexcept
-    {
-        return Enabled() && State()._options._pipelineTrace;
-    }
-
-    bool PerfModeRequested() noexcept
-    {
-        return Enabled() && State()._options._perfMode;
-    }
-
-    bool GPUScopeTimingsRequested() noexcept
-    {
-        return PerfModeRequested() && State()._options._gpuScopeTimings;
-    }
-
-    bool SerialViewRecordingRequested() noexcept
-    {
-        return Enabled() && State()._options._serialViewRecording;
-    }
-
-    bool BindingCacheDisabledRequested() noexcept
-    {
-        return PerfModeRequested() && State()._options._disableBindingCache;
     }
 
     const std::string& OutputDirectory() noexcept
@@ -842,7 +810,7 @@ namespace Divide::RenderSmokeTest
     void RecordPresent( const bool mainWindow, const bool successful, const bool recreating ) noexcept
     {
         Runtime& state = State();
-        if ( !state._enabled || !state._progress.recordPresent( mainWindow, successful, recreating ) )
+        if ( !Enabled() || !state._progress.recordPresent( mainWindow, successful, recreating ) )
         {
             return;
         }
@@ -853,7 +821,7 @@ namespace Divide::RenderSmokeTest
     bool TryBeginCapture() noexcept
     {
         Runtime& state = State();
-        if ( state._enabled && state._progress.tryBeginCapture() )
+        if ( Enabled() && state._progress.tryBeginCapture() )
         {
             Emit( "CAPTURE_START" );
             return true;
@@ -901,7 +869,7 @@ namespace Divide::RenderSmokeTest
     bool Complete( const bool engineClean ) noexcept
     {
         Runtime& state = State();
-        if ( !state._enabled )
+        if ( !Enabled() )
         {
             return engineClean;
         }

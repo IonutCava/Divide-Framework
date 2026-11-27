@@ -5,8 +5,8 @@
 namespace Divide::GLUtil
 {
     template<typename Fence, size_t Extent, typename Wait, typename Finish, typename Destroy>
-    [[nodiscard]] bool FinishUniformContextFences( const std::span<vector<Fence>, Extent> groups, Wait&& wait,
-                                                    Finish&& finish, Destroy&& destroy )
+    [[nodiscard]] bool FinishFenceGroups( const std::span<vector<Fence>, Extent> groups, Wait&& wait,
+                                          Finish&& finish, Destroy&& destroy )
     {
         for ( auto& fences : groups )
         {

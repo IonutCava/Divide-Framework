@@ -1059,8 +1059,9 @@ namespace Divide
         }
 
         const bool mainWindow = window.getGUID() == _context.context().mainWindow().getGUID();
-        const U32 presentsBeforeCapture = RenderSmokeTest::PresentCount();
-        const bool capture = mainWindow && !windowState._recreateAfterPresent &&
+        const bool smokeEnabled = RenderSmokeTest::Enabled();
+        const U32 presentsBeforeCapture = smokeEnabled ? RenderSmokeTest::PresentCount() : 0u;
+        const bool capture = smokeEnabled && mainWindow && !windowState._recreateAfterPresent &&
                              windowState._swapChain->currentImageWasRenderedThisFrame() &&
                              RenderSmokeTest::TryBeginCapture();
         VMABuffer_uptr editorReadback{};
@@ -1139,7 +1140,10 @@ namespace Divide
         const bool recreateAfterPresent = windowState._recreateAfterPresent;
         windowState._recreateAfterPresent = false;
 
-        RenderSmokeTest::RecordPresent( mainWindow, result == VK_SUCCESS, recreateAfterPresent );
+        if ( smokeEnabled ) [[unlikely]]
+        {
+            RenderSmokeTest::RecordPresent( mainWindow, result == VK_SUCCESS, recreateAfterPresent );
+        }
 
         if ( capture )
         {

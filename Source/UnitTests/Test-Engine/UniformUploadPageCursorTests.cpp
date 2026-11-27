@@ -4,7 +4,7 @@
 #include "Platform/Video/Buffers/VertexBuffer/Headers/BufferLocks.h"
 #include "Platform/Video/Headers/GPUCompletionGuard.h"
 #include "Platform/Video/Headers/DescriptorSets.h"
-#include "Platform/Video/RenderBackend/OpenGL/Headers/glUniformFences.h"
+#include "Platform/Video/RenderBackend/OpenGL/Headers/glFenceUtils.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkSwapChain.h"
 #include "Platform/Video/Shaders/Headers/ShaderDataUploader.h"
 
@@ -397,7 +397,7 @@ namespace Divide
         groups[1].push_back(&secondFence);
         vector<I32> events;
 
-        const bool success = GLUtil::FinishUniformContextFences(
+        const bool success = GLUtil::FinishFenceGroups(
             std::span{groups},
             [&](const I32* fence)
             {
@@ -427,7 +427,7 @@ namespace Divide
         groups[0].push_back(&fence);
         vector<I32> events;
 
-        CHECK_FALSE(GLUtil::FinishUniformContextFences(
+        CHECK_FALSE(GLUtil::FinishFenceGroups(
             std::span{groups},
             [&](const I32*) { events.push_back(1); return true; },
             [&] { events.push_back(2); return false; },
@@ -447,7 +447,7 @@ namespace Divide
         U32 finishCount = 0u;
         U32 destroyCount = 0u;
 
-        REQUIRE(GLUtil::FinishUniformContextFences(
+        REQUIRE(GLUtil::FinishFenceGroups(
             std::span{groups},
             [&](const I32*) { ++waitCount; return true; },
             [&] { ++finishCount; return true; },
