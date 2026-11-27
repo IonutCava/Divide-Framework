@@ -386,18 +386,55 @@ namespace Divide
 
     TEST_CASE( "Grass placement uses selected terrain material channels", "[renderer][vegetation]" )
     {
-        const UColour4 grass = GrassPlacementColour( UColour4{ 180u, 90u, 255u, 255u }, 3u,
-                                                     UColour4{ 255u, 255u, 255u, 120u }, 8u );
+        const std::array<GrassPlacementSample, 2u> grassSamples{ {
+            { UColour4{ 180u, 90u, 255u, 255u }, 3u },
+            { UColour4{ 255u, 255u, 255u, 120u }, 8u }
+        } };
+        const UColour4 grass = GrassPlacementColour( grassSamples );
         CHECK( grass.r == 180u );
         CHECK( grass.g == 90u );
         CHECK( grass.b == 0u );
         CHECK( grass.a == 120u );
-        const UColour4 bare = GrassPlacementColour( UColour4{ 0u, 0u, 255u, 255u }, 3u,
-                                                    UColour4{ 255u, 255u, 255u, 0u }, 8u );
-        CHECK( bare == UColour4{ 0u, 0u, 0u, 0u } );
-        const UColour4 legacy{ 20u, 30u, 40u, 50u };
-        CHECK( GrassPlacementColour( legacy, 15u, UColour4{ 0u }, 0u ) == legacy );
-        CHECK( GrassPlacementColour( legacy, 0u, UColour4{ 0u, 0u, 0u, 200u }, 8u ).a == 200u );
+        const std::array<GrassPlacementSample, 2u> bareSamples{ {
+            { UColour4{ 0u, 0u, 255u, 255u }, 3u },
+            { UColour4{ 255u, 255u, 255u, 0u }, 8u }
+        } };
+        CHECK( GrassPlacementColour( bareSamples ) == UColour4{ 0u, 0u, 0u, 0u } );
+        const UColour4 single{ 20u, 30u, 40u, 50u };
+        const std::array<GrassPlacementSample, 1u> singleSample{ { { single, 15u } } };
+        CHECK( GrassPlacementColour( singleSample ) == single );
+        const std::array<GrassPlacementSample, 2u> maskedOut{ { { single, 0u }, { UColour4{ 0u, 0u, 0u, 200u }, 8u } } };
+        CHECK( GrassPlacementColour( maskedOut ).a == 200u );
+    }
+
+    TEST_CASE( "Grass placement takes the strongest selected value across any number of layers", "[renderer][vegetation]" )
+    {
+        CHECK( GrassPlacementColour( {} ) == UColour4{ 0u, 0u, 0u, 0u } );
+
+        // One layer per channel, plus a layer that selects nothing and must never contribute.
+        const std::array<GrassPlacementSample, 5u> layers{ {
+            { UColour4{ 10u, 200u, 200u, 200u }, 1u },
+            { UColour4{ 200u, 20u, 200u, 200u }, 2u },
+            { UColour4{ 200u, 200u, 30u, 200u }, 4u },
+            { UColour4{ 200u, 200u, 200u, 40u }, 8u },
+            { UColour4{ 255u, 255u, 255u, 255u }, 0u }
+        } };
+        CHECK( GrassPlacementColour( layers ) == UColour4{ 10u, 20u, 30u, 40u } );
+
+        // Overlapping masks keep the larger value regardless of layer order.
+        const std::array<GrassPlacementSample, 3u> overlapping{ {
+            { UColour4{ 50u, 0u, 0u, 0u }, 1u },
+            { UColour4{ 90u, 0u, 0u, 0u }, 1u },
+            { UColour4{ 70u, 0u, 0u, 0u }, 1u }
+        } };
+        CHECK( GrassPlacementColour( overlapping ).r == 90u );
+
+        std::array<GrassPlacementSample, MAX_GRASS_MAP_LAYERS> full{};
+        for ( size_t i = 0u; i < full.size(); ++i )
+        {
+            full[i] = { UColour4{ to_U8( i + 1u ), 0u, 0u, 0u }, 1u };
+        }
+        CHECK( GrassPlacementColour( full ).r == to_U8( MAX_GRASS_MAP_LAYERS ) );
     }
 
     TEST_CASE( "Compacted grass preserves LOD and original colour variation", "[renderer][vegetation]" )

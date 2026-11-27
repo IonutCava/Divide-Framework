@@ -99,6 +99,94 @@ namespace Divide
         CHECK( GetVariable( descriptor, "grassBillboard1" ) == "billboardgrass0001.png" );
     }
 
+    TEST_CASE( "Terrain descriptors load every grass map layer in order", "[terrain][vegetation][render_smoke]" )
+    {
+        platformInitRunListener::PlatformInit();
+        boost::property_tree::ptree terrainNode;
+        terrainNode.put( "descriptor", "Main" );
+        terrainNode.put( "waterCaustics", "terrain_water_caustics.jpg" );
+
+        TerrainDescriptor descriptor{};
+        Init( descriptor, "TerrainTest" );
+        REQUIRE( LoadFromXML( descriptor, terrainNode, "TerrainTest" ) );
+        REQUIRE( descriptor._grassMaps.size() == 2u );
+        CHECK( descriptor._grassMaps[0]._file == "alpha_maps_Alpha1.png" );
+        CHECK( descriptor._grassMaps[0]._channelMask == 3u );
+        CHECK( descriptor._grassMaps[1]._file == "alpha_maps_Alpha2.png" );
+        CHECK( descriptor._grassMaps[1]._channelMask == 8u );
+    }
+
+    TEST_CASE( "Grass map parsing keeps its order, applies defaults and enforces the layer cap", "[terrain][vegetation]" )
+    {
+        const auto addGrassMap = []( boost::property_tree::ptree& node, const std::string& file, const I32 mask )
+        {
+            boost::property_tree::ptree& child = node.add( "grassMap", file );
+            if ( mask >= 0 )
+            {
+                child.put( "<xmlattr>.channelMask", mask );
+            }
+        };
+
+        TerrainDescriptor::GrassMaps maps;
+        SECTION( "A single layer defaults to every channel" )
+        {
+            boost::property_tree::ptree node;
+            addGrassMap( node, "only.png", -1 );
+            REQUIRE( ParseGrassMaps( node, maps, "test" ) );
+            REQUIRE( maps.size() == 1u );
+            CHECK( maps[0]._file == "only.png" );
+            CHECK( maps[0]._channelMask == 15u );
+        }
+
+        SECTION( "Layers up to the cap load in document order" )
+        {
+            boost::property_tree::ptree node;
+            for ( U8 i = 0u; i < MAX_GRASS_MAP_LAYERS; ++i )
+            {
+                addGrassMap( node, Util::StringFormat( "map{}.png", i ).c_str(), i );
+            }
+            REQUIRE( ParseGrassMaps( node, maps, "test" ) );
+            REQUIRE( maps.size() == MAX_GRASS_MAP_LAYERS );
+            for ( U8 i = 0u; i < MAX_GRASS_MAP_LAYERS; ++i )
+            {
+                CHECK( maps[i]._file == Util::StringFormat( "map{}.png", i ).c_str() );
+                CHECK( maps[i]._channelMask == i );
+            }
+        }
+
+        SECTION( "One layer over the cap is rejected" )
+        {
+            boost::property_tree::ptree node;
+            for ( U8 i = 0u; i <= MAX_GRASS_MAP_LAYERS; ++i )
+            {
+                addGrassMap( node, "map.png", 1 );
+            }
+            CHECK_FALSE( ParseGrassMaps( node, maps, "test" ) );
+        }
+
+        SECTION( "A descriptor without any layer is rejected" )
+        {
+            boost::property_tree::ptree node;
+            node.put( "treeMap", "trees.png" );
+            CHECK_FALSE( ParseGrassMaps( node, maps, "test" ) );
+        }
+
+        SECTION( "Empty file names and out of range masks are rejected" )
+        {
+            boost::property_tree::ptree emptyFile;
+            addGrassMap( emptyFile, "", 3 );
+            CHECK_FALSE( ParseGrassMaps( emptyFile, maps, "test" ) );
+
+            boost::property_tree::ptree badMask;
+            addGrassMap( badMask, "map.png", 16 );
+            CHECK_FALSE( ParseGrassMaps( badMask, maps, "test" ) );
+
+            boost::property_tree::ptree edgeMask;
+            addGrassMap( edgeMask, "map.png", 15 );
+            CHECK( ParseGrassMaps( edgeMask, maps, "test" ) );
+        }
+    }
+
     TEST_CASE( "Vegetation draw readiness and range belong to each chunk", "[vegetation][render_smoke]" )
     {
         std::array<VegetationChunkDrawState, 4> chunks{};

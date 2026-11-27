@@ -111,7 +111,11 @@ namespace Divide
                                        cbegin( descriptor._propertyDescriptor.treeMeshes ), 
                                        cend( descriptor._propertyDescriptor.treeMeshes ) );
 
-        DIVIDE_ASSERT( !_descriptor.grassMap->imageLayers().empty() && !_descriptor.treeMap->imageLayers().empty() );
+        DIVIDE_ASSERT( !_descriptor.grassMaps.empty() && !_descriptor.treeMap->imageLayers().empty() );
+        for ( const GrassMapLayer& layer : _descriptor.grassMaps )
+        {
+            DIVIDE_ASSERT( layer._image != nullptr && !layer._image->imageLayers().empty() );
+        }
 
         setBounds( _descriptor.parentTerrain->getBounds() );
 
@@ -1403,9 +1407,17 @@ namespace Divide
 
             const float2 chunkSize = _chunk->getOffsetAndSize().zw;
             const float2 chunkPos = _chunk->getOffsetAndSize().xy;
-            const auto& map = treeData ? descriptor.treeMap : descriptor.grassMap;
-            const U16 mapWidth = map->dimensions( 0u, 0u ).width;
-            const U16 mapHeight = map->dimensions( 0u, 0u ).height;
+            const auto sizeOf = []( const ImageTools::ImageData& image ) noexcept
+            {
+                const auto dimensions = image.dimensions( 0u, 0u );
+                return std::pair<U16, U16>{ dimensions.width, dimensions.height };
+            };
+            const auto treeMapSize = treeData ? sizeOf( *descriptor.treeMap ) : std::pair<U16, U16>{};
+            std::array<std::pair<U16, U16>, MAX_GRASS_MAP_LAYERS> grassMapSizes{};
+            for ( size_t i = 0u; !treeData && i < descriptor.grassMaps.size(); ++i )
+            {
+                grassMapSizes[i] = sizeOf( *descriptor.grassMaps[i]._image );
+            }
             const auto& positions = treeData ? parent->_treePositions : parent->_grassPositions;
             const auto& scales = treeData ? descriptor.treeScales : descriptor.grassScales;
             const F32 slopeLimit = treeData ? g_slopeLimitTrees : g_slopeLimitGrass;
@@ -1440,18 +1452,22 @@ namespace Divide
 
                 assert( vert._position != VECTOR3_ZERO );
 
-                UColour4 colour = map->getColour( to_I32( x_fac * (mapWidth - 1u) ), to_I32( y_fac * (mapHeight - 1u) ) );
-                if ( !treeData )
+                UColour4 colour{ 0u, 0u, 0u, 0u };
+                if ( treeData )
                 {
-                    UColour4 secondary{ 0u, 0u, 0u, 0u };
-                    if ( descriptor.grassMapSecondary )
+                    colour = descriptor.treeMap->getColour( to_I32( x_fac * (treeMapSize.first - 1u) ), to_I32( y_fac * (treeMapSize.second - 1u) ) );
+                }
+                else
+                {
+                    std::array<GrassPlacementSample, MAX_GRASS_MAP_LAYERS> samples{};
+                    for ( size_t i = 0u; i < descriptor.grassMaps.size(); ++i )
                     {
-                        const auto dimensions = descriptor.grassMapSecondary->dimensions( 0u, 0u );
-                        secondary = descriptor.grassMapSecondary->getColour(
-                            to_I32( x_fac * (dimensions.width - 1u) ), to_I32( y_fac * (dimensions.height - 1u) ) );
+                        const GrassMapLayer& layer = descriptor.grassMaps[i];
+                        samples[i]._colour = layer._image->getColour( to_I32( x_fac * (grassMapSizes[i].first - 1u) ),
+                                                                      to_I32( y_fac * (grassMapSizes[i].second - 1u) ) );
+                        samples[i]._channelMask = layer._channelMask;
                     }
-                    colour = GrassPlacementColour( colour, descriptor.grassMapChannelMask,
-                                                    secondary, descriptor.grassMapSecondaryChannelMask );
+                    colour = GrassPlacementColour( { samples.data(), descriptor.grassMaps.size() } );
                 }
                 const U8 index = BestIndex( colour );
                 const F32 colourVal = colour[index];

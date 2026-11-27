@@ -69,17 +69,10 @@ bool LoadFromXML( TerrainDescriptor& descriptor, const boost::property_tree::ptr
                                        descTree.get<F32>( "altitudeRange.<xmlattr>.max", 255.0f ) );
 
         AddVariable( descriptor, "vegetationTextureLocation", descTree.get<string>( "vegetation.vegetationTextureLocation", "" ) );
-        AddVariable( descriptor, "grassMap", descTree.get<string>( "vegetation.grassMap" ) );
-        AddVariable( descriptor, "grassMapSecondary", descTree.get<string>( "vegetation.grassMapSecondary", "" ) );
-        const U32 grassMask = descTree.get<U32>( "vegetation.grassMap.<xmlattr>.channelMask", 15u );
-        const U32 secondaryGrassMask = descTree.get<U32>( "vegetation.grassMapSecondary.<xmlattr>.channelMask", 15u );
-        if ( grassMask > 15u || secondaryGrassMask > 15u )
+        if ( !ParseGrassMaps( descTree.get_child( "vegetation" ), descriptor._grassMaps, terrainDescriptorPath.string() ) )
         {
-            Console::errorfn( "Grass channel masks must be RGBA bit masks (0-15) in terrain descriptor {}.", terrainDescriptorPath.string().c_str() );
             return false;
         }
-        AddVariableF( descriptor, "grassMapChannelMask", to_F32( grassMask ) );
-        AddVariableF( descriptor, "grassMapSecondaryChannelMask", to_F32( secondaryGrassMask ) );
         AddVariable( descriptor, "treeMap", descTree.get<string>( "vegetation.treeMap" ) );
 
         for ( I32 j = 1; j < 5; ++j )
@@ -194,6 +187,45 @@ bool LoadFromXML( TerrainDescriptor& descriptor, const boost::property_tree::ptr
                 AddVariable( descriptor, layerColour + layerOffsetStr + "_mat", materialName );
             }
         }
+    }
+
+    return true;
+}
+
+bool ParseGrassMaps( const boost::property_tree::ptree& vegetationNode, TerrainDescriptor::GrassMaps& mapsOut, const std::string_view terrainDescriptorName )
+{
+    mapsOut.clear();
+
+    const auto grassMaps = vegetationNode.equal_range( "grassMap" );
+    for ( auto it = grassMaps.first; it != grassMaps.second; ++it )
+    {
+        if ( mapsOut.size() == MAX_GRASS_MAP_LAYERS )
+        {
+            Console::errorfn( "Terrain descriptor {} defines more than {} grassMap layers.", terrainDescriptorName, MAX_GRASS_MAP_LAYERS );
+            return false;
+        }
+
+        // The raw node data: a translator-based read throws on an empty element instead of letting us report it
+        string file = it->second.data().c_str();
+        const U32 channelMask = it->second.get<U32>( "<xmlattr>.channelMask", 15u );
+        if ( file.empty() )
+        {
+            Console::errorfn( "A grassMap layer in terrain descriptor {} has no image file.", terrainDescriptorName );
+            return false;
+        }
+        if ( channelMask > 15u )
+        {
+            Console::errorfn( "Grass channel masks must be RGBA bit masks (0-15) in terrain descriptor {}.", terrainDescriptorName );
+            return false;
+        }
+
+        mapsOut.push_back( GrassMapEntry{ MOV( file ), to_U8( channelMask ) } );
+    }
+
+    if ( mapsOut.empty() )
+    {
+        Console::errorfn( "Terrain descriptor {} needs at least one grassMap layer.", terrainDescriptorName );
+        return false;
     }
 
     return true;

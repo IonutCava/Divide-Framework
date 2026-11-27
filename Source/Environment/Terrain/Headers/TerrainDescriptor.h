@@ -40,14 +40,26 @@ namespace Divide {
 
 class Terrain;
 
+/// Every grass map adds a sample per placement candidate, so the number of layers is capped.
+constexpr U8 MAX_GRASS_MAP_LAYERS = 8u;
+
+struct GrassMapEntry
+{
+    string _file;
+    /// RGBA bit mask: 1=red, 2=green, 4=blue, 8=alpha. Only the selected channels place grass.
+    U8 _channelMask{ 15u };
+};
+
 template<>
 struct PropertyDescriptor<Terrain>
 {
     using LayerDataEntry = std::array<float2, 4>;
     using LayerData = std::array<LayerDataEntry, 8>;
+    using GrassMaps = fixed_vector<GrassMapEntry, MAX_GRASS_MAP_LAYERS, false>;
 
     hashMap<U64, string> _variables{};
     hashMap<U64, F32>    _variablesf{};
+    GrassMaps            _grassMaps{};
     LayerData            _layerDataEntries{};
     std::array<U8, 16>   _ringTileCount = {};
     string               _name;
@@ -67,6 +79,8 @@ inline size_t GetHash( const TerrainDescriptor& descriptor ) noexcept;
 void Init( TerrainDescriptor& descriptor, std::string_view name );
 
 [[nodiscard]] bool LoadFromXML( TerrainDescriptor& descriptor, const boost::property_tree::ptree& pt, std::string_view name );
+/// Reads every <grassMap channelMask="..">file</grassMap> child of the <vegetation> node, in order. Needs 1 to MAX_GRASS_MAP_LAYERS entries.
+[[nodiscard]] bool ParseGrassMaps( const boost::property_tree::ptree& vegetationNode, TerrainDescriptor::GrassMaps& mapsOut, std::string_view terrainDescriptorName );
               void SaveToXML( const TerrainDescriptor& descriptor, boost::property_tree::ptree& pt);
 
 void AddVariable( TerrainDescriptor& descriptor, std::string_view name, std::string_view value );

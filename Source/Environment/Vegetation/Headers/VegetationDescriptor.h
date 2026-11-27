@@ -33,6 +33,7 @@
 #define DVD_VEGETATION_DESCRIPTOR_H_
 
 #include "Core/Resources/Headers/ResourceCache.h"
+#include "Environment/Terrain/Headers/TerrainDescriptor.h"
 
 namespace Divide
 {
@@ -42,14 +43,23 @@ class Vegetation;
 
 constexpr size_t MAX_VEGETATION_TREE_MESHES = 4u;
 
+struct GrassMapLayer
+{
+    std::shared_ptr<ImageTools::ImageData> _image;
+    U8 _channelMask = 15u;
+};
+
+struct GrassPlacementSample
+{
+    UColour4 _colour{ 0u, 0u, 0u, 0u };
+    U8 _channelMask = 15u;
+};
+
 template<>
 struct PropertyDescriptor<Vegetation>
 {
-    std::shared_ptr<ImageTools::ImageData> grassMap;
-    std::shared_ptr<ImageTools::ImageData> grassMapSecondary;
+    fixed_vector<GrassMapLayer, MAX_GRASS_MAP_LAYERS, false> grassMaps;
     std::shared_ptr<ImageTools::ImageData> treeMap;
-    U8 grassMapChannelMask = 15u;
-    U8 grassMapSecondaryChannelMask = 15u;
     vector<Str<256>> treeMeshes;
     Str<256> name = "";
     string billboardTextureArray = "";
@@ -63,14 +73,19 @@ struct PropertyDescriptor<Vegetation>
 
 using VegetationDescriptor = PropertyDescriptor<Vegetation>;
 
-[[nodiscard]] inline UColour4 GrassPlacementColour( const UColour4& primary, const U8 primaryMask,
-                                                   const UColour4& secondary, const U8 secondaryMask ) noexcept
+/// Per channel, the strongest value across every sample whose mask selects that channel.
+[[nodiscard]] inline UColour4 GrassPlacementColour( const std::span<const GrassPlacementSample> samples ) noexcept
 {
     UColour4 colour{ 0u, 0u, 0u, 0u };
-    for ( U8 channel = 0u; channel < 4u; ++channel )
+    for ( const GrassPlacementSample& sample : samples )
     {
-        colour[channel] = std::max( (primaryMask & (1u << channel)) != 0u ? primary[channel] : U8{ 0u },
-                                    (secondaryMask & (1u << channel)) != 0u ? secondary[channel] : U8{ 0u } );
+        for ( U8 channel = 0u; channel < 4u; ++channel )
+        {
+            if ( (sample._channelMask & (1u << channel)) != 0u )
+            {
+                colour[channel] = std::max( colour[channel], sample._colour[channel] );
+            }
+        }
     }
     return colour;
 }

@@ -30,9 +30,9 @@ min and max basically remap what 0 and 1 respectively mean in the heightmap
 
 <vegetation>
     <vegetationTextureLocation>Assets/MiscImages</vegetationTextureLocation>
-    <!-- RGBA masks: 1=red, 2=green, 4=blue, 8=alpha. Only grass materials generate grass. -->
+    <!-- One grassMap element per layer (up to 8). RGBA masks: 1=red, 2=green, 4=blue, 8=alpha. Only grass materials generate grass. -->
     <grassMap channelMask="3">alpha_maps_Alpha1.png</grassMap>
-    <grassMapSecondary channelMask="8">alpha_maps_Alpha2.png</grassMapSecondary>
+    <grassMap channelMask="8">alpha_maps_Alpha2.png</grassMap>
     <grassBillboard1 scale="0.75">billboardgrass0001.png</grassBillboard1>
     <grassBillboard2 scale="0.5">grass_billboards1.png</grassBillboard2>
     <grassBillboard3 scale="1">grass_billboards2.png</grassBillboard3>

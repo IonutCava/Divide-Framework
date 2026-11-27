@@ -51,6 +51,11 @@ namespace Divide
             Util::Hash_combine( hash, it.first, it.second );
         }
 
+        for ( const GrassMapEntry& grassMap : descriptor._grassMaps )
+        {
+            Util::Hash_combine( hash, grassMap._file, grassMap._channelMask );
+        }
+
         Util::Hash_combine( hash,
                             descriptor._active,
                             descriptor._textureLayers,
