@@ -149,6 +149,7 @@ struct VisibleNodeList
 
                   void      reset()       noexcept { _index.store(0); }
     [[nodiscard]] size_t    size()  const noexcept { return _index.load(); }
+    [[nodiscard]] static constexpr size_t capacity() noexcept { return N; }
     [[nodiscard]] bufferPtr data()  const noexcept { return (bufferPtr)_nodes.data(); }
 
     [[nodiscard]] const T& node(const size_t idx) const noexcept

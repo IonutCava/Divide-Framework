@@ -51,6 +51,38 @@ namespace Divide
 
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
+    namespace
+    {
+        void AppendPreviewNode( SceneGraphNode* sgn, const float3& cameraEye, VisibleNodeList<>& nodesOut )
+        {
+            const BoundsComponent* bComp = sgn->get<BoundsComponent>();
+            VisibleNode temp{};
+            temp._node = sgn;
+            temp._distanceToCameraSq = bComp == nullptr
+                                           ? 0.f
+                                           : bComp->getBoundingBox().nearestPoint( cameraEye ).distanceSquared( cameraEye );
+            nodesOut.append( temp );
+        }
+
+        void AppendPreviewSubtree( SceneGraphNode* sgn, const float3& cameraEye, const size_t maxNodes, VisibleNodeList<>& nodesOut )
+        {
+            if ( nodesOut.size() >= maxNodes )
+            {
+                return;
+            }
+
+            AppendPreviewNode( sgn, cameraEye, nodesOut );
+
+            const auto& children = sgn->getChildren();
+            SharedLock<SharedMutex> r_lock( children._lock );
+            const U32 childCount = children._count;
+            for ( U32 i = 0u; i < childCount; ++i )
+            {
+                AppendPreviewSubtree( children._data[i], cameraEye, maxNodes, nodesOut );
+            }
+        }
+    }
+
     bool operator==( const SceneEntry& lhs, const SceneEntry& rhs ) noexcept
     {
         return Util::CompareIgnoreCase(lhs._name.c_str(), rhs._name.c_str());
@@ -1130,35 +1162,19 @@ namespace Divide
 
         if ( nodeGUID != -1 )
         {
-            SceneGraphNode* sgn = activeProject()->getActiveScene()->sceneGraph()->findNode( nodeGUID );
+            SceneGraph* sceneGraph = activeProject()->getActiveScene()->sceneGraph().get();
+            SceneGraphNode* sgn = sceneGraph->findNode( nodeGUID );
             if ( sgn != nullptr )
             {
-                const auto appendNode = [&nodesOut, &cameraEye]( SceneGraphNode* sgn )
-                {
-                    const BoundsComponent* bComp = sgn->get<BoundsComponent>();
-                    VisibleNode temp{};
-                    temp._node = sgn;
-                    temp._distanceToCameraSq = bComp == nullptr
-                                                   ? 0.f
-                                                   : bComp->getBoundingBox().nearestPoint( cameraEye ).distanceSquared( cameraEye );
-                    nodesOut.append( temp );
-                };
-                appendNode( sgn );
-
-                const auto& children = sgn->getChildren();
-                SharedLock<SharedMutex> r_lock( children._lock );
-                const U32 childCount = children._count;
-                for ( U32 i = 0u; i < childCount; ++i )
-                {
-                    appendNode( children._data[i] );
-                }
+                const size_t skySlots = includeSky ? 1u : 0u;
+                AppendPreviewSubtree( sgn, cameraEye, VisibleNodeList<>::capacity() - skySlots, nodesOut );
 
                 if ( includeSky )
                 {
-                    const auto& skies = activeProject()->getActiveScene()->sceneGraph()->getNodesByType( SceneNodeType::TYPE_SKY );
+                    const auto& skies = sceneGraph->getNodesByType( SceneNodeType::TYPE_SKY );
                     if ( !skies.empty() )
                     {
-                        appendNode( skies.front() );
+                        AppendPreviewNode( skies.front(), cameraEye, nodesOut );
                     }
                 }
             }
