@@ -1729,7 +1729,7 @@ namespace Divide
         }
         else
         {
-            Attorney::ProjectManagerRenderPass::findNode( _parent.parent().projectManager().get(), camSnapshot._eye, params._singleNodeRenderGUID, _visibleNodesCache );
+            Attorney::ProjectManagerRenderPass::findNode( _parent.parent().projectManager().get(), camSnapshot._eye, params._singleNodeRenderGUID, params._singleNodeIncludeSky, _visibleNodesCache );
         }
 
         const bool drawTranslucents = (params._drawMask & to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_TRANSLUCENT_NODES))) && _stage != RenderStage::SHADOW;

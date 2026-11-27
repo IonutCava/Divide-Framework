@@ -312,6 +312,10 @@ namespace Divide
         PROPERTY_R( F32, infiniteGridAxisWidth, 2.f );
         PROPERTY_R( F32, infiniteGridScale, 1.f );
         PROPERTY_R_IW( FColour3, nodePreviewBGColour );
+        /// Draw the scene's sky behind the previewed node. When off, nodePreviewBGColour fills the background instead.
+        PROPERTY_R_IW( bool, nodePreviewRenderSky, true );
+        /// True while the preview window has a supported node to draw this frame.
+        PROPERTY_R_IW( bool, nodePreviewHasNode, false );
         PROPERTY_INTERNAL( bool, lockSolutionExplorer, false );
         PROPERTY_INTERNAL( bool, sceneGizmoEnabled, false );
 
@@ -467,6 +471,11 @@ namespace Divide
             static FColour3& nodePreviewBGColour( Editor& editor ) noexcept
             {
                 return editor._nodePreviewBGColour;
+            }
+
+            static bool& nodePreviewRenderSky( Editor& editor ) noexcept
+            {
+                return editor._nodePreviewRenderSky;
             }
 
             friend class Divide::SceneViewWindow;
@@ -735,10 +744,8 @@ namespace Divide
                 return editor._externalTextEditorPath;
             }
 
-            static void setPreviewNode( Editor& editor, SceneGraphNode* previewNode ) noexcept
-            {
-                editor._previewNode = previewNode;
-            }
+            /// Unsupported node types are ignored so they never replace a previewable selection.
+            static void setPreviewNode( Editor& editor, SceneGraphNode* previewNode ) noexcept;
 
             friend class Divide::Gizmo;
             friend class Divide::MenuBar;

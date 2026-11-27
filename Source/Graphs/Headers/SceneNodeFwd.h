@@ -111,6 +111,13 @@ namespace Divide {
         return nodeType == SceneNodeType::TYPE_TRANSFORM || nodeType == SceneNodeType::TYPE_MESH;
     }
 
+    /// The editor's node preview draws one node in isolation, so only self-contained renderables qualify.
+    /// Terrain, sky, vegetation, water and the like need scene-wide state that a lone preview cannot provide.
+    [[nodiscard]] constexpr bool IsNodePreviewSupported( const SceneNodeType type ) noexcept
+    {
+        return IsPrimitive( type ) || IsMesh( type ) || type == SceneNodeType::TYPE_PARTICLE_EMITTER;
+    }
+
     [[nodiscard]] constexpr bool IsShadowCaster( const SceneNodeType type, const bool castsShadows ) noexcept
     {
         return castsShadows &&

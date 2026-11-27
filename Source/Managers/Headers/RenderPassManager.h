@@ -78,6 +78,8 @@ namespace Divide
         const SceneGraphNode* _sourceNode{ nullptr };
         Str<64> _passName{};
         I64 _singleNodeRenderGUID{ -1 };  //-1 = none;
+        /// Single node passes only: also draw the scene's sky behind the node
+        bool _singleNodeIncludeSky{ false };
         I32 _maxLoD{ -1 }; //-1 = all
 
         RTDrawDescriptor _targetDescriptorPrePass{};

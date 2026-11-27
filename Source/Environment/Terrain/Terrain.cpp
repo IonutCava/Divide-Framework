@@ -1109,9 +1109,7 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
     }
 
     const float2 SNAP_GRID_SIZE = tessParams().SnapGridSize();
-    float3 cullingEye = renderStagePass._stage == RenderStage::NODE_PREVIEW
-                            ? cameraSnapshot._eye
-                            : sgn->sceneGraph()->parentScene().playerCamera()->snapshot()._eye;
+    float3 cullingEye = sgn->sceneGraph()->parentScene().playerCamera()->snapshot()._eye;
     const float2 eyeXZ = cullingEye.xz();
 
     float2 snappedXZ = eyeXZ;

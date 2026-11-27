@@ -1124,7 +1124,7 @@ namespace Divide
         }
     }
 
-    void ProjectManager::findNode( const float3& cameraEye, const I64 nodeGUID, VisibleNodeList<>& nodesOut )
+    void ProjectManager::findNode( const float3& cameraEye, const I64 nodeGUID, const bool includeSky, VisibleNodeList<>& nodesOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -1151,6 +1151,15 @@ namespace Divide
                 for ( U32 i = 0u; i < childCount; ++i )
                 {
                     appendNode( children._data[i] );
+                }
+
+                if ( includeSky )
+                {
+                    const auto& skies = activeProject()->getActiveScene()->sceneGraph()->getNodesByType( SceneNodeType::TYPE_SKY );
+                    if ( !skies.empty() )
+                    {
+                        appendNode( skies.front() );
+                    }
                 }
             }
         }

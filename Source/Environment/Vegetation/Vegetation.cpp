@@ -961,9 +961,7 @@ namespace Divide
             {
                 GFX::SendPushConstantsCommand cullConstantsCmd = pkg.additionalPushConstantsCmd();
                 UniformData* uniforms = cullConstantsCmd._uniformData;
-                const float3& rangeCameraEye = renderStagePass._stage == RenderStage::NODE_PREVIEW
-                                                   ? cameraSnapshot._eye
-                                                   : sgn->sceneGraph()->parentScene().playerCamera()->snapshot()._eye;
+                const float3& rangeCameraEye = sgn->sceneGraph()->parentScene().playerCamera()->snapshot()._eye;
                 uniforms->set( _ID( "dvd_cameraPosition" ), PushConstantType::VEC3, rangeCameraEye );
                 uniforms->set( _ID( "dvd_frustumPlanes" ), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
                 uniforms->set( _ID( "dvd_grassVisibilityDistance" ), PushConstantType::FLOAT, _grassDistance );

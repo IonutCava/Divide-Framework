@@ -162,6 +162,7 @@ namespace Divide
                         SetDefaultDrawDescriptor(params);
 
                         params._singleNodeRenderGUID = renderState.singleNodeRenderGUID();
+                        params._singleNodeIncludeSky = editor.nodePreviewRenderSky();
                         params._minExtents.set( 1.0f );
                         params._stagePass = { _stageFlag, RenderPassType::COUNT };
                         params._target = editor.getNodePreviewTarget()._targetID;

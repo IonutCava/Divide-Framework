@@ -31,6 +31,26 @@ namespace Divide
         }
     }
 
+    TEST_CASE( "Only self-contained renderables can be previewed in isolation", "[scene_graph][editor]" )
+    {
+        for ( const SceneNodeType type : { SceneNodeType::TYPE_SPHERE_3D, SceneNodeType::TYPE_BOX_3D,
+                                           SceneNodeType::TYPE_QUAD_3D, SceneNodeType::TYPE_MESH,
+                                           SceneNodeType::TYPE_SUBMESH, SceneNodeType::TYPE_PARTICLE_EMITTER } )
+        {
+            CAPTURE( to_base( type ) );
+            CHECK( IsNodePreviewSupported( type ) );
+        }
+
+        for ( const SceneNodeType type : { SceneNodeType::TYPE_TERRAIN, SceneNodeType::TYPE_SKY,
+                                           SceneNodeType::TYPE_VEGETATION, SceneNodeType::TYPE_WATER,
+                                           SceneNodeType::TYPE_INFINITEPLANE, SceneNodeType::TYPE_TRANSFORM,
+                                           SceneNodeType::COUNT } )
+        {
+            CAPTURE( to_base( type ) );
+            CHECK_FALSE( IsNodePreviewSupported( type ) );
+        }
+    }
+
     namespace
     {
         ECS::CustomEvent MakeEvent(const U32 id)

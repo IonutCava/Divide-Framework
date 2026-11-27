@@ -1163,7 +1163,9 @@ namespace Divide
             static bool movedToNode = false;
             if ( !_isScenePaused || stepQueue() > 0 )
             {
-                Attorney::ProjectManagerEditor::editorPreviewNode( sMgr.get(), -1 );
+                // The preview only shows a node while the simulation is paused; otherwise it shows its empty state
+                _nodePreviewHasNode = false;
+                Attorney::ProjectManagerEditor::editorPreviewNode( sMgr.get(), 0 );
                 playerState.overrideCamera( nullptr );
                 nodePreviewCamera()->setTarget( nullptr );
                 movedToNode = false;
@@ -1173,6 +1175,7 @@ namespace Divide
                 playerState.overrideCamera( editorCamera() );
                 if ( nodePreviewWindowVisible() )
                 {
+                    _nodePreviewHasNode = _previewNode != nullptr;
                     Attorney::ProjectManagerEditor::editorPreviewNode( sMgr.get(), _previewNode == nullptr ? 0 : _previewNode->getGUID() );
                     if ( !movedToNode && _previewNode != nullptr )
                     {
@@ -1187,6 +1190,7 @@ namespace Divide
                 }
                 else
                 {
+                    _nodePreviewHasNode = false;
                     Attorney::ProjectManagerEditor::editorPreviewNode( sMgr.get(), -1 );
                     nodePreviewCamera()->setTarget( nullptr );
                     movedToNode = false;
@@ -2926,6 +2930,7 @@ namespace Divide
         pt.put( "editor.nodeBGColour.<xmlattr>.r", nodePreviewBGColour().r );
         pt.put( "editor.nodeBGColour.<xmlattr>.g", nodePreviewBGColour().g );
         pt.put( "editor.nodeBGColour.<xmlattr>.b", nodePreviewBGColour().b );
+        pt.put( "editor.nodePreviewSky.<xmlattr>.enabled", nodePreviewRenderSky() );
 
         for ( size_t i = 0u; i < _recentSceneList.size(); ++i )
         {
@@ -3010,6 +3015,7 @@ namespace Divide
                 pt.get( "editor.nodeBGColour.<xmlattr>.r", nodePreviewBGColour().r ),
                 pt.get( "editor.nodeBGColour.<xmlattr>.g", nodePreviewBGColour().g ),
                 pt.get( "editor.nodeBGColour.<xmlattr>.b", nodePreviewBGColour().b ) );
+            _nodePreviewRenderSky = pt.get( "editor.nodePreviewSky.<xmlattr>.enabled", nodePreviewRenderSky() );
             return true;
         }
 
@@ -3082,4 +3088,15 @@ namespace Divide
         ImGui::SetCurrentContext(Util::detail::g_imguiContexts.top());
         Util::detail::g_imguiContexts.pop();
     }
+
+    namespace Attorney
+    {
+        void EditorGeneralWidget::setPreviewNode( Editor& editor, SceneGraphNode* previewNode ) noexcept
+        {
+            if ( previewNode == nullptr || IsNodePreviewSupported( previewNode->getNode().type() ) )
+            {
+                editor._previewNode = previewNode;
+            }
+        }
+    } // namespace Attorney
 } // namespace Divide
