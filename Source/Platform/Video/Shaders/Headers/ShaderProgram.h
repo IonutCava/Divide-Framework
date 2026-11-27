@@ -61,6 +61,11 @@ namespace Divide
 
     class ShaderProgram;
 
+    namespace Attorney
+    {
+        class ShaderProgramTestAccess;
+    }
+
     namespace TypeUtil
     {
         [[nodiscard]] const char* DescriptorSetUsageToString( DescriptorSetUsage setUsage ) noexcept;
@@ -304,7 +309,7 @@ namespace Divide
 
 
     private:
-        friend struct ShaderProgramTestAccess;
+        friend class Attorney::ShaderProgramTestAccess;
 
         struct BindingSlotCounters
         {

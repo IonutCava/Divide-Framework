@@ -47,6 +47,11 @@ namespace Divide
 
 class AudioDescriptor;
 
+namespace Attorney
+{
+    class GUIButtonTestAccess;
+}
+
 class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON>
 {
     using ButtonCallback = DELEGATE<void, I64>;
@@ -54,7 +59,7 @@ class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON>
 
     friend class GUIInterface;
     friend class SceneGUIElements;
-    friend struct GUIButtonTestAccess;
+    friend class Attorney::GUIButtonTestAccess;
 
     public:
     enum class Event : U8

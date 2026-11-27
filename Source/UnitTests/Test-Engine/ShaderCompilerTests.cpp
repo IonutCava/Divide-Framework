@@ -28,66 +28,70 @@
 
 namespace Divide
 {
-struct ShaderProgramTestAccess
+namespace Attorney
 {
-    static void InitAtomLocations() { ShaderProgram::InitAtomLocations(); }
-    static bool InitThread( const RenderAPI api, const Configuration& config ) { return ShaderProgram::InitShaderThread( api, config ); }
-    static bool InitGLSW( const RenderAPI api, const Configuration& config ) { return ShaderProgram::InitGLSW( api, config ); }
-    static ShaderProgram::BindingSetData& Bindings() { return ShaderProgram::s_bindingsPerSet; }
-    static auto& BindingSlots() { return ShaderProgram::s_bindingSlots; }
-    static bool IsStorageBindingWithinLimit( const RenderAPI api, const U8 binding, const U32 limit )
+    class ShaderProgramTestAccess
     {
-        return ShaderProgram::IsStorageBindingWithinLimit( api, binding, limit );
-    }
-    static ResourcePath& CommonAtomLocation() { return ShaderProgram::shaderAtomLocationPrefix[to_base( ShaderType::COUNT )]; }
+    public:
+        static void InitAtomLocations() { ShaderProgram::InitAtomLocations(); }
+        static bool InitThread( const RenderAPI api, const Configuration& config ) { return ShaderProgram::InitShaderThread( api, config ); }
+        static bool InitGLSW( const RenderAPI api, const Configuration& config ) { return ShaderProgram::InitGLSW( api, config ); }
+        static ShaderProgram::BindingSetData& Bindings() { return ShaderProgram::s_bindingsPerSet; }
+        static auto& BindingSlots() { return ShaderProgram::s_bindingSlots; }
+        static bool IsStorageBindingWithinLimit( const RenderAPI api, const U8 binding, const U32 limit )
+        {
+            return ShaderProgram::IsStorageBindingWithinLimit( api, binding, limit );
+        }
+        static ResourcePath& CommonAtomLocation() { return ShaderProgram::shaderAtomLocationPrefix[to_base( ShaderType::COUNT )]; }
 
-    static void ExpandIncludes( string& source, eastl::set<U64>& atoms )
-    {
-        ShaderProgram::PreprocessIncludes( "shader test", source, atoms );
-    }
+        static void ExpandIncludes( string& source, eastl::set<U64>& atoms )
+        {
+            ShaderProgram::PreprocessIncludes( "shader test", source, atoms );
+        }
 
-    static void Parse( const RenderAPI api, const ModuleDefines& defines, ShaderProgram::LoadData& data,
-                       eastl::set<U64>& atoms, ShaderProgram::UniformBlockLayouts& uniformBlocks )
-    {
-        ShaderProgram::loadAndParseGLSL( "shader test", api, defines, data, uniformBlocks, atoms );
-    }
+        static void Parse( const RenderAPI api, const ModuleDefines& defines, ShaderProgram::LoadData& data,
+                           eastl::set<U64>& atoms, ShaderProgram::UniformBlockLayouts& uniformBlocks )
+        {
+            ShaderProgram::loadAndParseGLSL( "shader test", api, defines, data, uniformBlocks, atoms );
+        }
 
-    static void Parse( const RenderAPI api, const ModuleDefines& defines, ShaderProgram::LoadData& data,
-                       eastl::set<U64>& atoms )
-    {
-        ShaderProgram::UniformBlockLayouts uniformBlocks{};
-        Parse( api, defines, data, atoms, uniformBlocks );
-    }
+        static void Parse( const RenderAPI api, const ModuleDefines& defines, ShaderProgram::LoadData& data,
+                           eastl::set<U64>& atoms )
+        {
+            ShaderProgram::UniformBlockLayouts uniformBlocks{};
+            Parse( api, defines, data, atoms, uniformBlocks );
+        }
 
-    static U8 FindUniformBlockIndex( const ShaderProgram::UniformBlockLayouts& uniformBlocks,
-                                     const Reflection::UniformsSet& uniforms )
-    {
-        return ShaderProgram::FindUniformBlockIndex( uniformBlocks, uniforms );
-    }
+        static U8 FindUniformBlockIndex( const ShaderProgram::UniformBlockLayouts& uniformBlocks,
+                                         const Reflection::UniformsSet& uniforms )
+        {
+            return ShaderProgram::FindUniformBlockIndex( uniformBlocks, uniforms );
+        }
 
-    static bool CachedUniformBlockMatches( const ShaderProgram::UniformBlockLayouts& uniformBlocks,
-                                           const ShaderProgram::LoadData& data, U8& blockIndex )
-    {
-        return ShaderProgram::CachedUniformBlockMatches( uniformBlocks, data, blockIndex );
-    }
+        static bool CachedUniformBlockMatches( const ShaderProgram::UniformBlockLayouts& uniformBlocks,
+                                               const ShaderProgram::LoadData& data, U8& blockIndex )
+        {
+            return ShaderProgram::CachedUniformBlockMatches( uniformBlocks, data, blockIndex );
+        }
 
-    static Reflection::PushConstantsState DetectPushConstantsUsage( const string& source, const RenderAPI api )
-    {
-        return ShaderProgram::DetectPushConstantsUsage( source, api );
-    }
+        static Reflection::PushConstantsState DetectPushConstantsUsage( const string& source, const RenderAPI api )
+        {
+            return ShaderProgram::DetectPushConstantsUsage( source, api );
+        }
 
-    static bool ReadCachedSPIRV( std::istream& stream, std::vector<SpvWord>& spirv )
-    {
-        return ShaderProgram::ReadCachedSPIRV( stream, spirv );
-    }
+        static bool ReadCachedSPIRV( std::istream& stream, std::vector<SpvWord>& spirv )
+        {
+            return ShaderProgram::ReadCachedSPIRV( stream, spirv );
+        }
 
-    static void ClearAtoms()
-    {
-        ShaderProgram::s_atoms.clear();
-    }
+        static void ClearAtoms()
+        {
+            ShaderProgram::s_atoms.clear();
+        }
 
-    static void EraseAtom( const U64 atomID ) { ShaderProgram::EraseAtom( atomID ); }
-};
+        static void EraseAtom( const U64 atomID ) { ShaderProgram::EraseAtom( atomID ); }
+    };
+}
 
 namespace
 {
@@ -328,20 +332,20 @@ TEST_CASE( "SSAO attenuates indirect lighting without dimming direct light, emis
 
 TEST_CASE( "OpenGL buffer bindings are unique per namespace across shader stages", "[shader][descriptor][render_smoke]" )
 {
-    CHECK( ShaderProgramTestAccess::IsStorageBindingWithinLimit( RenderAPI::OpenGL, 15u, 16u ) );
-    CHECK_FALSE( ShaderProgramTestAccess::IsStorageBindingWithinLimit( RenderAPI::OpenGL, 16u, 16u ) );
-    CHECK( ShaderProgramTestAccess::IsStorageBindingWithinLimit( RenderAPI::Vulkan, 15u, 4u ) );
+    CHECK( Attorney::ShaderProgramTestAccess::IsStorageBindingWithinLimit( RenderAPI::OpenGL, 15u, 16u ) );
+    CHECK_FALSE( Attorney::ShaderProgramTestAccess::IsStorageBindingWithinLimit( RenderAPI::OpenGL, 16u, 16u ) );
+    CHECK( Attorney::ShaderProgramTestAccess::IsStorageBindingWithinLimit( RenderAPI::Vulkan, 15u, 4u ) );
 
-    const auto oldBindings = ShaderProgramTestAccess::Bindings();
-    const auto oldSlots = ShaderProgramTestAccess::BindingSlots();
+    const auto oldBindings = Attorney::ShaderProgramTestAccess::Bindings();
+    const auto oldSlots = Attorney::ShaderProgramTestAccess::BindingSlots();
     SCOPE_EXIT
     {
-        ShaderProgramTestAccess::Bindings() = oldBindings;
-        ShaderProgramTestAccess::BindingSlots() = oldSlots;
+        Attorney::ShaderProgramTestAccess::Bindings() = oldBindings;
+        Attorney::ShaderProgramTestAccess::BindingSlots() = oldSlots;
     };
 
-    ShaderProgramTestAccess::Bindings() = {};
-    ShaderProgramTestAccess::BindingSlots() = {};
+    Attorney::ShaderProgramTestAccess::Bindings() = {};
+    Attorney::ShaderProgramTestAccess::BindingSlots() = {};
     for ( U8 slot = 0u; slot < 16u; ++slot )
     {
         if ( slot < 6u )
@@ -500,16 +504,16 @@ TEST_CASE( "Shader thread preprocessing survives repeated initialization", "[sha
         {
             glswShutdown();
         }
-        ShaderProgramTestAccess::ClearAtoms();
+        Attorney::ShaderProgramTestAccess::ClearAtoms();
     };
 
-    ShaderProgramTestAccess::InitAtomLocations();
+    Attorney::ShaderProgramTestAccess::InitAtomLocations();
     Configuration config{};
     const string shaderPath = Paths::Shaders::GLSL::g_GLSLShaderLoc.string() + Paths::g_pathSeparator;
     for ( U8 iteration = 0u; iteration < 6u; ++iteration )
     {
         CAPTURE( iteration );
-        REQUIRE( ShaderProgramTestAccess::InitThread( RenderAPI::Vulkan, config ) );
+        REQUIRE( Attorney::ShaderProgramTestAccess::InitThread( RenderAPI::Vulkan, config ) );
         REQUIRE( glswSetPath( shaderPath.c_str(), ".glsl" ) == 1 );
         ShaderProgram::LoadData data{};
         data._type = ShaderType::VERTEX;
@@ -517,7 +521,7 @@ TEST_CASE( "Shader thread preprocessing survives repeated initialization", "[sha
         data._sourceName = "baseVertexShaders.Vertex.FullScreenQuad";
         data._shaderName = data._sourceName;
         eastl::set<U64> atoms;
-        ShaderProgramTestAccess::Parse( RenderAPI::Vulkan, {}, data, atoms );
+        Attorney::ShaderProgramTestAccess::Parse( RenderAPI::Vulkan, {}, data, atoms );
         REQUIRE_FALSE( data._sourceCodeGLSL.empty() );
         CHECK( data._sourceCodeGLSL.find( "gl_Position" ) != string::npos );
         REQUIRE( glswShutdown() == 1 );
@@ -574,23 +578,23 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         assert( unbound );
     };
 
-    const auto oldBindings = ShaderProgramTestAccess::Bindings();
+    const auto oldBindings = Attorney::ShaderProgramTestAccess::Bindings();
     SCOPE_EXIT
     {
         if ( glswGetCurrentContext() != nullptr )
         {
             glswShutdown();
         }
-        ShaderProgramTestAccess::ClearAtoms();
-        ShaderProgramTestAccess::Bindings() = oldBindings;
+        Attorney::ShaderProgramTestAccess::ClearAtoms();
+        Attorney::ShaderProgramTestAccess::Bindings() = oldBindings;
     };
 
-    ShaderProgramTestAccess::InitAtomLocations();
+    Attorney::ShaderProgramTestAccess::InitAtomLocations();
     for ( U8 set = 0u; set < to_base( DescriptorSetUsage::COUNT ); ++set )
     {
         for ( U8 slot = 0u; slot < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slot )
         {
-            ShaderProgramTestAccess::Bindings()[set][slot]._glBinding = to_U8( set * MAX_BINDINGS_PER_DESCRIPTOR_SET + slot );
+            Attorney::ShaderProgramTestAccess::Bindings()[set][slot]._glBinding = to_U8( set * MAX_BINDINGS_PER_DESCRIPTOR_SET + slot );
         }
     }
 
@@ -604,7 +608,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         INFO( include );
         string source = include;
         eastl::set<U64> atoms;
-        ShaderProgramTestAccess::ExpandIncludes( source, atoms );
+        Attorney::ShaderProgramTestAccess::ExpandIncludes( source, atoms );
         CHECK( source.find( "#define USE_CUSTOM_TEXTURE_OMR" ) != string::npos );
         CHECK( atoms.contains( _ID( "terrainUtils.cmn" ) ) );
         CHECK( atoms.contains( _ID( "nodeBufferedInput.cmn" ) ) );
@@ -623,7 +627,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         INFO( include );
         string source = include;
         eastl::set<U64> atoms;
-        ShaderProgramTestAccess::ExpandIncludes( source, atoms );
+        Attorney::ShaderProgramTestAccess::ExpandIncludes( source, atoms );
         CHECK( source.empty() );
     }
 
@@ -636,11 +640,11 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         const std::filesystem::path childFile = tempDir / "child.cmn";
         const std::filesystem::path wrapperFile = tempDir / "wrapper.cmn";
         std::vector<std::filesystem::path> deepFiles;
-        const ResourcePath oldLocation = ShaderProgramTestAccess::CommonAtomLocation();
+        const ResourcePath oldLocation = Attorney::ShaderProgramTestAccess::CommonAtomLocation();
         SCOPE_EXIT
         {
-            ShaderProgramTestAccess::CommonAtomLocation() = oldLocation;
-            ShaderProgramTestAccess::ClearAtoms();
+            Attorney::ShaderProgramTestAccess::CommonAtomLocation() = oldLocation;
+            Attorney::ShaderProgramTestAccess::ClearAtoms();
             std::error_code error;
             for ( const auto& path : deepFiles )
             {
@@ -656,7 +660,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             std::filesystem::remove( tempDir, error );
             assert( !error );
         };
-        ShaderProgramTestAccess::CommonAtomLocation() = ResourcePath{ tempDir.string() };
+        Attorney::ShaderProgramTestAccess::CommonAtomLocation() = ResourcePath{ tempDir.string() };
 
         const auto writeAtom = []( const std::filesystem::path& path, const char* text )
         {
@@ -670,14 +674,14 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         string source = "#include \"parent.cmn\"";
         eastl::set<U64> atoms;
         diagnostics.clear();
-        ShaderProgramTestAccess::ExpandIncludes( source, atoms );
+        Attorney::ShaderProgramTestAccess::ExpandIncludes( source, atoms );
         CHECK( source.empty() );
         CHECK( diagnostics.find( "cannot open include file" ) != string::npos );
 
         REQUIRE( writeAtom( childFile, "const float nestedAtomFixture = 1.f;\n" ) );
         source = "#include \"parent.cmn\"";
         atoms.clear();
-        ShaderProgramTestAccess::ExpandIncludes( source, atoms );
+        Attorney::ShaderProgramTestAccess::ExpandIncludes( source, atoms );
         CHECK( source.find( "nestedAtomFixture" ) != string::npos );
         CHECK( atoms.contains( _ID( "parent.cmn" ) ) );
         CHECK( atoms.contains( _ID( "child.cmn" ) ) );
@@ -685,39 +689,39 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         REQUIRE( writeAtom( wrapperFile, "#include \"parent.cmn\"\n" ) );
         source = "#include \"wrapper.cmn\"";
         atoms.clear();
-        ShaderProgramTestAccess::ExpandIncludes( source, atoms );
+        Attorney::ShaderProgramTestAccess::ExpandIncludes( source, atoms );
         CHECK( source.find( "nestedAtomFixture" ) != string::npos );
         CHECK( atoms.contains( _ID( "wrapper.cmn" ) ) );
         CHECK( atoms.contains( _ID( "parent.cmn" ) ) );
         CHECK( atoms.contains( _ID( "child.cmn" ) ) );
 
         REQUIRE( writeAtom( childFile, "const float updatedNestedAtomFixture = 2.f;\n" ) );
-        ShaderProgramTestAccess::EraseAtom( _ID( "child.cmn" ) );
+        Attorney::ShaderProgramTestAccess::EraseAtom( _ID( "child.cmn" ) );
         source = "#include \"wrapper.cmn\"";
         atoms.clear();
-        ShaderProgramTestAccess::ExpandIncludes( source, atoms );
+        Attorney::ShaderProgramTestAccess::ExpandIncludes( source, atoms );
         CHECK( source.find( "updatedNestedAtomFixture" ) != string::npos );
         CHECK( atoms.contains( _ID( "wrapper.cmn" ) ) );
         CHECK( atoms.contains( _ID( "parent.cmn" ) ) );
         CHECK( atoms.contains( _ID( "child.cmn" ) ) );
 
-        ShaderProgramTestAccess::ClearAtoms();
+        Attorney::ShaderProgramTestAccess::ClearAtoms();
         REQUIRE( writeAtom( childFile, "#include \"invalid.cmn\" extra\n" ) );
         source = "#include \"parent.cmn\"";
         diagnostics.clear();
-        ShaderProgramTestAccess::ExpandIncludes( source, atoms );
+        Attorney::ShaderProgramTestAccess::ExpandIncludes( source, atoms );
         CHECK( source.empty() );
         CHECK( diagnostics.find( "Invalid shader include" ) != string::npos );
 
-        ShaderProgramTestAccess::ClearAtoms();
+        Attorney::ShaderProgramTestAccess::ClearAtoms();
         REQUIRE( writeAtom( childFile, "#include \"parent.cmn\"\n" ) );
         source = "#include \"parent.cmn\"";
         diagnostics.clear();
-        ShaderProgramTestAccess::ExpandIncludes( source, atoms );
+        Attorney::ShaderProgramTestAccess::ExpandIncludes( source, atoms );
         CHECK( source.empty() );
         CHECK( diagnostics.find( "Cyclic shader include" ) != string::npos );
 
-        ShaderProgramTestAccess::ClearAtoms();
+        Attorney::ShaderProgramTestAccess::ClearAtoms();
         for ( size_t i = 0u; i < 65u; ++i )
         {
             deepFiles.emplace_back( tempDir / ( "deep" + std::to_string( i ) + ".cmn" ) );
@@ -732,28 +736,28 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
 
         source = "#include \"deep0.cmn\"";
         atoms.clear();
-        ShaderProgramTestAccess::ExpandIncludes( source, atoms );
+        Attorney::ShaderProgramTestAccess::ExpandIncludes( source, atoms );
         CHECK( source.find( "deepestAtomFixture" ) != string::npos );
         CHECK( atoms.size() == 64u );
 
         source = "#include \"deep0.cmn\"";
         atoms.clear();
-        ShaderProgramTestAccess::ExpandIncludes( source, atoms );
+        Attorney::ShaderProgramTestAccess::ExpandIncludes( source, atoms );
         CHECK( source.find( "deepestAtomFixture" ) != string::npos );
         CHECK( atoms.size() == 64u );
 
         REQUIRE( writeAtom( wrapperFile, "#include \"deep0.cmn\"\n" ) );
         source = "#include \"wrapper.cmn\"";
         diagnostics.clear();
-        ShaderProgramTestAccess::ExpandIncludes( source, atoms );
+        Attorney::ShaderProgramTestAccess::ExpandIncludes( source, atoms );
         CHECK( source.empty() );
         CHECK( diagnostics.find( "Header inclusion depth limit reached" ) != string::npos );
 
-        ShaderProgramTestAccess::ClearAtoms();
+        Attorney::ShaderProgramTestAccess::ClearAtoms();
         REQUIRE( writeAtom( deepFiles[63], "#include \"deep64.cmn\"\n" ) );
         source = "#include \"deep0.cmn\"";
         diagnostics.clear();
-        ShaderProgramTestAccess::ExpandIncludes( source, atoms );
+        Attorney::ShaderProgramTestAccess::ExpandIncludes( source, atoms );
         CHECK( source.empty() );
         CHECK( diagnostics.find( "Header inclusion depth limit reached" ) != string::npos );
     }
@@ -781,7 +785,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         const std::string contents{ std::istreambuf_iterator<char>{ input }, std::istreambuf_iterator<char>{} };
         string source{ contents.c_str(), contents.size() };
         eastl::set<U64> atoms;
-        ShaderProgramTestAccess::ExpandIncludes( source, atoms );
+        Attorney::ShaderProgramTestAccess::ExpandIncludes( source, atoms );
         CHECK_FALSE( source.empty() );
         ++shaderSourceCount;
     }
@@ -814,13 +818,13 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
     {
         if ( firstAPI )
         {
-            REQUIRE( ShaderProgramTestAccess::InitThread( api, config ) );
+            REQUIRE( Attorney::ShaderProgramTestAccess::InitThread( api, config ) );
             firstAPI = false;
         }
         else
         {
             REQUIRE( glswShutdown() == 1 );
-            REQUIRE( ShaderProgramTestAccess::InitGLSW( api, config ) );
+            REQUIRE( Attorney::ShaderProgramTestAccess::InitGLSW( api, config ) );
         }
         const string shaderPath = Paths::Shaders::GLSL::g_GLSLShaderLoc.string() + Paths::g_pathSeparator;
         REQUIRE( glswSetPath( shaderPath.c_str(), ".glsl" ) == 1 );
@@ -855,7 +859,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                                    variant == 1u ? "terrainTess.Fragment" : "terrainTess.Fragment.LQPass";
                 data._shaderName = data._sourceName;
                 eastl::set<U64> atoms;
-                ShaderProgramTestAccess::Parse( api, defines, data, atoms );
+                Attorney::ShaderProgramTestAccess::Parse( api, defines, data, atoms );
                 REQUIRE_FALSE( data._sourceCodeGLSL.empty() );
                 CHECK( atoms.contains( _ID( "terrainUtils.cmn" ) ) );
                 CHECK( atoms.contains( _ID( "terrainSplatting.frag" ) ) );
@@ -920,7 +924,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 data._sourceName = sourceName;
                 data._shaderName = data._sourceName;
                 eastl::set<U64> atoms;
-                ShaderProgramTestAccess::Parse( api, defines, data, atoms );
+                Attorney::ShaderProgramTestAccess::Parse( api, defines, data, atoms );
                 REQUIRE_FALSE( data._sourceCodeGLSL.empty() );
                 CHECK( atoms.contains( _ID( "terrainUtils.cmn" ) ) );
                 CHECK( atoms.contains( _ID( "nodeBufferedInput.cmn" ) ) );
@@ -975,7 +979,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 data._sourceName = prePass && stage._type == ShaderType::FRAGMENT
                     ? "terrainTess.Fragment.PrePass" : stage._source;
                 data._shaderName = data._sourceName;
-                ShaderProgramTestAccess::Parse( api, defines, data, atoms, uniformBlocks );
+                Attorney::ShaderProgramTestAccess::Parse( api, defines, data, atoms, uniformBlocks );
                 REQUIRE_FALSE( data._sourceCodeGLSL.empty() );
 
                 shaders[i] = std::make_unique<glslang::TShader>( stage._language );
@@ -1031,23 +1035,23 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             assert( unbound );
         };
 
-        const auto oldBindings = ShaderProgramTestAccess::Bindings();
+        const auto oldBindings = Attorney::ShaderProgramTestAccess::Bindings();
         SCOPE_EXIT
         {
             if ( glswGetCurrentContext() != nullptr )
             {
                 glswShutdown();
             }
-            ShaderProgramTestAccess::ClearAtoms();
-            ShaderProgramTestAccess::Bindings() = oldBindings;
+            Attorney::ShaderProgramTestAccess::ClearAtoms();
+            Attorney::ShaderProgramTestAccess::Bindings() = oldBindings;
         };
 
-        ShaderProgramTestAccess::InitAtomLocations();
+        Attorney::ShaderProgramTestAccess::InitAtomLocations();
         for ( U8 set = 0u; set < to_base( DescriptorSetUsage::COUNT ); ++set )
         {
             for ( U8 slot = 0u; slot < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slot )
             {
-                ShaderProgramTestAccess::Bindings()[set][slot]._glBinding = to_U8( set * MAX_BINDINGS_PER_DESCRIPTOR_SET + slot );
+                Attorney::ShaderProgramTestAccess::Bindings()[set][slot]._glBinding = to_U8( set * MAX_BINDINGS_PER_DESCRIPTOR_SET + slot );
             }
         }
 
@@ -1071,13 +1075,13 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         {
             if ( firstAPI )
             {
-                REQUIRE( ShaderProgramTestAccess::InitThread( api, config ) );
+                REQUIRE( Attorney::ShaderProgramTestAccess::InitThread( api, config ) );
                 firstAPI = false;
             }
             else
             {
                 REQUIRE( glswShutdown() == 1 );
-                REQUIRE( ShaderProgramTestAccess::InitGLSW( api, config ) );
+                REQUIRE( Attorney::ShaderProgramTestAccess::InitGLSW( api, config ) );
             }
             const string shaderPath = Paths::Shaders::GLSL::g_GLSLShaderLoc.string() + Paths::g_pathSeparator;
             REQUIRE( glswSetPath( shaderPath.c_str(), ".glsl" ) == 1 );
@@ -1097,7 +1101,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 {
                     defines.emplace_back( "COMPUTE_HALF_RES" );
                 }
-                ShaderProgramTestAccess::Parse( api, defines, data, atoms );
+                Attorney::ShaderProgramTestAccess::Parse( api, defines, data, atoms );
                 INFO( diagnostics.c_str() );
                 REQUIRE_FALSE( data._sourceCodeGLSL.empty() );
                 CHECK( atoms.contains( _ID( "ssaoResampling.cmn" ) ) );
@@ -1150,23 +1154,23 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             assert( unbound );
         };
 
-        const auto oldBindings = ShaderProgramTestAccess::Bindings();
+        const auto oldBindings = Attorney::ShaderProgramTestAccess::Bindings();
         SCOPE_EXIT
         {
             if ( glswGetCurrentContext() != nullptr )
             {
                 glswShutdown();
             }
-            ShaderProgramTestAccess::ClearAtoms();
-            ShaderProgramTestAccess::Bindings() = oldBindings;
+            Attorney::ShaderProgramTestAccess::ClearAtoms();
+            Attorney::ShaderProgramTestAccess::Bindings() = oldBindings;
         };
 
-        ShaderProgramTestAccess::InitAtomLocations();
+        Attorney::ShaderProgramTestAccess::InitAtomLocations();
         for ( U8 set = 0u; set < to_base( DescriptorSetUsage::COUNT ); ++set )
         {
             for ( U8 slot = 0u; slot < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slot )
             {
-                ShaderProgramTestAccess::Bindings()[set][slot]._glBinding = to_U8( set * MAX_BINDINGS_PER_DESCRIPTOR_SET + slot );
+                Attorney::ShaderProgramTestAccess::Bindings()[set][slot]._glBinding = to_U8( set * MAX_BINDINGS_PER_DESCRIPTOR_SET + slot );
             }
         }
 
@@ -1210,13 +1214,13 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         {
             if ( firstAPI )
             {
-                REQUIRE( ShaderProgramTestAccess::InitThread( api, config ) );
+                REQUIRE( Attorney::ShaderProgramTestAccess::InitThread( api, config ) );
                 firstAPI = false;
             }
             else
             {
                 REQUIRE( glswShutdown() == 1 );
-                REQUIRE( ShaderProgramTestAccess::InitGLSW( api, config ) );
+                REQUIRE( Attorney::ShaderProgramTestAccess::InitGLSW( api, config ) );
             }
             const string shaderPath = Paths::Shaders::GLSL::g_GLSLShaderLoc.string() + Paths::g_pathSeparator;
             REQUIRE( glswSetPath( shaderPath.c_str(), ".glsl" ) == 1 );
@@ -1244,7 +1248,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                 data._sourceName = "water.Fragment";
                 data._shaderName = data._sourceName;
                 eastl::set<U64> atoms;
-                ShaderProgramTestAccess::Parse( api, defines, data, atoms );
+                Attorney::ShaderProgramTestAccess::Parse( api, defines, data, atoms );
                 REQUIRE_FALSE( data._sourceCodeGLSL.empty() );
                 CHECK( atoms.contains( _ID( "waterComposite.cmn" ) ) );
                 if ( !variant._prePass && (variant._reflection || variant._refraction) )
@@ -1303,23 +1307,23 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             assert( unbound );
         };
 
-        const auto oldBindings = ShaderProgramTestAccess::Bindings();
+        const auto oldBindings = Attorney::ShaderProgramTestAccess::Bindings();
         SCOPE_EXIT
         {
             if ( glswGetCurrentContext() != nullptr )
             {
                 glswShutdown();
             }
-            ShaderProgramTestAccess::ClearAtoms();
-            ShaderProgramTestAccess::Bindings() = oldBindings;
+            Attorney::ShaderProgramTestAccess::ClearAtoms();
+            Attorney::ShaderProgramTestAccess::Bindings() = oldBindings;
         };
 
-        ShaderProgramTestAccess::InitAtomLocations();
+        Attorney::ShaderProgramTestAccess::InitAtomLocations();
         for ( U8 set = 0u; set < to_base( DescriptorSetUsage::COUNT ); ++set )
         {
             for ( U8 slot = 0u; slot < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slot )
             {
-                auto& binding = ShaderProgramTestAccess::Bindings()[set][slot];
+                auto& binding = Attorney::ShaderProgramTestAccess::Bindings()[set][slot];
                 binding._glBinding = to_U8( set * MAX_BINDINGS_PER_DESCRIPTOR_SET + slot );
                 binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 if ( set == to_base( DescriptorSetUsage::PER_BATCH ) )
@@ -1348,13 +1352,13 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             CAPTURE( api );
             if ( firstAPI )
             {
-                REQUIRE( ShaderProgramTestAccess::InitThread( api, config ) );
+                REQUIRE( Attorney::ShaderProgramTestAccess::InitThread( api, config ) );
                 firstAPI = false;
             }
             else
             {
                 REQUIRE( glswShutdown() == 1 );
-                REQUIRE( ShaderProgramTestAccess::InitGLSW( api, config ) );
+                REQUIRE( Attorney::ShaderProgramTestAccess::InitGLSW( api, config ) );
             }
             const string shaderPath = Paths::Shaders::GLSL::g_GLSLShaderLoc.string() + Paths::g_pathSeparator;
             REQUIRE( glswSetPath( shaderPath.c_str(), ".glsl" ) == 1 );
@@ -1368,7 +1372,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             data._shaderName = data._sourceName;
             eastl::set<U64> atoms{};
             diagnostics.clear();
-            ShaderProgramTestAccess::Parse( api, defines, data, atoms );
+            Attorney::ShaderProgramTestAccess::Parse( api, defines, data, atoms );
             INFO( diagnostics.c_str() );
             REQUIRE_FALSE( data._sourceCodeGLSL.empty() );
             CHECK( atoms.contains( _ID( "hizDispatchIndex.cmn" ) ) );
@@ -1410,23 +1414,23 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
             assert( unbound );
         };
 
-        const auto oldBindings = ShaderProgramTestAccess::Bindings();
+        const auto oldBindings = Attorney::ShaderProgramTestAccess::Bindings();
         SCOPE_EXIT
         {
             if ( glswGetCurrentContext() != nullptr )
             {
                 glswShutdown();
             }
-            ShaderProgramTestAccess::ClearAtoms();
-            ShaderProgramTestAccess::Bindings() = oldBindings;
+            Attorney::ShaderProgramTestAccess::ClearAtoms();
+            Attorney::ShaderProgramTestAccess::Bindings() = oldBindings;
         };
 
-        ShaderProgramTestAccess::InitAtomLocations();
+        Attorney::ShaderProgramTestAccess::InitAtomLocations();
         for ( U8 set = 0u; set < to_base( DescriptorSetUsage::COUNT ); ++set )
         {
             for ( U8 slot = 0u; slot < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slot )
             {
-                ShaderProgramTestAccess::Bindings()[set][slot]._glBinding = to_U8( set * MAX_BINDINGS_PER_DESCRIPTOR_SET + slot );
+                Attorney::ShaderProgramTestAccess::Bindings()[set][slot]._glBinding = to_U8( set * MAX_BINDINGS_PER_DESCRIPTOR_SET + slot );
             }
         }
 
@@ -1436,13 +1440,13 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         {
             if ( firstAPI )
             {
-                REQUIRE( ShaderProgramTestAccess::InitThread( api, config ) );
+                REQUIRE( Attorney::ShaderProgramTestAccess::InitThread( api, config ) );
                 firstAPI = false;
             }
             else
             {
                 REQUIRE( glswShutdown() == 1 );
-                REQUIRE( ShaderProgramTestAccess::InitGLSW( api, config ) );
+                REQUIRE( Attorney::ShaderProgramTestAccess::InitGLSW( api, config ) );
             }
             const string shaderPath = Paths::Shaders::GLSL::g_GLSLShaderLoc.string() + Paths::g_pathSeparator;
             REQUIRE( glswSetPath( shaderPath.c_str(), ".glsl" ) == 1 );
@@ -1463,7 +1467,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
                     data._shaderName = data._sourceName;
                     eastl::set<U64> atoms{};
                     diagnostics.clear();
-                    ShaderProgramTestAccess::Parse( api, defines, data, atoms );
+                    Attorney::ShaderProgramTestAccess::Parse( api, defines, data, atoms );
                     INFO( diagnostics.c_str() );
                     REQUIRE_FALSE( data._sourceCodeGLSL.empty() );
                     CHECK( atoms.contains( _ID( "utility.frag" ) ) );
@@ -1521,12 +1525,12 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         thirdUniforms.emplace( makeUniform( "thirdUniform" ) );
 
         ShaderProgram::UniformBlockLayouts blocks{};
-        CHECK( ShaderProgramTestAccess::FindUniformBlockIndex( blocks, vertexUniforms ) == 0u );
+        CHECK( Attorney::ShaderProgramTestAccess::FindUniformBlockIndex( blocks, vertexUniforms ) == 0u );
         blocks[0] = vertexUniforms;
-        CHECK( ShaderProgramTestAccess::FindUniformBlockIndex( blocks, fragmentUniforms ) == 1u );
+        CHECK( Attorney::ShaderProgramTestAccess::FindUniformBlockIndex( blocks, fragmentUniforms ) == 1u );
         blocks[1] = fragmentUniforms;
-        CHECK( ShaderProgramTestAccess::FindUniformBlockIndex( blocks, vertexUniforms ) == 0u );
-        CHECK( ShaderProgramTestAccess::FindUniformBlockIndex( blocks, thirdUniforms ) == Reflection::INVALID_BINDING_INDEX );
+        CHECK( Attorney::ShaderProgramTestAccess::FindUniformBlockIndex( blocks, vertexUniforms ) == 0u );
+        CHECK( Attorney::ShaderProgramTestAccess::FindUniformBlockIndex( blocks, thirdUniforms ) == Reflection::INVALID_BINDING_INDEX );
 
         const auto suffix = std::chrono::steady_clock::now().time_since_epoch().count();
         const std::filesystem::path tempDir = std::filesystem::temp_directory_path() /
@@ -1558,18 +1562,18 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
 
         U8 blockIndex = Reflection::INVALID_BINDING_INDEX;
         blocks = {};
-        REQUIRE( ShaderProgramTestAccess::CachedUniformBlockMatches( blocks, restored, blockIndex ) );
+        REQUIRE( Attorney::ShaderProgramTestAccess::CachedUniformBlockMatches( blocks, restored, blockIndex ) );
         REQUIRE( blockIndex == 0u );
         blocks[blockIndex] = restored._uniforms;
-        CHECK( ShaderProgramTestAccess::FindUniformBlockIndex( blocks, fragmentUniforms ) == 1u );
+        CHECK( Attorney::ShaderProgramTestAccess::FindUniformBlockIndex( blocks, fragmentUniforms ) == 1u );
 
         blocks = {};
         blocks[0] = fragmentUniforms;
-        CHECK_FALSE( ShaderProgramTestAccess::CachedUniformBlockMatches( blocks, restored, blockIndex ) );
+        CHECK_FALSE( Attorney::ShaderProgramTestAccess::CachedUniformBlockMatches( blocks, restored, blockIndex ) );
         CHECK( blockIndex == 1u );
 
         const ShaderProgram::LoadData noUniforms{};
-        CHECK( ShaderProgramTestAccess::CachedUniformBlockMatches( blocks, noUniforms, blockIndex ) );
+        CHECK( Attorney::ShaderProgramTestAccess::CachedUniformBlockMatches( blocks, noUniforms, blockIndex ) );
         CHECK( blockIndex == Reflection::INVALID_BINDING_INDEX );
     }
 
@@ -1578,7 +1582,7 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         using State = Reflection::PushConstantsState;
         const auto detect = []( const char* source, const RenderAPI api )
         {
-            return ShaderProgramTestAccess::DetectPushConstantsUsage( source, api );
+            return Attorney::ShaderProgramTestAccess::DetectPushConstantsUsage( source, api );
         };
 
         CHECK( detect( "", RenderAPI::OpenGL ) == State::NOT_USED );
@@ -1602,14 +1606,14 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         const std::string bytes{ reinterpret_cast<const char*>( expected.data() ), sizeof( expected ) };
         std::vector<SpvWord> output{};
         std::istringstream complete{ bytes };
-        REQUIRE( ShaderProgramTestAccess::ReadCachedSPIRV( complete, output ) );
+        REQUIRE( Attorney::ShaderProgramTestAccess::ReadCachedSPIRV( complete, output ) );
         CHECK( std::ranges::equal( output, expected ) );
 
         std::istringstream truncated{ bytes.substr( 0u, bytes.size() - 1u ) };
-        CHECK_FALSE( ShaderProgramTestAccess::ReadCachedSPIRV( truncated, output ) );
+        CHECK_FALSE( Attorney::ShaderProgramTestAccess::ReadCachedSPIRV( truncated, output ) );
         CHECK( output.empty() );
         std::istringstream empty{};
-        CHECK_FALSE( ShaderProgramTestAccess::ReadCachedSPIRV( empty, output ) );
+        CHECK_FALSE( Attorney::ShaderProgramTestAccess::ReadCachedSPIRV( empty, output ) );
         CHECK( output.empty() );
     }
 }

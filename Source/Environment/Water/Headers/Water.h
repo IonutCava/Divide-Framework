@@ -43,6 +43,11 @@ class Texture;
 class StaticCamera;
 class ShaderProgram;
 
+namespace Attorney
+{
+    class WaterPlaneTestAccess;
+}
+
 DEFINE_NODE_TYPE(WaterPlane, SceneNodeType::TYPE_WATER)
 {
    public:
@@ -107,9 +112,7 @@ DEFINE_NODE_TYPE(WaterPlane, SceneNodeType::TYPE_WATER)
     void onEditorChange(std::string_view field) noexcept;
 
    private:
-#if defined(ENABLE_UNIT_TESTING)
-    friend struct WaterPlaneTestAccess;
-#endif
+    friend class Attorney::WaterPlaneTestAccess;
     void registerEditorFields(PlatformContext& context);
     void updateGeometry();
     bool updateReflection(RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const;

@@ -64,9 +64,7 @@ FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 class LightPool final : public FrameListener, 
                         public SceneComponent,
                         public PlatformContextComponent {
-#if defined(ENABLE_UNIT_TESTING)
     friend class Attorney::LightPoolTestAccess;
-#endif
 
   protected:
       struct LightProperties {

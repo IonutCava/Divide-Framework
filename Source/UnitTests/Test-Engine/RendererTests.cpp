@@ -1239,19 +1239,23 @@ namespace Divide
         CHECK(geometryChange.affectsLight(LightType::SPOT, BoundingSphere{float3{0.f}, 10.f}));
     }
 
-    struct ParticleEmitterTestAccess
+    namespace Attorney
     {
-        static auto& Upload(ParticleEmitter& emitter, const U64 frame, const float3& eye)
+        class ParticleEmitterTestAccess
         {
-            return emitter.getUpload(frame, eye);
-        }
-    };
+        public:
+            static auto& Upload(ParticleEmitter& emitter, const U64 frame, const float3& eye)
+            {
+                return emitter.getUpload(frame, eye);
+            }
+        };
+    }
 
     TEST_CASE("Particle uploads retain every view until its frame slot is recycled", "[renderer][particles]")
     {
         platformInitRunListener::PlatformInit();
         ParticleEmitter emitter{ ResourceDescriptor<ParticleEmitter>{ "particle_upload_lifetime" } };
-        auto& first = ParticleEmitterTestAccess::Upload(emitter, 0u, float3{0.f});
+        auto& first = Attorney::ParticleEmitterTestAccess::Upload(emitter, 0u, float3{0.f});
         first._uploaded = true;
         first._handles[1] = { 7u, 1u };
         GenericDrawCommand& command = first._commands.emplace_back();
@@ -1263,22 +1267,22 @@ namespace Divide
         // More views than the old three-slot ring and four-player modulo.
         for (U32 i = 1u; i < 32u; ++i)
         {
-            auto& other = ParticleEmitterTestAccess::Upload(emitter, 0u, float3{to_F32(i), 0.f, 0.f});
+            auto& other = Attorney::ParticleEmitterTestAccess::Upload(emitter, 0u, float3{to_F32(i), 0.f, 0.f});
             CHECK(&other != &first);
             other._handles[1] = { to_U16(i + 8u), 1u };
             CHECK(queued._sourceBuffers[1] == GPUBuffer::Handle{7u, 1u});
         }
-        CHECK(&ParticleEmitterTestAccess::Upload(emitter, 0u, float3{0.f}) == &first);
+        CHECK(&Attorney::ParticleEmitterTestAccess::Upload(emitter, 0u, float3{0.f}) == &first);
         CHECK(first._uploaded);
         CHECK(queued._cmd.instanceCount == 17u);
 
         for (U64 frame = 1u; frame < Config::MAX_FRAMES_IN_FLIGHT; ++frame)
         {
-            auto& inFlight = ParticleEmitterTestAccess::Upload(emitter, frame, float3{0.f});
+            auto& inFlight = Attorney::ParticleEmitterTestAccess::Upload(emitter, frame, float3{0.f});
             CHECK(&inFlight != &first);
             CHECK(first._uploaded);
         }
-        auto& recycled = ParticleEmitterTestAccess::Upload(emitter, Config::MAX_FRAMES_IN_FLIGHT, float3{0.f});
+        auto& recycled = Attorney::ParticleEmitterTestAccess::Upload(emitter, Config::MAX_FRAMES_IN_FLIGHT, float3{0.f});
         CHECK(&recycled == &first);
         CHECK_FALSE(recycled._uploaded);
     }
@@ -4375,14 +4379,18 @@ namespace Divide
         CHECK( to_base( ShaderStageVisibility::COMPUTE_AND_DRAW ) == fragmentCompute );
     }
 
-    struct WindowManagerTestAccess
+    namespace Attorney
     {
-        static ErrorCode ApplyContextSettings(WindowManager& manager, const bool debug)
+        class WindowManagerTestAccess
         {
-            manager._apiSettings._createDebugContext = debug;
-            return manager.applyAPISettingsPreCreate(0u, RenderAPI::OpenGL);
-        }
-    };
+        public:
+            static ErrorCode ApplyContextSettings(WindowManager& manager, const bool debug)
+            {
+                manager._apiSettings._createDebugContext = debug;
+                return manager.applyAPISettingsPreCreate(0u, RenderAPI::OpenGL);
+            }
+        };
+    }
 
     TEST_CASE( "OpenGL debug retries clear no-error context attributes", "[window_context]" )
     {
@@ -4407,7 +4415,7 @@ namespace Divide
         WindowManager manager;
         for (const bool debug : { false, true, false, true })
         {
-            REQUIRE( WindowManagerTestAccess::ApplyContextSettings(manager, debug) == ErrorCode::NO_ERR );
+            REQUIRE( Attorney::WindowManagerTestAccess::ApplyContextSettings(manager, debug) == ErrorCode::NO_ERR );
             int noError = -1;
             int flags = 0;
             REQUIRE( SDL_GL_GetAttribute(SDL_GL_CONTEXT_NO_ERROR, &noError) );
@@ -5488,20 +5496,24 @@ void main() {
         }
     }
 
-    struct VKAPITestAccessor
+    namespace Attorney
     {
-        static VKTransferQueue& queue() noexcept { return VK_API::s_transferQueue; }
-    };
+        class VKAPITestAccess
+        {
+        public:
+            static VKTransferQueue& queue() noexcept { return VK_API::s_transferQueue; }
+        };
+    }
 
     TEST_CASE("VKTransferQueue producer non-blocking and Flush drains", "[vk_transfer_queue]") {
         // Drain any leftover state
         VKTransferQueue::TransferRequest tmp{};
 
-        while (VKAPITestAccessor::queue()._requests.try_dequeue(tmp))
+        while (Attorney::VKAPITestAccess::queue()._requests.try_dequeue(tmp))
         {
         }
 
-        VKAPITestAccessor::queue()._dirty.store(false, std::memory_order_release);
+        Attorney::VKAPITestAccess::queue()._dirty.store(false, std::memory_order_release);
 
         SECTION("single enqueue is non-blocking and visible")
         {
@@ -5511,7 +5523,7 @@ void main() {
             VK_API::RegisterTransferRequest(req);
 
             // Immediately visible on the lock-free queue
-            REQUIRE(VKAPITestAccessor::queue()._requests.try_dequeue(tmp));
+            REQUIRE(Attorney::VKAPITestAccess::queue()._requests.try_dequeue(tmp));
         }
 
         SECTION("Flush drains all queued requests and clears dirty")
@@ -5527,14 +5539,14 @@ void main() {
             }
 
             // Sanity: producers published work
-            REQUIRE(VKAPITestAccessor::queue()._dirty.load(std::memory_order_acquire));
+            REQUIRE(Attorney::VKAPITestAccess::queue()._dirty.load(std::memory_order_acquire));
 
             // Call the consumer (simulating the render thread). VK_NULL_HANDLE is acceptable for this unit test.
             VK_API::FlushBufferTransferRequests(VK_NULL_HANDLE);
 
             // After Flush, queue should be drained and dirty cleared.
-            REQUIRE(!VKAPITestAccessor::queue()._dirty.load(std::memory_order_acquire));
-            REQUIRE(!VKAPITestAccessor::queue()._requests.try_dequeue(tmp));
+            REQUIRE(!Attorney::VKAPITestAccess::queue()._dirty.load(std::memory_order_acquire));
+            REQUIRE(!Attorney::VKAPITestAccess::queue()._requests.try_dequeue(tmp));
         }
     }
 } //namespace Divide

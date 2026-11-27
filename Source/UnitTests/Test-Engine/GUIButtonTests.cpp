@@ -9,30 +9,34 @@
 
 namespace Divide
 {
-    struct GUIButtonTestAccess
+    namespace Attorney
     {
-        [[nodiscard]] static GUIButton* Create()
+        class GUIButtonTestAccess
         {
-            return new GUIButton("sound-test", "", "", RelativePosition2D{}, RelativeScale2D{}, nullptr);
-        }
-
-        static void Destroy(GUIButton* button)
-        {
-            delete button;
-        }
-
-        [[nodiscard]] static bool SoundsAreUnset(const GUIButton& button) noexcept
-        {
-            for (const Handle<AudioDescriptor> sound : button._eventSound)
+        public:
+            [[nodiscard]] static GUIButton* Create()
             {
-                if (sound != INVALID_HANDLE<AudioDescriptor>)
-                {
-                    return false;
-                }
+                return new GUIButton("sound-test", "", "", RelativePosition2D{}, RelativeScale2D{}, nullptr);
             }
-            return true;
-        }
-    };
+
+            static void Destroy(GUIButton* button)
+            {
+                delete button;
+            }
+
+            [[nodiscard]] static bool SoundsAreUnset(const GUIButton& button) noexcept
+            {
+                for (const Handle<AudioDescriptor> sound : button._eventSound)
+                {
+                    if (sound != INVALID_HANDLE<AudioDescriptor>)
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        };
+    }
 
     TEST_CASE("GUI button sound references survive replacement and release at destruction", "[gui][resources][render_smoke]")
     {
@@ -59,12 +63,12 @@ namespace Divide
         secondDescriptor.waitForReady(true);
         Handle<AudioDescriptor> first = CreateResource(firstDescriptor);
         Handle<AudioDescriptor> second = CreateResource(secondDescriptor);
-        GUIButton* button = GUIButtonTestAccess::Create();
+        GUIButton* button = Attorney::GUIButtonTestAccess::Create();
         SCOPE_EXIT
         {
             if (button != nullptr)
             {
-                GUIButtonTestAccess::Destroy(button);
+                Attorney::GUIButtonTestAccess::Destroy(button);
             }
             DestroyResource(first);
             DestroyResource(second);
@@ -75,7 +79,7 @@ namespace Divide
         REQUIRE(second != INVALID_HANDLE<AudioDescriptor>);
         const Handle<AudioDescriptor> firstHandle = first;
         const Handle<AudioDescriptor> secondHandle = second;
-        CHECK(GUIButtonTestAccess::SoundsAreUnset(*button));
+        CHECK(Attorney::GUIButtonTestAccess::SoundsAreUnset(*button));
 
         button->setEventSound(GUIButton::Event::MouseClick, first);
         button->setEventSound(GUIButton::Event::MouseClick, first);
@@ -95,7 +99,7 @@ namespace Divide
         CHECK(Get(firstHandle) == nullptr);
         REQUIRE(Get(secondHandle) != nullptr);
 
-        GUIButtonTestAccess::Destroy(button);
+        Attorney::GUIButtonTestAccess::Destroy(button);
         button = nullptr;
         ResourceCache::OnFrameStart();
         CHECK(Get(secondHandle) == nullptr);

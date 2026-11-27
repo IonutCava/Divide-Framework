@@ -49,15 +49,16 @@ namespace Divide
 {
 
 class Pipeline;
-struct VKAPITestAccessor;
+namespace Attorney
+{
+    class VKAPITestAccess;
+}
+
 enum class ShaderResult : U8;
 
 class VK_API final : public RenderAPIWrapper
 {
-
-#if defined(ENABLE_UNIT_TESTING)
-    friend struct VKAPITestAccessor;
-#endif //ENABLE_UNIT_TESTING
+    friend class Attorney::VKAPITestAccess;
 
 public:
     static constexpr VkPipelineStageFlagBits2 ALL_SHADER_STAGES_NO_MESH = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |

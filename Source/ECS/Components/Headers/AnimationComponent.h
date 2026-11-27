@@ -44,8 +44,13 @@ class AnimEvaluator;
 class SceneGraphNode;
 
 FWD_DECLARE_MANAGED_CLASS(SceneAnimator);
+namespace Attorney
+{
+    class AnimationSystemTestAccess;
+}
+
 BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
-    friend struct AnimationSystemTestAccess;
+    friend class Attorney::AnimationSystemTestAccess;
    public:
     explicit AnimationComponent(SceneGraphNode* parentSGN, PlatformContext& context);
 

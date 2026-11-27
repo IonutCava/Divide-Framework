@@ -50,6 +50,11 @@ class PlatformContext;
 struct WindowDescriptor;
 struct SizeChangeParams;
 
+namespace Attorney
+{
+    class WindowManagerTestAccess;
+}
+
 class WindowManager final : NonCopyable {
 public:
     struct MonitorData {
@@ -123,7 +128,7 @@ public:
 
 protected:
     friend class Application;
-    friend struct WindowManagerTestAccess;
+    friend class Attorney::WindowManagerTestAccess;
 
     // Can be called at startup directly
     ErrorCode init(PlatformContext& context,

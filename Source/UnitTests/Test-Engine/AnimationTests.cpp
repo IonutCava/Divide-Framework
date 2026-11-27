@@ -8,28 +8,32 @@
 
 namespace Divide
 {
-    struct AnimationSystemTestAccess
+    namespace Attorney
     {
-        static void SetComponents(AnimationSystem& system, const vector<AnimationComponent*>& components)
+        class AnimationSystemTestAccess
         {
-            system._componentCache = components;
-        }
+        public:
+            static void SetComponents(AnimationSystem& system, const vector<AnimationComponent*>& components)
+            {
+                system._componentCache = components;
+            }
 
-        [[nodiscard]] static D64 CurrentTimeStamp(const AnimationComponent& component) noexcept
-        {
-            return component._currentTimeStamp;
-        }
+            [[nodiscard]] static D64 CurrentTimeStamp(const AnimationComponent& component) noexcept
+            {
+                return component._currentTimeStamp;
+            }
 
-        static void SetCurrentTimeStamp(AnimationComponent& component, const D64 value) noexcept
-        {
-            component._currentTimeStamp = value;
-        }
+            static void SetCurrentTimeStamp(AnimationComponent& component, const D64 value) noexcept
+            {
+                component._currentTimeStamp = value;
+            }
 
-        static void SetFrame(AnimationComponent& component, const AnimEvaluator::FrameIndex frame) noexcept
-        {
-            component._frameIndex = frame;
-        }
-    };
+            static void SetFrame(AnimationComponent& component, const AnimEvaluator::FrameIndex frame) noexcept
+            {
+                component._frameIndex = frame;
+            }
+        };
+    }
 
     TEST_CASE("An inactive animation does not prevent later components from updating", "[animation][render_smoke]")
     {
@@ -46,12 +50,12 @@ namespace Divide
         second.setAnimator(&animator);
         second.playAnimations(false);
         second.resetTimers(100.0);
-        AnimationSystemTestAccess::SetComponents(system, { &first, &second });
+        Attorney::AnimationSystemTestAccess::SetComponents(system, { &first, &second });
 
         SECTION("A component without an animator is skipped")
         {
             system.Update(0.f);
-            CHECK(AnimationSystemTestAccess::CurrentTimeStamp(second) == 100.0);
+            CHECK(Attorney::AnimationSystemTestAccess::CurrentTimeStamp(second) == 100.0);
         }
 
         SECTION("A component with an unchanged timestamp is skipped")
@@ -60,12 +64,12 @@ namespace Divide
             first.playAnimations(false);
             first.resetTimers(0.0);
             system.Update(0.f);
-            REQUIRE(AnimationSystemTestAccess::CurrentTimeStamp(first) == 0.0);
-            REQUIRE(AnimationSystemTestAccess::CurrentTimeStamp(second) == 100.0);
+            REQUIRE(Attorney::AnimationSystemTestAccess::CurrentTimeStamp(first) == 0.0);
+            REQUIRE(Attorney::AnimationSystemTestAccess::CurrentTimeStamp(second) == 100.0);
 
             second.resetTimers(200.0);
             system.Update(0.f);
-            CHECK(AnimationSystemTestAccess::CurrentTimeStamp(second) == 200.0);
+            CHECK(Attorney::AnimationSystemTestAccess::CurrentTimeStamp(second) == 200.0);
         }
     }
 
@@ -83,8 +87,8 @@ namespace Divide
         component.setAnimator(&animator);
         CHECK( component.frameCount() == 0 );
         component.resetTimers(100.0);
-        AnimationSystemTestAccess::SetCurrentTimeStamp(component, 100.0);
-        AnimationSystemTestAccess::SetComponents(system, { &component });
+        Attorney::AnimationSystemTestAccess::SetCurrentTimeStamp(component, 100.0);
+        Attorney::AnimationSystemTestAccess::SetComponents(system, { &component });
 
         const bool previousGlobalState = system.getAnimationState();
         SCOPE_EXIT
@@ -93,11 +97,11 @@ namespace Divide
         };
         system.toggleAnimationState(true);
 
-        AnimationSystemTestAccess::SetFrame(component, { ._curr = 0, ._prev = 9, ._next = 1 });
+        Attorney::AnimationSystemTestAccess::SetFrame(component, { ._curr = 0, ._prev = 9, ._next = 1 });
         system.Update(0.f);
         CHECK_FALSE(component.frameTicked());
 
-        AnimationSystemTestAccess::SetFrame(component, { ._curr = 3, ._prev = 2, ._next = 4 });
+        Attorney::AnimationSystemTestAccess::SetFrame(component, { ._curr = 3, ._prev = 2, ._next = 4 });
         system.Update(0.f);
         CHECK(component.frameTicked());
         system.Update(0.f);
@@ -105,10 +109,10 @@ namespace Divide
 
         SECTION("Wrapping in either direction is a change")
         {
-            AnimationSystemTestAccess::SetFrame(component, { ._curr = 0, ._prev = 9, ._next = 1 });
+            Attorney::AnimationSystemTestAccess::SetFrame(component, { ._curr = 0, ._prev = 9, ._next = 1 });
             system.Update(0.f);
             CHECK(component.frameTicked());
-            AnimationSystemTestAccess::SetFrame(component, { ._curr = 9, ._prev = 0, ._next = 8 });
+            Attorney::AnimationSystemTestAccess::SetFrame(component, { ._curr = 9, ._prev = 0, ._next = 8 });
             system.Update(0.f);
             CHECK(component.frameTicked());
         }
@@ -142,7 +146,7 @@ namespace Divide
         SECTION("Timer reset preserves the previous observed frame")
         {
             component.resetTimers(100.0);
-            AnimationSystemTestAccess::SetCurrentTimeStamp(component, 100.0);
+            Attorney::AnimationSystemTestAccess::SetCurrentTimeStamp(component, 100.0);
             system.Update(0.f);
             CHECK(component.frameTicked());
         }

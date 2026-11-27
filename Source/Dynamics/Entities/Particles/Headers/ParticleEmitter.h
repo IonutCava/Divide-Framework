@@ -46,6 +46,11 @@ namespace Divide {
 class Texture;
 
 /// A Particle emitter scene node. Nothing smarter to say, sorry :"> - Ionut
+namespace Attorney
+{
+    class ParticleEmitterTestAccess;
+}
+
 DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
 {
    public:
@@ -113,7 +118,7 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
     [[nodiscard]] ParticleUpload& getUpload(U64 frame, const float3& eye);
 
    private:
-    friend struct ParticleEmitterTestAccess;
+    friend class Attorney::ParticleEmitterTestAccess;
     std::shared_ptr<ParticleData> _particles;
     U32 _geometryIndexCount = 0u;
 

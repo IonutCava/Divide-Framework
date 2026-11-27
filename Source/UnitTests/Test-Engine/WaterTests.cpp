@@ -8,18 +8,22 @@
 
 namespace Divide
 {
-    struct WaterPlaneTestAccess
+    namespace Attorney
     {
-        static void RegisterEditorFields( WaterPlane& water, PlatformContext& context )
+        class WaterPlaneTestAccess
         {
-            water.registerEditorFields( context );
-        }
+        public:
+            static void RegisterEditorFields( WaterPlane& water, PlatformContext& context )
+            {
+                water.registerEditorFields( context );
+            }
 
-        static void NotifyEditorChange( WaterPlane& water )
-        {
-            water.onEditorChange( "Blur refractions" );
-        }
-    };
+            static void NotifyEditorChange( WaterPlane& water )
+            {
+                water.onEditorChange( "Blur refractions" );
+            }
+        };
+    }
 
     TEST_CASE( "Water Fresnel conserves the planar reflection and refraction inputs", "[water][render_smoke]" )
     {
@@ -68,7 +72,7 @@ namespace Divide
         PlatformContext context{ app };
         ResourceDescriptor<WaterPlane> descriptor{ "water_serialization_test" };
         WaterPlane water{ descriptor };
-        WaterPlaneTestAccess::RegisterEditorFields( water, context );
+        Attorney::WaterPlaneTestAccess::RegisterEditorFields( water, context );
 
         boost::property_tree::ptree input;
         input.put( "dimensions.<xmlattr>.width", 1024u );
@@ -86,7 +90,7 @@ namespace Divide
         CHECK( water.fogStartEnd().x == 256.f );
         CHECK( water.fogStartEnd().y == 1024.f );
 
-        WaterPlaneTestAccess::NotifyEditorChange( water );
+        Attorney::WaterPlaneTestAccess::NotifyEditorChange( water );
         CHECK( water.fogStartEnd().y == 1024.f );
 
         boost::property_tree::ptree saved;
@@ -103,7 +107,7 @@ namespace Divide
         PlatformContext context{ app };
         ResourceDescriptor<WaterPlane> descriptor{ "water_fog_test" };
         WaterPlane water{ descriptor };
-        WaterPlaneTestAccess::RegisterEditorFields( water, context );
+        Attorney::WaterPlaneTestAccess::RegisterEditorFields( water, context );
 
         boost::property_tree::ptree input;
         input.put( "WATER.Fog__start__end__distances.<xmlattr>.x", 20.f );
@@ -113,7 +117,7 @@ namespace Divide
         CHECK( water.fogStartEnd().y == Catch::Approx( 20.1f ) );
 
         water.fogStartEnd( float2{ 30.f, 30.f } );
-        WaterPlaneTestAccess::NotifyEditorChange( water );
+        Attorney::WaterPlaneTestAccess::NotifyEditorChange( water );
         CHECK( water.fogStartEnd().y == Catch::Approx( 30.1f ) );
     }
 }

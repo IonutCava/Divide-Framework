@@ -41,7 +41,7 @@ namespace Divide {
     class AnimationSystem final : public PlatformContextComponent,
                                   public ECSSystem<AnimationSystem, AnimationComponent> {
         using Parent = ECSSystem<AnimationSystem, AnimationComponent>;
-        friend struct AnimationSystemTestAccess;
+        friend class Attorney::AnimationSystemTestAccess;
       public:
         AnimationSystem(ECS::ECSEngine& parentEngine, PlatformContext& context);
 
