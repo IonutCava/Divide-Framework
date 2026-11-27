@@ -230,9 +230,8 @@ void SceneGraphNode::changeUsageContext(const NodeUsageContext& newContext)
     if (_usageContext != newContext)
     {
         const bool previousStatic = _usageContext == NodeUsageContext::NODE_STATIC;
-        _sceneGraph->invalidateStaticGeometryBounds(*this);
         _usageContext = newContext;
-        _sceneGraph->invalidateStaticGeometryBounds(*this);
+        _sceneGraph->invalidateStaticGeometryBounds(*this, previousStatic);
         const BoundsComponent* bounds = get<BoundsComponent>();
         if (bounds != nullptr)
         {

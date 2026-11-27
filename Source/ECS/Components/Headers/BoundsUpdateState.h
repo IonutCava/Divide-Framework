@@ -42,6 +42,32 @@ namespace Divide
         return result;
     }
 
+    // Recomputes lazily, never eagerly: building an OBB asserts on sheared world matrices that most nodes never need an OBB for.
+    class BoundsOBBCache
+    {
+    public:
+        void invalidate() noexcept
+        {
+            _dirty.store(true, std::memory_order_release);
+        }
+
+        template<typename Compute>
+        [[nodiscard]] OBB get(const Compute& compute)
+        {
+            LockGuard<Mutex> lock(_lock);
+            if (_dirty.exchange(false, std::memory_order_acq_rel))
+            {
+                _obb = compute();
+            }
+            return _obb;
+        }
+
+    private:
+        Mutex _lock;
+        std::atomic_bool _dirty{true};
+        OBB _obb{};
+    };
+
     class BoundsChangeCounter
     {
     public:

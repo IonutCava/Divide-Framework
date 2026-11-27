@@ -52,6 +52,10 @@ public:
     void PostUpdate(F32 dt) override;
 
 private:
+    // Components touched this frame, reused across frames so steady-state updates never allocate.
+    vector<BoundsComponent*> _refChangedComponents;
+    vector<BoundsComponent*> _dirtyComponents;
+    vector<BoundsComponent*> _debugDrawComponents;
     bool _renderAABB{false};
     bool _renderOBB{false};
     bool _renderBS{false};

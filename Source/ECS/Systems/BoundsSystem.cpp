@@ -84,6 +84,7 @@ namespace Divide
             }
         }
 
+        _refChangedComponents.clear();
         for (BoundsComponent* bComp : _componentCache)
         {
             const SceneNode& sceneNode = bComp->parentSGN()->getNode();
@@ -91,15 +92,14 @@ namespace Divide
             if (bComp->_boundsChanges.capturedChanged())
             {
                 bComp->setRefBoundingBox(sceneNode.getBounds());
+                _refChangedComponents.push_back(bComp);
             }
         }
 
-        for (BoundsComponent* bComp : _componentCache)
+        // Every changed reference box must be set before any parent aggregates its children.
+        for (BoundsComponent* bComp : _refChangedComponents)
         {
-            if (bComp->_boundsChanges.capturedChanged())
-            {
-                bComp->appendChildRefBBs();
-            }
+            bComp->appendChildRefBBs();
         }
     }
 
@@ -109,17 +109,62 @@ namespace Divide
 
         Parent::PostUpdate(dt);
 
+        // Anything that is neither dirty nor pending a change has nothing to update, rebuild or complete.
+        _dirtyComponents.clear();
+        _debugDrawComponents.clear();
+        const bool drawAllBounds = _renderAABB || _renderOBB || _renderBS;
         for (BoundsComponent* bComp : _componentCache)
         {
-            bComp->updateBoundingBoxTransform();
+            if (bComp->_boundsUpdate.dirty() || bComp->_rebuildChildBounds || bComp->_boundsChanges.capturedChanged())
+            {
+                _dirtyComponents.push_back(bComp);
+            }
+            if (drawAllBounds || bComp->showAABB() || bComp->showOBB() || bComp->showBS())
+            {
+                _debugDrawComponents.push_back(bComp);
+            }
         }
 
-        for (BoundsComponent* bComp : _componentCache)
+        {
+            // Each component only writes its own bounds here, so large batches can be spread across workers.
+            constexpr U32 g_parallelDirtyThreshold = 128u;
+            constexpr U32 g_componentsPerPartition = 32u;
+            const U32 dirtyCount = to_U32(_dirtyComponents.size());
+            if (dirtyCount >= g_parallelDirtyThreshold)
+            {
+                Parallel_For
+                (
+                    context().taskPool(TaskPoolType::HIGH_PRIORITY),
+                    ParallelForDescriptor
+                    {
+                        ._iterCount = dirtyCount,
+                        ._partitionSize = g_componentsPerPartition
+                    },
+                    [this]( const Task* /*parentTask*/, const U32 start, const U32 end )
+                    {
+                        for (U32 i = start; i < end; ++i)
+                        {
+                            _dirtyComponents[i]->updateBoundingBoxTransform();
+                        }
+                    }
+                );
+            }
+            else
+            {
+                for (BoundsComponent* bComp : _dirtyComponents)
+                {
+                    bComp->updateBoundingBoxTransform();
+                }
+            }
+        }
+
+        // Parents recurse into and update their descendants, so this stays serial.
+        for (BoundsComponent* bComp : _dirtyComponents)
         {
             bComp->appendChildBBs();
         }
 
-        for (BoundsComponent* bComp : _componentCache)
+        for (BoundsComponent* bComp : _dirtyComponents)
         {
             bComp->_boundsChanges.complete();
             if (bComp->_boundsUpdate.recomputed())
@@ -132,7 +177,7 @@ namespace Divide
             }
         }
 
-        for (BoundsComponent* bComp : _componentCache)
+        for (BoundsComponent* bComp : _debugDrawComponents)
         {
             if (_renderAABB || bComp->showAABB())
             {

@@ -80,6 +80,7 @@ namespace Divide
         : BaseComponentType<RenderingComponent, ComponentType::RENDERING>( parentSGN, context ),
         _gfxContext( context.gfx() ),
         _config( context.config() ),
+        _nodeType( parentSGN->getNode().type() ),
         _reflectionProbeIndex( SceneEnvironmentProbePool::SkyProbeLayerIndex() )
     {
         _lodLevels.fill( 0u );
@@ -211,7 +212,7 @@ namespace Divide
         }
 
         Handle<Material> newInstance = INVALID_HANDLE<Material>;
-        const bool allowXMLOverrides = _parentSGN->getNode().type() == SceneNodeType::TYPE_SUBMESH;
+        const bool allowXMLOverrides = _nodeType == SceneNodeType::TYPE_SUBMESH;
         if ( Material::Clone(material, newInstance, (_parentSGN->name() + "_instance").c_str(), allowXMLOverrides) &&
              newInstance != INVALID_HANDLE<Material> )
         {
@@ -326,7 +327,7 @@ namespace Divide
         PROFILE_TAG( "Node", (_parentSGN->name().c_str()) );
 
         if (renderStagePass._stage == RenderStage::SHADOW &&
-            !IsShadowCaster(_parentSGN->getNode().type(), renderOptionEnabled(RenderOptions::CAST_SHADOWS)))
+            !IsShadowCaster(_nodeType, renderOptionEnabled(RenderOptions::CAST_SHADOWS)))
         {
             return false;
         }

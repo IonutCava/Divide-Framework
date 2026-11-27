@@ -15,7 +15,7 @@ namespace Divide {
 bool RenderingComponent::drawState(const RenderStagePass stagePass, const bool defaultState) const
 {
     if (stagePass._stage == RenderStage::SHADOW &&
-        !IsShadowCaster(_parentSGN->getNode().type(), renderOptionEnabled(RenderOptions::CAST_SHADOWS)))
+        !IsShadowCaster(_nodeType, renderOptionEnabled(RenderOptions::CAST_SHADOWS)))
     {
         return false;
     }
@@ -65,7 +65,7 @@ bool RenderingComponent::hasTransparency() const
 
 bool RenderingComponent::worldAOContributor() const
 {
-    const SceneNodeType type = _parentSGN->getNode().type();
+    const SceneNodeType type = _nodeType;
     if (_parentSGN->hasFlag(SceneGraphNode::Flags::LOADING) ||
         !_parentSGN->hasFlag(SceneGraphNode::Flags::ACTIVE) ||
         !renderOptionEnabled(RenderOptions::IS_VISIBLE) ||

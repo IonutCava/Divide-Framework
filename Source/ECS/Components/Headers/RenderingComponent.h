@@ -34,6 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DVD_RENDERING_COMPONENT_H_
 
 #include "SGNComponent.h"
+#include "Graphs/Headers/SceneNodeFwd.h"
 #include "Graphs/Headers/SceneNodeRenderState.h"
 
 #include "Core/Headers/PoolHandle.h"
@@ -271,8 +272,9 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
    protected:
     GFXDevice& _gfxContext;
     const Configuration& _config;
+    const SceneNodeType _nodeType;
 
-    struct PackageEntry 
+    struct PackageEntry
     {
         RenderPackage _package;
         U16 _index{ 0u };

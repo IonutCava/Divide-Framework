@@ -73,6 +73,7 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
     private:
         BoundsUpdateState _boundsUpdate;
         BoundsChangeTracker _boundsChanges;
+        mutable BoundsOBBCache _obbCache;
         BoundingBox _boundingBox{};
         BoundingBox _refBoundingBox{};
         BoundingSphere _boundingSphere{};

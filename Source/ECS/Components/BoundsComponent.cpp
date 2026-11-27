@@ -104,6 +104,7 @@ void BoundsComponent::flagBoundingBoxDirty(const U32 transformMask, const bool r
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
     _boundsUpdate.markDirty(transformMask);
+    _obbCache.invalidate();
 
     if (recursive)
     {
@@ -122,6 +123,7 @@ void BoundsComponent::setRefBoundingBox(const BoundingBox& nodeBounds) noexcept
     _refBoundingBox.set(nodeBounds);
     _containsWorldSpaceBounds = _parentSGN->getNode().boundsInWorldSpace();
     _boundsUpdate.markDirty(to_base(TransformType::ALL));
+    _obbCache.invalidate();
 }
 
 void BoundsComponent::updateBoundingBoxTransform()
@@ -134,6 +136,7 @@ void BoundsComponent::updateBoundingBoxTransform()
         const mat4<F32>& worldMatrix = worldSpace ? MAT4_IDENTITY : _parentSGN->get<TransformComponent>()->getWorldMatrix();
         _boundsUpdate.update(_boundingBox, _refBoundingBox, worldSpace, worldMatrix);
         _rebuildChildBounds = true;
+        _obbCache.invalidate();
     }
 }
 
@@ -159,6 +162,7 @@ void BoundsComponent::appendChildRefBBs()
             }
         }
     }
+    _obbCache.invalidate();
 }
 
 void BoundsComponent::appendChildBBs()
@@ -184,6 +188,7 @@ void BoundsComponent::appendChildBBs()
             _boundingBox.add(bComp->_boundingBox);
         }
     }
+    _obbCache.invalidate();
     const BoundingSphere previous = _boundingSphere;
     _boundingSphere.fromBoundingBox(_boundingBox);
     if (BoundingSphereChanged(previous, _boundingSphere))
@@ -195,10 +200,13 @@ void BoundsComponent::appendChildBBs()
 
 OBB BoundsComponent::getOBB() const
 {
-    const mat4<F32>& worldMatrix = _containsWorldSpaceBounds
-                                 ? MAT4_IDENTITY
-                                 : _parentSGN->get<TransformComponent>()->getWorldMatrix();
-    return CalculateBoundsOBB(_boundingBox, _refBoundingBox, _containsWorldSpaceBounds, worldMatrix);
+    return _obbCache.get([this]
+    {
+        const mat4<F32>& worldMatrix = _containsWorldSpaceBounds
+                                     ? MAT4_IDENTITY
+                                     : _parentSGN->get<TransformComponent>()->getWorldMatrix();
+        return CalculateBoundsOBB(_boundingBox, _refBoundingBox, _containsWorldSpaceBounds, worldMatrix);
+    });
 }
 
 bool Collision( const BoundsComponent& lhs, const BoundsComponent& rhs ) noexcept

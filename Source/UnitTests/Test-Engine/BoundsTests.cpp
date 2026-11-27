@@ -542,4 +542,112 @@ namespace Divide
         CHECK_FALSE(TryReparentTransform(pendingLocal, &oldParent, &newParent, true, unchanged));
         checkEquivalent(unchanged, pendingLocal);
     }
+
+    TEST_CASE( "Cached OBBs are recomputed lazily and only after invalidation", "[bounds][threading][render_smoke]" )
+    {
+        BoundsOBBCache cache;
+        U32 computeCount = 0u;
+        float3 centre{ 1.f, 2.f, 3.f };
+        const auto compute = [&]
+        {
+            ++computeCount;
+            BoundingBox box{ centre - float3{ 1.f }, centre + float3{ 1.f } };
+            OBB result{};
+            result.fromBoundingBox( box );
+            return result;
+        };
+
+        CHECK( computeCount == 0u );
+        const OBB first = cache.get( compute );
+        CHECK( computeCount == 1u );
+        CHECK( first.position().x == Catch::Approx( 1.f ) );
+
+        const OBB second = cache.get( compute );
+        CHECK( computeCount == 1u );
+        CHECK( second.position().y == Catch::Approx( 2.f ) );
+
+        centre = float3{ 10.f, 20.f, 30.f };
+        CHECK( cache.get( compute ).position().x == Catch::Approx( 1.f ) );
+        CHECK( computeCount == 1u );
+
+        cache.invalidate();
+        const OBB moved = cache.get( compute );
+        CHECK( computeCount == 2u );
+        CHECK( moved.position().x == Catch::Approx( 10.f ) );
+        CHECK( moved.position().z == Catch::Approx( 30.f ) );
+        CHECK( cache.get( compute ).position().z == Catch::Approx( 30.f ) );
+        CHECK( computeCount == 2u );
+    }
+
+    TEST_CASE( "Concurrent OBB readers and invalidations only observe complete results", "[bounds][threading][render_smoke]" )
+    {
+        BoundsOBBCache cache;
+        std::atomic<F32> centreX{ 0.f };
+        std::atomic_bool stop{ false };
+        std::atomic_uint torn{ 0u };
+        const auto compute = [&]
+        {
+            const F32 x = centreX.load();
+            BoundingBox box{ float3{ x - 1.f, -1.f, -1.f }, float3{ x + 1.f, 1.f, 1.f } };
+            OBB result{};
+            result.fromBoundingBox( box );
+            return result;
+        };
+
+        std::array<std::thread, 4u> readers;
+        for ( std::thread& reader : readers )
+        {
+            reader = std::thread( [&]
+            {
+                while ( !stop.load( std::memory_order_acquire ) )
+                {
+                    const OBB obb = cache.get( compute );
+                    // Every published OBB came from a single whole number centre, so the extents never tear.
+                    if ( obb.position().x != std::floor( obb.position().x ) || obb.halfExtents().x != 1.f )
+                    {
+                        torn.fetch_add( 1u );
+                    }
+                }
+            } );
+        }
+        for ( U32 i = 1u; i <= 2000u; ++i )
+        {
+            centreX.store( to_F32( i ) );
+            cache.invalidate();
+            std::this_thread::yield();
+        }
+        stop.store( true, std::memory_order_release );
+        for ( std::thread& reader : readers )
+        {
+            reader.join();
+        }
+
+        CHECK( torn.load() == 0u );
+        cache.invalidate();
+        CHECK( cache.get( compute ).position().x == Catch::Approx( 2000.f ) );
+    }
+
+    TEST_CASE( "Bounds updates that are neither dirty nor pending need no completion", "[bounds][render_smoke]" )
+    {
+        BoundsChangeTracker tracker;
+        BoundsUpdateState update;
+
+        tracker.capture( 3u );
+        REQUIRE( tracker.capturedChanged() );
+        update.markDirty( 1u );
+        REQUIRE( update.consumeDirty() );
+        tracker.complete();
+
+        // A later frame with an unchanged source revision: skipping the component must be equivalent to running it.
+        tracker.capture( 3u );
+        CHECK_FALSE( tracker.capturedChanged() );
+        CHECK_FALSE( update.dirty() );
+        CHECK_FALSE( update.consumeDirty() );
+        CHECK_FALSE( update.recomputed() );
+        tracker.complete();
+        CHECK_FALSE( tracker.capturedChanged() );
+
+        tracker.capture( 4u );
+        CHECK( tracker.capturedChanged() );
+    }
 }

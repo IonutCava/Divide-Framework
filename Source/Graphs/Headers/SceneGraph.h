@@ -85,6 +85,8 @@ class SceneGraph final : NonCopyable,
 
     void invalidateStaticGeometryBounds() noexcept;
     void invalidateStaticGeometryBounds(const SceneGraphNode& node) noexcept;
+    /// For a node whose usage context just changed: invalidates once if it was or is now static geometry.
+    void invalidateStaticGeometryBounds(const SceneGraphNode& node, bool previouslyStatic) noexcept;
     void invalidateShadowBounds(const SceneGraphNode& node, const BoundingSphere& previous, bool previousStatic,
                                 bool previouslyCastShadows = false);
     void updateStaticGeometryBounds();

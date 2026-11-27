@@ -42,11 +42,11 @@ namespace Divide
                        rendering->renderOptionEnabled(RenderingComponent::RenderOptions::CAST_SHADOWS));
         }
 
-        [[nodiscard]] bool IsStaticGeometry( const SceneGraphNode& node ) noexcept
+        // Everything that makes a node static geometry except its current usage context.
+        [[nodiscard]] bool IsStaticGeometryCandidate( const SceneGraphNode& node ) noexcept
         {
             const SceneNodeType type = node.getNode().type();
-            if ( node.usageContext() != NodeUsageContext::NODE_STATIC ||
-                 node.hasFlag( SceneGraphNode::Flags::VEGETATION_TREE ) ||
+            if ( node.hasFlag( SceneGraphNode::Flags::VEGETATION_TREE ) ||
                  !(IsPrimitive( type ) || type == SceneNodeType::TYPE_SUBMESH ||
                    type == SceneNodeType::TYPE_TERRAIN || type == SceneNodeType::TYPE_VEGETATION) )
             {
@@ -61,6 +61,11 @@ namespace Divide
                 }
             }
             return true;
+        }
+
+        [[nodiscard]] bool IsStaticGeometry( const SceneGraphNode& node ) noexcept
+        {
+            return node.usageContext() == NodeUsageContext::NODE_STATIC && IsStaticGeometryCandidate( node );
         }
 
         [[nodiscard]] bool ValidBounds( const BoundingBox& bounds ) noexcept
@@ -164,6 +169,14 @@ namespace Divide
         }
     }
 
+    void SceneGraph::invalidateStaticGeometryBounds( const SceneGraphNode& node, const bool previouslyStatic ) noexcept
+    {
+        if ( (previouslyStatic || node.usageContext() == NodeUsageContext::NODE_STATIC) && IsStaticGeometryCandidate( node ) )
+        {
+            invalidateStaticGeometryBounds();
+        }
+    }
+
     void SceneGraph::invalidateShadowBounds( const SceneGraphNode& node, const BoundingSphere& previous,
                                              const bool previousStatic, const bool previouslyCastShadows )
     {
@@ -180,7 +193,7 @@ namespace Divide
     void SceneGraph::updateStaticGeometryBounds()
     {
         const U64 revision = _staticGeometryRevision.load( std::memory_order_relaxed );
-        if ( revision == _computedStaticGeometryRevision )
+        if ( revision == _computedStaticGeometryRevision ) [[likely]]
         {
             return;
         }
@@ -209,7 +222,7 @@ namespace Divide
                 const SceneNode& source = node->getNode();
                 const BoundingBox localBounds = source.getBounds();
                 BoundingBox worldBounds = localBounds;
-                if ( !ValidBounds( worldBounds ) )
+                if ( !ValidBounds( worldBounds ) ) [[unlikely]]
                 {
                     Console::errorfn( "Invalid static geometry bounds for scene node {}", node->name().c_str() );
                     continue;
@@ -217,14 +230,14 @@ namespace Divide
                 if ( !source.boundsInWorldSpace() )
                 {
                     const TransformComponent* transform = node->get<TransformComponent>();
-                    if ( transform == nullptr )
+                    if ( transform == nullptr ) [[unlikely]]
                     {
                         Console::errorfn( "Static scene node {} has no transform for its bounds", node->name().c_str() );
                         continue;
                     }
                     worldBounds.transform( localBounds, transform->getWorldMatrix() );
                 }
-                if ( !ValidBounds( worldBounds ) )
+                if ( !ValidBounds( worldBounds ) ) [[unlikely]]
                 {
                     Console::errorfn( "Invalid transformed static geometry bounds for scene node {}", node->name().c_str() );
                     continue;
