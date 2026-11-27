@@ -669,7 +669,7 @@ void Kernel::warmup()
     Attorney::ProjectManagerKernel::initPostLoadState(_projectManager.get());
     if ( RenderSmokeTest::Enabled() && keepAlive() && _projectManager->loadComplete() )
     {
-        _platformContext.gfx().materialDebugFlag( RenderSmokeTest::MaterialView() );
+        _platformContext.gfx().queueMaterialDebugFlag( RenderSmokeTest::MaterialView() );
         RenderSmokeTest::MarkSceneReady();
     }
 }

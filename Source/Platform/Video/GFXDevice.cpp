@@ -1658,6 +1658,11 @@ namespace Divide
         _api->flushWindow( window );
     }
 
+    void GFXDevice::queueMaterialDebugFlag( const MaterialDebugFlag flag ) noexcept
+    {
+        _queuedMaterialDebugFlag = flag;
+    }
+
     bool GFXDevice::requiresRenderContextForResourceInit() const noexcept
     {
         return _api != nullptr && _api->requiresRenderContextForResourceInit();
@@ -1702,6 +1707,11 @@ namespace Divide
                 setShadowMSAASampleCountInternal( static_cast<ShadowType>(i), _queuedShadowSampleChange[i] );
                 _queuedShadowSampleChange[i] = s_invalidQueueSampleCount;
             }
+        }
+        if ( _queuedMaterialDebugFlag.has_value() )
+        {
+            materialDebugFlag( *_queuedMaterialDebugFlag );
+            _queuedMaterialDebugFlag.reset();
         }
 
         if ( _api->frameStarted() )

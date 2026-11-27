@@ -391,6 +391,8 @@ public:  // GPU interface
 
     void setScreenMSAASampleCount(U8 sampleCount);
     void setShadowMSAASampleCount(ShadowType type, U8 sampleCount);
+    /// Applied at the start of the next frame, so a frame never sees the flag change halfway through.
+    void queueMaterialDebugFlag(MaterialDebugFlag flag) noexcept;
 
     /// Save a screenshot in TGA format
     void screenshot(std::string_view fileName, GFX::CommandBuffer& bufferInOut ) const;
@@ -596,6 +598,7 @@ private:
     static constexpr U8 s_invalidQueueSampleCount = 255u;
     U8 _queuedScreenSampleChange = s_invalidQueueSampleCount;
     std::array<U8, to_base(ShadowType::COUNT)> _queuedShadowSampleChange;
+    std::optional<MaterialDebugFlag> _queuedMaterialDebugFlag{};
     /// The default render state but with depth testing disabled
     RenderStateBlock _defaultStateNoDepthTest{};
     /// Special render state for 2D rendering

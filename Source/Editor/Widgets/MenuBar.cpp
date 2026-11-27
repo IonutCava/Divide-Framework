@@ -937,7 +937,7 @@ namespace Divide
                     debug = debugFlag == flag;
                     if ( ImGui::MenuItem( TypeUtil::MaterialDebugFlagToString( flag ), "", &debug ) )
                     {
-                        _context.gfx().materialDebugFlag( debug ? flag : MaterialDebugFlag::COUNT );
+                        _context.gfx().queueMaterialDebugFlag( debug ? flag : MaterialDebugFlag::COUNT );
                     }
                 }
                 ImGui::EndMenu();
