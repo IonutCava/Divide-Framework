@@ -922,7 +922,8 @@ namespace Assert
                 DIVIDE_ASSERT(false, MSG);                                        \
             }                                                                      \
         } else {                                                                   \
-            static_cast<void>(static_cast<bool>(X));                               \
+            const auto divideGpuCallRet = static_cast<bool>(X);                    \
+            DIVIDE_UNUSED(divideGpuCallRet);                                       \
         }                                                                          \
     } while(0)
 
