@@ -46,6 +46,28 @@ inline void BoundingSphere::fromBoundingSphere(const BoundingSphere& bSphere) no
     _sphere = bSphere._sphere;
 }
 
+inline void BoundingSphere::add(const BoundingSphere& bSphere) noexcept
+{
+    const F32 dist = (bSphere._sphere.center - _sphere.center).length();
+
+    if (_sphere.radius >= dist + bSphere._sphere.radius)
+    {
+        return;
+    }
+
+    if (bSphere._sphere.radius >= dist + _sphere.radius)
+    {
+        _sphere = bSphere._sphere;
+        return;
+    }
+
+    // Neither sphere contains the other, so dist > |r1 - r2| >= 0.
+    const F32 nRadius = (_sphere.radius + dist + bSphere._sphere.radius) * 0.5f;
+    const F32 ratio = (nRadius - _sphere.radius) / dist;
+    _sphere.center += (bSphere._sphere.center - _sphere.center) * ratio;
+    _sphere.radius = nRadius;
+}
+
 inline void BoundingSphere::addRadius(const BoundingSphere& bSphere) noexcept
 {
     const F32 dist = (bSphere._sphere.center - _sphere.center).length() + bSphere._sphere.radius;
@@ -135,6 +157,12 @@ inline void BoundingSphere::setCenter(const float3& center) noexcept
 inline F32 BoundingSphere::getDistanceFromPoint(const float3& point) const noexcept
 {
     return _sphere.center.distance(point) - _sphere.radius;
+}
+
+inline F32 BoundingSphere::getDistanceSQFromPoint(const float3& point) const noexcept
+{
+    const F32 distance = std::max(_sphere.center.distance(point) - _sphere.radius, 0.f);
+    return distance * distance;
 }
 
 }  // namespace Divide

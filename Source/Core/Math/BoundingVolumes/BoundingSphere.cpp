@@ -22,6 +22,18 @@ BoundingSphere::BoundingSphere(const std::array<float3, 8>& points) noexcept
     createFromPoints(points);
 }
 
+bool BoundingSphere::containsBoundingBox(const BoundingBox& AABB) const noexcept
+{
+    // The box is inside only if its corner farthest from the centre is.
+    const float3 farthest
+    {
+        std::max(std::abs(_sphere.center.x - AABB._min.x), std::abs(_sphere.center.x - AABB._max.x)),
+        std::max(std::abs(_sphere.center.y - AABB._min.y), std::abs(_sphere.center.y - AABB._max.y)),
+        std::max(std::abs(_sphere.center.z - AABB._min.z), std::abs(_sphere.center.z - AABB._max.z))
+    };
+    return Dot(farthest, farthest) <= _sphere.radius * _sphere.radius;
+}
+
 bool BoundingSphere::containsPoint(const float3& point) const noexcept
 {
     const F32 distanceSQ = _sphere.center.distanceSquared(point);

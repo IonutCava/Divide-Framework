@@ -53,7 +53,11 @@ class BoundingSphere
     void fromOBB(const OBB& box) noexcept;
     void fromBoundingSphere(const BoundingSphere& bSphere) noexcept;
     [[nodiscard]] bool containsPoint(const float3& point) const noexcept;
+    /// True only if every corner of the box lies inside (or on) the sphere.
+    [[nodiscard]] bool containsBoundingBox(const BoundingBox& AABB) const noexcept;
 
+    /// Grows this sphere to the smallest sphere enclosing both spheres.
+    void add(const BoundingSphere& bSphere) noexcept;
     void add(const float3& point) noexcept;
     void addRadius(const BoundingSphere& bSphere) noexcept;
     void addRadius(const float3& point) noexcept;
@@ -65,7 +69,10 @@ class BoundingSphere
     void setCenter(const float3& center) noexcept;
 
 
+    /// Signed distance to the surface: negative when the point is inside the sphere.
     [[nodiscard]] F32 getDistanceFromPoint(const float3& point) const noexcept;
+    /// Squared distance to the surface, clamped to zero when the point is inside the sphere.
+    [[nodiscard]] F32 getDistanceSQFromPoint(const float3& point) const noexcept;
 
     void reset() noexcept;
 

@@ -650,4 +650,100 @@ namespace Divide
         tracker.capture( 4u );
         CHECK( tracker.capturedChanged() );
     }
+
+    namespace
+    {
+        [[nodiscard]] bool SphereEncloses( const BoundingSphere& outer, const BoundingSphere& inner )
+        {
+            const F32 distance = ( inner._sphere.center - outer._sphere.center ).length();
+            return distance + inner._sphere.radius <= outer._sphere.radius + 0.0001f;
+        }
+    }
+
+    TEST_CASE( "Bounding spheres merge into the smallest enclosing sphere", "[bounds][bounding_sphere]" )
+    {
+        SECTION( "A sphere that already contains the other is unchanged" )
+        {
+            BoundingSphere sphere{ float3{ 0.f, 0.f, 0.f }, 5.f };
+            sphere.add( BoundingSphere{ float3{ 1.f, 0.f, 0.f }, 1.f } );
+            CHECK( sphere._sphere.center.x == Catch::Approx( 0.f ) );
+            CHECK( sphere._sphere.radius == Catch::Approx( 5.f ) );
+        }
+
+        SECTION( "A sphere contained by the other is replaced by it" )
+        {
+            BoundingSphere sphere{ float3{ 0.f, 0.f, 0.f }, 1.f };
+            sphere.add( BoundingSphere{ float3{ 1.f, 0.f, 0.f }, 5.f } );
+            CHECK( sphere._sphere.center.x == Catch::Approx( 1.f ) );
+            CHECK( sphere._sphere.center.y == Catch::Approx( 0.f ) );
+            CHECK( sphere._sphere.radius == Catch::Approx( 5.f ) );
+        }
+
+        SECTION( "Identical and concentric spheres keep the larger radius" )
+        {
+            BoundingSphere sphere{ float3{ 2.f, 3.f, 4.f }, 2.f };
+            sphere.add( sphere );
+            CHECK( sphere._sphere.radius == Catch::Approx( 2.f ) );
+            sphere.add( BoundingSphere{ float3{ 2.f, 3.f, 4.f }, 6.f } );
+            CHECK( sphere._sphere.center.z == Catch::Approx( 4.f ) );
+            CHECK( sphere._sphere.radius == Catch::Approx( 6.f ) );
+        }
+
+        SECTION( "Overlapping spheres grow along the line between their centres" )
+        {
+            BoundingSphere sphere{ float3{ 0.f, 0.f, 0.f }, 2.f };
+            const BoundingSphere other{ float3{ 3.f, 0.f, 0.f }, 2.f };
+            sphere.add( other );
+            CHECK( sphere._sphere.center.x == Catch::Approx( 1.5f ) );
+            CHECK( sphere._sphere.center.y == Catch::Approx( 0.f ) );
+            CHECK( sphere._sphere.radius == Catch::Approx( 3.5f ) );
+            CHECK( SphereEncloses( sphere, BoundingSphere{ float3{ 0.f, 0.f, 0.f }, 2.f } ) );
+            CHECK( SphereEncloses( sphere, other ) );
+        }
+
+        SECTION( "Disjoint spheres of different sizes are both enclosed" )
+        {
+            BoundingSphere sphere{ float3{ 0.f, 0.f, 0.f }, 1.f };
+            const BoundingSphere other{ float3{ 0.f, 10.f, 0.f }, 3.f };
+            sphere.add( other );
+            CHECK( sphere._sphere.radius == Catch::Approx( 7.f ) );
+            CHECK( sphere._sphere.center.y == Catch::Approx( 6.f ) );
+            CHECK( SphereEncloses( sphere, BoundingSphere{ float3{ 0.f, 0.f, 0.f }, 1.f } ) );
+            CHECK( SphereEncloses( sphere, other ) );
+        }
+    }
+
+    TEST_CASE( "Bounding spheres only contain boxes whose every corner is inside", "[bounds][bounding_sphere]" )
+    {
+        const BoundingSphere sphere{ float3{ 0.f, 0.f, 0.f }, 2.f };
+        CHECK( sphere.containsBoundingBox( BoundingBox{ float3{ -1.f, -1.f, -1.f }, float3{ 1.f, 1.f, 1.f } } ) );
+        // Corner distance is sqrt(3 * 1.2^2) ~= 2.078, just outside a radius of 2.
+        CHECK_FALSE( sphere.containsBoundingBox( BoundingBox{ float3{ -1.2f, -1.2f, -1.2f }, float3{ 1.2f, 1.2f, 1.2f } } ) );
+        // Some corners inside and some outside is still not contained.
+        CHECK_FALSE( sphere.containsBoundingBox( BoundingBox{ float3{ -1.f, -1.f, -1.f }, float3{ 3.f, 1.f, 1.f } } ) );
+        // Entirely outside, which the old inverted check reported as contained.
+        CHECK_FALSE( sphere.containsBoundingBox( BoundingBox{ float3{ 10.f, 10.f, 10.f }, float3{ 11.f, 11.f, 11.f } } ) );
+        // A box touching the sphere with its farthest corner counts as contained.
+        const BoundingSphere tight{ float3{ 0.f, 0.f, 0.f }, std::sqrt( 3.f ) + 0.0001f };
+        CHECK( tight.containsBoundingBox( BoundingBox{ float3{ -1.f, -1.f, -1.f }, float3{ 1.f, 1.f, 1.f } } ) );
+        // Off-centre spheres measure from their own centre.
+        const BoundingSphere offset{ float3{ 5.f, 0.f, 0.f }, 2.f };
+        CHECK( offset.containsBoundingBox( BoundingBox{ float3{ 4.5f, -0.5f, -0.5f }, float3{ 5.5f, 0.5f, 0.5f } } ) );
+        CHECK_FALSE( offset.containsBoundingBox( BoundingBox{ float3{ -1.f, -1.f, -1.f }, float3{ 1.f, 1.f, 1.f } } ) );
+    }
+
+    TEST_CASE( "Bounding sphere squared surface distance is clamped inside the sphere", "[bounds][bounding_sphere]" )
+    {
+        const BoundingSphere sphere{ float3{ 0.f, 0.f, 0.f }, 3.f };
+        // Distance 5 from the centre is 2 from the surface, so the squared distance is 4 (not 5^2 - 3^2).
+        CHECK( sphere.getDistanceSQFromPoint( float3{ 5.f, 0.f, 0.f } ) == Catch::Approx( 4.f ) );
+        CHECK( sphere.getDistanceSQFromPoint( float3{ 0.f, 0.f, -7.f } ) == Catch::Approx( 16.f ) );
+        CHECK( sphere.getDistanceSQFromPoint( float3{ 3.f, 0.f, 0.f } ) == Catch::Approx( 0.f ).margin( 0.0001f ) );
+        CHECK( sphere.getDistanceSQFromPoint( float3{ 1.f, 1.f, 0.f } ) == Catch::Approx( 0.f ) );
+        CHECK( sphere.getDistanceSQFromPoint( float3{ 0.f, 0.f, 0.f } ) == Catch::Approx( 0.f ) );
+
+        const F32 outside = sphere.getDistanceFromPoint( float3{ 5.f, 0.f, 0.f } );
+        CHECK( sphere.getDistanceSQFromPoint( float3{ 5.f, 0.f, 0.f } ) == Catch::Approx( outside * outside ) );
+        CHECK( sphere.getDistanceFromPoint( float3{ 1.f, 0.f, 0.f } ) < 0.f );
+    }
 }

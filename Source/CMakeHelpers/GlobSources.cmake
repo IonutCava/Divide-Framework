@@ -884,6 +884,7 @@ set( TEST_ENGINE_SOURCE UnitTests/unitTestCommon.h
                         UnitTests/Test-Engine/MathVectorTests.cpp
                         UnitTests/Test-Engine/MeshImportTests.cpp
                         UnitTests/Test-Engine/NodeEditorTests.cpp
+                        UnitTests/Test-Engine/ObjectPoolTests.cpp
                         UnitTests/Test-Engine/RenderSmokeTests.cpp
                         UnitTests/Test-Engine/RendererTests.cpp
                         UnitTests/Test-Engine/SceneNodeEventTests.cpp

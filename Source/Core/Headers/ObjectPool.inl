@@ -69,45 +69,75 @@ T* ObjectPool<T, N, allowResize>::findUnlocked(PoolHandle handle) const
 }
 
 template<typename T, size_t N, bool allowResize>
+void ObjectPool<T, N, allowResize>::lock()
+{
+    _poolLock.lock();
+}
+
+template<typename T, size_t N, bool allowResize>
+void ObjectPool<T, N, allowResize>::unlock()
+{
+    _poolLock.unlock();
+}
+
+template<typename T, size_t N, bool allowResize>
+void ObjectPool<T, N, allowResize>::lockShared() const
+{
+    _poolLock.lock_shared();
+}
+
+template<typename T, size_t N, bool allowResize>
+void ObjectPool<T, N, allowResize>::unlockShared() const
+{
+    _poolLock.unlock_shared();
+}
+
+template<typename T, size_t N, bool allowResize>
 template<typename... Args>
 PoolHandle ObjectPool<T, N, allowResize>::allocate(Args... args)
 {
+    // Construct outside the lock: only the slot assignment needs it.
     T* obj = new T(FWD(args)...);
     return registerExisting(*obj);
 }
 
 template<typename T, size_t N, bool allowResize>
+template<typename... Args>
+PoolHandle ObjectPool<T, N, allowResize>::allocateUnlocked(Args... args)
+{
+    T* obj = new T(FWD(args)...);
+    return registerExistingUnlocked(*obj);
+}
+
+template<typename T, size_t N, bool allowResize>
 void ObjectPool<T, N, allowResize>::deallocate(const PoolHandle handle)
 {
-    LockGuard<SharedMutex> w_lock(_poolLock);
-
-    const U32 id = handle._id;
-    if (id == 0u || id > _ids.size())
+    T* obj = nullptr;
     {
-        DIVIDE_UNEXPECTED_CALL();
-        return;
+        LockGuard<SharedMutex> w_lock(_poolLock);
+        obj = unregisterExistingUnlocked(handle);
     }
 
-    const U32 idx = id - 1u;
-    PoolHandle& it = _ids[idx];
-    if (it._generation != handle._generation)
-    {
-        DIVIDE_UNEXPECTED_CALL();
-        return;
-    }
-
-    T* obj = findUnlocked(handle);
+    // Destructors run outside the lock so they can safely use the pool.
     delete obj;
+}
 
-    _pool[idx] = nullptr;
-    it._id = 0;
-    ++it._generation;
+template<typename T, size_t N, bool allowResize>
+void ObjectPool<T, N, allowResize>::deallocateUnlocked(const PoolHandle handle)
+{
+    delete unregisterExistingUnlocked(handle);
 }
 
 template<typename T, size_t N, bool allowResize>
 FORCE_INLINE PoolHandle ObjectPool<T, N, allowResize>::registerExisting( T& object )
 {
     LockGuard<SharedMutex> w_lock( _poolLock );
+    return registerExistingUnlocked(object);
+}
+
+template<typename T, size_t N, bool allowResize>
+FORCE_INLINE PoolHandle ObjectPool<T, N, allowResize>::registerExistingUnlocked( T& object )
+{
     return registerExistingInternal(object, false);
 }
 
@@ -140,16 +170,33 @@ template<typename T, size_t N, bool allowResize>
 void ObjectPool<T, N, allowResize>::unregisterExisting(const PoolHandle handle)
 {
     LockGuard<SharedMutex> w_lock(_poolLock);
-    PoolHandle& it = _ids[handle._id - 1];
-    if (it._generation == handle._generation)
+    auto ret = unregisterExistingUnlocked(handle);
+    DIVIDE_UNUSED(ret);
+}
+
+template<typename T, size_t N, bool allowResize>
+T* ObjectPool<T, N, allowResize>::unregisterExistingUnlocked(const PoolHandle handle)
+{
+    const U32 id = handle._id;
+    if (id == 0u || id > _ids.size())
     {
-        _pool[handle._id - 1] = nullptr;
-        it._id = 0;
-        ++it._generation;
-        return;
+        DIVIDE_UNEXPECTED_CALL();
+        return nullptr;
     }
 
-    DIVIDE_UNEXPECTED_CALL();
+    const U32 idx = id - 1u;
+    PoolHandle& it = _ids[idx];
+    if (it._generation != handle._generation)
+    {
+        DIVIDE_UNEXPECTED_CALL();
+        return nullptr;
+    }
+
+    T* obj = _pool[idx];
+    _pool[idx] = nullptr;
+    it._id = 0;
+    ++it._generation;
+    return obj;
 }
 
 } //namespace Divide

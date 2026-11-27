@@ -44,6 +44,7 @@ class FrameListenerManager {
     using EventTimeMap = fixed_vector<U64, 16>;
 
   public:
+    FrameListenerManager();
 
     void registerFrameListener(FrameListener* listener, U32 callOrder);
     void removeFrameListener(FrameListener* listener);
@@ -59,8 +60,15 @@ class FrameListenerManager {
     bool dispatchFrameEvent(const FrameEvent& evt, FrameCallback callback);
 
    private:
+    // Nested dispatches are shallow and listener counts modest, so the common case never touches the heap.
+    static constexpr size_t g_inlineDispatchDepth = 4u;
+    static constexpr size_t g_inlineListenersPerDispatch = 32u;
+    static constexpr size_t g_reservedListeners = 32u;
+
+    using DispatchedListeners = fixed_vector<I64, g_inlineListenersPerDispatch, true>;
+
     vector<FrameListener*> _listeners;
-    vector<vector<I64>> _dispatchedListeners;
+    fixed_vector<DispatchedListeners, g_inlineDispatchDepth, true> _dispatchedListeners;
     size_t _dispatchDepth{0u};
 
 };

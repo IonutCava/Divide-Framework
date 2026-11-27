@@ -6,6 +6,11 @@
 
 namespace Divide {
 
+FrameListenerManager::FrameListenerManager()
+{
+    _listeners.reserve(g_reservedListeners);
+}
+
 /// Register a new Frame Listener to be processed every frame
 void FrameListenerManager::registerFrameListener(FrameListener* listener, const U32 callOrder) {
     PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
