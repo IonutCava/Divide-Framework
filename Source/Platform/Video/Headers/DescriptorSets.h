@@ -158,6 +158,13 @@ namespace Divide
     [[nodiscard]] DescriptorSet ComposeResourceBindings( const ResourceBindingHandle& base, const DescriptorSet& overrides );
     [[nodiscard]] bool EqualActiveBindings( const DescriptorSet& lhs, const DescriptorSet& rhs ) noexcept;
 
+    // The composed binding for each slot (overrides win over the base), without copying the bindings.
+    using ComposedBindingSlots = std::array<const DescriptorSetBinding*, MAX_BINDINGS_PER_DESCRIPTOR_SET>;
+    [[nodiscard]] ComposedBindingSlots ComposeResourceBindingSlots( const ResourceBindingHandle& base, const DescriptorSet& overrides ) noexcept;
+    // Same result as comparing ComposeResourceBindings() of both sides slot by slot, independent of binding order.
+    [[nodiscard]] bool EqualComposedBindings( const ResourceBindingHandle& lhsBase, const DescriptorSet& lhsOverrides,
+                                              const ResourceBindingHandle& rhsBase, const DescriptorSet& rhsOverrides ) noexcept;
+
     void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer ) noexcept;
     void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange<> range ) noexcept;
     /// Binds the specified buffer range as the source of indirect draw/dispatch arguments (not visible to shaders)

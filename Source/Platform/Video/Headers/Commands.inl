@@ -187,7 +187,7 @@ DEFINE_COMMAND_END(BindShaderResourcesCommand);
     return lhs._usage == rhs._usage &&
            (lhs._resources == rhs._resources
                ? EqualActiveBindings( lhs._set, rhs._set )
-               : EqualActiveBindings( EffectiveBindings( lhs ), EffectiveBindings( rhs ) ));
+               : EqualComposedBindings( lhs._resources, lhs._set, rhs._resources, rhs._set ));
 }
 
 DEFINE_COMMAND_BEGIN(BeginDebugScopeCommand, CommandType::BEGIN_DEBUG_SCOPE);

@@ -639,11 +639,9 @@ namespace
                     {
                         return { ErrorType::INVALID_DESCRIPTOR_SET, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                     }
-                    const DescriptorSet bindings = EffectiveBindings( *resCmd );
-                    for ( U8 i = 0u; i < bindings._bindingCount; ++i )
+                    for ( const DescriptorSetBinding* binding : ComposeResourceBindingSlots( resCmd->_resources, resCmd->_set ) )
                     {
-                        const DescriptorSetBinding& binding = bindings._bindings[i];
-                        if ( binding._shaderStageVisibility == to_base( ShaderStageVisibility::COUNT ) )
+                        if ( binding != nullptr && binding->_shaderStageVisibility == to_base( ShaderStageVisibility::COUNT ) )
                         {
                             return { ErrorType::INVALID_DESCRIPTOR_SET, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                         }

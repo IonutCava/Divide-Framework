@@ -239,6 +239,70 @@ namespace Divide
         CHECK_FALSE( GFX::SameBindings( raw, second ) );
     }
 
+    TEST_CASE( "Bind commands compare composed bindings by slot without false matches", "[renderer][bindings]" )
+    {
+        ImageView image{};
+        image._targetType = TextureType::TEXTURE_2D_ARRAY;
+        ImageView otherImage = image;
+        otherImage._subRange._mipLevels._offset = 3u;
+
+        DescriptorSet base{};
+        Set( AddBinding( base, 0u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
+        Set( AddBinding( base, 4u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
+
+        const auto makeCommand = [&]( const DescriptorSet& bindings )
+        {
+            GFX::BindShaderResourcesCommand cmd{};
+            cmd._usage = DescriptorSetUsage::PER_DRAW;
+            cmd._resources = CreateResourceBindings( bindings, {} );
+            REQUIRE( cmd._resources != nullptr );
+            return cmd;
+        };
+
+        const GFX::BindShaderResourcesCommand first = makeCommand( base );
+        const GFX::BindShaderResourcesCommand samePublishedTwice = makeCommand( base );
+        REQUIRE( first._resources != samePublishedTwice._resources );
+        CHECK( GFX::SameBindings( first, samePublishedTwice ) );
+
+        GFX::BindShaderResourcesCommand identicalOverride = samePublishedTwice;
+        Set( AddBinding( identicalOverride._set, 4u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
+        CHECK( GFX::SameBindings( first, identicalOverride ) );
+
+        DescriptorSet reordered{};
+        Set( AddBinding( reordered, 4u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
+        Set( AddBinding( reordered, 0u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
+        CHECK( GFX::SameBindings( first, makeCommand( reordered ) ) );
+
+        GFX::BindShaderResourcesCommand differentImage = samePublishedTwice;
+        Set( AddBinding( differentImage._set, 4u, ShaderStageVisibility::FRAGMENT )._data, otherImage, SamplerDescriptor{} );
+        CHECK_FALSE( GFX::SameBindings( first, differentImage ) );
+
+        GFX::BindShaderResourcesCommand differentVisibility = samePublishedTwice;
+        Set( AddBinding( differentVisibility._set, 0u, ShaderStageVisibility::ALL_DRAW )._data, image, SamplerDescriptor{} );
+        CHECK_FALSE( GFX::SameBindings( first, differentVisibility ) );
+
+        GFX::BindShaderResourcesCommand extraSlot = samePublishedTwice;
+        Set( AddBinding( extraSlot._set, 7u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
+        CHECK_FALSE( GFX::SameBindings( first, extraSlot ) );
+        CHECK_FALSE( GFX::SameBindings( extraSlot, first ) );
+
+        DescriptorSet fewer{};
+        Set( AddBinding( fewer, 0u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
+        CHECK_FALSE( GFX::SameBindings( first, makeCommand( fewer ) ) );
+
+        DescriptorSet movedSlot{};
+        Set( AddBinding( movedSlot, 0u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
+        Set( AddBinding( movedSlot, 5u, ShaderStageVisibility::FRAGMENT )._data, image, SamplerDescriptor{} );
+        CHECK_FALSE( GFX::SameBindings( first, makeCommand( movedSlot ) ) );
+
+        GFX::BindShaderResourcesCommand raw{};
+        raw._usage = DescriptorSetUsage::PER_DRAW;
+        raw._set = base;
+        CHECK( GFX::SameBindings( raw, first ) );
+        raw._set._bindingCount = 1u;
+        CHECK_FALSE( GFX::SameBindings( raw, first ) );
+    }
+
     TEST_CASE( "Merged resource slots retain their own immutable revision", "[renderer][bindings][render_smoke]" )
     {
         DescriptorSet bindings{};

@@ -213,6 +213,44 @@ namespace Divide
         return true;
     }
 
+    ComposedBindingSlots ComposeResourceBindingSlots( const ResourceBindingHandle& base, const DescriptorSet& overrides ) noexcept
+    {
+        ComposedBindingSlots slots{};
+        if ( base != nullptr )
+        {
+            for ( U8 i = 0u; i < base->_bindings._bindingCount; ++i )
+            {
+                const DescriptorSetBinding& binding = base->_bindings._bindings[i];
+                slots[binding._slot] = &binding;
+            }
+        }
+        for ( U8 i = 0u; i < overrides._bindingCount; ++i )
+        {
+            const DescriptorSetBinding& binding = overrides._bindings[i];
+            if ( DIVIDE_ASSERT( binding._slot < MAX_BINDINGS_PER_DESCRIPTOR_SET, "Resource binding override slot out of range" ) )
+            {
+                slots[binding._slot] = &binding;
+            }
+        }
+        return slots;
+    }
+
+    bool EqualComposedBindings( const ResourceBindingHandle& lhsBase, const DescriptorSet& lhsOverrides,
+                                const ResourceBindingHandle& rhsBase, const DescriptorSet& rhsOverrides ) noexcept
+    {
+        const ComposedBindingSlots lhs = ComposeResourceBindingSlots( lhsBase, lhsOverrides );
+        const ComposedBindingSlots rhs = ComposeResourceBindingSlots( rhsBase, rhsOverrides );
+        for ( size_t slot = 0u; slot < lhs.size(); ++slot )
+        {
+            if ( (lhs[slot] == nullptr) != (rhs[slot] == nullptr) ||
+                 (lhs[slot] != nullptr && *lhs[slot] != *rhs[slot]) )
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     DescriptorSet ComposeResourceBindings( const ResourceBindingHandle& base, const DescriptorSet& overrides )
     {
         DescriptorSet result = base != nullptr ? base->_bindings : DescriptorSet{};
