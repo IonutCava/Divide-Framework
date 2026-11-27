@@ -1483,8 +1483,8 @@ namespace Divide
                 {
                     return false;
                 }
-                DIVIDE_UNEXPECTED_CALL();
             }
+            // A manual save waits for any autosave that is still writing.
             pool.wait( *_saveTask );
         }
 
