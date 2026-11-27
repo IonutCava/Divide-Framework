@@ -202,11 +202,16 @@ void SingleShadowMapGenerator::render(const Camera& playerCamera, Light& light, 
     params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
     params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
+    const U16 cacheIndex = light.getShadowArrayOffset();
+    if ( !DIVIDE_ASSERT( cacheIndex < _staticLayers.size(), "Spot shadow cache index out of range" ) )
+    {
+        return;
+    }
+
     auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut);
     Util::StringFormatTo( cmd->_scopeName, "Single Shadow Pass Light: [ {} ]", lightIndex);
     cmd->_scopeId = lightIndex;
 
-    const U16 cacheIndex = light.getShadowArrayOffset();
     StaticCacheLayer& cache = _staticLayers[cacheIndex];
     const auto& config = _context.context().config();
     RenderPassManager& rpm = *_context.context().kernel().renderPassManager();

@@ -404,12 +404,17 @@ namespace Divide
 
         params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
+        const U16 layerOffset = dirLight.getShadowArrayOffset();
+        if ( !DIVIDE_ASSERT( to_size( layerOffset ) + numSplits <= _staticLayers.size(), "CSM shadow cache layers out of range" ) )
+        {
+            return;
+        }
+
         auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut);
         Util::StringFormatTo( cmd->_scopeName, "Cascaded Shadow Pass Light: [ {} ]", lightIndex );
         cmd->_scopeId = lightIndex;
 
         RenderPassManager* rpm = _context.context().kernel().renderPassManager().get();
-        const U16 layerOffset = dirLight.getShadowArrayOffset();
         const RenderTargetHandle& rtHandle = ShadowMap::getShadowMap( _type );
         const RenderTargetHandle& staticTarget = ShadowMap::getShadowMapCache(_type);
         const auto& config = _context.context().config();
