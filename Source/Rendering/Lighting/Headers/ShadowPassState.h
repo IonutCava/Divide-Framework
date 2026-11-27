@@ -48,6 +48,42 @@ namespace Divide
         }
     }
 
+    // Fraction of the general visibility distance the camera may travel before camera-dependent static shadow content
+    // (terrain tessellation, vegetation visibility) is rebuilt.
+    constexpr F32 SHADOW_RANGE_ANCHOR_VISIBILITY_FRACTION = 0.05f;
+
+    [[nodiscard]] inline F32 QuantiseUpToStep(const F32 value, const F32 step) noexcept
+    {
+        return step > 0.f ? std::ceil(value / step) * step : value;
+    }
+
+    // Per-axis (x, y, z) anchor cell size. X and Z are multiples of the terrain snap grid so anchor cells align with
+    // terrain tessellation steps.
+    [[nodiscard]] inline std::array<F32, 3> ShadowRangeAnchorStep(const std::array<F32, 2>& terrainSnapXZ,
+                                                                  const F32 generalVisibility) noexcept
+    {
+        const F32 base = std::max(0.f, generalVisibility * SHADOW_RANGE_ANCHOR_VISIBILITY_FRACTION);
+        const auto alignToSnap = [base](const F32 snap) noexcept
+        {
+            return snap > 0.f ? std::max(1.f, std::ceil(base / snap)) * snap : base;
+        };
+        return { alignToSnap(terrainSnapXZ[0]), base, alignToSnap(terrainSnapXZ[1]) };
+    }
+
+    [[nodiscard]] inline std::array<F32, 3> SnapShadowRangeAnchor(const std::array<F32, 3>& eye,
+                                                                  const std::array<F32, 3>& step) noexcept
+    {
+        std::array<F32, 3> anchor = eye;
+        for (size_t i = 0u; i < anchor.size(); ++i)
+        {
+            if (step[i] > 0.f)
+            {
+                anchor[i] = std::floor(eye[i] / step[i]) * step[i];
+            }
+        }
+        return anchor;
+    }
+
     struct WorldAOCacheKey
     {
         I64 _sceneGUID = -1;

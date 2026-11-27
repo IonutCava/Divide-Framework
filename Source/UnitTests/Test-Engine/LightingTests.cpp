@@ -851,6 +851,69 @@ namespace Divide
         CHECK_FALSE(camera.update(view, projection, 0.1f + SHADOW_DISTANCE_TOLERANCE * 0.5f, 100.f));
     }
 
+    TEST_CASE("Shadow range anchors stay put within a cell and move across one", "[lighting][shadows]")
+    {
+        const std::array<F32, 3> step = ShadowRangeAnchorStep({4.f, 4.f}, 300.f);
+        CHECK(step[0] == 16.f);
+        CHECK(step[1] == Catch::Approx(15.f));
+        CHECK(step[2] == 16.f);
+        CHECK(ShadowRangeAnchorStep({40.f, 8.f}, 300.f)[0] == 40.f);
+        CHECK(ShadowRangeAnchorStep({0.f, 0.f}, 300.f)[0] == Catch::Approx(15.f));
+
+        const std::array<F32, 3> anchor = SnapShadowRangeAnchor({17.f, 2.f, -1.f}, step);
+        CHECK(SnapShadowRangeAnchor({31.9f, 14.9f, -15.9f}, step) == anchor);
+        CHECK(SnapShadowRangeAnchor({32.1f, 2.f, -1.f}, step) != anchor);
+        CHECK(SnapShadowRangeAnchor({17.f, 2.f, 0.1f}, step) != anchor);
+
+        ShadowStaticCacheKey key{};
+        key._rangeCameraEye = anchor;
+        ShadowStaticCacheState cache{};
+        cache.complete(key, false);
+        for (const std::array<F32, 3> eye : { std::array<F32, 3>{16.5f, 0.5f, -15.5f}, std::array<F32, 3>{31.f, 10.f, -0.5f} })
+        {
+            ShadowStaticCacheKey moved = key;
+            moved._rangeCameraEye = SnapShadowRangeAnchor(eye, step);
+            CHECK_FALSE(cache.needsRefresh(moved, false));
+        }
+        ShadowStaticCacheKey crossed = key;
+        crossed._rangeCameraEye = SnapShadowRangeAnchor({48.5f, 2.f, -1.f}, step);
+        CHECK(cache.needsRefresh(crossed, false));
+    }
+
+    TEST_CASE("Snapped cascade centres keep the cascade slice inside the padded extents", "[lighting][shadows]")
+    {
+        const float3 lightDirection = Normalized(float3{0.3f, -0.8f, 0.5f});
+        const float3 forward = lightDirection;
+        float3 right = Cross(forward, WORLD_Y_AXIS);
+        right.normalize();
+        const float3 up = Cross(right, forward);
+
+        constexpr F32 radius = 20.f;
+        constexpr F32 step = (2.f * radius) / 16.f;
+        const float3 base{103.f, 7.f, -41.f};
+        const float3 snappedBase = ShadowMap::SnapCascadeCenter(base, lightDirection, step);
+
+        U32 sameCell = 0u;
+        for (U32 sample = 0u; sample < 256u; ++sample)
+        {
+            const float3 center = base + float3{Random(-3.f * step, 3.f * step), Random(-3.f * step, 3.f * step), Random(-3.f * step, 3.f * step)};
+            const float3 snapped = ShadowMap::SnapCascadeCenter(center, lightDirection, step);
+            const float3 offset = center - snapped;
+            for (const float3& axis : {right, up, forward})
+            {
+                CHECK(std::abs(Dot(offset, axis)) + radius <= radius + step * 0.5f + 1e-3f);
+            }
+            sameCell += snapped.compare(snappedBase, 1e-4f) ? 1u : 0u;
+        }
+        CHECK(sameCell < 256u);
+
+        const float3 nudged = snappedBase + right * (step * 0.25f) + up * (step * 0.25f);
+        CHECK(ShadowMap::SnapCascadeCenter(nudged, lightDirection, step).compare(snappedBase, 1e-4f));
+        CHECK(QuantiseUpToStep(0.1f, step) == Catch::Approx(step));
+        CHECK(QuantiseUpToStep(step * 1.01f, step) == Catch::Approx(step * 2.f));
+        CHECK(QuantiseUpToStep(0.f, step) == 0.f);
+    }
+
     TEST_CASE("Shadow range changes invalidate cached maps", "[lighting][shadows]")
     {
         ShadowRangeState state;

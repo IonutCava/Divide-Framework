@@ -311,9 +311,14 @@ namespace Divide
                 radius = std::max( radius, distance );
             }
             radius = std::ceil( Sqrt<F32>( radius ) * 16.0f ) / 16.0f;
+            // The radius is invariant under camera motion; snapping the centre makes the whole cascade stable within a cell.
+            const F32 snapStep = (2.f * radius) / 16.f;
             radius += appliedDiff;
+            frustumCenter = ShadowMap::SnapCascadeCenter( frustumCenter, light.directionCache(), snapStep );
+            // Padding by half a cell keeps the true slice inside the cascade wherever the camera sits in its cell.
+            const F32 snapPadding = snapStep * 0.5f;
 
-            float3 maxExtents( radius, radius, radius );
+            float3 maxExtents( radius + snapPadding, radius + snapPadding, radius + snapPadding );
             float3 minExtents = -maxExtents;
 
             //Position the view matrix looking down the center of the frustum with an arbitrary light direction
@@ -327,12 +332,12 @@ namespace Divide
                 {
                     BoundingBox meshAABB{ previous._bounds };
                     meshAABB.transform( lightViewMatrix );
-                    appliedDiff = std::max( 0.f, meshAABB.getHalfExtent().y - radius );
+                    appliedDiff = QuantiseUpToStep( std::max( 0.f, meshAABB.getHalfExtent().y - radius ), snapStep );
                     if ( appliedDiff > 0.5f )
                     {
                         radius += appliedDiff * 0.75f;
 
-                        maxExtents.set( radius, radius, radius );
+                        maxExtents.set( radius + snapPadding, radius + snapPadding, radius + snapPadding );
                         minExtents = -maxExtents;
 
                         //Position the view matrix looking down the center of the frustum with an arbitrary light direction

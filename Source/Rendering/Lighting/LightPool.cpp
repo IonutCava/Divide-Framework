@@ -315,11 +315,15 @@ namespace Divide
         for ( Light* light : sortedLights )
         {
             light->shadowPropertyIndex( -1 );
-            if ( movementSnapshot._invalidateAll || renderPolicyChanged ||
-                 ( rangeCameraMoved && light->getLightType() == LightType::SPOT ) ||
-                 ( cameraChanged && light->getLightType() == LightType::DIRECTIONAL ) )
+            if ( movementSnapshot._invalidateAll || renderPolicyChanged )
             {
                 light->staticShadowsDirty( true );
+                light->dynamicShadowsDirty( true );
+            }
+            else if ( ( rangeCameraMoved && light->getLightType() == LightType::SPOT ) ||
+                      ( cameraChanged && light->getLightType() == LightType::DIRECTIONAL ) )
+            {
+                // The static cache key decides whether the camera move invalidates the static base.
                 light->dynamicShadowsDirty( true );
             }
         }

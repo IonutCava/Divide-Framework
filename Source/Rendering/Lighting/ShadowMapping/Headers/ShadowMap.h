@@ -111,6 +111,10 @@ NOINITVTABLE_CLASS(ShadowMap)
         return mat4<F32>::Multiply( MAT4_BIAS_ZERO_ONE_Z, viewProjection );
     }
 
+    // Snaps a cascade centre to a light-space grid so the cascade view-projection only changes when the camera crosses
+    // a cell. The result stays within step / 2 of the input along each light-space axis.
+    [[nodiscard]] static float3 SnapCascadeCenter( const float3& center, const float3& lightDirection, F32 step ) noexcept;
+
     [[nodiscard]] static ShadowStaticCacheKey StaticCacheKey(const Configuration& config, const Light& light, const Camera& shadowCamera,
                                                              const Camera& playerCamera, const RenderTarget& target,
                                                              U8 splitCount);

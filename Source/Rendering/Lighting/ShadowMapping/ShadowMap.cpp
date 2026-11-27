@@ -27,16 +27,51 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
+#include "Environment/Terrain/Headers/Terrain.h"
 
 namespace Divide
 {
+    float3 ShadowMap::SnapCascadeCenter( const float3& center, const float3& lightDirection, const F32 step ) noexcept
+    {
+        if ( step <= 0.f || lightDirection.lengthSquared() <= EPSILON_F32 )
+        {
+            return center;
+        }
+
+        const float3 forward = Normalized( lightDirection );
+        float3 right = Cross( forward, WORLD_Y_AXIS );
+        if ( right.lengthSquared() <= EPSILON_F32 )
+        {
+            right = Cross( forward, WORLD_Z_AXIS );
+        }
+        right.normalize();
+        const float3 up = Cross( right, forward );
+
+        const auto snap = [step]( const F32 value ) noexcept
+        {
+            return std::round( value / step ) * step;
+        };
+        return right * snap( Dot( center, right ) ) + up * snap( Dot( center, up ) ) + forward * snap( Dot( center, forward ) );
+    }
+
     ShadowStaticCacheKey ShadowMap::StaticCacheKey(const Configuration& config, const Light& light, const Camera& shadowCamera,
                                                    const Camera& playerCamera, const RenderTarget& target,
                                                    const U8 splitCount)
     {
         const auto& filter = config.debug.renderFilter;
-        const auto& scene = *light.sgn()->sceneGraph()->parentScene().state();
+        const SceneGraph* sceneGraph = light.sgn()->sceneGraph();
+        const auto& scene = *sceneGraph->parentScene().state();
         const auto& eye = playerCamera.snapshot()._eye;
+
+        std::array<F32, 2> terrainSnap{};
+        for ( const SceneGraphNode* terrainNode : sceneGraph->getNodesByType( SceneNodeType::TYPE_TERRAIN ) )
+        {
+            const float2 snap = terrainNode->getNode<Terrain>().tessParams().SnapGridSize();
+            terrainSnap[0] = std::max( terrainSnap[0], snap.x );
+            terrainSnap[1] = std::max( terrainSnap[1], snap.y );
+        }
+        const std::array<F32, 3> anchorStep = ShadowRangeAnchorStep( terrainSnap, scene.renderState().generalVisibility() );
+
         ShadowStaticCacheKey key
         {
             ._owner = light.getGUID(),
@@ -51,7 +86,7 @@ namespace Divide
                            (scene.renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME) ? toBit(7) : 0u),
             ._resolution = {target.getWidth(), target.getHeight()},
             ._visibilityDistances = {scene.renderState().generalVisibility(), scene.renderState().treeVisibility()},
-            ._rangeCameraEye = {eye.x, eye.y, eye.z},
+            ._rangeCameraEye = SnapShadowRangeAnchor( {eye.x, eye.y, eye.z}, anchorStep ),
             ._samples = target.getSampleCount(),
             ._splitCount = splitCount
         };
