@@ -18,7 +18,6 @@ namespace Divide
     {
         constexpr U16 TRANSPARENCY_CACHE_VERSION = 2u;
         constexpr size_t TRANSPARENCY_CACHE_SIZE = sizeof(U16) + sizeof(U64) + sizeof(U8) * 4u;
-        Mutex s_transparencyCacheMutex;
     }
 
     [[nodiscard]] bool IsEmpty( const TextureLayoutChanges& changes ) noexcept
@@ -735,7 +734,8 @@ namespace Divide
             cacheName = Util::StringFormat( "{}.alpha-{}-{}.cache", name, TRANSPARENCY_CACHE_VERSION, sourceFingerprint );
 
             {
-                LockGuard<Mutex> lock( s_transparencyCacheMutex );
+                // Keeps an invalid-entry delete from racing a writer of the same file.
+                const ImageTools::DDSCache::PathGuard guard( cachePath / cacheName );
                 if ( fileExists( cachePath / cacheName ) )
                 {
                     if ( metadataCache.loadFromFile( cachePath, cacheName ) &&
@@ -825,7 +825,6 @@ namespace Divide
                 metadataCache.clear();
                 metadataCache << TRANSPARENCY_CACHE_VERSION << sourceFingerprint << fileTransparency._nonOpaquePixels
                               << fileTransparency._hasVisiblePixel << fileTransparency._hasTranslucentPixel;
-                LockGuard<Mutex> lock( s_transparencyCacheMutex );
                 const ImageTools::DDSCache::WriteResult result = ImageTools::DDSCache::Write
                 (
                     cachePath, cacheName, [&]( const ResourcePath& tempPath )

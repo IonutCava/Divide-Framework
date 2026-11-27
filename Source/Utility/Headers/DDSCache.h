@@ -23,6 +23,20 @@ namespace Divide
             FileError _error;
         };
 
+        // Serialises access to one cache file. Holders of guards for different paths never contend.
+        class PathGuard
+        {
+        public:
+            explicit PathGuard( const ResourcePath& cacheFilePath );
+            ~PathGuard();
+
+            PathGuard( const PathGuard& ) = delete;
+            PathGuard& operator=( const PathGuard& ) = delete;
+
+        private:
+            U64 _pathHash{ 0u };
+        };
+
         [[nodiscard]] WriteResult Write( const ResourcePath& cachePath, std::string_view cacheFileName,
                                          const std::function<bool( const ResourcePath& )>& generate );
     }

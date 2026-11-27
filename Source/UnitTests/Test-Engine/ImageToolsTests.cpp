@@ -811,6 +811,82 @@ namespace Divide
             CHECK_FALSE( std::filesystem::exists( temp ) );
         }
 
+        SECTION( "A writer for a path that is being generated waits for it instead of generating again" )
+        {
+            std::atomic_bool generating{ false };
+            std::atomic_bool releaseGenerator{ false };
+            std::atomic_bool waiterDone{ false };
+            WriteResult generatorResult{ WriteStatus::CONVERSION_ERROR, FileError::NONE };
+            WriteResult waiterResult{ WriteStatus::CONVERSION_ERROR, FileError::NONE };
+
+            std::thread generator{ [&]()
+            {
+                generatorResult = Write( cachePath, cacheName, [&]( const ResourcePath& path )
+                {
+                    generating.store( true );
+                    while ( !releaseGenerator.load() )
+                    {
+                        std::this_thread::sleep_for( std::chrono::milliseconds{ 1 } );
+                    }
+                    return writeData( path );
+                } );
+            } };
+            while ( !generating.load() )
+            {
+                std::this_thread::yield();
+            }
+
+            std::thread waiter{ [&]()
+            {
+                waiterResult = Write( cachePath, cacheName, writeData );
+                waiterDone.store( true );
+            } };
+            std::this_thread::sleep_for( std::chrono::milliseconds{ 50 } );
+            CHECK_FALSE( waiterDone.load() );
+
+            releaseGenerator.store( true );
+            generator.join();
+            waiter.join();
+
+            CHECK( conversionCount.load() == 1u );
+            CHECK( generatorResult._status == WriteStatus::CREATED );
+            CHECK( waiterResult._status == WriteStatus::ALREADY_EXISTS );
+        }
+
+        SECTION( "Writers for different paths generate concurrently" )
+        {
+            std::atomic_uint inside{ 0u };
+            std::atomic_bool overlapped{ false };
+            const auto overlappingWrite = [&]( const ResourcePath& path )
+            {
+                ++inside;
+                const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{ 5 };
+                while ( inside.load() < 2u && std::chrono::steady_clock::now() < deadline )
+                {
+                    std::this_thread::sleep_for( std::chrono::milliseconds{ 1 } );
+                }
+                if ( inside.load() == 2u )
+                {
+                    overlapped.store( true );
+                }
+                return writeData( path );
+            };
+
+            std::array<WriteResult, 2> results
+            {
+                WriteResult{ WriteStatus::CONVERSION_ERROR, FileError::NONE },
+                WriteResult{ WriteStatus::CONVERSION_ERROR, FileError::NONE }
+            };
+            std::thread first{ [&]() { results[0] = Write( cachePath, "first.dds", overlappingWrite ); } };
+            std::thread second{ [&]() { results[1] = Write( cachePath, "second.dds", overlappingWrite ); } };
+            first.join();
+            second.join();
+
+            CHECK( overlapped.load() );
+            CHECK( results[0]._status == WriteStatus::CREATED );
+            CHECK( results[1]._status == WriteStatus::CREATED );
+        }
+
         SECTION( "Failed conversions remove their partial file and allow a retry" )
         {
             bool wrotePartial = false;

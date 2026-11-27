@@ -167,6 +167,7 @@ namespace nvttHelpers
 namespace
 {
     Mutex s_imageCompressionMutex;
+    std::condition_variable s_fileLoadingCV;
     SharedMutex s_imageLoadingMutex;
     bool s_useUpperLeftOrigin = false;
 
@@ -215,22 +216,31 @@ namespace
     }
 }
 
+DDSCache::PathGuard::PathGuard( const ResourcePath& cacheFilePath )
+    : _pathHash( _ID( cacheFilePath.string() ) )
+{
+    UniqueLock<Mutex> lock( s_imageCompressionMutex );
+    s_fileLoadingCV.wait( lock, [this]()
+    {
+        return s_fileLoadingHashes.count( _pathHash ) == 0u;
+    });
+    s_fileLoadingHashes.insert( _pathHash );
+}
+
+DDSCache::PathGuard::~PathGuard()
+{
+    {
+        UniqueLock<Mutex> lock( s_imageCompressionMutex );
+        DIVIDE_EXPECTED_CALL( s_fileLoadingHashes.erase( _pathHash ) > 0u );
+    }
+    s_fileLoadingCV.notify_all();
+}
+
 DDSCache::WriteResult DDSCache::Write( const ResourcePath& cachePath, const std::string_view cacheFileName,
                                       const std::function<bool( const ResourcePath& )>& generate )
 {
     const ResourcePath cacheFilePath = cachePath / cacheFileName;
-    const size_t cacheFilePathHash = _ID( cacheFilePath.string() );
-    do
-    {
-        {
-            UniqueLock<Mutex> lock( s_imageCompressionMutex );
-            if ( s_fileLoadingHashes.insert( cacheFilePathHash ).second )
-            {
-                break;
-            }
-        }
-        std::this_thread::yield();
-    } while ( true );
+    const PathGuard guard( cacheFilePath );
 
     const string tempFileName = string{ cacheFileName } + ".tmp";
     bool removeTempFile = false;
@@ -244,9 +254,6 @@ DDSCache::WriteResult DDSCache::Write( const ResourcePath& cachePath, const std:
                 Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DDS_DELETE_ERROR" ), cachePath / tempFileName );
             }
         }
-
-        UniqueLock<Mutex> lock( s_imageCompressionMutex );
-        DIVIDE_EXPECTED_CALL( s_fileLoadingHashes.erase( cacheFilePathHash ) > 0u );
     };
 
     if ( fileExists( cacheFilePath ) )
