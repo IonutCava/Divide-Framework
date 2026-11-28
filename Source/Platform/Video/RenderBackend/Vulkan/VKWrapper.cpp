@@ -1541,8 +1541,9 @@ namespace Divide
             return ErrorCode::VK_NO_PRESENT_QUEUE;
         }
 
-        VKQueue graphicsQueue = _device->getQueue( QueueType::GRAPHICS );
-        VkPhysicalDevice physicalDevice = _device->getVKPhysicalDevice();
+        // Only the GPU profiler uses these; its macro compiles away without it.
+        [[maybe_unused]] VKQueue graphicsQueue = _device->getQueue( QueueType::GRAPHICS );
+        [[maybe_unused]] VkPhysicalDevice physicalDevice = _device->getVKPhysicalDevice();
         PROFILE_VK_INIT( &vkDevice, &physicalDevice, &graphicsQueue._queue, &graphicsQueue._index, 1, nullptr);
 
         if ( s_hasDebugMarkerSupport )

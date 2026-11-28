@@ -74,12 +74,13 @@ class RenderQueue final : public KernelComponent {
                 return AllBins( stagePass );
             }
 
-            switch ( content )
+            if ( content == RenderBinContent::ALPHA_TESTED )
             {
-                case RenderBinContent::ALPHA_TESTED: return { stagePass, BinBit( RenderBinType::ALPHA_TESTED ) };
-                case RenderBinContent::TRANSLUCENT:  return { stagePass, BinBit( RenderBinType::TRANSLUCENT ) };
-                case RenderBinContent::OPAQUE:
-                case RenderBinContent::COUNT:        break;
+                return { stagePass, BinBit( RenderBinType::ALPHA_TESTED ) };
+            }
+            if ( content == RenderBinContent::TRANSLUCENT )
+            {
+                return { stagePass, BinBit( RenderBinType::TRANSLUCENT ) };
             }
 
             return { stagePass, to_U16( ALL_BINS & ~( BinBit( RenderBinType::ALPHA_TESTED ) | BinBit( RenderBinType::TRANSLUCENT ) ) ) };

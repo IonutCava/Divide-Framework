@@ -772,12 +772,6 @@ namespace Divide
         screenDescriptor._mipMappingState = MipMappingState::OFF;
         AddImageUsageFlag( screenDescriptor, ImageUsage::SHADER_READ);
 
-        TextureDescriptor materialDescriptor{};
-        materialDescriptor._dataType = GFXDataFormat::FLOAT_16;
-        materialDescriptor._baseFormat = GFXImageFormat::RG;
-        materialDescriptor._packing = GFXImagePacking::UNNORMALIZED;
-        materialDescriptor._mipMappingState = MipMappingState::OFF;
-
         // Normal, Previous and MSAA
         {
             InternalRTAttachmentDescriptors attachments
@@ -1694,8 +1688,7 @@ namespace Divide
                 DIVIDE_ASSERT( false, "Renderer: uniform upload arena bookkeeping failed" );
                 Console::errorfn( "Renderer: uniform upload arena bookkeeping failed for shader '{}' block '{}'", shaderName, blockName );
                 break;
-            case UniformUploadResult::OK:
-            case UniformUploadResult::COUNT:
+            default:
                 break;
         }
     }

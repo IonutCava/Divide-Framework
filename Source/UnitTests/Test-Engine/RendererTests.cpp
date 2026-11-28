@@ -1123,6 +1123,7 @@ namespace Divide
                 case 7u: ++changed._splitCount; break;
                 case 8u: changed._visibilityDistances[1] += 1.f; break;
                 case 9u: changed._rangeCameraEye[0] += 1.f; break;
+                default: break;
             }
             CAPTURE(field);
             CHECK(cache.needsRefresh(changed, false));
