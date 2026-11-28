@@ -772,12 +772,6 @@ namespace Divide
         screenDescriptor._mipMappingState = MipMappingState::OFF;
         AddImageUsageFlag( screenDescriptor, ImageUsage::SHADER_READ);
 
-        TextureDescriptor materialDescriptor{};
-        materialDescriptor._dataType = GFXDataFormat::FLOAT_16;
-        materialDescriptor._baseFormat = GFXImageFormat::RG;
-        materialDescriptor._packing = GFXImagePacking::UNNORMALIZED;
-        materialDescriptor._mipMappingState = MipMappingState::OFF;
-
         // Normal, Previous and MSAA
         {
             InternalRTAttachmentDescriptors attachments
