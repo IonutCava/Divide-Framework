@@ -7,7 +7,6 @@
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_sdlrenderer3.h"
 
-#include <regex>
 
 #include <exception>
 #include <optional>
@@ -193,44 +192,6 @@ static void SetTooltip( const char* text )
         ImGui::Text( text );
         ImGui::EndTooltip();
     }
-}
-
-[[nodiscard]] static std::optional<std::string> find_directory( const std::filesystem::path& search_path, const std::regex& regex )
-{
-    const std::filesystem::directory_iterator end;
-    try
-    {
-        for ( std::filesystem::directory_iterator iter{ search_path }; iter != end; iter++ )
-        {
-            if ( std::filesystem::is_directory( *iter ) )
-            {
-                if ( std::regex_match( iter->path().filename().string(), regex ) )
-                {
-                    return (iter->path().string());
-                }
-            }
-        }
-    }
-    catch ( std::exception& )
-    {
-        g_globalMessage = fmt::format( ERRORS[1], search_path.string() );
-    }
-
-    return std::nullopt;
-}
-
-static Image* getImage( const std::string& imagePath, const std::string& imageName, const ImageDB& imageDB )
-{
-    const std::filesystem::path targetPath = std::filesystem::path( imagePath ) / imageName;
-    assert( std::filesystem::is_regular_file( targetPath ) );
-    for ( const Image_ptr& image : imageDB )
-    {
-        if ( image->_path == targetPath )
-        {
-            return image.get();
-        }
-    }
-    return nullptr;
 }
 
 static std::weak_ptr<Image> loadImage( const std::string& imagePath, const std::string& imageName, SDL_Renderer* renderer,ImageDB& imageDB)

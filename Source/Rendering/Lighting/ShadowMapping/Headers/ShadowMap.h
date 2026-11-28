@@ -161,6 +161,16 @@ NOINITVTABLE_CLASS(ShadowMap)
         return {RenderStage::SHADOW, RenderPassType::COUNT, WORLD_AO_LAYER_INDEX,
                 static_cast<RenderStagePass::VariantType>(ShadowType::CSM)};
     }
+
+    /// Nearest directional cascade (not World AO): trees sway here; vegetation may feed this cascade's AABB fit.
+    [[nodiscard]] static constexpr bool IsNearestCSMCascade( const RenderStagePass& stagePass ) noexcept
+    {
+        return stagePass._stage == RenderStage::SHADOW &&
+               stagePass._variant == static_cast<RenderStagePass::VariantType>( ShadowType::CSM ) &&
+               stagePass._pass == RenderStagePass::PassIndex::PASS_0 &&
+               stagePass._index != WORLD_AO_LAYER_INDEX;
+    }
+
     [[nodiscard]] static U16 WorldAOCullFlags() noexcept;
 
     [[nodiscard]] static mat4<F32> generateWorldAO(const WorldAOCacheKey& key, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );

@@ -144,7 +144,7 @@ namespace Divide
 
         private:
         void startRenderTasks( const RenderParams& params, TaskPool& pool, Task* parentTask );
-        void logPerfMetrics() const;
+        void logPerfMetrics();
 
         static constexpr U64 PERF_METRICS_LOG_INTERVAL = 64u;
         static constexpr size_t PERF_METRICS_TOP_GPU_PASSES = 48u;
@@ -188,7 +188,10 @@ namespace Divide
 
         std::array<RenderPassExecutor_uptr, to_base( RenderStage::COUNT )> _executors;
         std::array<Time::ProfileTimer*, to_base( RenderStage::COUNT )> _processCommandBufferTimer = create_array<to_base( RenderStage::COUNT ), Time::ProfileTimer*>( nullptr );
+        /// Perf mode: CPU microseconds each stage task spent since the last metrics log. Each task writes only its own slot.
+        std::array<U64, to_base( RenderStage::COUNT )> _stageRecordingUS = create_array<to_base( RenderStage::COUNT ), U64>( 0u );
         std::array<I32, to_base( RenderStage::COUNT )> _drawCallCount = create_array<to_base( RenderStage::COUNT ), I32>( 0 );
+        U32 _stageRecordingFrames = 0u;
 
         Time::ProfileTimer* _renderPassTimer = nullptr;
         Time::ProfileTimer* _buildCommandBufferTimer = nullptr;

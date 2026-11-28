@@ -689,8 +689,22 @@ void OptimiseSubMeshGeometry( vector<U32>& indices, vector<Import::SubMeshData::
     }
 
     {
+        // Compare members rather than whole vertices: padding bytes are indeterminate and would stop equal vertices from welding.
+        const Import::SubMeshData::Vertex& first = vertices.front();
+        const meshopt_Stream vertexStreams[]
+        {
+            { &first.position.x,  3u * sizeof( F32 ), kVertexStride },
+            { &first.normal.x,    3u * sizeof( F32 ), kVertexStride },
+            { &first.tangent.x,   4u * sizeof( F32 ), kVertexStride },
+            { &first.texcoord.x,  3u * sizeof( F32 ), kVertexStride },
+            { &first.weights.x,   4u * sizeof( F32 ), kVertexStride },
+            { &first.indices.x,   4u * sizeof( U8 ),  kVertexStride },
+            { &first.weightCount, sizeof( U8 ),       kVertexStride }
+        };
+
         vector<U32> remap( vertices.size() );
-        const size_t uniqueVertexCount = meshopt_generateVertexRemap( remap.data(), indices.data(), indices.size(), vertices.data(), vertices.size(), kVertexStride );
+        const size_t uniqueVertexCount = meshopt_generateVertexRemapMulti( remap.data(), indices.data(), indices.size(), vertices.size(),
+                                                                           vertexStreams, std::size( vertexStreams ) );
 
         subMeshData._indices[0].resize( indices.size() );
         meshopt_remapIndexBuffer( subMeshData._indices[0].data(), indices.data(), indices.size(), remap.data() );
