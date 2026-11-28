@@ -1089,7 +1089,8 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
                 rangeDistanceSQ = bComp->getBoundingBox().nearestPoint( params._rangeCameraEyePos ).distanceSquared( params._rangeCameraEyePos );
             }
         }
-        if ( _node->type() == SceneNodeType::TYPE_VEGETATION )
+        // Vegetation ranges are horizontal, as in its cull shader.
+        if ( _node->type() == SceneNodeType::TYPE_VEGETATION || hasFlag( Flags::VEGETATION_TREE ) )
         {
             const float3 closest = get<BoundsComponent>()->getBoundingBox().nearestPoint( params._rangeCameraEyePos );
             rangeDistanceSQ = SQUARED( closest.x - params._rangeCameraEyePos.x ) +

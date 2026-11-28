@@ -55,8 +55,10 @@ overlapping scopes or treat individual captured frames as independent runs.
 Keep validation and profiling settings consistent within a comparison, and
 account for warmup and capture overhead.
 
-The opt-in performance mode reports frame and pass timing without changing
-ordinary editor logging. Instrumentation has a cost, so use it to answer a
+The opt-in performance mode reports frame and GPU pass timing, plus each stage
+task's CPU recording time (`[PerfMetrics] cpuStageMS`), without changing
+ordinary editor logging. Stage tasks run in parallel, so their sum is CPU work
+rather than frame latency. Instrumentation has a cost, so use it to answer a
 specific question and compare repeated runs against a non-instrumented baseline.
 
 For scene startup, separate cold and warm resource loading from steady-state
@@ -115,6 +117,54 @@ commands. Each consumer captures the selected frame/player slot; upload and
 retirement follow that same selection. Join preparation workers before
 uploading their writes.
 
+## View pass order and transparency
+
+`RenderPassExecutor::doCustomPass` draws a non-shadow view in this order:
+
+1. Depth pre-pass for the opaque bins. The display stage also writes normals
+   and velocity.
+2. Hi-Z culling, light culling, and display pre-render effects such as SSAO
+   and SSR.
+3. Alpha-tested pass for the `ALPHA_TESTED` bin, grouped by pipeline state and
+   sorted front to back within each group. It writes depth, and on the display
+   stage it writes velocity and resolves it again under MSAA. As the first
+   colour pass, it applies the main pass colour clears.
+4. Opaque main pass over the pre-pass bins. Its `EQUAL` depth test shades each
+   visible sample once and skips samples that alpha-tested geometry covers.
+5. Translucent pass: weighted, blended OIT, or sorted forward blending when the
+   view has no OIT target. Weighted OIT weights fragments by linear view depth
+   (McGuire and Bavoil 2013, eq. 8) so nearer layers dominate.
+
+`RenderQueue::PopulateQueueParams::ForPass` maps each `RenderBinContent` to its
+bins. Shadow passes draw every bin in one depth pass. The alpha-tested and
+translucent passes are skipped when their bins are empty. Both colour passes
+bind the same per-pass inputs through `bindColourPassResources`.
+
+Materials opt in with `Material::Properties::alphaTested`; it takes effect only
+when the material has transparency (`Material::isAlphaTested`). Use it for
+binary cutouts such as foliage. Weighted OIT cannot make opaque layers hide one
+another, so overlapping cutouts in the translucent pass blend regardless of
+depth. Vegetation marks its grass and tree materials as alpha tested.
+
+Alpha-tested materials:
+
+- Cut at `ALPHA_DISCARD_THRESHOLD`, the same cutoff that shadow passes and
+  coverage-preserving mipmaps use.
+- Render without back-face culling in the colour pass and flip back-face
+  normals, like blended transparency.
+- Must not force early fragment tests in their colour shader. Forced early tests
+  write depth before the alpha test can discard the fragment.
+- Use alpha-to-coverage on multisampled targets: the display stage with screen
+  MSAA, and CSM or spot shadow maps with shadow MSAA. `alphaTestCoverage()` in
+  `FragmentAtoms/alphaTest.frag` sharpens alpha around the cutoff and is a plain
+  alpha test elsewhere. `alphaTestFade()` fades coverage without moving the
+  cutoff. Shaders and pipelines must agree, so turning MSAA on or off for those
+  targets recompiles material shaders.
+
+Alpha-tested geometry is absent from the pre-pass depth and normals, so Hi-Z
+occlusion, SSAO, and SSR do not see it. SSR is skipped on alpha-tested
+fragments; SSAO still samples the surface behind them.
+
 ## Clustered lighting
 
 `Renderer` builds light data and cluster inputs for each view. The compute
@@ -159,6 +209,27 @@ Frustum, distance, and Hi-Z culling operate per view. A later view must not
 reuse another view's visibility results. Shadow, reflection, refraction, and
 display passes may use different policies, but those policies belong to the
 vegetation subsystem.
+
+Node culling runs first, on one box per grass chunk and one per tree species in
+each chunk. `Vegetation::updateChunkBounds()` sets these boxes through
+`BoundsComponent::setWorldBoundsOverride()` when a chunk is finalized. Each box
+holds the chunk's instance origins, padded by the reach the cull shader tests
+(`VegetationGrassReach()`, `VegetationTreeReach()`). The padding grows only when
+stronger wind needs more. Nodes outside a view or the vegetation range are not
+prepared, and a chunk dispatches its per-instance compute cull only when its
+grass or one of its tree nodes is visible. Range tests on vegetation nodes use
+horizontal distance, as the cull shader does. Grass package LoD selects the
+billboard-plane partition (6 → 3 → 2) from chunk distance; the cull shader's
+per-instance fade thins coverage at the visibility edge so distant grass does
+not hard-cut. Tree nodes carry `VEGETATION_TREE` for vegetation policy
+(horizontal range, reflection filters, cascade fit). Shadow passes still
+frustum-cull them like other casters; only trees that intersect a cascade are
+prepared. The nearest CSM cascade may include those trees in its scene-AABB
+fit; farther cascades omit vegetation from the fit so chunk-sized boxes do
+not step cascade size and rebuild the static shadow cache. Alpha-tested grass
+and canopies skip screen-space SSAO and SSR; they are absent from the depth
+pre-pass, so sampling those buffers would apply occlusion or reflections from
+surfaces behind them.
 
 ### GPU instance-count patch
 

@@ -572,11 +572,31 @@ namespace Divide
         CHECK(selected == nullptr);
         CHECK_FALSE(feedback[1]._valid);
         selected = SelectCascadeBoundsFeedback(feedback[0], 0u, true);
-        CHECK(selected == nullptr);
+        REQUIRE(selected == &feedback[0]);
+        CHECK_FALSE(selected->_valid);
         CHECK(feedback[2]._valid);
         selected = SelectCascadeBoundsFeedback(feedback[2], 2u, true);
         REQUIRE(selected == &feedback[2]);
         CHECK_FALSE(selected->_valid);
+    }
+
+    TEST_CASE("Nearest CSM cascade excludes World AO and farther splits", "[lighting][shadows]")
+    {
+        RenderStagePass nearest{ RenderStage::SHADOW, RenderPassType::COUNT, 0u,
+                                 static_cast<RenderStagePass::VariantType>(ShadowType::CSM) };
+        nearest._pass = RenderStagePass::PassIndex::PASS_0;
+        CHECK(ShadowMap::IsNearestCSMCascade(nearest));
+
+        RenderStagePass worldAO = ShadowMap::WorldAOStagePass();
+        CHECK_FALSE(ShadowMap::IsNearestCSMCascade(worldAO));
+
+        RenderStagePass cascade1 = nearest;
+        cascade1._pass = RenderStagePass::PassIndex::PASS_1;
+        CHECK_FALSE(ShadowMap::IsNearestCSMCascade(cascade1));
+
+        RenderStagePass spot = nearest;
+        spot._variant = static_cast<RenderStagePass::VariantType>(ShadowType::SINGLE);
+        CHECK_FALSE(ShadowMap::IsNearestCSMCascade(spot));
     }
 
     TEST_CASE("Shadow scratch blits preserve cascade and world AO destinations", "[lighting][shadows]")

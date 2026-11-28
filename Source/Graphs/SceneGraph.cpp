@@ -43,11 +43,11 @@ namespace Divide
         }
 
         // Everything that makes a node static geometry except its current usage context.
+        // VEGETATION_TREE marks policy (range, cascade fit, reflections); trees stay cacheable static casters.
         [[nodiscard]] bool IsStaticGeometryCandidate( const SceneGraphNode& node ) noexcept
         {
             const SceneNodeType type = node.getNode().type();
-            if ( node.hasFlag( SceneGraphNode::Flags::VEGETATION_TREE ) ||
-                 !(IsPrimitive( type ) || type == SceneNodeType::TYPE_SUBMESH ||
+            if ( !(IsPrimitive( type ) || type == SceneNodeType::TYPE_SUBMESH ||
                    type == SceneNodeType::TYPE_TERRAIN || type == SceneNodeType::TYPE_VEGETATION) )
             {
                 return false;

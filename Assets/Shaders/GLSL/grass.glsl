@@ -93,9 +93,10 @@ void main() {
 
 -- Fragment.Colour
 
-#if !defined(PRE_PASS)
+#if !defined(PRE_PASS) && !defined(ALPHA_TEST_PASS)
+// Forced early tests would write depth before an alpha test could discard the fragment
 layout(early_fragment_tests) in;
-#endif //!PRE_PASS
+#endif //!PRE_PASS && !ALPHA_TEST_PASS
 
 #define NO_REFLECTIONS
 //#define DEBUG_LODS
@@ -103,6 +104,9 @@ layout(early_fragment_tests) in;
 #include "BRDF.frag"
 #include "output.frag"
 #include "transparentCoverage.cmn"
+#if defined(ALPHA_TEST_PASS)
+#include "alphaTest.frag"
+#endif //ALPHA_TEST_PASS
 
 layout(location = ATTRIB_FREE_START + 0) flat in uint  _layer;
 layout(location = ATTRIB_FREE_START + 1) flat in uint  _instanceID;
@@ -114,11 +118,20 @@ void main (void){
     NodeMaterialData data = dvd_Materials[MATERIAL_IDX];
 
     vec4 albedo = texture(texDiffuse0, vec3(VAR._texCoord, _layer));
+#if defined(ALPHA_TEST_PASS)
+    // The distance fade thins coverage instead of moving the cutoff, which would shrink the blades.
+    albedo.a = alphaTestFade(alphaTestCoverage(albedo.a), _alphaFactor);
+    if (albedo.a <= 0.f)
+    {
+        discard;
+    }
+#else //ALPHA_TEST_PASS
     albedo.a *= _alphaFactor;
     if (!TRANSPARENT_HAS_COVERAGE(albedo.a))
     {
         discard;
     }
+#endif //ALPHA_TEST_PASS
 
     if (_instanceID % 3 == 0) {
         albedo.rgb = overlayVec(albedo.rgb, vec3(0.9f, 0.85f, 0.55f));
@@ -174,15 +187,25 @@ layout(location = ATTRIB_FREE_START + 2)      in float _alphaFactor;
 
 #include "texturing.frag"
 #include "vsm.frag"
+#include "alphaTest.frag"
 
+#if defined(ALPHA_TO_COVERAGE)
+// Alpha-to-coverage reads the alpha of output 0. The two-channel moments target ignores it.
+layout(location = 0) out vec4 _colourOut;
+#else //ALPHA_TO_COVERAGE
 layout(location = 0) out vec2 _colourOut;
+#endif //ALPHA_TO_COVERAGE
 
 void main(void) {
     const vec2 moments = computeMoments();
-    // Only discard alpha == 0
-    if (texture(texDiffuse0, vec3(VAR._texCoord, _layer)).a < ALPHA_DISCARD_THRESHOLD) {
+    const float coverage = alphaTestCoverage(texture(texDiffuse0, vec3(VAR._texCoord, _layer)).a);
+    if (coverage <= 0.f) {
         discard;
     }
 
+#if defined(ALPHA_TO_COVERAGE)
+    _colourOut = vec4(moments, 0.f, coverage);
+#else //ALPHA_TO_COVERAGE
     _colourOut = moments;
+#endif //ALPHA_TO_COVERAGE
 }

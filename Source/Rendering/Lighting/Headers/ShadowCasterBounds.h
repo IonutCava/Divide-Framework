@@ -39,10 +39,10 @@ namespace Divide
     };
 
     [[nodiscard]] inline ShadowCasterBounds* SelectCascadeBoundsFeedback(
-        ShadowCasterBounds& feedback, const U8 cascade, const bool fitToScene) noexcept
+        ShadowCasterBounds& feedback, [[maybe_unused]] const U8 cascade, const bool fitToScene) noexcept
     {
         feedback.reset();
-        if (cascade == 0u || !fitToScene)
+        if ( !fitToScene )
         {
             return nullptr;
         }

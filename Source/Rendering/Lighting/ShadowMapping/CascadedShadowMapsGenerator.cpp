@@ -325,7 +325,7 @@ namespace Divide
             float3 lightPosition = frustumCenter - light.directionCache() * (light.csmNearClipOffset() - minExtents.z);
             mat4<F32> lightViewMatrix = lightCam->lookAt( lightPosition, frustumCenter, WORLD_Y_AXIS );
 
-            if ( cascadeIterator > 0 && light.csmUseSceneAABBFit()[cascadeIterator] )
+            if ( light.csmUseSceneAABBFit()[cascadeIterator] )
             {
                 const ShadowCasterBounds& previous = light.cascadeBoundsFeedback()[cascadeIterator];
                 if ( previous._valid )
@@ -345,6 +345,13 @@ namespace Divide
                         lightViewMatrix = lightCam->lookAt( lightPosition, frustumCenter, WORLD_Y_AXIS );
                     }
                 }
+            }
+
+            // Cascade 0 fits every in-range tree; that widening must not carry into later cascades,
+            // which omit vegetation from the fit so their sizes stay tied to the view slice.
+            if ( cascadeIterator == 0u )
+            {
+                appliedDiff = 0.f;
             }
 
             const float2 clip
@@ -437,10 +444,6 @@ namespace Divide
             params._minExtents.set( g_minExtentsFactors[i] );
             params._shadowBoundsFeedback = SelectCascadeBoundsFeedback(
                 dirLight.cascadeBoundsFeedback()[i], to_U8( i ), dirLight.csmUseSceneAABBFit()[i] );
-            if ( params._shadowBoundsFeedback != nullptr )
-            {
-                STUBBED( "CascadedShadowMapsGenerator::render: Validate AABBFit for first cascade!" );
-            }
 
             const U16 cacheIndex = to_U16(layerOffset + i);
             StaticCacheLayer& cache = _staticLayers[cacheIndex];
