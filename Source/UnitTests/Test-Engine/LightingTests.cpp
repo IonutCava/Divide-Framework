@@ -435,7 +435,7 @@ namespace Divide
         CHECK_FALSE( IsValidClusterDepthRange( -inf, 1000.f ) );
 
         // Every accepted range produces finite, monotonically increasing exponential slice boundaries.
-        for ( const auto [zNear, zFar] : std::array<std::pair<F32, F32>, 4>{ { { 0.01f, 10.f }, { 0.1f, 1000.f }, { 1.f, 1.0001f }, { 0.5f, 50000.f } } } )
+        for ( const auto& [zNear, zFar] : std::array<std::pair<F32, F32>, 4>{ { { 0.01f, 10.f }, { 0.1f, 1000.f }, { 1.f, 1.0001f }, { 0.5f, 50000.f } } } )
         {
             REQUIRE( IsValidClusterDepthRange( zNear, zFar ) );
             F32 previous = zNear;
@@ -577,6 +577,25 @@ namespace Divide
         selected = SelectCascadeBoundsFeedback(feedback[2], 2u, true);
         REQUIRE(selected == &feedback[2]);
         CHECK_FALSE(selected->_valid);
+    }
+
+    TEST_CASE("Nearest CSM cascade excludes World AO and farther splits", "[lighting][shadows]")
+    {
+        RenderStagePass nearest{ RenderStage::SHADOW, RenderPassType::COUNT, 0u,
+                                 static_cast<RenderStagePass::VariantType>(ShadowType::CSM) };
+        nearest._pass = RenderStagePass::PassIndex::PASS_0;
+        CHECK(ShadowMap::IsNearestCSMCascade(nearest));
+
+        RenderStagePass worldAO = ShadowMap::WorldAOStagePass();
+        CHECK_FALSE(ShadowMap::IsNearestCSMCascade(worldAO));
+
+        RenderStagePass cascade1 = nearest;
+        cascade1._pass = RenderStagePass::PassIndex::PASS_1;
+        CHECK_FALSE(ShadowMap::IsNearestCSMCascade(cascade1));
+
+        RenderStagePass spot = nearest;
+        spot._variant = static_cast<RenderStagePass::VariantType>(ShadowType::SINGLE);
+        CHECK_FALSE(ShadowMap::IsNearestCSMCascade(spot));
     }
 
     TEST_CASE("Shadow scratch blits preserve cascade and world AO destinations", "[lighting][shadows]")

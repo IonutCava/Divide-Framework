@@ -43,6 +43,12 @@ namespace Divide
             {
                 sortOrder = RenderingOrder::FRONT_TO_BACK;
             } break;
+            case RenderBinType::ALPHA_TESTED:
+            {
+                // Alpha-tested items have no pre-pass depth to reject hidden fragments. Grouping by state keeps draws batched
+                // while still drawing near items first within each group.
+                sortOrder = IsDepthPass( stagePass ) ? RenderingOrder::FRONT_TO_BACK : RenderingOrder::BY_STATE;
+            } break;
             case RenderBinType::TRANSLUCENT:
             {
                 // We are using weighted blended OIT. State is fine (and faster)
@@ -64,6 +70,10 @@ namespace Divide
         switch ( node->getNode().type() )
         {
             case SceneNodeType::TYPE_VEGETATION:
+            {
+                const bool alphaTested = matInstance != INVALID_HANDLE<Material> && Get( matInstance )->isAlphaTested();
+                return alphaTested ? RenderBinType::ALPHA_TESTED : RenderBinType::TRANSLUCENT;
+            }
             case SceneNodeType::TYPE_PARTICLE_EMITTER: return RenderBinType::TRANSLUCENT;
             case SceneNodeType::TYPE_SKY:              return RenderBinType::SKY;
             case SceneNodeType::TYPE_WATER:            return RenderBinType::WATER;
@@ -85,10 +95,11 @@ namespace Divide
                 if ( Is3DObject( node->getNode().type() ) )
                 {
                     // Check if the object has a material with transparency/translucency
-                    if ( matInstance != INVALID_HANDLE<Material> && Get(matInstance)->hasTransparency() )
+                    const Material* material = matInstance != INVALID_HANDLE<Material> ? Get( matInstance ) : nullptr;
+                    if ( material != nullptr && material->hasTransparency() )
                     {
                         // Add it to the appropriate bin if so ...
-                        return RenderBinType::TRANSLUCENT;
+                        return material->isAlphaTested() ? RenderBinType::ALPHA_TESTED : RenderBinType::TRANSLUCENT;
                     }
 
                     //... else add it to the general geometry bin
@@ -137,11 +148,14 @@ namespace Divide
         }
     }
 
-    void RenderQueue::postRender( const SceneRenderState& renderState, const RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut )
+    void RenderQueue::postRender( const SceneRenderState& renderState, const PopulateQueueParams& params, GFX::CommandBuffer& bufferInOut )
     {
-        for ( RenderBin& renderBin : _renderBins )
+        for ( U8 i = 0u; i < to_base( RenderBinType::COUNT ); ++i )
         {
-            renderBin.postRender( renderState, stagePass, bufferInOut );
+            if ( params.includes( static_cast<RenderBinType>( i ) ) )
+            {
+                _renderBins[i].postRender( renderState, params._stagePass, bufferInOut );
+            }
         }
     }
 

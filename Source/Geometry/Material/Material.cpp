@@ -1035,10 +1035,20 @@ namespace Divide
         {
             moduleDefines[to_base( ShaderType::FRAGMENT )].emplace_back( "HAS_TRANSPARENCY", true );
 
-            if ( properties().overrides().useAlphaDiscard() &&
-                 renderStagePass._passType != RenderPassType::OIT_PASS )
+            if ( isAlphaTested() && !isDepthPass && renderStagePass._passType == RenderPassType::MAIN_PASS )
+            {
+                // The alpha-tested colour pass applies its own cutoff, so it can feed alpha-to-coverage.
+                moduleDefines[to_base( ShaderType::FRAGMENT )].emplace_back( "ALPHA_TEST_PASS", true );
+            }
+            else if ( ( properties().overrides().useAlphaDiscard() || isAlphaTested() ) &&
+                      renderStagePass._passType != RenderPassType::OIT_PASS )
             {
                 moduleDefines[to_base( ShaderType::FRAGMENT )].emplace_back( "USE_ALPHA_DISCARD", true );
+            }
+
+            if ( usesAlphaToCoverage( renderStagePass ) )
+            {
+                moduleDefines[to_base( ShaderType::FRAGMENT )].emplace_back( "ALPHA_TO_COVERAGE", true );
             }
         }
 
@@ -1409,8 +1419,19 @@ namespace Divide
             }
             else if( renderStagePass._passType == RenderPassType::MAIN_PASS )
             {
-                ret._zFunc = ComparisonFunction::EQUAL;
-                ret._depthWriteEnabled = false;
+                if ( isAlphaTested() )
+                {
+                    // Alpha-tested geometry skips the depth pre-pass, so it writes its own depth.
+                    // Like blended transparency, it is drawn without back-face culling.
+                    ret._zFunc = ComparisonFunction::LEQUAL;
+                    ret._depthWriteEnabled = true;
+                    ret._cullMode = CullMode::NONE;
+                }
+                else
+                {
+                    ret._zFunc = ComparisonFunction::EQUAL;
+                    ret._depthWriteEnabled = false;
+                }
             }
             else //OIT/TRANSPARENT
             {
@@ -1429,6 +1450,32 @@ namespace Divide
         }
 
         return ret;
+    }
+
+    bool Material::usesAlphaToCoverage( const RenderStagePass renderStagePass ) const noexcept
+    {
+        return isAlphaTested() && AlphaToCoverageTarget( renderStagePass, _context->context().config() );
+    }
+
+    bool Material::AlphaToCoverageTarget( const RenderStagePass renderStagePass, const Configuration& config ) noexcept
+    {
+        if ( IsShadowPass( renderStagePass ) )
+        {
+            if ( to_base( renderStagePass._variant ) == to_base( ShadowType::CSM ) )
+            {
+                return config.rendering.shadowMapping.csm.MSAASamples > 0u;
+            }
+            if ( to_base( renderStagePass._variant ) == to_base( ShadowType::SINGLE ) )
+            {
+                return config.rendering.shadowMapping.spot.MSAASamples > 0u;
+            }
+            return false;
+        }
+
+        // The display stage is the only colour stage that renders into a multisampled target.
+        return renderStagePass._stage == RenderStage::DISPLAY &&
+               renderStagePass._passType == RenderPassType::MAIN_PASS &&
+               config.rendering.MSAASamples > 0u;
     }
 
     void Material::getSortKeys( const RenderStagePass renderStagePass, I64& shaderKey, I64& textureKey, bool& transparencyFlag ) const
