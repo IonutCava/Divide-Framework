@@ -186,6 +186,14 @@
 				<threshold>1.10000002</threshold>
 				<knee>0.100000001</knee>
 			</bloom>
+			<godRays>
+				<enabled>true</enabled>
+				<density>0.84</density>
+				<decay>0.95</decay>
+				<weight>0.4</weight>
+				<exposure>0.2</exposure>
+				<sampleCount>64</sampleCount>
+			</godRays>
 			<ssao>
 				<enable>true</enable>
 				<UseHalfResolution>false</UseHalfResolution>

@@ -32,6 +32,7 @@ namespace Divide
             case FilterType::FILTER_DEPTH_OF_FIELD:  return "DEPTH_OF_FIELD";
             case FilterType::FILTER_MOTION_BLUR:  return "MOTION_BLUR";
             case FilterType::FILTER_BLOOM: return "BLOOM";
+            case FilterType::FILTER_GOD_RAYS: return "GOD_RAYS";
             case FilterType::FILTER_LUT_CORECTION:  return "LUT_CORRECTION";
             case FilterType::FILTER_UNDERWATER: return "UNDERWATER";
             case FilterType::FILTER_NOISE: return "NOISE";

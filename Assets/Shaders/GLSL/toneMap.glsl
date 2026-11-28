@@ -7,6 +7,7 @@
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texScreen;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texExposure;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texBloom;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 3) uniform sampler2D texGodRays;
 
 layout(location = 0) out vec4 _colourOut;
 
@@ -142,6 +143,7 @@ void main() {
 
     vec3 bloomColour = texture(texBloom, VAR._texCoord).rgb;
     vec3 screenColour = mix(inputColour.rgb, bloomColour, vec3(bloomStrength));
+    screenColour += texture(texGodRays, VAR._texCoord).rgb * godRaysStrength;
 
     if (skipToneMapping == 0u && mappingFunction != NONE) {
         vec3 Yxy = vec3(0.f);

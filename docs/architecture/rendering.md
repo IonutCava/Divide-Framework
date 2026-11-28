@@ -190,6 +190,13 @@ pre-render operators. Stage-specific lighting and visibility preparation belong
 in renderer or render-pass code. Preserve the shared
 [coordinate and colour-space conventions](gpu-resources.md) across backends.
 
+Screen-space god rays (`FILTER_GOD_RAYS`, `GodRaysPreRenderOperator`) build a
+depth occlusion mask and radial-blur toward each directional light's projected
+screen position. Per-light gating uses `DirectionalLightComponent::enableGodRays`
+(default on). The half-res result (`GOD_RAYS_RESULT`) composites additively in
+`toneMap.glsl` before the tonemap curve. This is independent of shadow-map
+volumetric scattering.
+
 ## Planned/incomplete feature integration
 
 Treat planned or partially implemented features as unsupported until the full

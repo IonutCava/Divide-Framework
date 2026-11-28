@@ -15,6 +15,7 @@
 
 #include "Rendering/PostFX/CustomOperators/Headers/BloomPreRenderOperator.h"
 #include "Rendering/PostFX/CustomOperators/Headers/DoFPreRenderOperator.h"
+#include "Rendering/PostFX/CustomOperators/Headers/GodRaysPreRenderOperator.h"
 #include "Rendering/PostFX/CustomOperators/Headers/SSRPreRenderOperator.h"
 #include "Rendering/PostFX/CustomOperators/Headers/MotionBlurPreRenderOperator.h"
 #include "Rendering/PostFX/CustomOperators/Headers/PostAAPreRenderOperator.h"
@@ -225,6 +226,9 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
             case FilterType::FILTER_BLOOM:
                 batch.emplace_back(std::make_unique<BloomPreRenderOperator>(_context, *this, loadTasks));
                 break;
+            case FilterType::FILTER_GOD_RAYS:
+                batch.emplace_back(std::make_unique<GodRaysPreRenderOperator>(_context, *this, loadTasks));
+                break;
 
             // LDR
             case FilterType::FILTER_SS_ANTIALIASING:
@@ -261,6 +265,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
         toneMap._propertyDescriptor._globalDefines.emplace_back( "useAdaptiveExposure uint(PushData0[0].z)" );
         toneMap._propertyDescriptor._globalDefines.emplace_back( "skipToneMapping uint(PushData0[0].w)" );
         toneMap._propertyDescriptor._globalDefines.emplace_back( "bloomStrength PushData0[1].x" );
+        toneMap._propertyDescriptor._globalDefines.emplace_back( "godRaysStrength PushData0[1].y" );
         toneMap.waitForReady(false);
         _toneMap = CreateResource( toneMap, loadTasks);
     }
@@ -774,10 +779,12 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
     const bool bloomEnabled = !showWorldAO && _context.context().config().rendering.postFX.bloom.enabled && _parent.getFilterState(FilterType::FILTER_BLOOM);
+    const bool godRaysEnabled = !showWorldAO && _context.context().config().rendering.postFX.godRays.enabled && _parent.getFilterState(FilterType::FILTER_GOD_RAYS);
 
     { // ToneMap and generate LDR render target (Alpha channel contains pre-toneMapped luminance value)
         const auto& screenAtt = getInput(true)._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
         const auto& bloomDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::BLOOM_RESULT)->getAttachment(RTAttachmentType::COLOUR);
+        const auto& godRaysDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::GOD_RAYS_RESULT)->getAttachment(RTAttachmentType::COLOUR);
 
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: tone map";
 
@@ -810,6 +817,17 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
                 Set(binding._data, screenAtt->texture(), screenAtt->_descriptor._sampler);
             }
         }
+        {
+            DescriptorSetBinding& binding = AddBinding(cmd->_set, 3u, ShaderStageVisibility::FRAGMENT);
+            if (godRaysEnabled)
+            {
+                Set(binding._data, godRaysDataAtt->texture(), godRaysDataAtt->_descriptor._sampler);
+            }
+            else
+            {
+                Set(binding._data, screenAtt->texture(), screenAtt->_descriptor._sampler);
+            }
+        }
 
         const auto mappingFunction = to_base(_context.materialDebugFlag() == MaterialDebugFlag::COUNT ? _toneMapParams._function : ToneMapParams::MapFunctions::COUNT);
 
@@ -819,14 +837,8 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
                                      adaptiveExposureControl() ? 1.f : 0.f,
                                      _context.materialDebugFlag() != MaterialDebugFlag::COUNT ? 1.f : 0.f);
 
-        if (bloomEnabled)
-        {
-            pushData.data[0]._vec[1].x = _context.context().config().rendering.postFX.bloom.strength;
-        }
-        else
-        {
-            pushData.data[0]._vec[1].x = 0.f;
-        }
+        pushData.data[0]._vec[1].x = bloomEnabled ? _context.context().config().rendering.postFX.bloom.strength : 0.f;
+        pushData.data[0]._vec[1].y = godRaysEnabled ? 1.f : 0.f;
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);

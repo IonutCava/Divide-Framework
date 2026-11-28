@@ -35,6 +35,8 @@
 #include "Platform/Video/Headers/ResolvedBindingCache.h"
 #include "Platform/Video/Headers/fontstash.h"
 #include "Rendering/PostFX/CustomOperators/Headers/SSAOState.h"
+#include "Rendering/PostFX/Headers/PostFX.h"
+#include "Rendering/PostFX/Headers/PreRenderOperator.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
 #include "Rendering/Lighting/Headers/ShadowCasterBounds.h"
@@ -65,6 +67,11 @@ namespace Divide
                 return states;
             }
         };
+    }
+
+    TEST_CASE( "God rays filter exposes a stable PostFX name", "[render_smoke][postfx]" )
+    {
+        CHECK( string( PostFX::FilterName( FilterType::FILTER_GOD_RAYS ) ) == "GOD_RAYS" );
     }
 
     TEST_CASE( "OIT packs multiplicative revealage beside additive normals", "[render_smoke][oit]" )

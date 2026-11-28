@@ -15,6 +15,7 @@
 #include "Rendering/Headers/Renderer.h"
 #include "Rendering/PostFX/CustomOperators/Headers/BloomPreRenderOperator.h"
 #include "Rendering/PostFX/CustomOperators/Headers/DoFPreRenderOperator.h"
+#include "Rendering/PostFX/CustomOperators/Headers/GodRaysPreRenderOperator.h"
 #include "Rendering/PostFX/CustomOperators/Headers/SSRPreRenderOperator.h"
 #include "Rendering/PostFX/CustomOperators/Headers/MotionBlurPreRenderOperator.h"
 #include "Rendering/PostFX/CustomOperators/Headers/PostAAPreRenderOperator.h"
@@ -504,6 +505,39 @@ namespace
             if (!useThreshold)
             {
                 ImGui::EndDisabled();
+            }
+        }
+
+        if (ImGui::CollapsingHeader("God Rays"))
+        {
+            checkBox(FilterType::FILTER_GOD_RAYS);
+            PreRenderOperator* op = batch.getOperator(FilterType::FILTER_GOD_RAYS);
+            GodRaysPreRenderOperator& godRaysOp = static_cast<GodRaysPreRenderOperator&>(*op);
+            F32 density = godRaysOp.density();
+            if (ImGui::SliderFloat("Density", &density, 0.01f, 1.f))
+            {
+                godRaysOp.density(density);
+            }
+            F32 decay = godRaysOp.decay();
+            if (ImGui::SliderFloat("Decay", &decay, 0.5f, 1.f))
+            {
+                godRaysOp.decay(decay);
+            }
+            F32 weight = godRaysOp.weight();
+            if (ImGui::SliderFloat("Weight", &weight, 0.01f, 1.f))
+            {
+                godRaysOp.weight(weight);
+            }
+            F32 exposure = godRaysOp.exposure();
+            if (ImGui::SliderFloat("Exposure", &exposure, 0.01f, 1.f))
+            {
+                godRaysOp.exposure(exposure);
+            }
+            U8 samples = godRaysOp.sampleCount();
+            constexpr U8 minSamples = 8u, maxSamples = 128u;
+            if (ImGui::SliderScalar("Sample Count", ImGuiDataType_U8, &samples, &minSamples, &maxSamples))
+            {
+                godRaysOp.sampleCount(samples);
             }
         }
 
