@@ -53,6 +53,10 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
         void appendChildBBs();
         void appendChildRefBBs();
 
+        /// Replaces this node's scene-node bounds with a world-space box that its transform does not move.
+        /// Call it from the node's scene update or the main thread; the bounds system applies it at its next update.
+        void setWorldBoundsOverride(const BoundingBox& worldBounds) noexcept { _worldBoundsOverride.set(worldBounds); }
+
         PROPERTY_RW(bool, collisionsEnabled, true);
         PROPERTY_RW(bool, showAABB, false);
         PROPERTY_RW(bool, showOBB, false);
@@ -71,9 +75,12 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
         void flagBoundingBoxDirty(U32 transformMask, bool recursive);
 
     private:
+        [[nodiscard]] bool boundsInWorldSpace() const noexcept;
+
         BoundsUpdateState _boundsUpdate;
         BoundsChangeTracker _boundsChanges;
         mutable BoundsOBBCache _obbCache;
+        WorldBoundsOverride _worldBoundsOverride;
         BoundingBox _boundingBox{};
         BoundingBox _refBoundingBox{};
         BoundingSphere _boundingSphere{};

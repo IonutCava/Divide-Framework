@@ -1283,6 +1283,165 @@ TEST_CASE( "Terrain shader includes and variants use the engine preprocessing pi
         }
     }
 
+    TEST_CASE( "Alpha-tested colour and shadow variants compile for both rendering backends", "[shader][alpha_test][render_smoke]" )
+    {
+        const NonInteractiveAssertions nonInteractive{};
+        REQUIRE( nonInteractive._ready );
+        platformInitRunListener::PlatformInit();
+        const platformInitRunListener::LocalizationScope localization{};
+        const ShaderCompilerLifetime compilerLifetime{};
+        const ConsoleScope console{};
+        REQUIRE( glswGetCurrentContext() == nullptr );
+        string diagnostics;
+        size_t callbackID = Console::BindConsoleOutput( [&]( const Console::OutputEntry& entry )
+        {
+            if ( entry._type == Console::EntryType::ERR )
+            {
+                diagnostics.append( entry._text );
+            }
+        } );
+        SCOPE_EXIT
+        {
+            [[maybe_unused]] const bool unbound = Console::UnbindConsoleOutput( callbackID );
+            CHECK( unbound );
+        };
+
+        const auto oldBindings = Attorney::ShaderProgramTestAccess::Bindings();
+        SCOPE_EXIT
+        {
+            if ( glswGetCurrentContext() != nullptr )
+            {
+                glswShutdown();
+            }
+            Attorney::ShaderProgramTestAccess::ClearAtoms();
+            Attorney::ShaderProgramTestAccess::Bindings() = oldBindings;
+        };
+
+        Attorney::ShaderProgramTestAccess::InitAtomLocations();
+        for ( U8 set = 0u; set < to_base( DescriptorSetUsage::COUNT ); ++set )
+        {
+            for ( U8 slot = 0u; slot < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slot )
+            {
+                Attorney::ShaderProgramTestAccess::Bindings()[set][slot]._glBinding = to_U8( set * MAX_BINDINGS_PER_DESCRIPTOR_SET + slot );
+            }
+        }
+
+        ModuleDefines commonDefines;
+        for ( const char* define : {
+                  "ENABLE_TBN", "GEOMETRY_TRIANGLES", "HAS_POSITION_ATTRIBUTE", "HAS_NORMAL_ATTRIBUTE",
+                  "HAS_TEXCOORD_ATTRIBUTE", "NODE_DYNAMIC", "OVERRIDE_DATA_IDX", "USE_UNIT0_TEXTURE",
+                  "USE_OPACITY_TEXTURE", "HAS_TRANSPARENCY" } )
+        {
+            commonDefines.emplace_back( define );
+        }
+
+        struct Variant
+        {
+            const char* _sourceFile;
+            const char* _sourceName;
+            const char* _shadingMode;
+            bool _display;
+            bool _alphaTestPass;
+            bool _alphaDiscard;
+            bool _alphaToCoverage;
+            bool _shadow;
+        };
+        constexpr std::array variants{
+            Variant{ "material.glsl", "material.Fragment", "SHADING_MODE_PBR_MR", true, true, false, true, false },
+            Variant{ "material.glsl", "material.Fragment", "SHADING_MODE_BLINN_PHONG", true, true, false, false, false },
+            Variant{ "material.glsl", "material.Fragment", "SHADING_MODE_PBR_MR", false, true, false, false, false },
+            Variant{ "material.glsl", "material.Fragment", "SHADING_MODE_PBR_MR", true, false, false, false, false },
+            Variant{ "grass.glsl", "grass.Fragment.Colour", "SHADING_MODE_BLINN_PHONG", true, true, false, true, false },
+            Variant{ "grass.glsl", "grass.Fragment.Colour", "SHADING_MODE_BLINN_PHONG", false, true, false, false, false },
+            Variant{ "grass.glsl", "grass.Fragment.Shadow.VSM", "SHADING_MODE_BLINN_PHONG", false, false, true, true, true },
+            Variant{ "grass.glsl", "grass.Fragment.Shadow.VSM", "SHADING_MODE_BLINN_PHONG", false, false, true, false, true },
+            Variant{ "depthPass.glsl", "depthPass.Fragment.Shadow.VSM", "SHADING_MODE_PBR_MR", false, false, true, true, true },
+            Variant{ "depthPass.glsl", "depthPass.Fragment.Shadow.VSM", "SHADING_MODE_PBR_MR", false, false, true, false, true },
+            Variant{ "depthPass.glsl", "depthPass.Fragment.Shadow", "SHADING_MODE_PBR_MR", false, false, true, true, true }
+        };
+
+        Configuration config{};
+        bool firstAPI = true;
+        for ( const RenderAPI api : { RenderAPI::Vulkan, RenderAPI::OpenGL } )
+        {
+            if ( firstAPI )
+            {
+                REQUIRE( Attorney::ShaderProgramTestAccess::InitThread( api, config ) );
+                firstAPI = false;
+            }
+            else
+            {
+                REQUIRE( glswShutdown() == 1 );
+                REQUIRE( Attorney::ShaderProgramTestAccess::InitGLSW( api, config ) );
+            }
+            const string shaderPath = Paths::Shaders::GLSL::g_GLSLShaderLoc.string() + Paths::g_pathSeparator;
+            REQUIRE( glswSetPath( shaderPath.c_str(), ".glsl" ) == 1 );
+
+            for ( const Variant& variant : variants )
+            {
+                CAPTURE( api, variant._sourceName, variant._shadingMode, variant._display, variant._alphaTestPass,
+                         variant._alphaDiscard, variant._alphaToCoverage );
+                ModuleDefines defines = commonDefines;
+                defines.emplace_back( variant._shadingMode );
+                if ( variant._display )
+                {
+                    defines.emplace_back( "MAIN_DISPLAY_PASS" );
+                    defines.emplace_back( "HAS_VELOCITY" );
+                    if ( variant._alphaToCoverage )
+                    {
+                        defines.emplace_back( "MSAA_SCREEN_TARGET" );
+                    }
+                }
+                if ( variant._shadow )
+                {
+                    defines.emplace_back( "SHADOW_PASS" );
+                    defines.emplace_back( "SKIP_REFLECT_REFRACT" );
+                    defines.emplace_back( "ORTHO_PROJECTION" );
+                }
+                if ( variant._alphaTestPass ) defines.emplace_back( "ALPHA_TEST_PASS" );
+                if ( variant._alphaDiscard ) defines.emplace_back( "USE_ALPHA_DISCARD" );
+                if ( variant._alphaToCoverage ) defines.emplace_back( "ALPHA_TO_COVERAGE" );
+
+                ShaderProgram::LoadData data{};
+                data._type = ShaderType::FRAGMENT;
+                data._sourceFile = variant._sourceFile;
+                data._sourceName = variant._sourceName;
+                data._shaderName = data._sourceName;
+                eastl::set<U64> atoms;
+                Attorney::ShaderProgramTestAccess::Parse( api, defines, data, atoms );
+                REQUIRE_FALSE( data._sourceCodeGLSL.empty() );
+                const string& source = data._sourceCodeGLSL;
+
+                if ( !variant._shadow )
+                {
+                    // Forced early tests write depth before the alpha test runs, so the alpha-tested pass cannot use them.
+                    CHECK( ( source.find( "early_fragment_tests" ) == string::npos ) == variant._alphaTestPass );
+                    // Alpha-tested geometry is not in the pre-pass, so the display variant writes its own velocity.
+                    CHECK( ( source.find( "_velocityOut" ) != string::npos ) == ( variant._display && variant._alphaTestPass ) );
+                }
+                if ( variant._alphaTestPass || variant._alphaDiscard )
+                {
+                    CHECK( atoms.contains( _ID( "alphaTest.frag" ) ) );
+                    CHECK( ( source.find( "fwidth(alpha)" ) != string::npos ) == variant._alphaToCoverage );
+                }
+                if ( variant._shadow )
+                {
+                    // Alpha-to-coverage reads the alpha component of output 0
+                    const bool vec4Output = source.find( "vec4 _colourOut" ) != string::npos ||
+                                            source.find( "vec4 _coverageOut" ) != string::npos;
+                    CHECK( vec4Output == variant._alphaToCoverage );
+                }
+
+                std::vector<unsigned int> spirv;
+                diagnostics.clear();
+                const bool compiled = SpirvHelper::GLSLtoSPV( ShaderType::FRAGMENT, source.c_str(), spirv, api );
+                INFO( diagnostics.c_str() );
+                REQUIRE( compiled );
+                CHECK_FALSE( spirv.empty() );
+            }
+        }
+    }
+
     TEST_CASE( "Hi-Z indirect culling shader compiles for both rendering backends", "[shader][occlusion][render_smoke]" )
     {
         const NonInteractiveAssertions nonInteractive{};
