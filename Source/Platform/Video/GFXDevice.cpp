@@ -1691,8 +1691,7 @@ namespace Divide
                 DIVIDE_ASSERT( false, "Renderer: uniform upload arena bookkeeping failed" );
                 Console::errorfn( "Renderer: uniform upload arena bookkeeping failed for shader '{}' block '{}'", shaderName, blockName );
                 break;
-            case UniformUploadResult::OK:
-            case UniformUploadResult::COUNT:
+            default:
                 break;
         }
     }
