@@ -52,33 +52,50 @@ class RenderQueue final : public KernelComponent {
 
     struct PopulateQueueParams {
         RenderStagePass _stagePass;
-        RenderBinType _binType = RenderBinType::COUNT;
-        /// When set, exclude the specified bin; COUNT selects all or no bins.
-        bool _filterByBinType = false;
+        /// One bit per RenderBinType
+        U16 _binMask{ 0u };
 
-        [[nodiscard]] static constexpr PopulateQueueParams ForPass( const RenderStagePass stagePass, const bool transparencyPass ) noexcept
+        [[nodiscard]] static constexpr U16 BinBit( const RenderBinType binType ) noexcept
+        {
+            return to_U16( 1u << to_base( binType ) );
+        }
+
+        static constexpr U16 ALL_BINS = to_U16( ( 1u << to_base( RenderBinType::COUNT ) ) - 1u );
+
+        [[nodiscard]] static constexpr PopulateQueueParams AllBins( const RenderStagePass stagePass ) noexcept
+        {
+            return { stagePass, ALL_BINS };
+        }
+
+        [[nodiscard]] static constexpr PopulateQueueParams ForPass( const RenderStagePass stagePass, const RenderBinContent content ) noexcept
         {
             if ( IsShadowPass( stagePass ) )
             {
-                return { stagePass, RenderBinType::COUNT, false };
+                return AllBins( stagePass );
             }
-            return { stagePass, RenderBinType::TRANSLUCENT, !transparencyPass };
+
+            if ( content == RenderBinContent::ALPHA_TESTED )
+            {
+                return { stagePass, BinBit( RenderBinType::ALPHA_TESTED ) };
+            }
+            if ( content == RenderBinContent::TRANSLUCENT )
+            {
+                return { stagePass, BinBit( RenderBinType::TRANSLUCENT ) };
+            }
+
+            return { stagePass, to_U16( ALL_BINS & ~( BinBit( RenderBinType::ALPHA_TESTED ) | BinBit( RenderBinType::TRANSLUCENT ) ) ) };
         }
 
         [[nodiscard]] constexpr bool includes( const RenderBinType binType ) const noexcept
         {
-            if ( binType == RenderBinType::COUNT )
-            {
-                return false;
-            }
-            return _binType == RenderBinType::COUNT ? !_filterByBinType
-                                                    : ( binType == _binType ) != _filterByBinType;
+            return binType != RenderBinType::COUNT && ( _binMask & BinBit( binType ) ) != 0u;
         }
 
         [[nodiscard]] static constexpr bool RequiresMaterialForPreparation( const RenderStagePass stagePass,
                                                                             const RenderBinType binType,
                                                                             const bool drawState ) noexcept
         {
+            // Every visible node prepares its main pass draw. The alpha-tested pass reuses it.
             if ( stagePass._passType == RenderPassType::MAIN_PASS )
             {
                 return true;
@@ -86,7 +103,7 @@ class RenderQueue final : public KernelComponent {
 
             const bool transparencyPass = stagePass._passType == RenderPassType::OIT_PASS ||
                                           stagePass._passType == RenderPassType::TRANSPARENCY_PASS;
-            return drawState && ForPass( stagePass, transparencyPass ).includes( binType );
+            return drawState && ForPass( stagePass, transparencyPass ? RenderBinContent::TRANSLUCENT : RenderBinContent::OPAQUE ).includes( binType );
         }
     };
 
@@ -96,7 +113,8 @@ class RenderQueue final : public KernelComponent {
     [[nodiscard]] static RenderBinType getBinForNode(const SceneGraphNode* node, Handle<Material> matInstance);
     void populateRenderQueues(const PopulateQueueParams& params, RenderQueuePackages& queueInOut);
 
-    void postRender(const SceneRenderState& renderState, RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut);
+    /// Only the bins drawn by the pass are visited: other bins may still hold nodes from an earlier pass.
+    void postRender(const SceneRenderState& renderState, const PopulateQueueParams& params, GFX::CommandBuffer& bufferInOut);
     void sort(RenderStagePass stagePass, RenderBinType targetBinType = RenderBinType::COUNT, RenderingOrder renderOrder = RenderingOrder::COUNT);
     void clear(RenderBinType targetBinType = RenderBinType::COUNT) noexcept;
     void addNodeToQueue(const SceneGraphNode* sgn,

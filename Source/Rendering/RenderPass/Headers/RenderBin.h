@@ -105,6 +105,7 @@ enum class RenderBinType : U8 {
     TERRAIN,     ///< Actual terrain. It should cover most of the remaining empty screen space
     TERRAIN_AUX, ///< E.g. infinite ground plane
     SKY,         ///< Sky needs to be drawn after ALL opaque geometry to save on fillrate
+    ALPHA_TESTED,///< Cutout geometry (e.g. foliage) skips the depth pre-pass and writes its own depth after the opaque main pass
     TRANSLUCENT, ///< Translucent items use a [0.0...1.0] alpha value supplied via an opacity map or via the albedo's alpha channel
     IMPOSTOR,    ///< Impostors should be overlayed over everything since they are a debugging tool
     COUNT
@@ -112,11 +113,19 @@ enum class RenderBinType : U8 {
 
 namespace Names {
     static const char* renderBinType[] = {
-        "OPAQUE", "WATER", "TERRAIN", "TERRAIN_AUX", "SKY", "TRANSLUCENT", "IMPOSTOR", "UNKNOWN"
+        "OPAQUE", "WATER", "TERRAIN", "TERRAIN_AUX", "SKY", "ALPHA_TESTED", "TRANSLUCENT", "IMPOSTOR", "UNKNOWN"
     };
 };
 
 static_assert(std::size( Names::renderBinType ) == to_base( RenderBinType::COUNT ) + 1, "RenderBinType name array out of sync!");
+
+/// The render bins a colour or depth pass draws. Shadow passes draw every bin.
+enum class RenderBinContent : U8 {
+    OPAQUE,       ///< Every bin except alpha-tested and translucent ones: the depth pre-pass and the opaque main pass
+    ALPHA_TESTED, ///< Cutout geometry drawn with depth writes after the opaque main pass
+    TRANSLUCENT,  ///< Blended geometry: weighted OIT or sorted forward transparency
+    COUNT
+};
 
 struct RenderPackage;
 

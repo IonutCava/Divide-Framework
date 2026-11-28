@@ -151,4 +151,31 @@ namespace Divide
         std::atomic_uint _dirtyMask{0u};
         bool _recomputed = false;
     };
+
+    /// A world-space box that replaces a node's own bounds, for geometry placed per instance rather than by the node's
+    /// transform. The owner sets it outside the bounds update; the bounds system applies it at its next update.
+    class WorldBoundsOverride
+    {
+    public:
+        void set(const BoundingBox& worldBounds) noexcept
+        {
+            _bounds.set(worldBounds);
+            ++_revision;
+        }
+
+        [[nodiscard]] bool pending() const noexcept { return _revision != _appliedRevision; }
+        [[nodiscard]] bool active() const noexcept { return _appliedRevision != 0u; }
+
+        /// Applies any pending box. Once one has been applied, it replaces the node's own bounds.
+        [[nodiscard]] const BoundingBox& apply(const BoundingBox& nodeBounds) noexcept
+        {
+            _appliedRevision = _revision;
+            return active() ? _bounds : nodeBounds;
+        }
+
+    private:
+        BoundingBox _bounds{};
+        U32 _revision = 0u;
+        U32 _appliedRevision = 0u;
+    };
 }

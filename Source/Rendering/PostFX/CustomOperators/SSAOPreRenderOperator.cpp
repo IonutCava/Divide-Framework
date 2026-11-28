@@ -90,13 +90,6 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     nearestSampler._mipSampling = TextureMipSampling::NONE;
     nearestSampler._anisotropyLevel = 0u;
 
-    SamplerDescriptor screenSampler = {};
-    screenSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
-    screenSampler._wrapV = TextureWrap::CLAMP_TO_EDGE;
-    screenSampler._wrapW = TextureWrap::CLAMP_TO_EDGE;
-    screenSampler._mipSampling = TextureMipSampling::NONE;
-    screenSampler._anisotropyLevel = 0u;
-
     _noiseSampler._wrapU = TextureWrap::REPEAT;
     _noiseSampler._wrapV = TextureWrap::REPEAT;
     _noiseSampler._wrapW = TextureWrap::REPEAT;
