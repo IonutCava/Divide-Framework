@@ -764,6 +764,7 @@ set( RENDERING_SOURCE_HEADERS Rendering/Camera/Headers/Camera.h
                               Rendering/Lighting/ShadowMapping/Headers/SingleShadowMapGenerator.h
                               Rendering/PostFX/CustomOperators/Headers/BloomPreRenderOperator.h
                               Rendering/PostFX/CustomOperators/Headers/DoFPreRenderOperator.h
+                              Rendering/PostFX/CustomOperators/Headers/GodRaysPreRenderOperator.h
                               Rendering/PostFX/CustomOperators/Headers/MotionBlurPreRenderOperator.h
                               Rendering/PostFX/CustomOperators/Headers/PostAAPreRenderOperator.h
                               Rendering/PostFX/CustomOperators/Headers/SSAOPreRenderOperator.h
@@ -794,6 +795,7 @@ set( RENDERING_SOURCE Rendering/Renderer.cpp
                       Rendering/PostFX/PreRenderOperator.cpp
                       Rendering/PostFX/CustomOperators/BloomPreRenderOperator.cpp
                       Rendering/PostFX/CustomOperators/DoFPreRenderOperator.cpp
+                      Rendering/PostFX/CustomOperators/GodRaysPreRenderOperator.cpp
                       Rendering/PostFX/CustomOperators/MotionBlurPreRenderOperator.cpp
                       Rendering/PostFX/CustomOperators/PostAAPreRenderOperator.cpp
                       Rendering/PostFX/CustomOperators/SSAOPreRenderOperator.cpp

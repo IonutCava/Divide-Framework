@@ -158,6 +158,7 @@ class PreRenderBatch {
                 return FilterSpace::FILTER_SPACE_PRE_PASS;
 
             case FilterType::FILTER_BLOOM:
+            case FilterType::FILTER_GOD_RAYS:
             case FilterType::FILTER_DEPTH_OF_FIELD:
             case FilterType::FILTER_MOTION_BLUR:
                 return FilterSpace::FILTER_SPACE_HDR;

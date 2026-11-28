@@ -233,6 +233,7 @@ struct RenderTargetNames
     static RenderTargetID NORMALS_RESOLVED;
     static RenderTargetID SSAO_RESULT;
     static RenderTargetID BLOOM_RESULT;
+    static RenderTargetID GOD_RAYS_RESULT;
     static RenderTargetID SSR_RESULT;
     static std::array<RenderTargetID, Config::MAX_LOCAL_PLAYER_COUNT> PREVIOUS_DEPTH;
     static RenderTargetID OIT;

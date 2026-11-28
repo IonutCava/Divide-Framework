@@ -167,6 +167,7 @@ namespace Divide
     RenderTargetID RenderTargetNames::NORMALS_RESOLVED = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SSAO_RESULT = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::BLOOM_RESULT = INVALID_RENDER_TARGET_ID;
+    RenderTargetID RenderTargetNames::GOD_RAYS_RESULT = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SSR_RESULT = INVALID_RENDER_TARGET_ID;
     std::array<RenderTargetID, Config::MAX_LOCAL_PLAYER_COUNT> RenderTargetNames::PREVIOUS_DEPTH = create_array<Config::MAX_LOCAL_PLAYER_COUNT, RenderTargetID>( INVALID_RENDER_TARGET_ID );
     RenderTargetID RenderTargetNames::OIT = INVALID_RENDER_TARGET_ID;
@@ -874,7 +875,33 @@ namespace Divide
             bloomDesc._resolution = renderResolution * 0.5f;
             bloomDesc._msaaSamples = 0u;
             RenderTargetNames::BLOOM_RESULT = _rtPool->allocateRT( bloomDesc )._targetID;
-        }  
+        }
+        {
+            SamplerDescriptor godRaysSampler{};
+            godRaysSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
+            godRaysSampler._wrapV = TextureWrap::CLAMP_TO_EDGE;
+            godRaysSampler._wrapW = TextureWrap::CLAMP_TO_EDGE;
+            godRaysSampler._minFilter = TextureFilter::LINEAR;
+            godRaysSampler._magFilter = TextureFilter::LINEAR;
+            godRaysSampler._mipSampling = TextureMipSampling::NONE;
+
+            TextureDescriptor godRaysDescriptor{};
+            godRaysDescriptor._dataType = GFXDataFormat::FLOAT_16;
+            godRaysDescriptor._packing = GFXImagePacking::RGB_111110F;
+            godRaysDescriptor._baseFormat = GFXImageFormat::RGB;
+            godRaysDescriptor._mipMappingState = MipMappingState::OFF;
+
+            RenderTargetDescriptor godRaysDesc = {};
+            godRaysDesc._attachments =
+            {
+                InternalRTAttachmentDescriptor{ godRaysDescriptor, godRaysSampler, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0}
+            };
+
+            godRaysDesc._name = "God Rays Result";
+            godRaysDesc._resolution = renderResolution * 0.5f;
+            godRaysDesc._msaaSamples = 0u;
+            RenderTargetNames::GOD_RAYS_RESULT = _rtPool->allocateRT( godRaysDesc )._targetID;
+        }
         {
             TextureDescriptor ssaoDescriptor{};
             ssaoDescriptor._dataType = GFXDataFormat::FLOAT_16;
@@ -2171,6 +2198,7 @@ namespace Divide
         _rtPool->getRenderTarget( RenderTargetNames::OIT )->resize( w, h );
 
         _rtPool->getRenderTarget( RenderTargetNames::BLOOM_RESULT )->resize( w / 2, h / 2);
+        _rtPool->getRenderTarget( RenderTargetNames::GOD_RAYS_RESULT )->resize( w / 2, h / 2);
 
         // Update post-processing render targets and buffers
         _renderer->updateResolution( w, h );

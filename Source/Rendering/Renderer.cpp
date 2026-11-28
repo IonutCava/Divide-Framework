@@ -138,6 +138,9 @@ Renderer::Renderer(PlatformContext& context)
     if (config.rendering.postFX.bloom.enabled) {
         _postFX->pushFilter(FilterType::FILTER_BLOOM);
     }
+    if (config.rendering.postFX.godRays.enabled) {
+        _postFX->pushFilter(FilterType::FILTER_GOD_RAYS);
+    }
 
     WAIT_FOR_CONDITION(_lightCullPipelineCmd._pipeline != nullptr);
     WAIT_FOR_CONDITION(_lightBuildClusteredAABBsPipelineCmd._pipeline != nullptr);

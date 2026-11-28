@@ -65,6 +65,15 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
 
     editorComponent().registerField(MOV(showConeField));
 
+    EditorComponentField godRaysField = {};
+    godRaysField._name = "Enable God Rays";
+    godRaysField._data = &_enableGodRays;
+    godRaysField._type = EditorComponentFieldType::PUSH_TYPE;
+    godRaysField._readOnly = false;
+    godRaysField._basicType = PushConstantType::BOOL;
+
+    editorComponent().registerField(MOV(godRaysField));
+
     registerFields(editorComponent());
 
     Attorney::SceneNodeLightComponent::setBounds(sgn->getNode(), BoundingBox(float3(-g_defaultLightDistance * 0.5f), float3(-g_defaultLightDistance * 0.5f)));

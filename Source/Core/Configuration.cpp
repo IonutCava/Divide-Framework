@@ -127,6 +127,12 @@ bool Configuration::fromXML(const ResourcePath& xmlFilePath, const char* fileNam
         GET_PARAM(rendering.postFX.bloom.useThreshold);
         GET_PARAM(rendering.postFX.bloom.threshold);
         GET_PARAM(rendering.postFX.bloom.knee);
+        GET_PARAM(rendering.postFX.godRays.enabled);
+        GET_PARAM(rendering.postFX.godRays.density);
+        GET_PARAM(rendering.postFX.godRays.decay);
+        GET_PARAM(rendering.postFX.godRays.weight);
+        GET_PARAM(rendering.postFX.godRays.exposure);
+        GET_PARAM(rendering.postFX.godRays.sampleCount);
         GET_PARAM(rendering.postFX.ssao.enable);
         GET_PARAM(rendering.postFX.ssao.UseHalfResolution);
         GET_PARAM(rendering.postFX.ssao.FullRes.Radius);
@@ -300,6 +306,12 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
     PUT_PARAM(rendering.postFX.bloom.strength);
     PUT_PARAM(rendering.postFX.bloom.threshold);
     PUT_PARAM(rendering.postFX.bloom.knee);
+    PUT_PARAM(rendering.postFX.godRays.enabled);
+    PUT_PARAM(rendering.postFX.godRays.density);
+    PUT_PARAM(rendering.postFX.godRays.decay);
+    PUT_PARAM(rendering.postFX.godRays.weight);
+    PUT_PARAM(rendering.postFX.godRays.exposure);
+    PUT_PARAM(rendering.postFX.godRays.sampleCount);
     PUT_PARAM(rendering.postFX.ssao.enable);
     PUT_PARAM(rendering.postFX.ssao.UseHalfResolution);
     PUT_PARAM(rendering.postFX.ssao.FullRes.Radius);

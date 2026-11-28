@@ -223,6 +223,15 @@ struct Configuration final : XML::IXMLSerializable {
                 F32 threshold = 1.1f;
                 F32 knee = 0.1f;
             } bloom;
+            struct GodRays
+            {
+                bool enabled = true;
+                F32 density = 0.84f;
+                F32 decay = 0.95f;
+                F32 weight = 0.4f;
+                F32 exposure = 0.2f;
+                U8 sampleCount = 64u;
+            } godRays;
             struct SSAO
             {
                 bool enable = false;

@@ -57,6 +57,8 @@ BEGIN_COMPONENT_EXT1(DirectionalLight, ComponentType::DIRECTIONAL_LIGHT, Light)
     PROPERTY_RW(PerSplitToggle, csmUseSceneAABBFit, create_array<Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT>(true));
     /// If this is true, we render a cone narrow cone to approximate the light's direction
     PROPERTY_RW(bool, showDirectionCone, false);
+    /// Screen-space god rays / crepuscular shafts for this directional light
+    PROPERTY_RW(bool, enableGodRays, true);
     /// If true, the direction of this light component can't be modified in the editor (e.g. the light attached to the sun depends on the sun position!)
     PROPERTY_R(bool, lockDirection, false);
 
