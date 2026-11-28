@@ -523,6 +523,7 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Headers/ConditionalWait.h
                              Platform/Headers/DisplayWindow.h
                              Platform/Headers/DisplayWindow.inl
+                             Platform/Headers/EnumFlags.inl
                              Platform/Headers/PlatformDataTypes.h
                              Platform/Headers/PlatformDefines.h
                              Platform/Headers/PlatformDefinesOS.h
@@ -908,6 +909,7 @@ set( TEST_PLATFORM_SOURCE UnitTests/unitTestCommon.h
                           UnitTests/Test-Platform/ProfilerTests.cpp
                           UnitTests/Test-Platform/ConversionTests.cpp
                           UnitTests/Test-Platform/DataTypeTests.cpp
+                          UnitTests/Test-Platform/EnumFlagsTests.cpp
                           UnitTests/Test-Platform/HashTests.cpp
                           UnitTests/Test-Platform/StringTests.cpp
                           UnitTests/Test-Platform/ThreadingTests.cpp

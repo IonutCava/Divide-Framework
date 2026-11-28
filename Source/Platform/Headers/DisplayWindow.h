@@ -116,6 +116,7 @@ enum class WindowFlags : U16 {
     DECORATED = toBit(7),
     COUNT = 8
 };
+DIVIDE_ENUM_FLAGS(WindowFlags);
 
 class WindowManager;
 class PlatformContext;

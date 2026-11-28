@@ -13,16 +13,16 @@ NO_DESTROY  vector<Console::ConsolePrintCallbackEntry> Console::s_guiConsoleCall
 std::ofstream Console::s_logStream;
 std::ofstream Console::s_errorStream;
 
-constexpr U32 DEFAULT_FLAGS = to_base( Console::Flags::DECORATE_TIMESTAMP ) |
-                              to_base( Console::Flags::DECORATE_THREAD_ID ) |
-                              to_base( Console::Flags::DECORATE_SEVERITY ) |
-                              to_base( Console::Flags::DECORATE_FRAME ) |
-                              to_base( Console::Flags::ENABLE_OUTPUT ) |
+constexpr U32 DEFAULT_FLAGS = to_base( Console::Flags::DECORATE_TIMESTAMP |
+                                       Console::Flags::DECORATE_THREAD_ID |
+                                       Console::Flags::DECORATE_SEVERITY |
+                                       Console::Flags::DECORATE_FRAME |
+                                       Console::Flags::ENABLE_OUTPUT |
 //#if defined(SHOW_CONSOLE_WINDOW)
-                              to_base( Console::Flags::PRINT_TO_STD_CONSOLE ) |
-                              to_base( Console::Flags::FLUSH_ON_PRINT ) |
+                                       Console::Flags::PRINT_TO_STD_CONSOLE |
+                                       Console::Flags::FLUSH_ON_PRINT |
 //#endif //SHOW_CONSOLE_WINDOW
-                              to_base( Console::Flags::ENABLE_ERROR_STREAM );
+                                       Console::Flags::ENABLE_ERROR_STREAM );
 
 std::atomic<U32> Console::s_flags = DEFAULT_FLAGS;
 std::atomic_bool Console::s_running = false;

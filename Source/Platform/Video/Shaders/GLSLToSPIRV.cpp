@@ -202,10 +202,10 @@ bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* p
         Console::errorfn( "{}", shader.getInfoDebugLog() );
         const Console::ScopedFlags consoleFlags{
             0u,
-            to_U32(to_base(Console::Flags::DECORATE_TIMESTAMP) |
-                   to_base(Console::Flags::DECORATE_THREAD_ID) |
-                   to_base(Console::Flags::DECORATE_FRAME) |
-                   to_base(Console::Flags::DECORATE_SEVERITY))
+            to_U32(to_base(Console::Flags::DECORATE_TIMESTAMP |
+                           Console::Flags::DECORATE_THREAD_ID |
+                           Console::Flags::DECORATE_FRAME |
+                           Console::Flags::DECORATE_SEVERITY))
         };
 
         Console::errorfn( "-------------------------------------------------------\n\n" );

@@ -63,16 +63,16 @@ namespace Divide {
         }
     }
 
-    inline void enableOptions(GenericDrawCommand& cmd, const BaseType<CmdRenderOptions> optionsMask) noexcept
+    inline void enableOptions(GenericDrawCommand& cmd, const CmdRenderOptions optionsMask) noexcept
     {
-        cmd._renderOptions |= optionsMask;
+        cmd._renderOptions |= to_base(optionsMask);
     }
 
-    inline void disableOptions(GenericDrawCommand& cmd, const BaseType<CmdRenderOptions> optionsMask) noexcept {
-        cmd._renderOptions &= ~optionsMask;
+    inline void disableOptions(GenericDrawCommand& cmd, const CmdRenderOptions optionsMask) noexcept {
+        cmd._renderOptions &= ~to_base(optionsMask);
     }
 
-    inline void setOptions(GenericDrawCommand& cmd, const BaseType<CmdRenderOptions> optionsMask, const bool state) noexcept
+    inline void setOptions(GenericDrawCommand& cmd, const CmdRenderOptions optionsMask, const bool state) noexcept
     {
         if (state)
         {

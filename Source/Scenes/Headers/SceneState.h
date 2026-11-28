@@ -140,6 +140,8 @@ class SceneRenderState : public SceneComponent {
     U16 _stateMask = 0u;
 };
 
+DIVIDE_ENUM_FLAGS(SceneRenderState::RenderOptions);
+
 class Camera;
 
 enum class MoveDirection : I8

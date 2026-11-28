@@ -804,8 +804,8 @@ namespace
 
     IndirectDrawCandidate ClassifyIndirectDraw( const GenericDrawCommand& draw ) noexcept
     {
-        constexpr U16 requiredOptions = to_base( CmdRenderOptions::RENDER_GEOMETRY ) |
-                                        to_base( CmdRenderOptions::RENDER_INDIRECT );
+        constexpr U16 requiredOptions = to_base( CmdRenderOptions::RENDER_GEOMETRY |
+                                                 CmdRenderOptions::RENDER_INDIRECT );
         if ( draw._renderOptions != requiredOptions )
         {
             return IndirectDrawCandidate::OPTIONS;

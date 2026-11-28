@@ -550,14 +550,14 @@ namespace Divide
                 LockGuard<SharedMutex> w_lock( _drawCommands._dataLock );
                 if ( _drawCommands._data.empty() )
                 {
-                    U8 drawCmdOptions = 0u;
+                    CmdRenderOptions drawCmdOptions{};
                     if ( drawGeometry )
                     {
-                        drawCmdOptions |= to_base( CmdRenderOptions::RENDER_GEOMETRY );
+                        drawCmdOptions |= CmdRenderOptions::RENDER_GEOMETRY;
                     }
                     if ( drawWireframe )
                     {
-                        drawCmdOptions |= to_base( CmdRenderOptions::RENDER_WIREFRAME );
+                        drawCmdOptions |= CmdRenderOptions::RENDER_WIREFRAME;
                     }
 
                     _parentSGN->getNode().buildDrawCommands( _parentSGN, _drawCommands._data );
