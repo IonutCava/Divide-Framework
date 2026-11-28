@@ -876,6 +876,7 @@ set( TEST_ENGINE_SOURCE UnitTests/unitTestCommon.h
                         UnitTests/Test-Engine/CullCounterReadbackTests.cpp
                         UnitTests/Test-Engine/EditorTests.cpp
                         UnitTests/Test-Engine/FrameListenerTests.cpp
+                        UnitTests/Test-Engine/FullscreenToggleTests.cpp
                         UnitTests/Test-Engine/GUIButtonTests.cpp
                         UnitTests/Test-Engine/ImageToolsTests.cpp
                         UnitTests/Test-Engine/LightingTests.cpp
