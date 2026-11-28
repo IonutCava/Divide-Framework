@@ -7,7 +7,25 @@
 
 layout(location = TARGET_ALBEDO) out vec4 _colourOut;
 
+#if defined(ALPHA_TEST_PASS) && defined(MAIN_DISPLAY_PASS)
+
+#include "utility.frag"
+#include "velocityCalc.frag"
+
+// Alpha-tested geometry is not in the depth pre-pass, so it writes its own velocity
+layout(location = TARGET_VELOCITY) out vec2 _velocityOut;
+
+void writeScreenColour(in vec4 colour, in vec3 transmissionCoefficient, in vec3 normalWV)
+{
+    _colourOut = colour;
+    _velocityOut = velocityCalc();
+}
+
+#else //ALPHA_TEST_PASS && MAIN_DISPLAY_PASS
+
 #define writeScreenColour(COLOUR, TRANSMIT, NORMAL) _colourOut = COLOUR
+
+#endif //ALPHA_TEST_PASS && MAIN_DISPLAY_PASS
 
 #else //OIT_PASS
 
@@ -36,26 +54,16 @@ float writePixel(in vec4 colourIn, in vec3 transmissionCoefficient)
 
     //for a full explanation and derivation.
     premultipliedReflect.a *= 1.0f - Saturate((transmissionCoefficient.r + transmissionCoefficient.g + transmissionCoefficient.b) * 0.33f);
-    
-    // You may need to adjust the w function if you have a very large or very small view volume; see the paper and
-    // presentation slides at http://jcgt.org/published/0002/02/09/ 
-    // Intermediate terms to be cubed
-#if 1
-    const float a = min(1.f, premultipliedReflect.a) * 8.f + 0.01f;
-    float b = 1.f - gl_FragCoord.z * 0.95f;
-    const float max = 3e2;
-    // If your scene has a lot of content very close to the far plane, then include this line (one rsqrt instruction):
-    /* const float viewSpaceZ = ViewSpaceZ(texture(texDepth, dvd_screenPositionNormalised).r, inverse(dvd_ProjectionMatrix));
-    b /= sqrt(1e4 * abs(viewSpaceZ));*/
-#else //https://learnopengl.com/Guest-Articles/2020/OIT/Weighted-Blended#:~:text=Weighted%2C%20Blended%20is%20an%20approximate,class%20of%20then%20gaming%20platforms.
 
-    const float a = min( 1.f, premultipliedReflect.a) * 10.f + 0.01f;
-    const float b = 1.f - gl_FragCoord.z * 0.9f;
-    const float max = 3e3;
-#endif
-
-   // weight function
-    const float weight = clamp(pow(a, 3) * 1e8 * pow(b, 3), 1e-2, max );
+    // Weight by linear view depth so nearer layers dominate the average (McGuire and Bavoil 2013, eq. 8, http://jcgt.org/published/0002/02/09/).
+    // Window-space depth is too non-linear for this: with a distant far plane it saturates the weight at every depth.
+    // The upper clamp keeps the summed HDR colour within half-float range.
+    const float viewDepth = 1.f / gl_FragCoord.w;
+    const float nearTerm = viewDepth * 0.1f;
+    const float farTerm = viewDepth * 0.005f;
+    const float farTerm3 = farTerm * farTerm * farTerm;
+    const float depthWeight = 10.f / (1e-5f + nearTerm * nearTerm * nearTerm + farTerm3 * farTerm3);
+    const float weight = premultipliedReflect.a * clamp(depthWeight, 1e-2f, 3e2f);
 
     // store pixel color accumulation
     _accum = premultipliedReflect * weight;

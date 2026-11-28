@@ -193,7 +193,7 @@ PBRMaterial initMaterialProperties(in NodeMaterialData matData, in vec3 albedo, 
     getTextureOMR(dvd_UsePackedOMR(matData), vec3(uv, 0), dvd_TexOperationsB(matData).xyz, OMR.rgb);
     material._occlusion = OMR.r;
 
-#if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS) && !defined(OIT_PASS) && !defined(TRANSPARENCY_PASS)
+#if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS) && !defined(OIT_PASS) && !defined(TRANSPARENCY_PASS) && !defined(ALPHA_TEST_PASS)
     material._roughness = sampleTexSceneNormals().b;
 #else
 #if defined(SHADING_MODE_BLINN_PHONG)
@@ -326,7 +326,7 @@ vec3 getNormalMap(in sampler2DArray tex, in vec3 uv, out float normalVariation) 
 
 vec3 getNormalWV(in NodeMaterialData data, in vec3 uv, out float normalVariation) {
     normalVariation = 0.f;
-#if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS) && !defined(OIT_PASS) && !defined(TRANSPARENCY_PASS)
+#if defined(MAIN_DISPLAY_PASS) && !defined(PRE_PASS) && !defined(OIT_PASS) && !defined(TRANSPARENCY_PASS) && !defined(ALPHA_TEST_PASS)
     return normalize(unpackNormal(sampleTexSceneNormals().rg));
 #else
     vec3 normalWV = VAR._normalWV;
@@ -336,7 +336,7 @@ vec3 getNormalWV(in NodeMaterialData data, in vec3 uv, out float normalVariation
         normalWV = getTBNWV() * normalData;
     }
 #endif //COMPUTE_TBN
-#if defined(OIT_PASS) || defined(TRANSPARENCY_PASS)
+#if defined(OIT_PASS) || defined(TRANSPARENCY_PASS) || defined(ALPHA_TEST_PASS)
     return normalize(normalWV) * (2.f * float(gl_FrontFacing) - 1.f);
 #else
     return normalize(normalWV) * (dvd_IsDoubleSided(data) ? (2.f * float(gl_FrontFacing) - 1.f) : 1.f);

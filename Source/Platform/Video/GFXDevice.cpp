@@ -773,12 +773,6 @@ namespace Divide
         screenDescriptor._mipMappingState = MipMappingState::OFF;
         AddImageUsageFlag( screenDescriptor, ImageUsage::SHADER_READ);
 
-        TextureDescriptor materialDescriptor{};
-        materialDescriptor._dataType = GFXDataFormat::FLOAT_16;
-        materialDescriptor._baseFormat = GFXImageFormat::RG;
-        materialDescriptor._packing = GFXImagePacking::UNNORMALIZED;
-        materialDescriptor._mipMappingState = MipMappingState::OFF;
-
         // Normal, Previous and MSAA
         {
             InternalRTAttachmentDescriptors attachments
@@ -1718,8 +1712,7 @@ namespace Divide
                 DIVIDE_ASSERT( false, "Renderer: uniform upload arena bookkeeping failed" );
                 Console::errorfn( "Renderer: uniform upload arena bookkeeping failed for shader '{}' block '{}'", shaderName, blockName );
                 break;
-            case UniformUploadResult::OK:
-            case UniformUploadResult::COUNT:
+            default:
                 break;
         }
     }
@@ -2119,7 +2112,25 @@ namespace Divide
     void GFXDevice::setShadowMSAASampleCountInternal( const ShadowType type, U8 sampleCount )
     {
         CLAMP( sampleCount, U8_ZERO, DisplayManager::MaxMSAASamples() );
+
+        const auto& shadowSettings = _context.config().rendering.shadowMapping;
+        const auto usesMSAA = [&shadowSettings, type]() noexcept
+        {
+            switch ( type )
+            {
+                case ShadowType::CSM:    return shadowSettings.csm.MSAASamples > 0u;
+                case ShadowType::SINGLE: return shadowSettings.spot.MSAASamples > 0u;
+                default:                 return false;
+            }
+        };
+
+        const bool usedMSAA = usesMSAA();
         ShadowMap::setMSAASampleCount( type, sampleCount );
+        if ( usesMSAA() != usedMSAA )
+        {
+            // Alpha-tested shadow casters switch between alpha-to-coverage and a plain alpha test
+            Material::RecomputeShaders();
+        }
     }
 
     /// The main entry point for any resolution change request

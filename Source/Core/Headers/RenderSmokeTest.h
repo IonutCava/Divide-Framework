@@ -246,7 +246,7 @@ namespace Divide::RenderSmokeTest
 
         // Written once by Configure() before the engine starts any other thread, then only read.
         // Only bits of an enabled run are ever set, so every accessor below already implies Enabled().
-        inline std::atomic<U32> g_options{ 0u };
+        extern std::atomic<U32> g_options;
 
         [[nodiscard]] inline bool HasOption( const OptionBit option ) noexcept
         {

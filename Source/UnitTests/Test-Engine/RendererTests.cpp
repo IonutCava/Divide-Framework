@@ -1130,6 +1130,7 @@ namespace Divide
                 case 7u: ++changed._splitCount; break;
                 case 8u: changed._visibilityDistances[1] += 1.f; break;
                 case 9u: changed._rangeCameraEye[0] += 1.f; break;
+                default: break;
             }
             CAPTURE(field);
             CHECK(cache.needsRefresh(changed, false));
@@ -1918,13 +1919,14 @@ namespace Divide
         }
     }
 
-    TEST_CASE( "View depth and colour passes exclude translucent bins without changing shadow casters", "[renderer][render_queue]" )
+    TEST_CASE( "View depth and colour passes exclude alpha-tested and translucent bins without changing shadow casters", "[renderer][render_queue]" )
     {
         using Params = RenderQueue::PopulateQueueParams;
-        constexpr std::array<RenderBinType, 7u> bins{{
+        constexpr std::array<RenderBinType, 8u> bins{{
             RenderBinType::OPAQUE, RenderBinType::WATER, RenderBinType::TERRAIN, RenderBinType::TERRAIN_AUX,
-            RenderBinType::SKY, RenderBinType::TRANSLUCENT, RenderBinType::IMPOSTOR
+            RenderBinType::SKY, RenderBinType::ALPHA_TESTED, RenderBinType::TRANSLUCENT, RenderBinType::IMPOSTOR
         }};
+        static_assert( bins.size() == to_base( RenderBinType::COUNT ) );
         constexpr std::array<RenderStage, 4u> stages{{
             RenderStage::DISPLAY, RenderStage::REFLECTION, RenderStage::REFRACTION, RenderStage::NODE_PREVIEW
         }};
@@ -1933,18 +1935,21 @@ namespace Divide
         {
             for ( const RenderPassType pass : { RenderPassType::PRE_PASS, RenderPassType::MAIN_PASS } )
             {
-                const Params params = Params::ForPass( { stage, pass }, false );
+                const Params opaque = Params::ForPass( { stage, pass }, RenderBinContent::OPAQUE );
+                const Params alphaTested = Params::ForPass( { stage, pass }, RenderBinContent::ALPHA_TESTED );
                 for ( const RenderBinType bin : bins )
                 {
                     CAPTURE( stage, pass, bin );
-                    CHECK( params.includes( bin ) == ( bin != RenderBinType::TRANSLUCENT ) );
+                    CHECK( opaque.includes( bin ) == ( bin != RenderBinType::TRANSLUCENT && bin != RenderBinType::ALPHA_TESTED ) );
+                    CHECK( alphaTested.includes( bin ) == ( bin == RenderBinType::ALPHA_TESTED ) );
                 }
-                CHECK_FALSE( params.includes( RenderBinType::COUNT ) );
+                CHECK_FALSE( opaque.includes( RenderBinType::COUNT ) );
+                CHECK_FALSE( alphaTested.includes( RenderBinType::COUNT ) );
             }
 
             for ( const RenderPassType pass : { RenderPassType::OIT_PASS, RenderPassType::TRANSPARENCY_PASS } )
             {
-                const Params params = Params::ForPass( { stage, pass }, true );
+                const Params params = Params::ForPass( { stage, pass }, RenderBinContent::TRANSLUCENT );
                 for ( const RenderBinType bin : bins )
                 {
                     CAPTURE( stage, pass, bin );
@@ -1955,21 +1960,25 @@ namespace Divide
 
         for ( const RenderPassType pass : { RenderPassType::PRE_PASS, RenderPassType::MAIN_PASS } )
         {
-            const Params params = Params::ForPass( { RenderStage::SHADOW, pass }, false );
-            for ( const RenderBinType bin : bins )
+            for ( const RenderBinContent content : { RenderBinContent::OPAQUE, RenderBinContent::ALPHA_TESTED, RenderBinContent::TRANSLUCENT } )
             {
-                CAPTURE( pass, bin );
-                CHECK( params.includes( bin ) );
+                const Params params = Params::ForPass( { RenderStage::SHADOW, pass }, content );
+                for ( const RenderBinType bin : bins )
+                {
+                    CAPTURE( pass, content, bin );
+                    CHECK( params.includes( bin ) );
+                }
             }
         }
 
-        const Params all{ {}, RenderBinType::COUNT, false };
-        const Params none{ {}, RenderBinType::COUNT, true };
+        const Params all = Params::AllBins( {} );
+        const Params none{ {}, 0u };
         for ( const RenderBinType bin : bins )
         {
             CHECK( all.includes( bin ) );
             CHECK_FALSE( none.includes( bin ) );
         }
+        CHECK_FALSE( all.includes( RenderBinType::COUNT ) );
     }
 
     TEST_CASE( "Material readiness polls every required render pass", "[renderer][render_queue][startup]" )
@@ -2002,12 +2011,14 @@ namespace Divide
         using Params = RenderQueue::PopulateQueueParams;
         for ( const RenderStage stage : { RenderStage::DISPLAY, RenderStage::REFLECTION, RenderStage::REFRACTION, RenderStage::NODE_PREVIEW } )
         {
-            for ( const RenderBinType bin : { RenderBinType::OPAQUE, RenderBinType::SKY, RenderBinType::WATER, RenderBinType::TRANSLUCENT } )
+            for ( const RenderBinType bin : { RenderBinType::OPAQUE, RenderBinType::SKY, RenderBinType::WATER, RenderBinType::ALPHA_TESTED, RenderBinType::TRANSLUCENT } )
             {
                 CAPTURE( stage, bin );
                 const bool translucent = bin == RenderBinType::TRANSLUCENT;
+                const bool inPrePass = !translucent && bin != RenderBinType::ALPHA_TESTED;
+                // The alpha-tested pass draws main pass packages, so every bin needs its main pass material.
                 CHECK( Params::RequiresMaterialForPreparation( { stage, RenderPassType::MAIN_PASS }, bin, false ) );
-                CHECK( Params::RequiresMaterialForPreparation( { stage, RenderPassType::PRE_PASS }, bin, true ) == !translucent );
+                CHECK( Params::RequiresMaterialForPreparation( { stage, RenderPassType::PRE_PASS }, bin, true ) == inPrePass );
                 CHECK_FALSE( Params::RequiresMaterialForPreparation( { stage, RenderPassType::PRE_PASS }, bin, false ) );
                 for ( const RenderPassType pass : { RenderPassType::OIT_PASS, RenderPassType::TRANSPARENCY_PASS } )
                 {
@@ -2017,10 +2028,12 @@ namespace Divide
             }
         }
 
-        CHECK( Params::RequiresMaterialForPreparation( { RenderStage::SHADOW, RenderPassType::MAIN_PASS },
-                                                        RenderBinType::TRANSLUCENT, true ) );
-        CHECK( Params::RequiresMaterialForPreparation( { RenderStage::SHADOW, RenderPassType::PRE_PASS },
-                                                        RenderBinType::TRANSLUCENT, true ) );
+        for ( const RenderBinType bin : { RenderBinType::ALPHA_TESTED, RenderBinType::TRANSLUCENT } )
+        {
+            CAPTURE( bin );
+            CHECK( Params::RequiresMaterialForPreparation( { RenderStage::SHADOW, RenderPassType::MAIN_PASS }, bin, true ) );
+            CHECK( Params::RequiresMaterialForPreparation( { RenderStage::SHADOW, RenderPassType::PRE_PASS }, bin, true ) );
+        }
     }
 
     TEST_CASE( "Only nodes with prepared main-pass draws reach later passes", "[renderer][render_queue][startup]" )

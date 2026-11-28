@@ -317,6 +317,21 @@ private:
                   GFX::CommandBuffer& bufferInOut,
                   GFX::MemoryBarrierCommand& memCmdInOut);
 
+    /// Draws alpha-tested geometry before the opaque main pass. It writes its own depth (and velocity for the display stage).
+    void alphaTestedPass(const RenderPassParams& params,
+                         const CameraSnapshot& cameraSnapshot,
+                         RenderTarget& target,
+                         bool prePassExecuted,
+                         bool hasHiZ,
+                         GFX::CommandBuffer& bufferInOut,
+                         GFX::MemoryBarrierCommand& memCmdInOut);
+
+    void bindColourPassResources(const RenderPassParams& params,
+                                 RenderTarget& target,
+                                 bool prePassExecuted,
+                                 bool hasHiZ,
+                                 GFX::CommandBuffer& bufferInOut) const;
+
     void transparencyPass(const RenderPassParams& params,
                           const CameraSnapshot& cameraSnapshot,
                           GFX::CommandBuffer& bufferInOut,
@@ -329,7 +344,7 @@ private:
 
     void prepareRenderQueues(const RenderPassParams& params,
                              const CameraSnapshot& cameraSnapshot,
-                             bool transparencyPass,
+                             RenderBinContent content,
                              RenderingOrder renderOrder,
                              GFX::CommandBuffer& bufferInOut,
                              GFX::MemoryBarrierCommand& memCmdInOut);
