@@ -113,12 +113,12 @@ namespace Divide
 
     U16 ShadowMap::WorldAOCullFlags() noexcept
     {
-        return to_base(CullOptions::CULL_AGAINST_CLIPPING_PLANES) |
-               to_base(CullOptions::CULL_AGAINST_FRUSTUM) |
-               to_base(CullOptions::CULL_VEGETATION_NODES) |
-               to_base(CullOptions::CULL_SKINNED_NODES) |
-               to_base(CullOptions::CULL_TERRAIN_NODES) |
-               to_base(CullOptions::CULL_TRANSLUCENT_NODES);
+        return to_base(CullOptions::CULL_AGAINST_CLIPPING_PLANES |
+                       CullOptions::CULL_AGAINST_FRUSTUM |
+                       CullOptions::CULL_VEGETATION_NODES |
+                       CullOptions::CULL_SKINNED_NODES |
+                       CullOptions::CULL_TERRAIN_NODES |
+                       CullOptions::CULL_TRANSLUCENT_NODES);
     }
 
     namespace

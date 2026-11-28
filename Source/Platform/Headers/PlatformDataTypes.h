@@ -222,6 +222,8 @@ namespace Divide
         return std::to_underlying(value);
     }
 
+#include "EnumFlags.h"
+
     namespace detail
     {
         FORCE_INLINE void internal_assert(const bool expr)

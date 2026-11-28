@@ -191,6 +191,7 @@ namespace Divide {
         NEW_REFRACTION = toBit(6),
         COUNT = 6
     };
+    DIVIDE_ENUM_FLAGS(MaterialUpdateResult);
 
 }; //namespace Divide
 

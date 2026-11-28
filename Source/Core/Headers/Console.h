@@ -195,6 +195,8 @@ struct Console : NonCopyable
         static std::array<bool, to_base(StreamType::COUNT)> s_streamDirty;
 };
 
+DIVIDE_ENUM_FLAGS(Console::Flags);
+
 namespace Names
 {
     static const char* consoleEntryType[] = {

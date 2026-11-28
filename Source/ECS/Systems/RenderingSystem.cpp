@@ -77,8 +77,8 @@ namespace Divide
             {
                 comp->parentSGN()->getNode().rebuildDrawCommands( false );
                 comp->rebuildDrawCommands( false );
-                comp->_materialUpdateMask |= to_base( MaterialUpdateResult::NEW_SHADER );
-                comp->_materialUpdateMask |= to_base( MaterialUpdateResult::NEW_CULL );
+                comp->_materialUpdateMask |= to_base( MaterialUpdateResult::NEW_SHADER |
+                                                      MaterialUpdateResult::NEW_CULL );
             }
         }
     }
@@ -100,8 +100,8 @@ namespace Divide
 
             DIVIDE_ASSERT( comp->_materialInstance != INVALID_HANDLE<Material> );
 
-            if ( comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_SHADER ) ||
-                 comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_CULL ) )
+            if ( comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_SHADER |
+                                                     MaterialUpdateResult::NEW_CULL ) )
             {
                 comp->clearDrawPackages();
                 Get(comp->_materialInstance)->clearRenderStates();

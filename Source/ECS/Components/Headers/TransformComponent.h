@@ -52,6 +52,7 @@ enum class TransformType : U8 {
     ALL = TRANSLATION | SCALE | ROTATION,
     COUNT = 4
 };
+DIVIDE_ENUM_FLAGS(TransformType);
 
 BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
     friend class Attorney::TransformComponentSGN;

@@ -200,6 +200,8 @@ struct WindowDescriptor
     bool startMaximized{ false };
 };
 
+DIVIDE_ENUM_FLAGS(WindowDescriptor::Flags);
+
 
 struct SizeChangeParams
 {

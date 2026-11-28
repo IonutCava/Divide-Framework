@@ -78,6 +78,7 @@ enum class CmdRenderOptions : U8
     RENDER_INDIRECT           = toBit(3),
     COUNT = 3
 };
+DIVIDE_ENUM_FLAGS(CmdRenderOptions);
 
 struct GenericDrawCommand
 {
@@ -98,9 +99,9 @@ void enableOption(GenericDrawCommand& cmd, CmdRenderOptions option) noexcept;
 void disableOption(GenericDrawCommand& cmd, CmdRenderOptions option) noexcept;
 void setOption(GenericDrawCommand& cmd, CmdRenderOptions option, bool state) noexcept;
 
-void enableOptions(GenericDrawCommand& cmd, BaseType<CmdRenderOptions> optionsMask) noexcept;
-void disableOptions(GenericDrawCommand& cmd, BaseType<CmdRenderOptions> optionsMask) noexcept;
-void setOptions(GenericDrawCommand& cmd, BaseType<CmdRenderOptions> optionsMask, bool state) noexcept;
+void enableOptions(GenericDrawCommand& cmd, CmdRenderOptions optionsMask) noexcept;
+void disableOptions(GenericDrawCommand& cmd, CmdRenderOptions optionsMask) noexcept;
+void setOptions(GenericDrawCommand& cmd, CmdRenderOptions optionsMask, bool state) noexcept;
 
 void resetOptions(GenericDrawCommand& cmd) noexcept;
 
