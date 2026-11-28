@@ -62,6 +62,7 @@ Start with [the architecture index](docs/architecture/index.md), then read the g
 | Shader bindings, reflection, and caches | [Shaders and descriptors](docs/architecture/shader-descriptors.md) |
 | GPU allocation, uploads, and device capabilities | [GPU resources](docs/architecture/gpu-resources.md) |
 | Mesh import, LoD, vertex layout, and texture caching | [Asset pipeline](docs/architecture/asset-pipeline.md) |
+| Rigid bodies, collision shapes, and physics simulation | [Physics](docs/architecture/physics.md) |
 | Scene loading, transforms, bounds, XML, and saves | [Scene loading](docs/architecture/scene-loading.md) |
 | Editor windows, docking, properties, and output | [Editor windows](docs/architecture/editor.md) |
 | Task pools, asynchronous work, and synchronization | [Threading](docs/architecture/threading.md) |

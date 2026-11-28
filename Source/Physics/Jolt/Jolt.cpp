@@ -9,7 +9,15 @@ JPH_SUPPRESS_WARNING_PUSH
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyActivationListener.h>
+#include <Jolt/Physics/Body/BodyManager.h>
+#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 JPH_SUPPRESS_WARNING_POP
+
+#include "Graphs/Headers/SceneGraphNode.h"
+#include "Graphs/Headers/SceneNode.h"
+#include "ECS/Components/Headers/TransformComponent.h"
+#include "ECS/Components/Headers/RigidBodyComponent.h"
+#include "Core/Math/BoundingVolumes/Headers/BoundingBox.h"
 
 static void TraceImpl(const char* inFMT, ...)
 {
@@ -139,25 +147,20 @@ namespace Divide
         // See: ContactListener
         virtual JPH::ValidateResult	OnContactValidate([[maybe_unused]] const JPH::Body& inBody1, [[maybe_unused]] const JPH::Body& inBody2, [[maybe_unused]] JPH::RVec3Arg inBaseOffset, [[maybe_unused]] const JPH::CollideShapeResult& inCollisionResult) override
         {
-            Console::printfn("Contact validate callback");
-
             // Allows you to ignore a contact before it is created (using layers to not make objects collide is cheaper!)
             return JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
         }
 
         virtual void OnContactAdded([[maybe_unused]] const JPH::Body& inBody1, [[maybe_unused]] const JPH::Body& inBody2, [[maybe_unused]] const JPH::ContactManifold& inManifold, [[maybe_unused]] JPH::ContactSettings& ioSettings) override
         {
-            Console::printfn("A contact was added");
         }
 
         virtual void OnContactPersisted([[maybe_unused]] const JPH::Body& inBody1, [[maybe_unused]] const JPH::Body& inBody2, [[maybe_unused]] const JPH::ContactManifold& inManifold, [[maybe_unused]] JPH::ContactSettings& ioSettings) override
         {
-            Console::printfn("A contact was persisted");
         }
 
         virtual void OnContactRemoved([[maybe_unused]] const JPH::SubShapeIDPair& inSubShapePair) override
         {
-            Console::printfn("A contact was removed");
         }
     };
 
@@ -167,12 +170,10 @@ namespace Divide
     public:
         virtual void OnBodyActivated([[maybe_unused]] const JPH::BodyID& inBodyID, [[maybe_unused]] JPH::uint64 inBodyUserData) override
         {
-            Console::printfn("A body got activated");
         }
 
         virtual void OnBodyDeactivated([[maybe_unused]] const JPH::BodyID& inBodyID, [[maybe_unused]] JPH::uint64 inBodyUserData) override
         {
-            Console::printfn("A body went to sleep");
         }
     };
 
@@ -188,7 +189,93 @@ namespace Divide
         MyBodyActivationListener body_activation_listener;
         MyContactListener contact_listener;
 
+        JPH::RVec3 toJoltVec3(const float3& value)
+        {
+            return JPH::RVec3(value._v[0], value._v[1], value._v[2]);
+        }
+
+        JPH::Quat toJoltQuat(const quatf& value)
+        {
+            return JPH::Quat(value.X(), value.Y(), value.Z(), value.W());
+        }
+
+        float3 fromJoltVec3(const JPH::RVec3& value)
+        {
+            return float3(value.GetX(), value.GetY(), value.GetZ());
+        }
+
+        quatf fromJoltQuat(const JPH::Quat& value)
+        {
+            return quatf(value.GetX(), value.GetY(), value.GetZ(), value.GetW());
+        }
     }
+
+    /// Jolt-specific rigid body. Kept out of the shared headers so JPH::BodyID
+    /// does not leak into engine-wide code.
+    class PhysicsAssetJolt final : public PhysicsAsset
+    {
+    public:
+        PhysicsAssetJolt(RigidBodyComponent& parent, JPH::PhysicsSystem& physicsSystem, const JPH::BodyID bodyID) noexcept
+            : PhysicsAsset(parent)
+            , _physicsSystem(&physicsSystem)
+            , _bodyID(bodyID)
+        {
+        }
+
+        ~PhysicsAssetJolt() override
+        {
+            if (_physicsSystem != nullptr && !_bodyID.IsInvalid())
+            {
+                JPH::BodyInterface& bodyInterface = _physicsSystem->GetBodyInterface();
+                bodyInterface.RemoveBody(_bodyID);
+                bodyInterface.DestroyBody(_bodyID);
+            }
+        }
+
+        void physicsCollisionGroup(const PhysicsGroup group) override
+        {
+            if (_physicsSystem == nullptr || _bodyID.IsInvalid())
+            {
+                return;
+            }
+
+            JPH::BodyInterface& bodyInterface = _physicsSystem->GetBodyInterface();
+
+            switch (group)
+            {
+                case PhysicsGroup::GROUP_STATIC:
+                case PhysicsGroup::GROUP_IGNORE:
+                {
+                    // Become static first (deactivates the body), then leave the moving layer
+                    bodyInterface.SetMotionType(_bodyID, JPH::EMotionType::Static, JPH::EActivation::DontActivate);
+                    bodyInterface.SetObjectLayer(_bodyID, Layers::NON_MOVING);
+                } break;
+                case PhysicsGroup::GROUP_KINEMATIC:
+                {
+                    bodyInterface.SetObjectLayer(_bodyID, Layers::MOVING);
+                    bodyInterface.SetMotionType(_bodyID, JPH::EMotionType::Kinematic, JPH::EActivation::DontActivate);
+                } break;
+                case PhysicsGroup::GROUP_DYNAMIC:
+                case PhysicsGroup::GROUP_RAGDOL:
+                case PhysicsGroup::GROUP_VEHICLE:
+                {
+                    // Ragdoll and vehicle bodies are simulated as plain dynamic bodies for now
+                    bodyInterface.SetObjectLayer(_bodyID, Layers::MOVING);
+                    bodyInterface.SetMotionType(_bodyID, JPH::EMotionType::Dynamic, JPH::EActivation::Activate);
+                } break;
+                default:
+                case PhysicsGroup::GROUP_COUNT:
+                    break;
+            }
+        }
+
+        [[nodiscard]] JPH::BodyID bodyID() const noexcept { return _bodyID; }
+        [[nodiscard]] bool isValid() const noexcept { return _physicsSystem != nullptr && !_bodyID.IsInvalid(); }
+
+    private:
+        JPH::PhysicsSystem* _physicsSystem = nullptr;
+        JPH::BodyID _bodyID;
+    };
 
     PhysicsJolt::PhysicsJolt( PlatformContext& context )
         : PhysicsAPIWrapper(context)
@@ -221,6 +308,10 @@ namespace Divide
 
         _physicsSystem->SetContactListener(&contact_listener);
 
+        // Jolt already defaults to (0, -9.81, 0); made explicit so it can move to
+        // per-scene configuration read from the scene XML later.
+        _physicsSystem->SetGravity(JPH::Vec3(0.0f, -9.81f, 0.0f));
+
         return ErrorCode::NO_ERR;
     }
 
@@ -246,9 +337,54 @@ namespace Divide
         _physicsSystem->Update(Time::MicrosecondsToSeconds<F32>(deltaTimeGameUS), cCollisionSteps, _allocator.get(), _threadPool.get());
     }
 
-    /// Update actors
+    /// Update actors: copy dynamic body transforms back into the scene graph
     void PhysicsJolt::frameEndedInternal([[maybe_unused]] const U64 deltaTimeGameUS )
     {
+        if (_physicsSystem == nullptr)
+        {
+            return;
+        }
+
+        JPH::BodyIDVector activeBodies;
+        _physicsSystem->GetActiveBodies(JPH::EBodyType::RigidBody, activeBodies);
+
+        const JPH::BodyInterface& bodyInterface = _physicsSystem->GetBodyInterface();
+        for (const JPH::BodyID& bodyID : activeBodies)
+        {
+            // Only the simulation owns dynamic bodies; kinematic and the rest are deferred
+            if (bodyInterface.GetMotionType(bodyID) != JPH::EMotionType::Dynamic)
+            {
+                continue;
+            }
+
+            auto* asset = reinterpret_cast<PhysicsAssetJolt*>(bodyInterface.GetUserData(bodyID));
+            if (asset == nullptr || !asset->isValid())
+            {
+                continue;
+            }
+
+            SceneGraphNode* node = asset->getParent().parentSGN();
+            TransformComponent* tComp = node->get<TransformComponent>();
+            if (tComp == nullptr)
+            {
+                continue;
+            }
+
+            const float3 worldPosition = fromJoltVec3(bodyInterface.GetPosition(bodyID));
+            const quatf worldOrientation = fromJoltQuat(bodyInterface.GetRotation(bodyID));
+
+            const TransformComponent* parentComp = node->parent() != nullptr ? node->parent()->get<TransformComponent>() : nullptr;
+            if (parentComp != nullptr)
+            {
+                const mat4<F32> worldMatrix = GetMatrix(TransformValues{ worldOrientation, worldPosition, tComp->getWorldScale() });
+                tComp->setTransforms(parentComp->getWorldMatrix().getInverse() * worldMatrix);
+            }
+            else
+            {
+                tComp->setPosition(worldPosition);
+                tComp->setRotation(worldOrientation);
+            }
+        }
     }
 
     void PhysicsJolt::idle()
@@ -265,13 +401,98 @@ namespace Divide
         return true;
     }
 
-    PhysicsAsset* PhysicsJolt::createRigidActor([[maybe_unused]] SceneGraphNode* node, [[maybe_unused]] RigidBodyComponent& parentComp )
+    PhysicsAsset* PhysicsJolt::createRigidActor(SceneGraphNode* node, RigidBodyComponent& parentComp )
     {
-        return nullptr;
+        if (node == nullptr || _physicsSystem == nullptr)
+        {
+            return nullptr;
+        }
+
+        const TransformComponent* tComp = node->get<TransformComponent>();
+        if (tComp == nullptr)
+        {
+            return nullptr;
+        }
+
+        const BoundingBox localBounds = node->getNode().getBounds();
+        const float3 halfExtent = localBounds.getHalfExtent();
+        const float3& scale = tComp->getWorldScale();
+
+        JPH::Shape* shape = nullptr;
+        switch (node->handle()._type)
+        {
+            case SceneNodeType::TYPE_SPHERE_3D:
+            {
+                const F32 radius = std::max(halfExtent._v[0], std::max(halfExtent._v[1], halfExtent._v[2]));
+                const F32 uniformScale = std::max(scale._v[0], std::max(scale._v[1], scale._v[2]));
+                if (radius > 0.001f && uniformScale > 0.001f)
+                {
+                    shape = new JPH::SphereShape(radius * uniformScale);
+                }
+            } break;
+            case SceneNodeType::TYPE_BOX_3D:
+            case SceneNodeType::TYPE_QUAD_3D:
+            {
+                // Clamp thin extents (e.g. quads) so the box stays valid
+                constexpr F32 minHalfExtent = 0.01f;
+                shape = new JPH::BoxShape(JPH::Vec3(std::max(halfExtent._v[0] * scale._v[0], minHalfExtent),
+                                                    std::max(halfExtent._v[1] * scale._v[1], minHalfExtent),
+                                                    std::max(halfExtent._v[2] * scale._v[2], minHalfExtent)));
+            } break;
+            default:
+                // Meshes (convex hulls), terrain (height fields) and water are handled in later steps
+                break;
+        }
+
+        if (shape == nullptr)
+        {
+            return nullptr;
+        }
+
+        // Nodes whose bounds are not centred on the pivot (e.g. quads) need the
+        // shape offset so that it lines up with the rendered geometry
+        const float3 boundsCenter = localBounds.getCenter();
+        if (std::abs(boundsCenter._v[0]) > 0.001f ||
+            std::abs(boundsCenter._v[1]) > 0.001f ||
+            std::abs(boundsCenter._v[2]) > 0.001f)
+        {
+            const float3 scaledCenter{ boundsCenter._v[0] * scale._v[0],
+                                       boundsCenter._v[1] * scale._v[1],
+                                       boundsCenter._v[2] * scale._v[2] };
+            shape = new JPH::RotatedTranslatedShape(toJoltVec3(scaledCenter), JPH::Quat::sIdentity(), shape);
+        }
+
+        JPH::BodyCreationSettings settings(shape,
+                                           toJoltVec3(tComp->getWorldPosition()),
+                                           toJoltQuat(tComp->getWorldOrientation()),
+                                           JPH::EMotionType::Static,
+                                           Layers::NON_MOVING);
+        // Static bodies keep mass properties around so they can be switched to dynamic later
+        settings.mAllowDynamicOrKinematic = true;
+
+        JPH::BodyInterface& bodyInterface = _physicsSystem->GetBodyInterface();
+        const JPH::BodyID bodyID = bodyInterface.CreateAndAddBody(settings, JPH::EActivation::DontActivate);
+        if (bodyID.IsInvalid())
+        {
+            return nullptr;
+        }
+
+        auto* asset = new PhysicsAssetJolt(parentComp, *_physicsSystem, bodyID);
+        bodyInterface.SetUserData(bodyID, reinterpret_cast<JPH::uint64>(asset));
+        asset->physicsCollisionGroup(parentComp.physicsCollisionGroup());
+
+        return asset;
     }
 
-    bool PhysicsJolt::convertActor([[maybe_unused]] PhysicsAsset* actor, [[maybe_unused]] const PhysicsGroup newGroup )
+    bool PhysicsJolt::convertActor(PhysicsAsset* actor, const PhysicsGroup newGroup )
     {
+        auto* asset = static_cast<PhysicsAssetJolt*>(actor);
+        if (asset == nullptr || !asset->isValid())
+        {
+            return false;
+        }
+
+        asset->physicsCollisionGroup(newGroup);
         return true;
     }
 

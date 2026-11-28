@@ -54,7 +54,14 @@ namespace Divide
         };
 
         _simulationSpeed = CLAMPED( simSpeed, 0.f, g_maxSimSpeed );
-        return _api->initPhysicsAPI( targetFrameRate, _simulationSpeed );
+        const ErrorCode ret = _api->initPhysicsAPI( targetFrameRate, _simulationSpeed );
+        if ( ret == ErrorCode::NO_ERR )
+        {
+            // Nothing steps the simulation unless the fixed time step is initialised
+            updateTimeStep( targetFrameRate, _simulationSpeed );
+        }
+
+        return ret;
     }
 
     bool PXDevice::closePhysicsAPI()

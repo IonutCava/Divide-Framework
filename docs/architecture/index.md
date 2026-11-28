@@ -12,6 +12,7 @@ Source paths below and in the guides are relative to the repository root.
 | [Shaders and descriptors](shader-descriptors.md) | `ShaderProgram`, `ShaderDataUploader`, `GLSLToSPIRV`, backend shader programs; bindings and cache compatibility |
 | [GPU resources](gpu-resources.md) | `vkDevice`, `VKWrapper`, GL/Vulkan buffer and texture implementations; allocation, capabilities, coordinate/colour conventions |
 | [Asset pipeline](asset-pipeline.md) | `MeshImporter`, `DVDConverter`, `VertexBuffer`, `Texture`, `ImageTools`; import, cache, and upload |
+| [Physics](physics.md) | `PXDevice`, `PhysicsAPIWrapper`, `PhysicsJolt`, `RigidBodyComponent`/`RigidBodySystem`, `PhysicsAsset`; body creation, collision groups, per-scene settings |
 | [Scene loading](scene-loading.md) | `ProjectManager`, `ScenePool`, `SceneGraph`, transform and bounds systems; scene selection, XML and activation |
 | [Editor windows](editor.md) | `Editor`, `DockedWindow`, property/undo handling, gizmos, output and persisted layouts |
 | [Threading](threading.md) | `PlatformContext`, task pools, render preparation, resource synchronization, Vulkan queue usage |
