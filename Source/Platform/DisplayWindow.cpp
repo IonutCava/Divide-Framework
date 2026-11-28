@@ -182,10 +182,10 @@ bool DisplayWindow::onSDLEvent(const SDL_Event event)
 
     updateDrawableSize();
 
-    if (fullscreen())
+    if ( _type == WindowType::FULLSCREEN )
     {
-        args.x = to_I32(WindowManager::GetFullscreenResolution().width);
-        args.y = to_I32(WindowManager::GetFullscreenResolution().height);
+        args.x = to_I32( _drawableSize.width );
+        args.y = to_I32( _drawableSize.height );
     }
     else
     {
@@ -313,20 +313,32 @@ vec2<U16> DisplayWindow::getDrawableSize() const noexcept
 
 void DisplayWindow::updateDrawableSize() noexcept
 {
-    if ( _type == WindowType::FULLSCREEN || _type == WindowType::FULLSCREEN_WINDOWED )
+    if ( _type == WindowType::FULLSCREEN )
     {
-        _drawableSize = WindowManager::GetFullscreenResolution();
+        const SDL_DisplayMode* activeMode = SDL_GetWindowFullscreenMode( _sdlWindow );
+        if ( activeMode != nullptr && activeMode->w > 0 && activeMode->h > 0 )
+        {
+            _drawableSize.set( to_U16( activeMode->w ), to_U16( activeMode->h ) );
+        }
+        else if ( _parent.fullscreenMode().w > 0 && _parent.fullscreenMode().h > 0 )
+        {
+            _drawableSize.set( to_U16( _parent.fullscreenMode().w ), to_U16( _parent.fullscreenMode().h ) );
+        }
+        else
+        {
+            _drawableSize = WindowManager::GetFullscreenResolution();
+        }
     }
     else
     {
+        // Windowed and borderless fullscreen both report the drawable pixel size.
         I32 w = 1, h = 1;
-        SDL_GetWindowSizeInPixels(_sdlWindow, &w, &h);
-        if (w > 0 && h > 0)
+        SDL_GetWindowSizeInPixels( _sdlWindow, &w, &h );
+        if ( w > 0 && h > 0 )
         {
-            _drawableSize.set(w, h);
+            _drawableSize.set( w, h );
         }
     }
-    
 }
 void DisplayWindow::opacity(const U8 opacity) noexcept
 {
@@ -459,28 +471,73 @@ void DisplayWindow::handleChangeWindowType(const WindowType newWindowType)
     _previousType = _type;
     _type = newWindowType;
 
+    bool ok = true;
     switch (newWindowType)
     {
         case WindowType::WINDOW:
-            DIVIDE_EXPECTED_CALL(SDL_SetWindowFullscreen(_sdlWindow, false));
-            break;
+        {
+            ok = SDL_SetWindowFullscreen( _sdlWindow, false );
+        } break;
         case WindowType::FULLSCREEN_WINDOWED:
-            DIVIDE_EXPECTED_CALL(SDL_SetWindowFullscreen(_sdlWindow, true) && SDL_SetWindowFullscreenMode(_sdlWindow, nullptr));
-            break;
+        {
+            // Borderless: clear exclusive mode, then enter fullscreen desktop.
+            ok = SDL_SetWindowFullscreenMode( _sdlWindow, nullptr ) &&
+                 SDL_SetWindowFullscreen( _sdlWindow, true );
+        } break;
         case WindowType::FULLSCREEN:
-            DIVIDE_EXPECTED_CALL(SDL_SetWindowFullscreen(_sdlWindow, true) && SDL_SetWindowFullscreenMode(_sdlWindow, &_parent.fullscreenMode()));
-            break;
+        {
+            _parent.refreshExclusiveFullscreenMode();
+            // Exclusive: set the display mode before entering fullscreen.
+            ok = SDL_SetWindowFullscreenMode( _sdlWindow, &_parent.fullscreenMode() ) &&
+                 SDL_SetWindowFullscreen( _sdlWindow, true );
+        } break;
         default: break;
     };
 
+    if ( !ok )
+    {
+        Console::errorfn( LOCALE_STR( "SDL_ERROR" ), SDL_GetError() );
+    }
+
+    // Reconcile requested type with what SDL actually applied (mirrors create-time logic).
+    {
+        const bool isFullscreen = ( SDL_GetWindowFlags( _sdlWindow ) & to_U32( SDL_WINDOW_FULLSCREEN ) ) != 0u;
+        const SDL_DisplayMode* fullScreenMode = SDL_GetWindowFullscreenMode( _sdlWindow );
+        if ( !isFullscreen )
+        {
+            _type = WindowType::WINDOW;
+        }
+        else if ( fullScreenMode != nullptr )
+        {
+            _type = WindowType::FULLSCREEN;
+        }
+        else
+        {
+            _type = WindowType::FULLSCREEN_WINDOWED;
+        }
+    }
+
     SDLEventManager::pollEvents();
+    updateDrawableSize();
 }
 
 vec2<U16> DisplayWindow::getPreviousDimensions() const noexcept
 {
-    if (fullscreen()) {
+    if ( _type == WindowType::FULLSCREEN )
+    {
+        if ( _parent.fullscreenMode().w > 0 && _parent.fullscreenMode().h > 0 )
+        {
+            return vec2<U16>{ to_U16( _parent.fullscreenMode().w ), to_U16( _parent.fullscreenMode().h ) };
+        }
+
         return WindowManager::GetFullscreenResolution();
     }
+
+    if ( _type == WindowType::FULLSCREEN_WINDOWED )
+    {
+        return _drawableSize;
+    }
+
     return _prevDimensions;
 }
 

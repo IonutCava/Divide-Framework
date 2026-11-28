@@ -57,7 +57,51 @@ namespace
         return true;
     }
 
-} // namespace 
+} // namespace
+
+bool WindowManager::ResolveFullscreenMode( const DisplayManager::OutputDisplayPropertiesContainer& displayModes,
+                                           const SDL_DisplayID displayId,
+                                           const vec2<U16> preferredRes,
+                                           SDL_DisplayMode& outMode,
+                                           const SDL_DisplayMode* fallbackMode ) noexcept
+{
+    const DisplayManager::OutputDisplayProperties* best = nullptr;
+    U32 bestScore = U32_MAX;
+
+    for ( const auto& mode : displayModes )
+    {
+        if ( mode._internalMode.displayID != displayId )
+        {
+            continue;
+        }
+
+        const U32 score = to_U32( std::abs( to_I32( mode._resolution.width )  - to_I32( preferredRes.width ) ) +
+                                  std::abs( to_I32( mode._resolution.height ) - to_I32( preferredRes.height ) ) );
+        if ( score < bestScore )
+        {
+            bestScore = score;
+            best = &mode;
+            if ( score == 0u )
+            {
+                break;
+            }
+        }
+    }
+
+    if ( best != nullptr )
+    {
+        outMode = best->_internalMode;
+        return true;
+    }
+
+    if ( fallbackMode != nullptr && fallbackMode->w > 0 && fallbackMode->h > 0 )
+    {
+        outMode = *fallbackMode;
+        return true;
+    }
+
+    return false;
+}
 
 const SDL_DisplayMode* WindowManager::s_mainDisplayMode = nullptr;
 std::array<SDL_Cursor*, to_base(CursorStyle::COUNT)> WindowManager::s_cursors = create_array<to_base(CursorStyle::COUNT), SDL_Cursor*>(nullptr);
@@ -309,6 +353,21 @@ ErrorCode WindowManager::init(PlatformContext& context,
         else
         {
             return ErrorCode::WINDOW_INIT_ERROR;
+        }
+
+        // Seed exclusive fullscreen mode from the closest match to the configured resolution.
+        {
+            const SDL_DisplayID seedDisplayId = window->currentDisplayIndex();
+            const SDL_DisplayMode* currentMode = SDL_GetCurrentDisplayMode( seedDisplayId );
+            const SDL_DisplayMode* fallback = currentMode != nullptr ? currentMode : s_mainDisplayMode;
+            if ( !ResolveFullscreenMode( DisplayManager::GetDisplayModes(),
+                                         seedDisplayId,
+                                         _context->config().runtime.resolution,
+                                         _fullscreenMode,
+                                         fallback ) )
+            {
+                Console::errorfn( LOCALE_STR( "SDL_ERROR" ), "Failed to seed exclusive fullscreen display mode" );
+            }
         }
 
         GFX::InitPools(64u);
@@ -738,20 +797,38 @@ void WindowManager::flushWindow()
 
 void WindowManager::toggleFullScreen() const
 {
-    switch ( mainWindow()->type() )
+    const WindowType nextType = NextFullscreenToggleType( mainWindow()->type() );
+    if ( nextType == WindowType::COUNT )
     {
-        case WindowType::WINDOW:
-            mainWindow()->changeType( WindowType::FULLSCREEN_WINDOWED );
-            break;
-        case WindowType::FULLSCREEN_WINDOWED:
-            mainWindow()->changeType( WindowType::FULLSCREEN );
-            break;
-        case WindowType::FULLSCREEN:
-            mainWindow()->changeType( WindowType::WINDOW );
-            break;
-        case WindowType::COUNT:
-        default: 
-            DIVIDE_UNEXPECTED_CALL();
+        DIVIDE_UNEXPECTED_CALL();
+        return;
+    }
+
+    mainWindow()->changeType( nextType );
+}
+
+void WindowManager::refreshExclusiveFullscreenMode()
+{
+    if ( mainWindow() == nullptr )
+    {
+        return;
+    }
+
+    const SDL_DisplayID displayId = mainWindow()->currentDisplayIndex();
+    if ( _fullscreenMode.displayID == displayId && _fullscreenMode.w > 0 && _fullscreenMode.h > 0 )
+    {
+        return;
+    }
+
+    const vec2<U16> preferred = ( _fullscreenMode.w > 0 && _fullscreenMode.h > 0 )
+                              ? vec2<U16>{ to_U16( _fullscreenMode.w ), to_U16( _fullscreenMode.h ) }
+                              : _context->config().runtime.resolution;
+
+    const SDL_DisplayMode* currentMode = SDL_GetCurrentDisplayMode( displayId );
+    const SDL_DisplayMode* fallback = currentMode != nullptr ? currentMode : s_mainDisplayMode;
+    if ( !ResolveFullscreenMode( DisplayManager::GetDisplayModes(), displayId, preferred, _fullscreenMode, fallback ) )
+    {
+        Console::errorfn( LOCALE_STR( "SDL_ERROR" ), "Failed to resolve exclusive fullscreen display mode" );
     }
 }
 

@@ -39,7 +39,7 @@
 		<title>DIVIDE Framework</title>
 		<!-- toggle in engine editor on/off-->
 		<enableEditor>true</enableEditor>
-		<!-- 0 = primary display, 1 = secondary display, etc. Value is clamped between [1, LAST_DISPLAY] -->
+		<!-- 0 = primary display, 1 = secondary display, etc. Value is clamped between [0, LAST_DISPLAY] -->
 		<targetDisplay>1</targetDisplay>
 		<!-- 0 = NULL, 1 - OpenGL4, 2 - Vulkan-->
 		<targetRenderingAPI>1</targetRenderingAPI>
@@ -47,7 +47,7 @@
 		<maxWorkerThreads>-1</maxWorkerThreads>
 		<!-- Asset-loader workers: 0 selects automatically; explicit values are limited to 4-8 and the available worker budget. -->
 		<assetLoaderThreads>0</assetLoaderThreads>
-		<!-- 0 = windowed, 1 = borderless window, 2 = fullscreen (has some issues)-->
+		<!-- 0 = windowed, 1 = borderless window, 2 = fullscreen -->
 		<windowedMode>0</windowedMode>
 		<!-- do we allow window resizing if running in windowed mode? -->
 		<windowResizable>true</windowResizable>

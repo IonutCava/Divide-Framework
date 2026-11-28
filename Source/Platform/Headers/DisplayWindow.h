@@ -50,6 +50,21 @@ enum class WindowType : U8 {
     COUNT
 };
 
+/// WINDOW -> FULLSCREEN_WINDOWED -> FULLSCREEN -> WINDOW
+[[nodiscard]] constexpr WindowType NextFullscreenToggleType(const WindowType type) noexcept
+{
+    switch (type)
+    {
+        case WindowType::WINDOW: return WindowType::FULLSCREEN_WINDOWED;
+        case WindowType::FULLSCREEN_WINDOWED: return WindowType::FULLSCREEN;
+        case WindowType::FULLSCREEN: return WindowType::WINDOW;
+        case WindowType::COUNT:
+        default: break;
+    }
+
+    return WindowType::COUNT;
+}
+
 enum class CursorStyle : U8 {
     NONE = 0,
     ARROW,

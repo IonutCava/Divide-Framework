@@ -33,6 +33,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_CORE_WINDOW_MANAGER_H_
 #define DVD_CORE_WINDOW_MANAGER_H_
 
+#include "Core/Headers/DisplayManager.h"
 #include "Platform/Headers/DisplayWindow.h"
 #include "Utility/Headers/Colours.h"
 
@@ -79,6 +80,8 @@ public:
     void increaseResolution();
     void decreaseResolution();
     void stepResolution( bool increment );
+    /// Re-resolve exclusive fullscreen mode when the stored mode is unset or for another display.
+    void refreshExclusiveFullscreenMode();
 
     static bool SetGlobalCursorPosition(I32 x, I32 y) noexcept;
     static float2 GetCursorPosition() noexcept;
@@ -106,6 +109,14 @@ public:
     [[nodiscard]] inline const vector<MonitorData>& monitorData() const noexcept;
 
     static vec2<U16> GetFullscreenResolution() noexcept;
+
+    /// Pick the closest enumerated mode on `displayId` to `preferredRes`.
+    /// Falls back to `fallbackMode` (e.g. current / main display mode) when none match.
+    [[nodiscard]] static bool ResolveFullscreenMode( const DisplayManager::OutputDisplayPropertiesContainer& displayModes,
+                                                     SDL_DisplayID displayId,
+                                                     vec2<U16> preferredRes,
+                                                     SDL_DisplayMode& outMode,
+                                                     const SDL_DisplayMode* fallbackMode = nullptr ) noexcept;
 
     static void CaptureMouse(bool state) noexcept;
 
