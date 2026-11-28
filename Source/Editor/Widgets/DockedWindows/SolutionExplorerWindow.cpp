@@ -614,7 +614,7 @@ namespace Divide {
             SimpleLocation location = activeScene->getGeographicLocation();
 
             constexpr U8 min = 0u;
-            constexpr U8 maxHour = 24u;
+            constexpr U8 maxHour = 23u;
             constexpr U8 maxMinute = 59u;
 
             const bool hourChanged = ImGui::SliderScalar("Hour", ImGuiDataType_U8, &time._hour, &min, &maxHour, "%02d");
