@@ -94,6 +94,15 @@ void Material::Properties::useAlphaDiscard(const bool state) noexcept
     }
 }
 
+void Material::Properties::alphaTested(const bool state) noexcept
+{
+    if (overrides()._alphaTested != state)
+    {
+        overrides()._alphaTested = state;
+        _needsNewShader = true;
+    }
+}
+
 void Material::Properties::baseColour(const FColour4& colour) noexcept
 {
     _baseColour = colour;
@@ -171,6 +180,8 @@ void Material::Properties::saveToXML(const std::string& entryName, boost::proper
 
     pt.put(entryName + ".useAlphaDiscard", overrides().useAlphaDiscard());
 
+    pt.put(entryName + ".alphaTested", overrides().alphaTested());
+
     pt.put(entryName + ".reflectiveType", TypeUtil::ReflectorTypeToString(reflectorType()));
 
     pt.put(entryName + ".refractiveType", TypeUtil::RefractorTypeToString(refractorType()));
@@ -220,6 +231,8 @@ void Material::Properties::loadFromXML(const std::string& entryName, const boost
     toggleTransparency(pt.get<bool>(entryName + ".transparencyEnabled", overrides().transparencyEnabled()));
     
     useAlphaDiscard(pt.get<bool>(entryName + ".useAlphaDiscard", overrides().useAlphaDiscard()));
+
+    alphaTested(pt.get<bool>(entryName + ".alphaTested", overrides().alphaTested()));
 
     reflectorType(TypeUtil::StringToReflectorType(pt.get<std::string>(entryName + ".reflectiveType", TypeUtil::ReflectorTypeToString(reflectorType()))));
 

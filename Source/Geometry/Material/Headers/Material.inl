@@ -77,6 +77,11 @@ inline bool Material::hasTransparency() const noexcept
            properties().overrides().transparencyEnabled();
 }
 
+inline bool Material::isAlphaTested() const noexcept
+{
+    return hasTransparency() && properties().overrides().alphaTested();
+}
+
 inline bool Material::isReflective() const noexcept
 {
     return properties().metallic() > 0.05f &&

@@ -84,19 +84,28 @@ namespace Divide
         }
 
         template<typename Callback>
-        void ForEachTreeRenderingComponent( SceneGraphNode& node, Callback&& callback )
+        void ForEachTreeNode( SceneGraphNode& node, Callback&& callback )
         {
-            if ( RenderingComponent* component = node.get<RenderingComponent>() )
-            {
-                callback( *component );
-            }
+            callback( node );
 
             const SceneGraphNode::ChildContainer& children = node.getChildren();
             SharedLock<SharedMutex> r_lock( children._lock );
             for ( U32 i = 0u; i < children._count; ++i )
             {
-                ForEachTreeRenderingComponent( *children._data[i], callback );
+                ForEachTreeNode( *children._data[i], callback );
             }
+        }
+
+        template<typename Callback>
+        void ForEachTreeRenderingComponent( SceneGraphNode& node, Callback&& callback )
+        {
+            ForEachTreeNode( node, [&callback]( SceneGraphNode& treeNode )
+            {
+                if ( RenderingComponent* component = treeNode.get<RenderingComponent>() )
+                {
+                    callback( *component );
+                }
+            } );
         }
     }
 
@@ -466,6 +475,7 @@ namespace Divide
             matPtr->properties().roughness( 0.9f );
             matPtr->properties().metallic( 0.02f );
             matPtr->properties().doubleSided( true );
+            matPtr->properties().alphaTested( true );
             matPtr->properties().isStatic( false );
             matPtr->properties().isInstanced( true );
             matPtr->setPipelineLayout( PrimitiveTopology::TRIANGLE_STRIP, _buffer->generateAttributeMap() );
@@ -564,7 +574,6 @@ namespace Divide
             {
                 if ( stagePass._passType == RenderPassType::OIT_PASS )
                 {
-                    // ToDo: OIT sorting is not fully correct for vegetation transparency; far tree canopies can still bleed through near canopies.
                     fragModule._variant = "Colour.OIT";
                     shaderDescriptor._name = "grassColourOIT";
                 }
@@ -608,7 +617,6 @@ namespace Divide
 
     void Vegetation::finalizeInstance( SceneGraphNode* sgn, const SceneState& sceneState )
     {
-        DIVIDE_UNUSED( sceneState );
         applyWindAnimation();
         VegetationInstance* instance = findInstance( sgn->dataFlag() );
         if ( instance == nullptr || instance->_initialized )
@@ -646,9 +654,13 @@ namespace Divide
                                                      std::abs( scales.z ), std::abs( scales.w ) } );
             instancePadding = _grassExtents.w * maxScale + 0.25f * std::max( 1.f, std::abs( maxScale - 1.f ) );
         }
+        for ( const VegetationData& entry : instance->_grassCandidates )
+        {
+            instance->_grassBounds.add( entry );
+        }
         for ( size_t meshIndex = 0u; meshIndex < instance->_treeRanges.size(); ++meshIndex )
         {
-            const VegetationTreeRange& range = instance->_treeRanges[meshIndex];
+            VegetationTreeRange& range = instance->_treeRanges[meshIndex];
             if ( range._count == 0u )
             {
                 continue;
@@ -658,8 +670,10 @@ namespace Divide
             for ( size_t i = range._offset; i < to_size( range._offset ) + range._count; ++i )
             {
                 instance->_treeCandidates[i]._data.y = range._cullRadius;
+                range._bounds.add( instance->_treeCandidates[i] );
             }
         }
+        updateChunkBounds( sgn, *instance, sceneState.windDirX(), sceneState.windDirZ() );
 
         if ( instancePadding > _instanceBoundsPadding )
         {
@@ -783,6 +797,8 @@ namespace Divide
         }
         material->properties().isInstanced( true );
         material->properties().isStatic( false );
+        // Leaf cards are cutouts: they must occlude each other through the depth buffer, which blended OIT cannot do.
+        material->properties().alphaTested( true );
         const U32 updateResult = material->update( 0u );
         DIVIDE_UNUSED( updateResult );
         _treeMaterials.emplace_back( source, variant );
@@ -799,6 +815,8 @@ namespace Divide
             owner->occlusionCull( false ); ///< We handle our own culling
             owner->dataFlag( to_F32( sgn->dataFlag() ) );
             owner->setPreparationOwner( owner );
+            // Package LoD picks the billboard-plane partition (6 → 3 → 2). The cull shader's per-instance
+            // fade thins coverage at the visibility edge so chunks do not hard-cut.
             sgn->get<BoundsComponent>()->collisionsEnabled( false );///< Grass collision detection should be handled in shaders (for now)
         }
 
@@ -840,7 +858,6 @@ namespace Divide
             nodeDescriptor._nodeHandle = FromSharedHandle( crtMesh );
             Util::StringFormatTo( nodeDescriptor._name, "Trees_chunk_{}_species_{}", ID, meshID );
             range._parentNode = sgn->addChildNode( nodeDescriptor );
-            range._parentNode->setFlag( SceneGraphNode::Flags::VISIBILITY_LOCKED );
 
             TransformComponent* tComp = range._parentNode->get<TransformComponent>();
             const float4& offset = instance._chunk->getOffsetAndSize();
@@ -853,7 +870,12 @@ namespace Divide
             const U32 treeBase = to_U32( to_size( ID ) * _maxTreeInstances + range._offset );
             ForEachTreeRenderingComponent( *range._parentNode, [this, ID, treeBase, countElement = to_U32( to_size( ID ) * MAX_VEGETATION_TREE_MESHES + meshID ), owner, &cullRadius]( RenderingComponent& rComp )
             {
-                rComp.parentSGN()->setFlag( SceneGraphNode::Flags::VEGETATION_TREE, false );
+                rComp.parentSGN()->setFlag( SceneGraphNode::Flags::VEGETATION_TREE );
+                if ( BoundsComponent* bounds = rComp.parentSGN()->get<BoundsComponent>() )
+                {
+                    // The node bounds cover every tree of the chunk's species, which is no collision shape.
+                    bounds->collisionsEnabled( false );
+                }
                 rComp.dataFlag( to_F32( ID ) );
                 rComp.setInstanceShaderBuffer( _treeDrawData.get(), treeBase );
                 rComp.setInstanceCountSource( _treeVisibleCounts.get(), countElement );
@@ -879,6 +901,59 @@ namespace Divide
             DIVIDE_ASSERT( cullRadius > 0.f, "Tree mesh has no valid culling bounds" );
             range._cullRadius = cullRadius;
         }
+    }
+
+    void Vegetation::updateChunkBounds( SceneGraphNode* sgn, VegetationInstance& instance, const F32 windX, const F32 windZ ) const
+    {
+        // The padding only grows, so wind that keeps changing direction does not rebuild the bounds every frame.
+        const float2 wind{ std::max( instance._boundsWind.x, std::abs( windX ) ),
+                           std::max( instance._boundsWind.y, std::abs( windZ ) ) };
+        if ( wind == instance._boundsWind )
+        {
+            return;
+        }
+        instance._boundsWind = wind;
+
+        // A chunk without instances keeps its terrain chunk's box.
+        BoundingBox chunkBounds = instance._chunk->bounds();
+        bool hasInstanceBounds = false;
+        const auto addInstanceBounds = [&chunkBounds, &hasInstanceBounds]( const BoundingBox& bounds )
+        {
+            if ( hasInstanceBounds )
+            {
+                chunkBounds.add( bounds );
+            }
+            else
+            {
+                chunkBounds = bounds;
+                hasInstanceBounds = true;
+            }
+        };
+
+        if ( !instance._grassBounds.empty() )
+        {
+            addInstanceBounds( instance._grassBounds.padded( VegetationGrassReach( _grassExtents, instance._grassBounds._maxScale, wind.x, wind.y ) ) );
+        }
+
+        for ( const VegetationTreeRange& range : instance._treeRanges )
+        {
+            if ( range._parentNode == nullptr || range._bounds.empty() )
+            {
+                continue;
+            }
+
+            const BoundingBox treeBounds = range._bounds.padded( VegetationTreeReach( range._cullRadius, range._bounds._maxScale, wind.x, wind.y ) );
+            ForEachTreeNode( *range._parentNode, [&treeBounds]( SceneGraphNode& node )
+            {
+                if ( BoundsComponent* bounds = node.get<BoundsComponent>() )
+                {
+                    bounds->setWorldBoundsOverride( treeBounds );
+                }
+            } );
+            addInstanceBounds( treeBounds );
+        }
+
+        sgn->get<BoundsComponent>()->setWorldBoundsOverride( chunkBounds );
     }
 
     void Vegetation::prepareRender( SceneGraphNode* sgn,
@@ -1088,9 +1163,12 @@ namespace Divide
         if ( instance != nullptr && instance->_drawState.hasInstances() )
         {
             DIVIDE_ASSERT( getState() == ResourceState::RES_LOADED );
-            LockGuard<Mutex> w_lock( _sceneUpdateLock );
             const F32 windX = sceneState.windDirX();
             const F32 windZ = sceneState.windDirZ();
+            // Each chunk writes only its own nodes' bounds.
+            updateChunkBounds( sgn, *instance, windX, windZ );
+
+            LockGuard<Mutex> w_lock( _sceneUpdateLock );
             const F32 windPadding = _instanceBoundsPadding *
                 (1.f + 0.075f * (3.f * std::abs(windX) + 1.5f * std::abs(windZ) + 0.128f)) + 0.75f;
             if (windPadding > _windBoundsPadding)
@@ -1170,17 +1248,15 @@ namespace Divide
         cmd._cmd.firstIndex = to_U32( _buffer->getPartitionOffset(_lodPartitions[0]) );
 
         RenderingComponent* rComp = sgn->get<RenderingComponent>();
-        U16 prevID = 0;
-        for ( U8 i = 0; i < to_U8( _lodPartitions.size() ); ++i )
+        // Every LoD slot needs a range: an unset slot draws the command's full range, i.e. every billboard plane.
+        U16 partition = _lodPartitions[0];
+        for ( U8 i = 0u; i < RenderingComponent::MAX_LOD_LEVEL; ++i )
         {
-            U16 id = _lodPartitions[i];
-            if ( id == U16_MAX )
+            if ( i < _lodPartitions.size() && _lodPartitions[i] != U16_MAX )
             {
-                DIVIDE_ASSERT( i > 0 );
-                id = prevID;
+                partition = _lodPartitions[i];
             }
-            rComp->setLoDIndexOffset( i, _buffer->getPartitionOffset( id ), _buffer->getPartitionIndexCount( id ) );
-            prevID = id;
+            rComp->setLoDIndexOffset( i, _buffer->getPartitionOffset( partition ), _buffer->getPartitionIndexCount( partition ) );
         }
 
         SceneNode::buildDrawCommands( sgn, cmdsOut );

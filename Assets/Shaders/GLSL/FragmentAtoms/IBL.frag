@@ -185,8 +185,8 @@ vec3 ApplyIBL(in PBRMaterial material, in vec3 viewDirectionWV, in vec3 normalWV
 
 #endif //!NO_ENV_MAPPING && !NO_IBL
 
-// SSR rays belong to the opaque depth/normal surface, not overlapping transparent fragments.
-#if defined(NO_SSR) || defined(NO_IBL) || defined(OIT_PASS) || defined(TRANSPARENCY_PASS)
+// SSR rays belong to the opaque depth/normal surface, not overlapping transparent or alpha-tested fragments.
+#if defined(NO_SSR) || defined(NO_IBL) || defined(OIT_PASS) || defined(TRANSPARENCY_PASS) || defined(ALPHA_TEST_PASS)
 
 #define ApplySSR(Mr,R) (R)
 
@@ -207,7 +207,9 @@ vec3 ApplySSR(in float roughness, in vec3 radianceIn)
 
 #endif  //NO_SSR || NO_IBL
 
-#if defined(NO_SSAO)
+// Alpha-tested grass/canopies are absent from the depth pre-pass that feeds SSAO, so sampling
+// the buffer would darken them with occlusion from terrain and other surfaces behind them.
+#if defined(NO_SSAO) || defined(OIT_PASS) || defined(TRANSPARENCY_PASS) || defined(ALPHA_TEST_PASS)
 
 #define ApplySSAO(R) (R)
 
