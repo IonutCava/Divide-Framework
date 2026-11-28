@@ -16,7 +16,9 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
   enum.
 - `Source/Physics/Jolt/Jolt.cpp` and `Headers/Jolt.h`: the Jolt backend. Owns the
   `JPH::PhysicsSystem`, `JPH::JobSystemThreadPool`, `JPH::TempAllocatorImpl`, the
-  layer/object/broad-phase filter tables, and the contact/activation listeners.
+  layer/object/broad-phase filter tables, and the contact/activation listeners. Defines
+  `PhysicsAssetJolt`, the Jolt-specific `PhysicsAsset` holding the body ID (found
+  through the Jolt body's user data).
 - `Source/Physics/None/`: the no-op backend, used when no physics library is selected.
 - `Source/Physics/Headers/PhysicsAsset.h`: the per-node body handle returned by
   `createRigidActor`. A `PhysicsAsset` is an `ITransform` owned by a
@@ -28,29 +30,38 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 ## Current state
 
-The Jolt backend is wired at the API-shell level but performs no real simulation yet.
+The Jolt backend now simulates: primitives get real bodies, and flipping a body
+to dynamic makes it fall under gravity.
 
 - `PhysicsJolt::initPhysicsAPI` creates the `JPH::PhysicsSystem`, the job-system thread
-  pool, and the temporary allocator, and registers two object layers (`NON_MOVING`,
-  `MOVING`) with their pair/broad-phase filters. The contact and activation listeners
-  are stubs that only log.
-- `PhysicsJolt::frameStartedInternal` steps `_physicsSystem->Update(...)` every fixed
-  step.
-- Gravity is **not** set: `PhysicsSystem::Init` is called without gravity, so a dynamic
-  body would never fall.
-- `createRigidActor`, `convertActor`, and `intersect` are stubs that return `nullptr` /
-  `true` / `false`. `frameEndedInternal` is empty, so body transforms never write back
-  to the scene.
-- `RigidBodyComponent` registers no editor fields, so the property window exposes no
-  physics controls, and its `physicsCollisionGroup` property is read-only
-  (`PROPERTY_R`). `RigidBodySystem::OnFrameStart` calls `createRigidActor` but receives
-  `nullptr`, so no bodies materialize.
+  pool, and the temporary allocator, registers two object layers (`NON_MOVING`,
+  `MOVING`) with their pair/broad-phase filters, and sets explicit gravity
+  (`(0, -9.81, 0)`, Y-up). Contact/activation listeners are registered but inert.
+- `PXDevice::initPhysicsAPI` initialises the fixed time step via `updateTimeStep`;
+  without this the accumulated-time gate in `PhysicsAPIWrapper::frameStarted` never
+  steps the simulation.
+- `PhysicsJolt::createRigidActor` creates a static body for `BOX_3D`, `SPHERE_3D` and
+  `QUAD_3D` nodes: `BoxShape`/`SphereShape` from the node's local bounds and world
+  scale, wrapped in a `RotatedTranslatedShape` when the bounds are not centred on the
+  pivot. Bodies are created with `mAllowDynamicOrKinematic` so they can become dynamic
+  later. Terrain, water, and mesh nodes return no body yet.
+- `PhysicsJolt::convertActor` (and `PhysicsAssetJolt::physicsCollisionGroup`, which the
+  component forwards to) switches bodies between static and dynamic via
+  `SetObjectLayer` + `SetMotionType`. Kinematic is mapped; ragdoll and vehicle are
+  simulated as plain dynamic bodies for now.
+- `RigidBodyComponent` registers a Collision Group dropdown (default Static, read-only
+  for terrain) that drives the conversion.
+- `PhysicsJolt::frameEndedInternal` writes active dynamic body transforms back into the
+  owning node's `TransformComponent`, converting world to local when the node is
+  parented. A Jolt-specific `PhysicsAssetJolt` (defined in `Jolt.cpp`) holds the
+  `BodyID` and is found through the body's user data.
 - Only primitives (`BOX_3D`, `SPHERE_3D`, `QUAD_3D`), terrain, and water set the
   `RIGID_BODY` component bit in `Source/Scenes/Scene.cpp`. Meshes do not.
 
 ## Design decisions
 
-These record the agreed direction; implementation is planned, not yet landed.
+These record the agreed direction; the first increment is implemented and the rest is
+planned.
 
 - **Per-scene physics settings.** Gravity and other simulation settings (time step,
   body/pair/contact capacities, solver iterations) are per-scene configuration read
@@ -73,31 +84,23 @@ These record the agreed direction; implementation is planned, not yet landed.
   system that emits static bodies (or an equivalent batched representation) for
   instances.
 - **Kinematic / ragdoll / vehicle, and a character controller.** Kinematic, ragdoll,
-  and vehicle bodies are wanted but deferred: for now they map to the `MOVING` layer and
-  are not simulated. The body/layer design keeps room for a Jolt character controller.
+  and vehicle bodies are wanted but deferred: ragdoll and vehicle are simulated as
+  plain dynamic bodies for now, kinematic maps to `EMotionType::Kinematic` but nothing
+  drives it yet. The body/layer design keeps room for a Jolt character controller.
 
-## Planned integration
+## Remaining work
 
-The path that makes a body real and lets it fall:
-
-1. `PhysicsJolt::createRigidActor` builds a `JPH::BodyCreationSettings` from the node's
-   transform, bounds, and type, with `EMotionType::Static` by default, and adds it to
-   the world through the body interface. A Jolt-specific `PhysicsAsset` subclass (kept
-   inside the Jolt translation unit so `JPH::BodyID` does not leak into engine-wide
-   headers) stores the body ID.
-2. `PhysicsJolt::convertActor` switches the body between static and dynamic by calling
-   `BodyInterface::SetMotionType` with `EActivation::Activate` when the group becomes
-   `GROUP_DYNAMIC`, and back to static otherwise.
-3. `RigidBodyComponent` registers a `DROPDOWN_TYPE` editor field for the collision group,
-   defaulting to `GROUP_STATIC`. The setter forwards through `physicsCollisionGroup` to
-   `convertActor`. For terrain nodes the field is `_readOnly = true`. The
-   `physicsCollisionGroup` property becomes writable (`PROPERTY_RW`).
-4. `PhysicsJolt::frameEndedInternal` reads active body transforms and writes them back
-   into the owning node's `TransformComponent` (moving-layer bodies only), so a dynamic
-   body visibly falls and rests.
-5. `Scene.cpp` extends the mesh (and any bounds-carrying 3D object) component masks with
-   `ComponentType::RIGID_BODY` so every appropriate node gets a body; the lazy
-   `RigidBodySystem` creates them as static by default.
+- Mesh and other 3D object nodes: convex-hull (or opt-in `MeshShape`) colliders plus
+  the `ComponentType::RIGID_BODY` masks in `Scene.cpp`, so every appropriate node gets
+  a body.
+- Terrain: `HeightFieldShape` with height data plumbed in, replacing the current
+  no-body fallback.
+- Water: a suitable collider (currently returns no body).
+- Per-scene physics settings (gravity, capacities) read from the scene XML instead of
+  the explicit default.
+- Instanced vegetation colliders (a dedicated system).
+- Kinematic body driving, ragdoll, vehicle, and a Jolt character controller.
+- `intersect` ray casts through the Jolt broad phase (still a stub).
 
 ## Invariants
 
@@ -108,6 +111,10 @@ The path that makes a body real and lets it fall:
   start/end, mirroring the [scene-loading frame phases](scene-loading.md#frame-phases).
 - Static bodies stay on `NON_MOVING`; only moving bodies live on `MOVING`, and the pair
   filter already prevents static-static contacts.
+- The fixed time step must stay initialised (`updateTimeStep` after `initPhysicsAPI`),
+  otherwise the accumulated-time gate never steps the simulation.
+- The Jolt body user data is a raw `PhysicsAssetJolt*`. Assets must not outlive the
+  physics system; `PXDevice` owns both and outlives scene assets.
 - Terrain and instanced vegetation must never become dynamic.
 
 ## Safe-change guidance
@@ -122,7 +129,11 @@ The path that makes a body real and lets it fall:
 
 ## Known limitations / open items
 
-- Kinematic, ragdoll, and vehicle motion are deferred; their `PhysicsGroup` values exist
-  but only map to the `MOVING` layer for now.
-- Triangle `MeshShape` and the instanced vegetation collider are follow-up work.
-- A Jolt character controller is anticipated but not yet designed in.
+- Bodies exist for primitives only; mesh convex hulls, terrain height fields, and water
+  colliders are pending (see [Remaining work](#remaining-work)).
+- Kinematic, ragdoll, and vehicle motion are deferred: ragdoll and vehicle simulate as
+  plain dynamic bodies, and kinematic bodies are not driven yet.
+- Body capacities (1024 bodies/pairs) are hard-coded until per-scene settings land.
+- Write-back converts world transforms to local for parented nodes; a node whose parent
+  is itself physics-driven may lag a frame.
+- A Jolt character controller is anticipated but not designed in.
