@@ -221,6 +221,10 @@ namespace Divide
 
         _physicsSystem->SetContactListener(&contact_listener);
 
+        // Jolt already defaults to (0, -9.81, 0); made explicit so it can move to
+        // per-scene configuration read from the scene XML later.
+        _physicsSystem->SetGravity(JPH::Vec3(0.0f, -9.81f, 0.0f));
+
         return ErrorCode::NO_ERR;
     }
 
