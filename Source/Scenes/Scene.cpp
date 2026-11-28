@@ -1897,49 +1897,58 @@ namespace Divide
             if (!updateSun && !updateProbes)
             {
                 const F32 speedFactor = dayNightCycleEnabled() ? _dayNightData._speedFactor : 0.f;
-                const F32 deltaSeconds = Time::MillisecondsToSeconds<F32>( gameDeltaTimeUS );
+                const F32 deltaSeconds = Time::MicrosecondsToSeconds<F32>( gameDeltaTimeUS );
                 const F32 addTime = speedFactor * deltaSeconds;
-                if ( addTime > 0.f )
+                // Negative factors are supported (see setDayNightCycleTimeFactor).
+                if ( !IS_ZERO( addTime ) )
                 {
                     _dayNightData._timeAccumulatorSec += addTime;
                     _dayNightData._timeAccumulatorHour += addTime;
-                    Atmosphere atmosphere = _dayNightData._skyInstance->atmosphere();
-                    if ( atmosphere._cloudCoverage > 0.9f && increaseWeatherScale )
-                    {
-                        increaseWeatherScale = false;
-                    }
-                    else if ( atmosphere._cloudCoverage < 0.1f && !increaseWeatherScale )
-                    {
-                        increaseWeatherScale = true;
-                    }
-                    atmosphere._cloudCoverage += (deltaSeconds * (increaseWeatherScale ? 0.001f : -0.001f));
-
-                    _dayNightData._skyInstance->setAtmosphere( atmosphere );
                 }
+
+                // Real-time cloud drift (independent of the day/night speed factor).
+                // ~0.01 coverage/s => 0.1↔0.9 sweep in about 80 s: visible, not flicker.
+                constexpr F32 cloudDriftPerSecond = 0.01f;
+                Atmosphere atmosphere = _dayNightData._skyInstance->atmosphere();
+                if ( atmosphere._cloudCoverage > 0.9f && increaseWeatherScale )
+                {
+                    increaseWeatherScale = false;
+                }
+                else if ( atmosphere._cloudCoverage < 0.1f && !increaseWeatherScale )
+                {
+                    increaseWeatherScale = true;
+                }
+                atmosphere._cloudCoverage += deltaSeconds * (increaseWeatherScale ? cloudDriftPerSecond : -cloudDriftPerSecond);
+
+                _dayNightData._skyInstance->setAtmosphere( atmosphere );
             }
 
-            if ( std::abs( _dayNightData._timeAccumulatorSec ) > Time::Seconds( 1.f ) )
+            if ( std::abs( _dayNightData._timeAccumulatorSec ) > Time::Seconds<F32>( 1.f ) )
             {
-                _dayNightData._timeAccumulatorSec = 0.f;
+                // Apply whole simulated seconds, keep the fractional remainder for the next tick.
+                const F32 elapsedSec = _dayNightData._timeAccumulatorSec;
+                const F32 wholeSeconds = std::trunc( elapsedSec );
+                _dayNightData._timeAccumulatorSec = elapsedSec - wholeSeconds;
                 updateSun = true;
 
-                timeOfDay.tm_sec += to_I32( _dayNightData._timeAccumulatorSec );
+                timeOfDay.tm_sec += to_I32( wholeSeconds );
 
-                if ( std::abs(_dayNightData._timeAccumulatorHour) > Time::Hours( 1.f ) )
+                // Probe refresh once per simulated hour (not once per second).
+                constexpr F32 secondsPerHour = Time::Seconds<F32>( 3600.f );
+                if ( std::abs( _dayNightData._timeAccumulatorHour ) >= secondsPerHour )
                 {
-                    _dayNightData._timeAccumulatorHour = 0.f;
+                    _dayNightData._timeAccumulatorHour = std::fmod( _dayNightData._timeAccumulatorHour, secondsPerHour );
                     updateProbes = true;
                 }
             }
 
             if (updateSun)
             {
-                //Update day/night data
+                // Normalize first so hour/minute reflect carried seconds (and negative factors).
+                const time_t now = mktime( &timeOfDay );
                 _dayNightData._time._hour = to_U8( timeOfDay.tm_hour );
                 _dayNightData._time._minutes = to_U8( timeOfDay.tm_min );
 
-                //Update sky instance with update day/night data
-                const time_t now = mktime( &timeOfDay ); // normalize it
                 const SunInfo details = _dayNightData._skyInstance->setDateTimeAndLocation( localtime( &now ), _dayNightData._location );
 
                 const Angle::DEGREES_F sunAltitude = Angle::to_DEGREES( details.altitude );
@@ -2433,7 +2442,7 @@ namespace Divide
             _dayNightData._time = skyInstance.GetTimeOfDay();
             _dayNightData._resetTime = true;
         }
-        _dayNightData._timeAccumulatorSec = Time::Seconds( 1.1f );
+        _dayNightData._timeAccumulatorSec = Time::Seconds<F32>( 1.1f );
         _dayNightData._timeAccumulatorHour = 0.f;
         sunLight.lockDirection( true );
 
