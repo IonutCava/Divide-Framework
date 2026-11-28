@@ -261,7 +261,7 @@ void loadMusicPlaylist(const ResourcePath& scenePath, const Str<64>& fileName, S
         const ptree & attributes = data.get_child("<xmlattr>", g_emptyPtree);
         scene->addMusic(MusicType::TYPE_BACKGROUND,
                         attributes.get<string>("name", "").c_str(),
-                        Paths::g_assetsLocation / attributes.get<string>("src", "") );
+                        Paths::g_musicLocation / attributes.get<string>("src", "") );
     }
 }
 

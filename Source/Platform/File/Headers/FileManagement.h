@@ -82,6 +82,7 @@ struct Paths {
     static ResourcePath g_imagesLocation;
     static ResourcePath g_materialsLocation;
     static ResourcePath g_soundsLocation;
+    static ResourcePath g_musicLocation;
     static ResourcePath g_xmlDataLocation;
     static ResourcePath g_navMeshesLocation;
     static ResourcePath g_scenesLocation;

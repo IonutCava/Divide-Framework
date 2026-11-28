@@ -30,6 +30,7 @@ ResourcePath Paths::g_GUILocation;
 ResourcePath Paths::g_fontsPath;
 ResourcePath Paths::g_iconsPath;
 ResourcePath Paths::g_soundsLocation;
+ResourcePath Paths::g_musicLocation;
 ResourcePath Paths::g_localisationPath;
 ResourcePath Paths::g_cacheLocation;
 ResourcePath Paths::g_buildTypeLocation;
@@ -101,6 +102,7 @@ ErrorCode Paths::initPaths()
     g_GUILocation       = g_assetsLocation / "GUI";
     g_iconsPath         = g_assetsLocation / "Icons";
     g_soundsLocation    = g_assetsLocation / "Sounds";
+    g_musicLocation     = g_assetsLocation / "Music";
     g_texturesLocation  = g_assetsLocation / "Textures";
     g_heightmapLocation = g_assetsLocation / "Terrain";
 
