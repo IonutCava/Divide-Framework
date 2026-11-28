@@ -1899,9 +1899,10 @@ namespace Divide
             if (!updateSun && !updateProbes)
             {
                 const F32 speedFactor = dayNightCycleEnabled() ? _dayNightData._speedFactor : 0.f;
-                const F32 deltaSeconds = Time::MillisecondsToSeconds<F32>( gameDeltaTimeUS );
+                const F32 deltaSeconds = Time::MicrosecondsToSeconds<F32>( gameDeltaTimeUS );
                 const F32 addTime = speedFactor * deltaSeconds;
-                if ( addTime > 0.f )
+                // Negative factors are supported (see setDayNightCycleTimeFactor).
+                if ( !IS_ZERO( addTime ) )
                 {
                     _dayNightData._timeAccumulatorSec += addTime;
                     _dayNightData._timeAccumulatorHour += addTime;
@@ -1922,14 +1923,19 @@ namespace Divide
 
             if ( std::abs( _dayNightData._timeAccumulatorSec ) > Time::Seconds( 1.f ) )
             {
-                _dayNightData._timeAccumulatorSec = 0.f;
+                // Apply whole simulated seconds, keep the fractional remainder for the next tick.
+                const F32 elapsedSec = _dayNightData._timeAccumulatorSec;
+                const F32 wholeSeconds = std::trunc( elapsedSec );
+                _dayNightData._timeAccumulatorSec = elapsedSec - wholeSeconds;
                 updateSun = true;
 
-                timeOfDay.tm_sec += to_I32( _dayNightData._timeAccumulatorSec );
+                timeOfDay.tm_sec += to_I32( wholeSeconds );
 
-                if ( std::abs(_dayNightData._timeAccumulatorHour) > Time::Hours( 1.f ) )
+                // Probe refresh once per simulated hour (not once per second).
+                constexpr F32 secondsPerHour = Time::Seconds( 3600.f );
+                if ( std::abs( _dayNightData._timeAccumulatorHour ) >= secondsPerHour )
                 {
-                    _dayNightData._timeAccumulatorHour = 0.f;
+                    _dayNightData._timeAccumulatorHour = std::fmod( _dayNightData._timeAccumulatorHour, secondsPerHour );
                     updateProbes = true;
                 }
             }
