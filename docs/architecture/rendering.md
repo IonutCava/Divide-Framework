@@ -35,6 +35,13 @@ Render workers prepare data and record into their stage-owned command buffers.
 See [Threading](threading.md) for task ownership and [GPU resources](gpu-resources.md)
 for resource lifetime.
 
+Present pacing differs by backend. Vulkan `queuePresent` returns quickly; the
+CPU wait is the next frame-slot fence in `VKSwapChain::waitForFrameSlot`, which
+polls and runs `PlatformContext::idle(fast)`. OpenGL often blocks inside
+`SDL_GL_SwapWindow` (vsync/adaptive); once it returns, and when aged end-frame
+fences must be waited in `GL_API::frameStarted`, the same fast idle path runs.
+`Kernel` still runs a fuller idle after `FRAME_EVENT_ENDED`.
+
 Vulkan may combine adjacent compatible indirect draws at submission. The draws
 must preserve buffer, pipeline, render-state, and per-draw data requirements.
 Batching must not reorder commands or change indirect records. OpenGL keeps its

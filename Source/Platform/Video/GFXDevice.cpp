@@ -1542,7 +1542,10 @@ namespace Divide
 #pragma endregion
 
 #pragma region Main frame loop
-    /// After a swap buffer call, the CPU may be idle waiting for the GPU to draw to the screen, so we try to do some processing
+    /// Useful CPU work while the GPU/display catches up:
+    /// - post-present soak (Kernel idle after FRAME_EVENT_ENDED / flushWindow on both APIs)
+    /// - VK: polled during beginFrame frame-slot fence wait
+    /// - GL: after SwapBuffers returns, and while blocking on aged end-frame fences in frameStarted
     void GFXDevice::idle( const bool fast, const U64 deltaTimeUSGame, [[maybe_unused]] const U64 deltaTimeUSApp )
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics );
