@@ -162,8 +162,9 @@ Alpha-tested materials:
   targets recompiles material shaders.
 
 Alpha-tested geometry is absent from the pre-pass depth and normals, so Hi-Z
-occlusion, SSAO, and SSR do not see it. SSR is skipped on alpha-tested
-fragments; SSAO still samples the surface behind them.
+occlusion, SSAO, and SSR do not see it. Alpha-tested fragments skip SSR and
+SSAO, which would otherwise apply occlusion or reflections from the surfaces
+behind them.
 
 ## Clustered lighting
 
@@ -218,18 +219,15 @@ holds the chunk's instance origins, padded by the reach the cull shader tests
 stronger wind needs more. Nodes outside a view or the vegetation range are not
 prepared, and a chunk dispatches its per-instance compute cull only when its
 grass or one of its tree nodes is visible. Range tests on vegetation nodes use
-horizontal distance, as the cull shader does. Grass package LoD selects the
-billboard-plane partition (6 → 3 → 2) from chunk distance; the cull shader's
-per-instance fade thins coverage at the visibility edge so distant grass does
-not hard-cut. Tree nodes carry `VEGETATION_TREE` for vegetation policy
-(horizontal range, reflection filters, cascade fit). Shadow passes still
-frustum-cull them like other casters; only trees that intersect a cascade are
-prepared. The nearest CSM cascade may include those trees in its scene-AABB
-fit; farther cascades omit vegetation from the fit so chunk-sized boxes do
-not step cascade size and rebuild the static shadow cache. Alpha-tested grass
-and canopies skip screen-space SSAO and SSR; they are absent from the depth
-pre-pass, so sampling those buffers would apply occlusion or reflections from
-surfaces behind them.
+horizontal distance, as the cull shader does. Grass package LoD picks the
+billboard-plane partition from the chunk's nearest point (6, 3, then 2 planes;
+levels past the last partition reuse it), and the cull shader fades instances
+out near the visibility range, so distant grass thins instead of cutting off.
+Tree nodes carry `VEGETATION_TREE` for vegetation policy: horizontal range,
+reflection filters, static-geometry bounds and the CSM scene-AABB fit. Shadow
+passes draw trees in every cascade they intersect, but their chunk-sized boxes
+stay out of the fit, which would otherwise widen cascades and change their size
+(rebuilding the static shadow cache) whenever a chunk enters or leaves them.
 
 ### GPU instance-count patch
 

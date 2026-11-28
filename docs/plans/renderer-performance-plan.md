@@ -787,9 +787,10 @@ count was the same from every camera; the next checkpoint replaces them.
   `Vegetation::updateChunkBounds()`). Tree nodes no longer set
   `VISIBILITY_LOCKED` and cull like other nodes; vegetation range tests use
   horizontal distance, as the cull shader does. The boxes grow only when
-  stronger wind needs more padding. Grass package LoD again selects billboard
-  partitions (6 → 3 → 2) by chunk distance; the cull fade still softens the
-  visibility edge.
+  stronger wind needs more padding. Grass package LoD picks the billboard
+  partition from chunk distance (6, 3, then 2 planes). LoD levels 3 and 4 had
+  no index range and drew all 6 planes, so they now reuse the last partition.
+  The cull shader still fades grass out near its visibility range.
 - [x] Perf mode logs each stage task's CPU time as `[PerfMetrics] cpuStageMS`
   (per-frame means since the previous log; stages run in parallel).
 - [x] The Debug suite passes 431/431. Validation-on Vulkan and OpenGL
@@ -823,10 +824,10 @@ per-chunk boxes, only the tree chunks inside a cascade feed its fit: cascade 1
 is now 540 m and cascade 2 2178 m, and mid-range shadows are sharper. The fit
 followed chunk-sized boxes, so a cascade's size stepped when the camera moved
 enough to change which tree chunks it covered, and each step rebuilt that
-cascade's static cache. Follow-up: farther cascades omit `VEGETATION_TREE`
-nodes from the scene-AABB fit (trees still draw when in the slice). Cascade 0
-may still fit visible vegetation trees; that widening does not carry into
-later cascades. Shadow passes frustum-cull tree nodes normally.
+cascade's static cache. `VEGETATION_TREE` nodes now stay out of the fit in
+every cascade while still drawing into each cascade they intersect, so cascade
+1 is back to 182 m and cascade 2 to 1700 m. Cascade 0 is not fitted: a build
+that fed tree chunk boxes into a cascade 0 fit grew it from 60.5 m to 497 m.
 
 ### Stabilization checkpoint
 

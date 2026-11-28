@@ -572,8 +572,7 @@ namespace Divide
         CHECK(selected == nullptr);
         CHECK_FALSE(feedback[1]._valid);
         selected = SelectCascadeBoundsFeedback(feedback[0], 0u, true);
-        REQUIRE(selected == &feedback[0]);
-        CHECK_FALSE(selected->_valid);
+        CHECK(selected == nullptr);
         CHECK(feedback[2]._valid);
         selected = SelectCascadeBoundsFeedback(feedback[2], 2u, true);
         REQUIRE(selected == &feedback[2]);

@@ -1248,17 +1248,15 @@ namespace Divide
         cmd._cmd.firstIndex = to_U32( _buffer->getPartitionOffset(_lodPartitions[0]) );
 
         RenderingComponent* rComp = sgn->get<RenderingComponent>();
-        U16 prevID = 0;
-        for ( U8 i = 0; i < to_U8( _lodPartitions.size() ); ++i )
+        // Every LoD slot needs a range: an unset slot draws the command's full range, i.e. every billboard plane.
+        U16 partition = _lodPartitions[0];
+        for ( U8 i = 0u; i < RenderingComponent::MAX_LOD_LEVEL; ++i )
         {
-            U16 id = _lodPartitions[i];
-            if ( id == U16_MAX )
+            if ( i < _lodPartitions.size() && _lodPartitions[i] != U16_MAX )
             {
-                DIVIDE_ASSERT( i > 0 );
-                id = prevID;
+                partition = _lodPartitions[i];
             }
-            rComp->setLoDIndexOffset( i, _buffer->getPartitionOffset( id ), _buffer->getPartitionIndexCount( id ) );
-            prevID = id;
+            rComp->setLoDIndexOffset( i, _buffer->getPartitionOffset( partition ), _buffer->getPartitionIndexCount( partition ) );
         }
 
         SceneNode::buildDrawCommands( sgn, cmdsOut );

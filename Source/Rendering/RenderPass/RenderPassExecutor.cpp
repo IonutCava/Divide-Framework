@@ -26,7 +26,6 @@
 
 #include "Rendering/Headers/Renderer.h"
 #include "Rendering/Lighting/Headers/ShadowCasterBounds.h"
-#include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
 #include "Rendering/Camera/Headers/Camera.h"
 
@@ -1823,18 +1822,14 @@ namespace Divide
 
         if ( params._shadowBoundsFeedback != nullptr )
         {
-            // Cascade 0 keeps vegetation trees in the fit so it can widen to every in-range tree.
-            // Farther cascades omit them: chunk-sized boxes stepping in/out of the slice rebuilt the static cache.
-            const bool fitVegetationTrees = ShadowMap::IsNearestCSMCascade( params._stagePass );
+            // Trees still draw into the cascade; their chunk-sized boxes only stay out of its fit, where they
+            // would widen the cascade and change its size whenever a chunk enters or leaves it.
             for ( size_t i = 0u; i < _visibleNodesCache.size(); ++i )
             {
                 const VisibleNode& node = _visibleNodesCache.node( i );
                 if ( node._node == nullptr || !node._materialReady ||
-                     node._node->getNode().type() != SceneNodeType::TYPE_SUBMESH )
-                {
-                    continue;
-                }
-                if ( !fitVegetationTrees && node._node->hasFlag( SceneGraphNode::Flags::VEGETATION_TREE ) )
+                     node._node->getNode().type() != SceneNodeType::TYPE_SUBMESH ||
+                     node._node->hasFlag( SceneGraphNode::Flags::VEGETATION_TREE ) )
                 {
                     continue;
                 }
