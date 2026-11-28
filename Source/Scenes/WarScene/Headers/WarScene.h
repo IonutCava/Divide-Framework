@@ -61,6 +61,7 @@ BEGIN_SCENE(WarScene)
     void registerPoint(U16 teamID, const string& unitName);
     void printMessage(U8 eventId, const string& unitName) const;
     void debugDraw( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) override;
+    void onSelectionGestureComplete(PlayerIndex idx) override;
 
    private:
     void onSetActive() override;
@@ -80,6 +81,7 @@ BEGIN_SCENE(WarScene)
    private:
     GUIMessageBox* _infoBox = nullptr;
     vector<TransformComponent*> _lightNodeTransforms;
+    Handle<AudioDescriptor> _selectionSound{ INVALID_HANDLE<AudioDescriptor> };
 
    private:  // Game
     U32  _timeLimitMinutes;

@@ -2423,6 +2423,12 @@ namespace Divide
                 NOP();
             }
         }
+
+        onSelectionGestureComplete( idx );
+    }
+
+    void Scene::onSelectionGestureComplete( PlayerIndex /*idx*/ )
+    {
     }
 
     void Scene::initDayNightCycle( Sky& skyInstance, DirectionalLightComponent& sunLight ) noexcept

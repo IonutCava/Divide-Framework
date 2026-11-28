@@ -16,6 +16,10 @@
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
+#include "Platform/Audio/Headers/AudioDescriptor.h"
+#include "Platform/Audio/Headers/SFXDevice.h"
+#include "Platform/File/Headers/FileManagement.h"
+
 #include "Dynamics/Entities/Units/Headers/NPC.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Dynamics/Entities/Units/Headers/Player.h"
@@ -473,13 +477,32 @@ bool WarScene::load() {
 
     _sceneReady = true;
     if (loadState) {
+        const char* clipName = fileExists(Paths::g_soundsLocation, "select.wav") ? "select.wav" : "beep.wav";
+        ResourceDescriptor<AudioDescriptor> selectionSound("agentSelection");
+        selectionSound.assetName(clipName);
+        selectionSound.assetLocation(Paths::g_soundsLocation);
+        _selectionSound = CreateResource(selectionSound);
+
         return initializeAI(true);
     }
     return false;
 }
 
+void WarScene::onSelectionGestureComplete(const PlayerIndex idx)
+{
+    if (getCurrentSelection(idx)._selectionCount == 0u) {
+        return; // empty deselect silent
+    }
+    if (_selectionSound != INVALID_HANDLE<AudioDescriptor>) {
+        _context.sfx().playSound(_selectionSound);
+    }
+}
 
 bool WarScene::unload() {
+    if (_selectionSound != INVALID_HANDLE<AudioDescriptor>) {
+        DestroyResource(_selectionSound);
+        _selectionSound = INVALID_HANDLE<AudioDescriptor>;
+    }
     deinitializeAI(true);
     return Scene::unload();
 }
