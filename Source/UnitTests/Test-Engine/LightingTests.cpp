@@ -435,7 +435,7 @@ namespace Divide
         CHECK_FALSE( IsValidClusterDepthRange( -inf, 1000.f ) );
 
         // Every accepted range produces finite, monotonically increasing exponential slice boundaries.
-        for ( const auto [zNear, zFar] : std::array<std::pair<F32, F32>, 4>{ { { 0.01f, 10.f }, { 0.1f, 1000.f }, { 1.f, 1.0001f }, { 0.5f, 50000.f } } } )
+        for ( const auto& [zNear, zFar] : std::array<std::pair<F32, F32>, 4>{ { { 0.01f, 10.f }, { 0.1f, 1000.f }, { 1.f, 1.0001f }, { 0.5f, 50000.f } } } )
         {
             REQUIRE( IsValidClusterDepthRange( zNear, zFar ) );
             F32 previous = zNear;
