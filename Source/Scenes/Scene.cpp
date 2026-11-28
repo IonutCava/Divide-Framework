@@ -176,6 +176,10 @@ namespace Divide
         music.flag( true );
 
         Handle<AudioDescriptor> handle = CreateResource( music, _loadingTasks );
+        if ( handle != INVALID_HANDLE<AudioDescriptor> )
+        {
+            Get( handle )->isLooping( true );
+        }
 
         insert( state()->music( type ), _ID( name ), handle );
     }

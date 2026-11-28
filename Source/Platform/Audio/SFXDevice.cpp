@@ -16,6 +16,7 @@ SFXDevice::SFXDevice(PlatformContext& context)
       _api(nullptr)
 {
     _playNextInPlaylist = false;
+    _ignoreNextMusicFinished = false;
 }
 
 SFXDevice::~SFXDevice()
@@ -161,9 +162,17 @@ void SFXDevice::setSoundVolume(const I8 value) {
 
 void SFXDevice::trackFinished(const TrackDetails& details) noexcept
 {
-    if (details._isMusic) {
-        _playNextInPlaylist = true;
+    if (!details._isMusic)
+    {
+        return;
     }
+
+    if (_ignoreNextMusicFinished.exchange(false))
+    {
+        return;
+    }
+
+    _playNextInPlaylist = true;
 }
 
 void SFXDevice::dumpPlaylists() {

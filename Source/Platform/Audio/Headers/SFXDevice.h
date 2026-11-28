@@ -68,6 +68,9 @@ public:
     void setMusicVolume(I8 value) override;
     void setSoundVolume(I8 value) override;
 
+    /// Suppress the next music-finished callback (intentional stop/rebuild must not advance the playlist).
+    void ignoreNextMusicFinished() noexcept { _ignoreNextMusicFinished = true; }
+
     void addMusic(U32 playlistEntry, Handle<AudioDescriptor> music);
     [[nodiscard]] bool playMusic(U32 playlistEntry);
     [[nodiscard]] bool playMusic(const MusicPlaylist& playlist);
@@ -91,6 +94,7 @@ protected:
 private:
     AudioAPIWrapper_uptr _api;
     std::atomic_bool _playNextInPlaylist;
+    std::atomic_bool _ignoreNextMusicFinished{ false };
 };
 
 };  // namespace Divide

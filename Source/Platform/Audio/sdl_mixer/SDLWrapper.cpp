@@ -121,6 +121,13 @@ ErrorCode SDL_API::initAudioAPI()
             return ErrorCode::SDL_AUDIO_MIX_INIT_ERROR;
         }
 
+        _activeSong = MIX_CreateTrack(_musicMixer);
+        if (_activeSong == nullptr)
+        {
+            Console::errorfn("{}", SDL_GetError());
+            return ErrorCode::SDL_AUDIO_MIX_INIT_ERROR;
+        }
+
         return ErrorCode::NO_ERR;
     }
 
@@ -133,38 +140,49 @@ void SDL_API::closeAudioAPI()
     stopMusic();
     stopAllSounds();
 
-    if (_activeSong != nullptr && MIX_TrackPlaying(_activeSong))
+    if (_activeSong != nullptr)
     {
         MIX_DestroyTrack(_activeSong);
-        if (_activeSongProperties != 0)
-        {
-            SDL_DestroyProperties(_activeSongProperties);
-        }
         _activeSong = nullptr;
+    }
+    if (_activeSongProperties != 0)
+    {
+        SDL_DestroyProperties(_activeSongProperties);
+        _activeSongProperties = 0;
     }
 
     _activeSongDetails._sfx = nullptr;
     _activeSongDetails._trackID = 0u;
-    for (SoundEntry* entry : _activeSoundChannels)
+    _activeSoundChannels.fill(nullptr);
+
+    for ( auto& [key, entry] : _soundMap )
     {
-        if (entry!= nullptr)
+        if ( entry._track != nullptr )
         {
-            if (entry->_track != nullptr)
-            {
-                MIX_DestroyTrack(entry->_track);
-            }
-            if (entry->_audio != nullptr)
-            {
-                MIX_DestroyAudio(entry->_audio);
-            }
-            if (entry->_properties != 0)
-            {
-                SDL_DestroyProperties(entry->_properties);
-            }
+            MIX_DestroyTrack( entry._track );
+            entry._track = nullptr;
+        }
+        if ( entry._audio != nullptr )
+        {
+            MIX_DestroyAudio( entry._audio );
+            entry._audio = nullptr;
+        }
+        if ( entry._properties != 0 )
+        {
+            SDL_DestroyProperties( entry._properties );
+            entry._properties = 0;
         }
     }
-    _activeSoundChannels.fill(nullptr);
     _soundMap.clear();
+
+    for ( auto& [key, audio] : _musicMap )
+    {
+        if ( audio != nullptr )
+        {
+            MIX_DestroyAudio( audio );
+        }
+    }
+    _musicMap.clear();
 
     if (_soundMixer)
     {
@@ -256,17 +274,18 @@ void SDL_API::playSound(const Handle<AudioDescriptor> sound)
         DIVIDE_UNEXPECTED_CALL();
     }
 
-    SoundEntry* targetSoundEntry = nullptr;
-    for ( SoundEntry* entry : _activeSoundChannels)
+    I32 freeChannel = -1;
+    for ( U32 i = 0u; i < MAX_SOUND_BUFFERS; ++i )
     {
-        if (entry == nullptr || !MIX_TrackPlaying(entry->_track))
+        SoundEntry* entry = _activeSoundChannels[i];
+        if ( entry == nullptr || entry->_track == nullptr || !MIX_TrackPlaying( entry->_track ) )
         {
-            targetSoundEntry = entry;
+            freeChannel = to_I32( i );
             break;
         }
     }
 
-    if ( targetSoundEntry == nullptr)
+    if ( freeChannel < 0 )
     {
         Console::warnfn(LOCALE_STR("WARNING_SDL_MAX_SOUND_CHANNELS"));
         return;
@@ -274,69 +293,86 @@ void SDL_API::playSound(const Handle<AudioDescriptor> sound)
 
     ResourcePtr<AudioDescriptor> soundPtr = Get( sound );
     const string soundPath = (soundPtr->assetLocation() / soundPtr->assetName()).string();
+    const U32 soundKey = to_U32( sound );
 
-    SoundEntry soundEntry;
-    const SoundMap::iterator it = _soundMap.find(to_U32(sound));
-    if (it == std::cend(_soundMap))
+    SoundMap::iterator it = _soundMap.find( soundKey );
+    if ( it == std::end( _soundMap ) )
     {
-        soundEntry._audio = load_audio(_soundMixer, soundPath.c_str(), true);
+        SoundEntry soundEntry{};
+        soundEntry._audio = load_audio( _soundMixer, soundPath.c_str(), true );
+        soundEntry._track = MIX_CreateTrack( _soundMixer );
         soundEntry._details._sfx = &_context.sfx();
-        soundEntry._details._trackID = to_U32(sound);
+        soundEntry._details._trackID = soundKey;
         soundEntry._properties = SDL_CreateProperties();
-        if (soundEntry._properties == 0)
+        if ( soundEntry._track == nullptr || soundEntry._properties == 0 )
         {
-            Console::errorfn("{}", SDL_GetError());
+            Console::errorfn( "{}", SDL_GetError() );
+            if ( soundEntry._track != nullptr )
+            {
+                MIX_DestroyTrack( soundEntry._track );
+            }
+            if ( soundEntry._audio != nullptr )
+            {
+                MIX_DestroyAudio( soundEntry._audio );
+            }
+            if ( soundEntry._properties != 0 )
+            {
+                SDL_DestroyProperties( soundEntry._properties );
+            }
+            return;
         }
 
-        insert(_soundMap, to_U32(sound), soundEntry);
+        it = insert( _soundMap, soundKey, soundEntry ).first;
     }
-    else
+    else if ( soundPtr->dirty() )
     {
-        if ( soundPtr->dirty())
+        MIX_DestroyAudio( it->second._audio );
+        it->second._audio = load_audio( _soundMixer, soundPath.c_str(), true );
+        if ( it->second._track == nullptr )
         {
-            MIX_DestroyAudio(it->second._audio);
-            soundEntry._audio = load_audio(_soundMixer, soundPath.c_str(), true);
-            soundPtr->clean();
+            it->second._track = MIX_CreateTrack( _soundMixer );
         }
-        else 
-        {
-            soundEntry = it->second;
-        }
+        soundPtr->clean();
+    }
+    else if ( it->second._track == nullptr )
+    {
+        it->second._track = MIX_CreateTrack( _soundMixer );
     }
 
-    if (soundEntry._audio)
+    SoundEntry& soundEntry = it->second;
+    if ( soundEntry._audio == nullptr || soundEntry._track == nullptr )
     {
-        const F32 pan = CLAMPED(soundPtr->stereoGain(), -1.f, 1.f);
-        auto [left, right] = panToStereoEqualPower(pan);
-
-        AudioPlaybackProperties playbackProps
-        {
-            ._details = &soundEntry._details,
-            ._mixer = _soundMixer,
-            ._audio = soundEntry._audio,
-            ._track = soundEntry._track,
-            ._position = {
-                soundPtr->position().x,
-                soundPtr->position().y,
-                soundPtr->position().z
-            },
-            ._stereoGains = {
-                .left = left,
-                .right = right
-            },
-            ._properties = soundEntry._properties,
-            ._volume = soundPtr->volume() / 100.f,
-            ._loop = soundPtr->isLooping(),
-            ._is3D = !soundPtr->position().compare(VECTOR3_ZERO)
-        };
-        if (playAudio(playbackProps) )
-        {
-            targetSoundEntry = &soundEntry;
-        }
+        Console::errorfn( LOCALE_STR( "ERROR_SDL_LOAD_SOUND" ), soundPtr->resourceName().c_str() );
+        return;
     }
-    else
+
+    const F32 pan = CLAMPED( soundPtr->stereoGain(), -1.f, 1.f );
+    auto [left, right] = panToStereoEqualPower( pan );
+
+    AudioPlaybackProperties playbackProps
     {
-        Console::errorfn(LOCALE_STR("ERROR_SDL_LOAD_SOUND"), soundPtr->resourceName().c_str());
+        ._details = &soundEntry._details,
+        ._mixer = _soundMixer,
+        ._audio = soundEntry._audio,
+        ._track = soundEntry._track,
+        ._position = {
+            soundPtr->position().x,
+            soundPtr->position().y,
+            soundPtr->position().z
+        },
+        ._stereoGains = {
+            .left = left,
+            .right = right
+        },
+        ._properties = soundEntry._properties,
+        ._volume = soundPtr->volume() / 100.f,
+        ._loop = soundPtr->isLooping(),
+        ._is3D = !soundPtr->position().compare( VECTOR3_ZERO )
+    };
+
+    if ( playAudio( playbackProps ) )
+    {
+        _activeSoundChannels[to_U32( freeChannel )] = &soundEntry;
     }
 }
 
@@ -362,6 +398,8 @@ void SDL_API::stopMusic() noexcept
 {
     if (_activeSong != nullptr && MIX_TrackPlaying(_activeSong))
     {
+        // Intentional stop must not be treated as natural end-of-track playlist advance.
+        _context.sfx().ignoreNextMusicFinished();
         MIX_StopTrack(_activeSong, 0);
     }
 }
