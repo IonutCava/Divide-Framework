@@ -209,7 +209,7 @@ bool DisplayWindow::onSDLEvent(const SDL_Event event)
         } break;
         case SDL_EVENT_WINDOW_MOUSE_LEAVE:
         {
-            _flags &= to_base( WindowFlags::IS_HOVERED );
+            _flags &= ~to_base( WindowFlags::IS_HOVERED );
             notifyListeners(WindowEvent::MOUSE_HOVER_LEAVE, args);
         } break;
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
@@ -219,7 +219,7 @@ bool DisplayWindow::onSDLEvent(const SDL_Event event)
         } break;
         case SDL_EVENT_WINDOW_FOCUS_LOST:
         {
-            _flags &= to_base( WindowFlags::HAS_FOCUS );
+            _flags &= ~to_base( WindowFlags::HAS_FOCUS );
             notifyListeners(WindowEvent::LOST_FOCUS, args);
         } break;
         case SDL_EVENT_WINDOW_RESIZED:
@@ -251,7 +251,7 @@ bool DisplayWindow::onSDLEvent(const SDL_Event event)
         } break;
         case SDL_EVENT_WINDOW_SHOWN:
         {
-            _flags &= to_base( WindowFlags::HIDDEN );
+            _flags &= ~to_base( WindowFlags::HIDDEN );
             notifyListeners(WindowEvent::SHOWN, args);
         } break;
         case SDL_EVENT_WINDOW_HIDDEN:
@@ -381,7 +381,7 @@ void DisplayWindow::decorated(const bool state) noexcept {
     // documentation states that this is a no-op on redundant state, so no need to bother checking
     SDL_SetWindowBordered(_sdlWindow, state);
 
-    state ? _flags |= to_base( WindowFlags::DECORATED ) : _flags &= to_base( WindowFlags::DECORATED );
+    state ? _flags |= to_base( WindowFlags::DECORATED ) : _flags &= ~to_base( WindowFlags::DECORATED );
 }
 
 void DisplayWindow::hidden(const bool state) noexcept
@@ -394,7 +394,7 @@ void DisplayWindow::hidden(const bool state) noexcept
     else
     {
         SDL_ShowWindow(_sdlWindow);
-        _flags &= to_base(WindowFlags::HIDDEN);
+        _flags &= ~to_base(WindowFlags::HIDDEN);
     }
 }
 
@@ -419,7 +419,7 @@ void DisplayWindow::minimized(const bool state) noexcept {
         }
     }
 
-    state ? _flags |= to_base( WindowFlags::MINIMIZED ) : _flags &= to_base( WindowFlags::MINIMIZED );
+    state ? _flags |= to_base( WindowFlags::MINIMIZED ) : _flags &= ~to_base( WindowFlags::MINIMIZED );
 }
 
 void DisplayWindow::maximized(const bool state) noexcept
@@ -436,7 +436,7 @@ void DisplayWindow::maximized(const bool state) noexcept
         }
     }
 
-    state ? _flags |= to_base( WindowFlags::MAXIMIZED ) : _flags &= to_base( WindowFlags::MAXIMIZED );
+    state ? _flags |= to_base( WindowFlags::MAXIMIZED ) : _flags &= ~to_base( WindowFlags::MAXIMIZED );
 }
 
 bool DisplayWindow::mouseGrabState() const noexcept
