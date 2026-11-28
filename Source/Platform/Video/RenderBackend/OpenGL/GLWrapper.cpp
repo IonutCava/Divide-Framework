@@ -14,6 +14,8 @@
 #include "Core/Headers/DisplayManager.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/RenderSmokeTest.h"
+#include "Core/Headers/PlatformContext.h"
+#include "EngineConfig.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
@@ -928,9 +930,12 @@ namespace Divide
             }
         }
 
-        if ( mainWindow ) 
+        if ( mainWindow )
         {
             _swapBufferTimer.stop();
+            // VSync/adaptive often block inside SwapWindow. Once it returns, soak spare CPU here
+            // (Kernel still runs a fuller idle after FRAME_EVENT_ENDED).
+            _context.context().idle( true, 0u, 0u );
         }
         else if ( window.userData()._glContext != _context.context().mainWindow().userData()._glContext )
         {
@@ -984,27 +989,61 @@ namespace Divide
             }
         }
 
+        constexpr gl46core::GLuint64 kFencePollTimeoutNs = 1'000'000u; // 1 ms
+
         while ( !s_stateTracker._endFrameFences.empty() )
         {
             auto& sync = s_stateTracker._endFrameFences.front();
             const U64 frameNumber = GFXDevice::FrameCount();
             const bool mustWait = frameNumber >= Config::MAX_FRAMES_IN_FLIGHT &&
                                   sync.second <= frameNumber - Config::MAX_FRAMES_IN_FLIGHT;
+
             const gl46core::GLenum waitRet = gl46core::glClientWaitSync( sync.first, gl46core::SyncObjectMask::GL_NONE_BIT, 0u );
-            if ( waitRet == gl46core::GL_ALREADY_SIGNALED || waitRet == gl46core::GL_CONDITION_SATISFIED ||
-                 ( waitRet == gl46core::GL_TIMEOUT_EXPIRED && mustWait && WaitForUniformFence( sync.first ) ) )
+            if ( waitRet == gl46core::GL_WAIT_FAILED )
+            {
+                Console::errorfn( "OpenGL: frame completion fence failed (status {})", to_U32( waitRet ) );
+                return false;
+            }
+            if ( waitRet == gl46core::GL_ALREADY_SIGNALED || waitRet == gl46core::GL_CONDITION_SATISFIED )
             {
                 s_stateTracker._lastSyncedFrameNumber.store( sync.second, std::memory_order_relaxed );
                 DestroyFenceSync( sync.first );
                 s_stateTracker._endFrameFences.pop();
+                continue;
             }
-            else if ( waitRet == gl46core::GL_TIMEOUT_EXPIRED && !mustWait )
+
+            if ( !mustWait )
             {
                 break;
             }
-            else
+
+            // Frame slot is too old: block, but pump fast idle between short polls (mirrors VK fence wait).
+            static thread_local U32 s_fenceIdleDepth = 0u;
+            for ( ;; )
             {
-                Console::errorfn( "OpenGL: frame completion fence failed (status {})", to_U32( waitRet ) );
+                const gl46core::GLenum blockingRet = gl46core::glClientWaitSync(
+                    sync.first,
+                    gl46core::SyncObjectMask::GL_SYNC_FLUSH_COMMANDS_BIT,
+                    kFencePollTimeoutNs );
+                if ( blockingRet == gl46core::GL_ALREADY_SIGNALED || blockingRet == gl46core::GL_CONDITION_SATISFIED )
+                {
+                    s_stateTracker._lastSyncedFrameNumber.store( sync.second, std::memory_order_relaxed );
+                    DestroyFenceSync( sync.first );
+                    s_stateTracker._endFrameFences.pop();
+                    break;
+                }
+                if ( blockingRet == gl46core::GL_TIMEOUT_EXPIRED )
+                {
+                    if ( s_fenceIdleDepth == 0u )
+                    {
+                        ++s_fenceIdleDepth;
+                        _context.context().idle( true, 0u, 0u );
+                        --s_fenceIdleDepth;
+                    }
+                    continue;
+                }
+
+                Console::errorfn( "OpenGL: frame completion fence failed (status {})", to_U32( blockingRet ) );
                 return false;
             }
         }

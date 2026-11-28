@@ -390,7 +390,6 @@ void RenderPassManager::render(const RenderParams& params)
         {
             Attorney::EditorRenderPassExecutor::getCommandBuffer(context.editor(), *postRenderBuffer, flushMemCmd);
         }
-        _parent.platformContext().idle();
 
         for ( RenderPassData& passData : _renderPassData )
         {

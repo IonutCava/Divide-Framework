@@ -2,10 +2,12 @@
 
 #include "Headers/vkSwapChain.h"
 #include "Headers/vkDevice.h"
+#include "Headers/VKWrapper.h"
 
 #include "Core/Headers/RenderSmokeTest.h"
 #include "Utility/Headers/Localization.h"
 
+#include "Core/Headers/PlatformContext.h"
 #include "Platform/Headers/DisplayWindow.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 
@@ -26,6 +28,9 @@ namespace Divide {
 
             return "OTHER";
         }
+
+        // Short poll so the main thread can run PlatformContext::idle while the GPU catches up.
+        constexpr U64 kFencePollTimeoutNs = 1'000'000ull; // 1 ms
     }
 
     VKSwapChain::VKSwapChain( VK_API& context, const VKDevice& device, const DisplayWindow& window, const bool smokeReadback )
@@ -121,21 +126,35 @@ namespace Divide {
             swapchainBuilder.add_image_usage_flags( VK_IMAGE_USAGE_TRANSFER_SRC_BIT );
         }
 
-        // adaptiveSync not supported yet
-        DIVIDE_UNUSED(adaptiveSync);
-
         // Prefer sRGB formats so the hardware encodes our linear output on write (same as OpenGL's GL_FRAMEBUFFER_SRGB).
         // Note: vk-bootstrap's set_desired_format() inserts at the front of the list, so add everything as ordered fallbacks instead.
         // If only UNORM formats are available, isSRGB() reports false and the final screen pass encodes to sRGB in the shader.
-        auto vkbSwapchain = swapchainBuilder.add_fallback_format( { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
-                                            .add_fallback_format( { VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
-                                            .add_fallback_format( { VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
-                                            .add_fallback_format( { VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
-                                            .add_fallback_format( { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
-                                            .add_fallback_format( { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
-                                            .set_desired_present_mode( vSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR )
-                                            .add_fallback_present_mode( VK_PRESENT_MODE_FIFO_KHR )
-                                            .set_desired_extent( surfaceExtent().width, surfaceExtent().height )
+        swapchainBuilder.add_fallback_format( { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                        .add_fallback_format( { VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                        .add_fallback_format( { VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                        .add_fallback_format( { VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                        .add_fallback_format( { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                        .add_fallback_format( { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } );
+
+        // Match GL WindowManager present policy: off / on / adaptive (with FIFO always available as fallback).
+        if ( !vSync )
+        {
+            swapchainBuilder.set_desired_present_mode( VK_PRESENT_MODE_IMMEDIATE_KHR )
+                            .add_fallback_present_mode( VK_PRESENT_MODE_FIFO_KHR );
+        }
+        else if ( adaptiveSync )
+        {
+            swapchainBuilder.set_desired_present_mode( VK_PRESENT_MODE_FIFO_RELAXED_KHR )
+                            .add_fallback_present_mode( VK_PRESENT_MODE_MAILBOX_KHR )
+                            .add_fallback_present_mode( VK_PRESENT_MODE_FIFO_KHR );
+        }
+        else
+        {
+            swapchainBuilder.set_desired_present_mode( VK_PRESENT_MODE_FIFO_KHR )
+                            .add_fallback_present_mode( VK_PRESENT_MODE_FIFO_KHR );
+        }
+
+        auto vkbSwapchain = swapchainBuilder.set_desired_extent( surfaceExtent().width, surfaceExtent().height )
                                             .build();
 
 
@@ -160,11 +179,18 @@ namespace Divide {
             return ErrorCode::VK_SURFACE_CREATE;
         }
 
-        // Report the mode the driver actually granted: IMMEDIATE silently falls back to FIFO (display-synchronised) if unsupported
-        Console::printfn( "Vulkan swapchain present mode: {} (VSync requested: {})", PresentModeName( _swapChain.present_mode ), vSync );
+        // Report the mode the driver actually granted (IMMEDIATE/RELAXED/MAILBOX may fall back to FIFO).
+        Console::printfn( "Vulkan swapchain present mode: {} (VSync requested: {}, adaptiveSync requested: {})",
+                          PresentModeName( _swapChain.present_mode ), vSync, adaptiveSync );
         if ( !vSync && _swapChain.present_mode == VK_PRESENT_MODE_FIFO_KHR )
         {
             Console::warnfn( "Vulkan IMMEDIATE present mode is unavailable: presentation is synchronised to the display refresh rate" );
+        }
+        if ( vSync && adaptiveSync &&
+             _swapChain.present_mode != VK_PRESENT_MODE_FIFO_RELAXED_KHR &&
+             _swapChain.present_mode != VK_PRESENT_MODE_MAILBOX_KHR )
+        {
+            Console::warnfn( LOCALE_STR( "WARN_ADAPTIVE_SYNC_NOT_SUPPORTED" ) );
         }
 
         const VkSemaphoreCreateInfo semaphoreCreateInfo = vk::semaphoreCreateInfo();
@@ -336,11 +362,27 @@ namespace Divide {
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+        // Poll with a short timeout so we can run fast idle while the GPU catches up.
+        // Present itself does not block the CPU on Vulkan.
         return WaitForFrameSlot( { _frames.data(), _frames.size() }, frameNumber, _device.getVKDevice(),
-                                 []( const VkDevice device, const VkFence fence )
+                                 [this]( const VkDevice device, const VkFence fence )
         {
             PROFILE_SCOPE( "Wait for fences", Profiler::Category::Graphics );
-            return vkWaitForFences( device, 1u, &fence, VK_TRUE, U64_MAX );
+            static thread_local U32 s_fenceIdleDepth = 0u;
+            for ( ;; )
+            {
+                const VkResult waitResult = vkWaitForFences( device, 1u, &fence, VK_TRUE, kFencePollTimeoutNs );
+                if ( waitResult != VK_TIMEOUT )
+                {
+                    return waitResult;
+                }
+                if ( s_fenceIdleDepth == 0u )
+                {
+                    ++s_fenceIdleDepth;
+                    _context.context().context().idle( true, 0u, 0u );
+                    --s_fenceIdleDepth;
+                }
+            }
         } );
     }
 
