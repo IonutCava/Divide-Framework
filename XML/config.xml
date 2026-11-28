@@ -33,7 +33,7 @@
 	</debug>
 	<language>enGB</language>
 	<serverAddress>127.0.0.1</serverAddress>
-	<startupProject>Default</startupProject>
+	<startupProject>Games</startupProject>
 	<!-- RUNTIME: Values use by the application after loading is complete -->
 	<runtime>
 		<title>DIVIDE Framework</title>

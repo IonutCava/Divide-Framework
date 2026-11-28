@@ -1551,12 +1551,6 @@ namespace Divide
 
         if ( srcType != TextureType::COUNT && dstType != TextureType::COUNT )
         {
-            U16 depth = 1u;
-            if ( source->_descriptor._texType == TextureType::TEXTURE_3D )
-            {
-                depth = source->_depth;
-            }
-
             CopyInternal( cmdBuffer, 
                           { source->_image->_image, source->resourceName().c_str(), HasUsageFlagSet(source->descriptor(), ImageUsage::RT_RESOLVE_TARGET) },
                           GetAspectFlags( source->_descriptor ),

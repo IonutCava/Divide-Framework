@@ -230,4 +230,59 @@ namespace Divide
         CHECK( VegetationTreeCullRadius( bounds ) == Catch::Approx( std::sqrt( 61.f ) ) );
         CHECK( VegetationTreeCullRadius( BoundingBox{ float3{ -1.f }, float3{ 1.f } } ) == Catch::Approx( std::sqrt( 3.f ) ) );
     }
+
+    TEST_CASE( "Vegetation chunk bounds hold every sphere the cull shader tests", "[vegetation][render_smoke]" )
+    {
+        // instanceCullVegetation.glsl: rotate_vertex_position
+        const auto rotate = []( const float3& v, const float4& q )
+        {
+            const float3 axis{ q.x, q.y, q.z };
+            return v + Cross( axis, Cross( axis, v ) + v * q.w ) * 2.f;
+        };
+        const auto holds = []( const BoundingBox& box, const float3& centre, const F32 radius )
+        {
+            constexpr F32 tolerance = 1e-3f;
+            const float3 low = centre - float3{ radius - tolerance };
+            const float3 high = centre + float3{ radius - tolerance };
+            return low.x >= box._min.x && low.y >= box._min.y && low.z >= box._min.z &&
+                   high.x <= box._max.x && high.y <= box._max.y && high.z <= box._max.z;
+        };
+
+        const float4 grassExtents{ 1.f, 1.f, 1.f, 1.9f };
+        const F32 cullRadius = 12.f;
+        const float2 wind{ 0.1f, 0.7f };
+
+        std::array<VegetationData, 3> instances{};
+        instances[0]._positionAndScale = float4{ 10.f, 2.f, -30.f, 0.6f };
+        instances[1]._positionAndScale = float4{ -40.f, 15.f, 25.f, 1.25f };
+        instances[2]._positionAndScale = float4{ 5.f, -3.f, 60.f, 2.f };
+        instances[0]._orientationQuat = quatf( WORLD_X_AXIS, Angle::to_RADIANS( Angle::DEGREES_F( 30.f ) ) )._elements;
+        instances[1]._orientationQuat = quatf( WORLD_Z_AXIS, Angle::to_RADIANS( Angle::DEGREES_F( -75.f ) ) )._elements;
+        instances[2]._orientationQuat = quatf( WORLD_Y_AXIS, Angle::to_RADIANS( Angle::DEGREES_F( 140.f ) ) )._elements;
+
+        VegetationInstanceBounds bounds;
+        CHECK( bounds.empty() );
+        for ( const VegetationData& instance : instances )
+        {
+            bounds.add( instance );
+        }
+        REQUIRE_FALSE( bounds.empty() );
+        CHECK( bounds._maxScale == 2.f );
+
+        const BoundingBox grassBox = bounds.padded( VegetationGrassReach( grassExtents, bounds._maxScale, wind.x, wind.y ) );
+        const BoundingBox treeBox = bounds.padded( VegetationTreeReach( cullRadius, bounds._maxScale, wind.x, wind.y ) );
+        for ( const VegetationData& instance : instances )
+        {
+            const float3 origin = instance._positionAndScale.xyz;
+            const F32 scale = instance._positionAndScale.w;
+            const float3 grassCentre = origin + rotate( float3{ 0.f, grassExtents.y * scale * 0.5f, 0.f }, instance._orientationQuat );
+            CHECK( holds( grassBox, grassCentre, grassExtents.w * scale ) );
+
+            const F32 treeRadius = cullRadius * scale;
+            CHECK( holds( treeBox, origin, treeRadius + TREE_WIND_PADDING( treeRadius, wind.length() ) ) );
+        }
+
+        CHECK( VegetationGrassReach( grassExtents, 1.f, 0.5f, 0.9f ) > VegetationGrassReach( grassExtents, 1.f, wind.x, wind.y ) );
+        CHECK( VegetationTreeReach( cullRadius, 1.f, 0.5f, 0.9f ) > VegetationTreeReach( cullRadius, 1.f, wind.x, wind.y ) );
+    }
 }

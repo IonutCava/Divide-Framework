@@ -288,6 +288,38 @@ namespace Divide
         CHECK_FALSE(dirty.dirty());
     }
 
+    TEST_CASE( "World bounds overrides replace node bounds only once applied", "[bounds][scene_graph]" )
+    {
+        const BoundingBox nodeBounds{ -1.f, -1.f, -1.f, 1.f, 1.f, 1.f };
+        const BoundingBox chunkBounds{ 100.f, -5.f, 200.f, 356.f, 40.f, 456.f };
+
+        WorldBoundsOverride worldBounds;
+        CHECK_FALSE(worldBounds.pending());
+        CHECK_FALSE(worldBounds.active());
+        CHECK(worldBounds.apply(nodeBounds) == nodeBounds);
+        CHECK_FALSE(worldBounds.active());
+
+        worldBounds.set(chunkBounds);
+        CHECK(worldBounds.pending());
+        CHECK_FALSE(worldBounds.active());
+
+        CHECK(worldBounds.apply(nodeBounds) == chunkBounds);
+        CHECK_FALSE(worldBounds.pending());
+        CHECK(worldBounds.active());
+
+        // Later changes to the node's own bounds no longer replace the override.
+        const BoundingBox grownNodeBounds{ -1000.f, -50.f, -1000.f, 1000.f, 80.f, 1000.f };
+        CHECK(worldBounds.apply(grownNodeBounds) == chunkBounds);
+
+        BoundingBox paddedChunkBounds = chunkBounds;
+        paddedChunkBounds.add(float3{ 360.f, 45.f, 460.f });
+        worldBounds.set(paddedChunkBounds);
+        CHECK(worldBounds.pending());
+        CHECK(worldBounds.active());
+        CHECK(worldBounds.apply(grownNodeBounds) == paddedChunkBounds);
+        CHECK_FALSE(worldBounds.pending());
+    }
+
     TEST_CASE( "New hierarchy transforms interpolate from their initial world pose", "[transform][scene_graph][render_smoke]" )
     {
         struct TestTransform

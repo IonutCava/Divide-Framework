@@ -56,6 +56,7 @@ Start with [the architecture index](docs/architecture/index.md), then read the g
 | Area | Guide |
 |---|---|
 | Rendering stages, command submission, lighting, and feature integration | [Rendering](docs/architecture/rendering.md) |
+| View pass order, alpha-tested cutouts, and transparency | [Rendering](docs/architecture/rendering.md#view-pass-order-and-transparency) |
 | Renderer profiling and frame-time investigations | [Performance diagnosis](docs/architecture/rendering.md#performance-diagnosis) |
 | Supervised graphics smoke tests and GPU recovery | [Rendering smoke diagnosis](docs/architecture/rendering.md#framework-smoke-diagnosis), [GPU resources](docs/architecture/gpu-resources.md#vulkan-smoke-readback-and-recovery) |
 | Shader bindings, reflection, and caches | [Shaders and descriptors](docs/architecture/shader-descriptors.md) |
