@@ -3,6 +3,10 @@
 #ifndef _WATER_DATA_CMN_
 #define _WATER_DATA_CMN_
 
+// Keep in sync with WaterTests.cpp GetWaterDetailsCPU.
+#define UNDERWATER_SHORELINE_HALF_WIDTH 0.75f
+#define UNDERWATER_SHALLOW_FADE         20.0f
+
 bool IsWithinWaterFootprint(in WaterBodyData data, in vec3 vertexW)
 {
     return all(greaterThan(data.extents.xyz, vec3(0.f))) &&
@@ -30,28 +34,46 @@ bool IsUnderWater(in vec3 vertexW)
     return false;
 }
 
-vec2 GetWaterDetails(in vec3 vertexW, in float maxDepth)
+// x = blend toward underwater look (0 dry .. 1 submerged)
+// y = shallow factor (1 near surface sand .. 0 deeper caustics)
+vec2 GetWaterDetails(in vec3 vertexW)
 {
-
-    float maxDistance = 0.0f;
-    float minDepth = 1.0f;
+    float blendWeight = 0.0f;
+    float shallowFactor = 1.0f;
 
     for (int i = 0; i < GLOBAL_WATER_BODIES_COUNT; ++i)
     {
         const WaterBodyData data = dvd_waterEntities[i];
         const vec3 position = data.positionW.xyz;
+        const vec3 extents = data.extents.xyz;
 
-        if (IsWithinWaterFootprint(data, vertexW))
+        if (!IsWithinWaterFootprint(data, vertexW))
         {
-            // Distance
-            maxDistance = max(maxDistance, 1.0f - smoothstep(position.y - 0.05f, position.y + 0.05f, vertexW.y));
+            continue;
+        }
 
+        const float waterBottom = position.y - extents.y;
+        const float surfaceY = position.y;
 
-            // Current water depth in relation to the minimum possible depth
-            minDepth = min(minDepth, Saturate(1.0f - (position.y - vertexW.y) / max(position.y - maxDepth, M_EPSILON)));
+        // Match PointInsideWater / IsUnderWater volume: no blend below the water bottom.
+        float bodyBlend = 0.0f;
+        if (vertexW.y > waterBottom)
+        {
+            bodyBlend = 1.0f - smoothstep(surfaceY - UNDERWATER_SHORELINE_HALF_WIDTH,
+                                          surfaceY + UNDERWATER_SHORELINE_HALF_WIDTH,
+                                          vertexW.y);
+        }
+
+        blendWeight = max(blendWeight, bodyBlend);
+
+        if (bodyBlend > 0.0f && vertexW.y < surfaceY)
+        {
+            const float fadeRange = max(min(extents.y, UNDERWATER_SHALLOW_FADE), M_EPSILON);
+            const float depthBelowSurface = surfaceY - vertexW.y;
+            shallowFactor = min(shallowFactor, Saturate(1.0f - depthBelowSurface / fadeRange));
         }
     }
 
-    return Saturate(vec2(maxDistance, minDepth));
+    return Saturate(vec2(blendWeight, shallowFactor));
 }
 #endif //_WATER_DATA_CMN_

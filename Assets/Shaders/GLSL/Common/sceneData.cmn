@@ -4,7 +4,7 @@
 struct WaterBodyData
 {
     vec4 positionW;
-    ///length, depth, width
+    /// xyz = {width, depth, length} — matches WaterPlane::extractWaterBodyData
     vec4 extents;
 };
 

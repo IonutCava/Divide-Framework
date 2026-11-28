@@ -39,7 +39,7 @@ void getTextureOMR(in bool usePacked, in vec3 uv, in uvec3 texOps, inout vec3 OM
 
 vec2 GetTerrainWaterData()
 {
-    return GetWaterDetails(VAR._vertexW.xyz, TERRAIN_HEIGHT_OFFSET);
+    return GetWaterDetails(VAR._vertexW.xyz);
 }
 
 vec3 GetTerrainGeometryNormalWV()

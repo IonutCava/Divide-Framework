@@ -303,8 +303,6 @@ layout(quads, fractional_even_spacing, cw) in;
 layout(location = ATTRIB_FREE_START + 1) in float tcs_tileSize[];
 layout(location = ATTRIB_FREE_START + 2) in flat uint tcs_ringID[];
 
-layout(location = ATTRIB_FREE_START + 0) out vec2 tes_waterData;
-
 #if defined(TOGGLE_DEBUG) || defined(TOGGLE_TESS_LEVEL)
 #if defined(TOGGLE_DEBUG)
 layout(location = ATTRIB_FREE_START + 1) out float tes_tileSize;
@@ -354,7 +352,6 @@ void main()
     _out._indirectionIDs = _in[0]._indirectionIDs;
     _out._SelectionFlag = dvd_SelectionFlag(dvd_Transforms[TRANSFORM_IDX]);
     _out._LoDLevel = tcs_ringID[0];
-    tes_waterData = vec2(0.f);
 
 #if defined(TOGGLE_DEBUG) || defined(TOGGLE_TESS_LEVEL)
     tes_debugColour = LerpDebugColours(tcs_debugColour[0], gl_TessCoord.xy);
@@ -383,9 +380,6 @@ void main()
 
 layout(triangles) in;
 
-layout(location = ATTRIB_FREE_START + 0) in vec2 tes_waterData[];
-layout(location = ATTRIB_FREE_START + 0) out vec2 gs_waterData;
-
 layout(location = ATTRIB_FREE_START + 1) in float tes_tileSize[];
 layout(location = ATTRIB_FREE_START + 2) in flat uint tes_ringID[];
 layout(location = ATTRIB_FREE_START + 3) in float tes_PatternValue[];
@@ -411,8 +405,6 @@ void PerVertex(in int i, in vec3 edge_dist, in mat4 viewProjectionMatrix)
                        i == 1 ? edge_dist.y : 0.0,
                        i >= 2 ? edge_dist.z : 0.0,
                        tes_PatternValue[i]);
-
-    gs_waterData = tes_waterData[i];
 }
 
 void main(void)
@@ -516,8 +508,6 @@ void main(void)
 
 layout(early_fragment_tests) in;
 
-layout(location = ATTRIB_FREE_START + 0) in vec2 tes_waterData;
-
 #if defined(TOGGLE_DEBUG)
 
 layout(location = ATTRIB_FREE_START + 1) in vec3 gs_wireColor;
@@ -599,8 +589,6 @@ void main(void) {
 }
 
 --Fragment.PrePass
-
-layout(location = ATTRIB_FREE_START + 0) in vec2 tes_waterData;
 
 #include "terrainUtils.cmn" 
 #include "prePass.frag"
