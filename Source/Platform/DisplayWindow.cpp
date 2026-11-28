@@ -277,6 +277,7 @@ bool DisplayWindow::onSDLEvent(const SDL_Event event)
         case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
         case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
         {
+            // Fullscreen owns mouse grab; camera look must not save/restore this.
             args._flag = event.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN;
             notifyListeners(WindowEvent::FULLSCREEN_TOGGLED, args);
             mouseGrabState(args._flag);

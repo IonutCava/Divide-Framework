@@ -1140,9 +1140,10 @@ namespace Divide
         return actionID;
     }
 
+    // Camera look owns relative mouse mode only. Fullscreen owns mouse grab
+    // (DisplayWindow ENTER/LEAVE_FULLSCREEN); do not save/restore grab here.
     bool Scene::lockCameraToPlayerMouse( const PlayerIndex index, const bool lockState ) const noexcept
     {
-        static bool hadWindowGrab = false;
         static int2 lastMousePosition;
 
         if (state()->playerState(index).cameraLockedToMouse() != lockState )
@@ -1152,10 +1153,6 @@ namespace Divide
             const DisplayWindow* window = _context.app().windowManager().getFocusedWindow();
             if ( lockState )
             {
-                if ( window != nullptr )
-                {
-                    hadWindowGrab = window->mouseGrabState();
-                }
                 lastMousePosition = WindowManager::GetGlobalCursorPosition();
                 WindowManager::ToggleRelativeMouseMode(window, true );
             }
@@ -1163,10 +1160,6 @@ namespace Divide
             {
                 WindowManager::ToggleRelativeMouseMode(window, false );
                 state()->playerState( index ).resetMoveDirections();
-                if ( window != nullptr )
-                {
-                    window->mouseGrabState( hadWindowGrab );
-                }
                 WindowManager::SetGlobalCursorPosition( lastMousePosition.x, lastMousePosition.y );
             }
             return true;
@@ -1466,6 +1459,9 @@ namespace Divide
 
         const PlayerIndex idx = player->index();
 
+        // Unlock before resetAll clears cameraLockedToMouse, or SDL relative mode can stick.
+        lockCameraToPlayerMouse( idx, false );
+
         input()->onPlayerRemove( idx );
         state()->onPlayerRemove( idx );
         _cameraUpdateListeners[idx] = 0u;
@@ -1751,6 +1747,7 @@ namespace Divide
     {
     }
 
+    // Focus loss clears camera look (relative mouse). Do not auto-relock on regain.
     void Scene::onChangeFocus( const bool hasFocus )
     {
         if ( !hasFocus )
@@ -1761,6 +1758,7 @@ namespace Divide
             {
                 if (player != nullptr)
                 {
+                    lockCameraToPlayerMouse( player->index(), false );
                     state()->playerState( player->index() ).resetMoveDirections();
                     endDragSelection( player->index(), false );
                 }
