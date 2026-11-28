@@ -58,7 +58,7 @@ constexpr U8 GLOBAL_WATER_BODIES_COUNT = 5u;
 struct WaterBodyData
 {
     float4 _positionW = VECTOR4_ZERO;
-    ///length, depth, width
+    /// xyz = {width, depth, length} — matches WaterPlane::extractWaterBodyData
     float4 _extents = VECTOR4_ZERO;
 
     bool operator==(const WaterBodyData& other) const = default;
