@@ -202,6 +202,7 @@ class Scene : public Resource, public PlatformContextComponent {
 
         void beginDragSelection(PlayerIndex idx, int2 mousePos);
         void endDragSelection(PlayerIndex idx, bool clearSelection);
+        virtual void onSelectionGestureComplete(PlayerIndex idx);
 #pragma endregion
 
 #pragma region Entity Management

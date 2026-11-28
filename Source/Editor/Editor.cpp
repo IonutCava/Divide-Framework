@@ -966,9 +966,11 @@ namespace Divide
             {
                 NOP();
             }
+            _context.sfx().resumeMusic();
         }
         else
         {
+            _context.sfx().pauseMusic();
             _stepQueue = 0;
             playerState.overrideCamera( editorCamera() );
             sceneGizmoEnabled( true );
