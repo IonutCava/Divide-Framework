@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -39,6 +39,7 @@
 namespace Divide {
 
 class LightPool;
+struct LightDataBinding;
 class ShaderProgram;
 class ResourceCache;
 class PlatformContext;
@@ -52,7 +53,7 @@ class Renderer final : public PlatformContextComponent {
     Renderer(PlatformContext& context);
     ~Renderer() override;
 
-    void prepareLighting(RenderStage stage, const Rect<I32>& viewport, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut);
+    void prepareLighting(RenderStage stage, const Rect<I32>& viewport, const CameraSnapshot& cameraSnapshot, const LightDataBinding& lightData, GFX::CommandBuffer& bufferInOut, bool independentView = false);
 
     void idle(const U64 deltaTimeUSGame ) const;
 
@@ -64,6 +65,7 @@ class Renderer final : public PlatformContextComponent {
 
   private:
       struct PerRenderStageData {
+          Mutex _recordLock;
           struct GridBuildData
           {
               mat4<F32> _invProjectionMatrix;

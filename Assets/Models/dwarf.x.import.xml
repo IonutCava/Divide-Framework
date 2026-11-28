@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
+<import version="1">
+    <rotation x="0" y="180" z="0"/>
+    <scale>0.025</scale>
+</import>

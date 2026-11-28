@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/BoundingSphere.h"
 #include "Headers/OBB.h"
@@ -23,19 +24,14 @@ BoundingSphere::BoundingSphere(const std::array<float3, 8>& points) noexcept
 
 bool BoundingSphere::containsBoundingBox(const BoundingBox& AABB) const noexcept
 {
-    bool inside = true;
-    std::array<float3, 8> points = AABB.getPoints();
-
-    for (U8 i = 0; i < 8u; ++i)
+    // The box is inside only if its corner farthest from the centre is.
+    const float3 farthest
     {
-        if (containsPoint(points[i]))
-        {
-            inside = false;
-            break;
-        }
-    }
-
-    return inside;
+        std::max(std::abs(_sphere.center.x - AABB._min.x), std::abs(_sphere.center.x - AABB._max.x)),
+        std::max(std::abs(_sphere.center.y - AABB._min.y), std::abs(_sphere.center.y - AABB._max.y)),
+        std::max(std::abs(_sphere.center.z - AABB._min.z), std::abs(_sphere.center.z - AABB._max.z))
+    };
+    return Dot(farthest, farthest) <= _sphere.radius * _sphere.radius;
 }
 
 bool BoundingSphere::containsPoint(const float3& point) const noexcept

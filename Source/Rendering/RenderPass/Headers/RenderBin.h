@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -39,7 +39,11 @@
 #ifndef DVD_RENDER_BIN_H_
 #define DVD_RENDER_BIN_H_
 
+#include "Core/Headers/PoolHandle.h"
+
 namespace Divide {
+
+using RenderBinGeometrySortKey = std::array<PoolHandle, 2u>;
 
 struct Task;
 class GFXDevice;
@@ -56,9 +60,34 @@ struct RenderBinItem {
     size_t _stateHash{ 0u };
     I64 _shaderKey{ I64_LOWEST };
     I64 _textureKey{ I64_LOWEST };
+    RenderBinGeometrySortKey _geometrySortKey{};
     F32 _distanceToCameraSq{ 0.f };
     bool _hasTransparency{ false };
 };
+
+[[nodiscard]] inline bool RenderBinGeometrySortKeyLess(const RenderBinGeometrySortKey& lhs,
+                                                       const RenderBinGeometrySortKey& rhs) noexcept
+{
+    for (size_t i = 0u; i < lhs.size(); ++i)
+    {
+        const PoolHandle& left = lhs[i];
+        const PoolHandle& right = rhs[i];
+        if (left._id != right._id)
+        {
+            return left._id < right._id;
+        }
+        if (left._generation != right._generation)
+        {
+            return left._generation < right._generation;
+        }
+        if (left._tag != right._tag)
+        {
+            return left._tag < right._tag;
+        }
+    }
+
+    return false;
+}
 
 enum class RenderingOrder : U8 {
     NONE = 0,
@@ -76,6 +105,7 @@ enum class RenderBinType : U8 {
     TERRAIN,     ///< Actual terrain. It should cover most of the remaining empty screen space
     TERRAIN_AUX, ///< E.g. infinite ground plane
     SKY,         ///< Sky needs to be drawn after ALL opaque geometry to save on fillrate
+    ALPHA_TESTED,///< Cutout geometry (e.g. foliage) skips the depth pre-pass and writes its own depth after the opaque main pass
     TRANSLUCENT, ///< Translucent items use a [0.0...1.0] alpha value supplied via an opacity map or via the albedo's alpha channel
     IMPOSTOR,    ///< Impostors should be overlayed over everything since they are a debugging tool
     COUNT
@@ -83,11 +113,19 @@ enum class RenderBinType : U8 {
 
 namespace Names {
     static const char* renderBinType[] = {
-        "OPAQUE", "WATER", "TERRAIN", "TERRAIN_AUX", "SKY", "TRANSLUCENT", "IMPOSTOR", "UNKNOWN"
+        "OPAQUE", "WATER", "TERRAIN", "TERRAIN_AUX", "SKY", "ALPHA_TESTED", "TRANSLUCENT", "IMPOSTOR", "UNKNOWN"
     };
 };
 
-static_assert(ArrayCount( Names::renderBinType ) == to_base( RenderBinType::COUNT ) + 1, "RenderBinType name array out of sync!");
+static_assert(std::size( Names::renderBinType ) == to_base( RenderBinType::COUNT ) + 1, "RenderBinType name array out of sync!");
+
+/// The render bins a colour or depth pass draws. Shadow passes draw every bin.
+enum class RenderBinContent : U8 {
+    OPAQUE,       ///< Every bin except alpha-tested and translucent ones: the depth pre-pass and the opaque main pass
+    ALPHA_TESTED, ///< Cutout geometry drawn with depth writes after the opaque main pass
+    TRANSLUCENT,  ///< Blended geometry: weighted OIT or sorted forward transparency
+    COUNT
+};
 
 struct RenderPackage;
 

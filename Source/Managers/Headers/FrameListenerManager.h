@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -44,6 +44,7 @@ class FrameListenerManager {
     using EventTimeMap = fixed_vector<U64, 16>;
 
   public:
+    FrameListenerManager();
 
     void registerFrameListener(FrameListener* listener, U32 callOrder);
     void removeFrameListener(FrameListener* listener);
@@ -55,16 +56,20 @@ class FrameListenerManager {
 
   private:
 
-    bool frameStarted(const FrameEvent& evt);
-    bool framePreRender(const FrameEvent& evt);
-    bool frameSceneRenderStarted(const FrameEvent& evt);
-    bool frameSceneRenderEnded(const FrameEvent& evt);
-    bool frameRenderingQueued(const FrameEvent& evt);
-    bool framePostRender(const FrameEvent& evt);
-    bool frameEnded(const FrameEvent& evt);
+    using FrameCallback = bool (FrameListener::*)(const FrameEvent&);
+    bool dispatchFrameEvent(const FrameEvent& evt, FrameCallback callback);
 
    private:
+    // Nested dispatches are shallow and listener counts modest, so the common case never touches the heap.
+    static constexpr size_t g_inlineDispatchDepth = 4u;
+    static constexpr size_t g_inlineListenersPerDispatch = 32u;
+    static constexpr size_t g_reservedListeners = 32u;
+
+    using DispatchedListeners = fixed_vector<I64, g_inlineListenersPerDispatch, true>;
+
     vector<FrameListener*> _listeners;
+    fixed_vector<DispatchedListeners, g_inlineDispatchDepth, true> _dispatchedListeners;
+    size_t _dispatchDepth{0u};
 
 };
 

@@ -18,6 +18,35 @@
 
 namespace Divide
 {
+    namespace
+    {
+        void DrawEmptyPreviewMessage( const Rect<I32>& imageRect )
+        {
+            if ( imageRect.z <= 0 || imageRect.w <= 0 )
+            {
+                return;
+            }
+
+            constexpr std::array<const char*, 3u> lines
+            {
+                "No node to preview",
+                "Pause the simulation and select a model, primitive",
+                "or particle emitter in the Solution Explorer."
+            };
+
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            const F32 lineHeight = ImGui::GetTextLineHeightWithSpacing();
+            const F32 centreX = to_F32( imageRect.x ) + to_F32( imageRect.z ) * 0.5f;
+            F32 y = to_F32( imageRect.y ) + (to_F32( imageRect.w ) - lineHeight * to_F32( lines.size() )) * 0.5f;
+            for ( const char* line : lines )
+            {
+                const ImVec2 size = ImGui::CalcTextSize( line );
+                drawList->AddText( ImVec2( centreX - size.x * 0.5f, y ), ImGui::GetColorU32( ImGuiCol_Text ), line );
+                y += lineHeight;
+            }
+        }
+    }
+
     NodePreviewWindow::NodePreviewWindow( Editor& parent, const Descriptor& descriptor )
         : DockedWindow( parent, descriptor )
     {
@@ -32,6 +61,11 @@ namespace Divide
         Attorney::EditorSceneViewWindow::editorEnableGizmo( _parent, true );
         drawInternal( gameView );
 
+        if ( !_parent.nodePreviewHasNode() )
+        {
+            DrawEmptyPreviewMessage( sceneRect( true ) );
+        }
+
         bool enableGrid = _parent.infiniteGridEnabledNode();
         if ( ImGui::Checkbox( ICON_FK_PLUS_SQUARE_O" Infinite Grid", &enableGrid ) )
         {
@@ -44,8 +78,18 @@ namespace Divide
         }
         ImGui::SameLine();
 
+        bool& renderSky = Attorney::EditorSceneViewWindow::nodePreviewRenderSky( _parent );
+        ImGui::Checkbox( "Render sky", &renderSky );
+        if ( ImGui::IsItemHovered() )
+        {
+            ImGui::SetTooltip( "Draw the scene's sky behind the node.\nTurn it off to use the background colour instead." );
+        }
+        ImGui::SameLine();
+
         FColour3& bgColour = Attorney::EditorSceneViewWindow::nodePreviewBGColour( _parent );
+        ImGui::BeginDisabled( renderSky );
         ImGui::ColorEdit3( "Background colour", bgColour._v, ImGuiColorEditFlags_NoInputs );
+        ImGui::EndDisabled();
     }
 
     bool NodePreviewWindow::button( const bool enabled, const char* label, const char* tooltip, const bool small )

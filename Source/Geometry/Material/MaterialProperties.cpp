@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/Material.h"
 
 namespace Divide {
@@ -62,6 +62,7 @@ void Material::Properties::ignoreTexDiffuseAlpha(const bool state) noexcept
     if (overrides()._ignoreTexDiffuseAlpha != state)
     {
         overrides()._ignoreTexDiffuseAlpha = state;
+        _transparencyUpdated = true;
         _needsNewShader = true;
     }
 }
@@ -89,6 +90,15 @@ void Material::Properties::useAlphaDiscard(const bool state) noexcept
     if (overrides()._useAlphaDiscard != state)
     {
         overrides()._useAlphaDiscard = state;
+        _needsNewShader = true;
+    }
+}
+
+void Material::Properties::alphaTested(const bool state) noexcept
+{
+    if (overrides()._alphaTested != state)
+    {
+        overrides()._alphaTested = state;
         _needsNewShader = true;
     }
 }
@@ -170,6 +180,8 @@ void Material::Properties::saveToXML(const std::string& entryName, boost::proper
 
     pt.put(entryName + ".useAlphaDiscard", overrides().useAlphaDiscard());
 
+    pt.put(entryName + ".alphaTested", overrides().alphaTested());
+
     pt.put(entryName + ".reflectiveType", TypeUtil::ReflectorTypeToString(reflectorType()));
 
     pt.put(entryName + ".refractiveType", TypeUtil::RefractorTypeToString(refractorType()));
@@ -219,6 +231,8 @@ void Material::Properties::loadFromXML(const std::string& entryName, const boost
     toggleTransparency(pt.get<bool>(entryName + ".transparencyEnabled", overrides().transparencyEnabled()));
     
     useAlphaDiscard(pt.get<bool>(entryName + ".useAlphaDiscard", overrides().useAlphaDiscard()));
+
+    alphaTested(pt.get<bool>(entryName + ".alphaTested", overrides().alphaTested()));
 
     reflectorType(TypeUtil::StringToReflectorType(pt.get<std::string>(entryName + ".reflectiveType", TypeUtil::ReflectorTypeToString(reflectorType()))));
 

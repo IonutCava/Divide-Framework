@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/BloomPreRenderOperator.h"
 
@@ -33,7 +33,6 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
-    shaderDescriptor._globalDefines.emplace_back( "invSrcResolution PushData0[0].xy" );
     shaderDescriptor._globalDefines.emplace_back( "performKarisAverage (uint(PushData0[0].z) == 1)" );
     shaderDescriptor._globalDefines.emplace_back( "useThreshold (uint(PushData0[0].w) == 1)" );
     shaderDescriptor._globalDefines.emplace_back( "thresholdParams PushData0[1].xyzw" );
@@ -76,8 +75,12 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
         _bloomUpscalePipeline = _context.newPipeline( pipelineDescriptor );
     }
 
-    filterRadius(_context.context().config().rendering.postFX.bloom.filterRadius);
-    strength(_context.context().config().rendering.postFX.bloom.strength);
+    const auto& bloomConfig = _context.context().config().rendering.postFX.bloom;
+    _filterRadius = bloomConfig.filterRadius;
+    _strength = bloomConfig.strength;
+    _useThreshold = bloomConfig.useThreshold;
+    _threshold = bloomConfig.threshold;
+    _knee = bloomConfig.knee;
 }
 
 BloomPreRenderOperator::~BloomPreRenderOperator()
@@ -100,8 +103,6 @@ void BloomPreRenderOperator::reshape(const U16 width, const U16 height)
 {
     PreRenderOperator::reshape(width, height);
     _mipSizesChanged = true;
-    // For correct aspect ratio
-    _filterRadiusChanged = true;
 }
 
 void BloomPreRenderOperator::filterRadius(const F32 val)
@@ -111,7 +112,6 @@ void BloomPreRenderOperator::filterRadius(const F32 val)
         _filterRadius = val;
         _context.context().config().rendering.postFX.bloom.filterRadius = val;
         _context.context().config().changed(true);
-        _filterRadiusChanged = true;
     }
 }
 
@@ -199,8 +199,9 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _bloomDownscalePipeline;
 
             PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_fastData;
-            pushConstants.data[0]._vec[0].set( 1.f / _mipSizes[i].width, 1.f / _mipSizes[i].height, i == 0u ? 1.f : 0.f, _useThreshold ? 1.f : 0.f);
-            pushConstants.data[0]._vec[1].set( _threshold, _threshold - _knee, 2.f * _knee, 0.25f * _knee );
+            const F32 knee = std::max(_knee, 0.f);
+            pushConstants.data[0]._vec[0].set( 0.f, 0.f, i == 0u ? 1.f : 0.f, _useThreshold ? 1.f : 0.f );
+            pushConstants.data[0]._vec[1].set( _threshold, _threshold - knee, 2.f * knee, 0.f );
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -220,6 +221,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
     }
     {
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Upsample Bloom Chain";
+        const F32 aspectRatio = to_F32(_mipSizes[0].width) / _mipSizes[0].height;
 
         for (U16 i = mipCount() - 1u; i > 0u; i--)
         {
@@ -230,16 +232,10 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
             renderPassCmd->_clearDescriptor[to_base(RTColourAttachmentSlot::SLOT_0)]._enabled = false;
             renderPassCmd->_descriptor._mipWriteLevel = i - 1;
 
-            if (_filterRadiusChanged)
-            {
-                const F32 aspectRatio = to_F32(_mipSizes[0].width) / _mipSizes[0].height;
-
-                GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _bloomUpscalePipeline;
-                PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_fastData;
-                pushConstants.data[0]._vec[0].x = to_F32(_filterRadius);
-                pushConstants.data[0]._vec[0].y = to_F32(_filterRadius) * aspectRatio;
-                _filterRadiusChanged = false;
-            }
+            GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _bloomUpscalePipeline;
+            PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_fastData;
+            pushConstants.data[0]._vec[0].x = _filterRadius;
+            pushConstants.data[0]._vec[0].y = _filterRadius * aspectRatio;
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;

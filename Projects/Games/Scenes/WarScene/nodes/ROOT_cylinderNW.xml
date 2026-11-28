@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
 <static>true</static>
 <model>cylinder.obj</model>
 <MESH/>
 <TRANSFORM>
     <Transform>
-        <position x="150" y="15" z="8.21257877"/>
+        <position x="150" y="14.75" z="-4"/>
         <orientation x="0" y="-0" z="0"/>
         <scale x="1" y="1" z="1"/>
     </Transform>

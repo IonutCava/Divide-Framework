@@ -34,13 +34,40 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DVD_OBJECT_POOL_H_
 
 #include "PoolHandle.h"
-#include "Platform/Threading/Headers/SharedMutex.h"
 
 namespace Divide {
 
 template<typename T, size_t N, bool allowResize>
 class ObjectPool {
 public:
+    /// Holds the pool's exclusive lock so a batch of *Unlocked calls is atomic.
+    class ScopedLocker
+    {
+    public:
+        explicit ScopedLocker( ObjectPool& pool ) : _pool( pool ) { _pool.lock(); }
+        ~ScopedLocker() { _pool.unlock(); }
+
+        ScopedLocker( const ScopedLocker& ) = delete;
+        ScopedLocker& operator=( const ScopedLocker& ) = delete;
+
+    private:
+        ObjectPool& _pool;
+    };
+
+    /// Holds the pool's shared lock: enough for findUnlocked.
+    class ScopedSharedLocker
+    {
+    public:
+        explicit ScopedSharedLocker( const ObjectPool& pool ) : _pool( pool ) { _pool.lockShared(); }
+        ~ScopedSharedLocker() { _pool.unlockShared(); }
+
+        ScopedSharedLocker( const ScopedSharedLocker& ) = delete;
+        ScopedSharedLocker& operator=( const ScopedSharedLocker& ) = delete;
+
+    private:
+        const ObjectPool& _pool;
+    };
+
     ObjectPool();
 
     template<typename... Args>
@@ -51,6 +78,23 @@ public:
                         void unregisterExisting(PoolHandle handle);
 
     [[nodiscard]] T* find(PoolHandle handle) const;
+
+    /// The *Unlocked variants expect the caller to hold the lock (see ScopedLocker / ScopedSharedLocker).
+    /// Constructors and destructors of pooled objects run under that lock, so they must not call back into the pool.
+    template<typename... Args>
+    [[nodiscard]] PoolHandle allocateUnlocked(Args... args);
+                        void deallocateUnlocked(PoolHandle handle);
+
+    [[nodiscard]] PoolHandle registerExistingUnlocked(T& object);
+    /// Detaches the object from its slot and returns it (nullptr for an invalid handle); the caller owns it from here.
+    [[nodiscard]] T* unregisterExistingUnlocked(PoolHandle handle);
+
+    [[nodiscard]] T* findUnlocked(PoolHandle handle) const;
+
+    void lock();
+    void unlock();
+    void lockShared() const;
+    void unlockShared() const;
 
 protected:
     [[nodiscard]] PoolHandle registerExistingInternal( T& object, bool retry );

@@ -7,7 +7,6 @@
 #ifndef GLIM_DECLARATIONS_H
 #define GLIM_DECLARATIONS_H
 
-#include "Core/TemplateLibraries/Headers/String.h"
 
 namespace NS_GLIM
 {

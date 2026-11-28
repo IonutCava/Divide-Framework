@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -81,12 +81,14 @@ namespace Divide {
         struct NodeData;
         struct ImportData;
         struct SubMeshData;
+        struct SubMeshVertex;
         struct MaterialData;
     };
 
 class SubMesh;
 class VertexBuffer;
 class PlatformContext;
+class Bone;
 
 namespace DVDConverter {
     void OnStartup(const PlatformContext& context);
@@ -94,11 +96,28 @@ namespace DVDConverter {
 
     [[nodiscard]] U32 PopulateNodeData(aiNode* node, MeshNodeData& target, const aiMatrix4x4& axisCorrectionBasis);
     [[nodiscard]] bool Load(PlatformContext& context, Import::ImportData& target);
+    [[nodiscard]] bool NormalizeScene(const aiScene& scene, const float3& rotationDegrees, F32 scale);
 
     namespace detail{
+        enum class BoneBindingStatus : U8
+        {
+            REGISTERED,
+            REUSED,
+            CONFLICT,
+            LIMIT_EXCEEDED
+        };
+
+        [[nodiscard]] BoneBindingStatus RegisterBoneBinding( Bone& bone, const mat4<F32>& offset,
+                                                             U16& nextBoneIndex ) noexcept;
+
         void LoadSubMeshGeometry(const aiMesh* source, 
                                  Import::SubMeshData& subMeshData,
                                  Import::ImportData& target);
+
+        // Welds and reorders the input geometry into LoD 0, then generates up to Import::MAX_LOD_LEVELS - 1 simplified levels sharing the same vertices
+        void OptimiseSubMeshGeometry(vector<U32>& indices,
+                                     vector<Import::SubMeshVertex>& vertices,
+                                     Import::SubMeshData& subMeshData);
 
         void LoadSubMeshMaterial(Import::MaterialData& material,
                                  const aiScene* source,

@@ -1,5 +1,7 @@
 --Vertex
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "vbInputData.vert"
 #include "lightingDefaults.vert"
 
@@ -11,7 +13,11 @@ void main()
 
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
     computeLightVectors(data);
-    setClipPlanes();
+    // The sky is an infinite background, not geometry intersecting the clip planes.
+    for (int i = 0; i < MAX_CLIP_PLANES; ++i)
+    {
+        gl_ClipDistance[i] = 1.f;
+    }
 
     gl_Position = dvd_ProjectionMatrix * VAR._vertexWV;
     gl_Position.z = gl_Position.w - Z_TEST_SIGMA;
@@ -508,6 +514,7 @@ void main()
         case DEBUG_TANGENTS:
         case DEBUG_BITANGENTS:    ret = vec3(0.0f); break;
         case DEBUG_SHADOW_MAPS:
+        case DEBUG_WORLD_AO:
         case DEBUG_CSM_SPLITS:    ret = vec3(1.0f); break;
         case DEBUG_LIGHT_HEATMAP:
         case DEBUG_DEPTH_CLUSTERS:

@@ -754,7 +754,7 @@ namespace SSE
     void mat2<T>::inverse() noexcept
     {
         F32 idet = static_cast<F32>(det());
-        assert( !IS_ZERO( idet ) );
+        DIVIDE_ASSERT( !IS_ZERO( idet ) );
         idet = 1 / idet;
 
         set(  mat[3] * idet, -mat[1] * idet,

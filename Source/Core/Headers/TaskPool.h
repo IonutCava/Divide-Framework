@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -64,6 +64,30 @@ struct ParallelForDescriptor
 
 using PoolTask = DELEGATE_STD<bool, bool/*threadWaitingCall*/>;
 
+class TaskGroup final : private NonCopyable
+{
+  public:
+    explicit TaskGroup(TaskPool& pool) noexcept;
+    ~TaskGroup();
+
+    template<typename Predicate>
+    void enqueue(Predicate&& function);
+    void wait();
+    [[nodiscard]] bool empty() const noexcept { return _parent == nullptr; }
+
+  private:
+    TaskPool& _pool;
+    Task* _parent = nullptr;
+};
+
+namespace TaskPoolDetail
+{
+    [[nodiscard]] static constexpr bool DequeueMayBlock( const bool isIdleCall, const TaskPriority priority ) noexcept
+    {
+        return !isIdleCall && priority != TaskPriority::HIGH;
+    }
+}
+
 class TaskPool final : public GUIDWrapper {
   public:
      constexpr static bool IsBlocking = true;
@@ -82,6 +106,7 @@ class TaskPool final : public GUIDWrapper {
     /// <returns>A pointer to the newly allocated Task.</returns>
     static Task* AllocateTask(Task* parentTask, DELEGATE<void, Task&>&& func ) noexcept;
 
+    /// REALTIME tasks and their completion callbacks run on the caller; other callbacks run on the main thread.
     void enqueue(Task& task, TaskPriority priority = TaskPriority::DONT_CARE, DELEGATE<void>&& onCompletionFunction = {});
     void wait(const Task& task);
 
@@ -101,7 +126,7 @@ class TaskPool final : public GUIDWrapper {
 
     /// <summary>
     /// Called by a task that isn't doing anything (e.g. waiting on child tasks).
-    /// Use this to run another task (if any) and return to the previous execution point
+    /// Poll for another eligible task without blocking, then return to the previous execution point.
     /// </summary>
     /// <returns>Returns true if a task was executed, false otherwise.</returns>
     bool threadWaiting();
@@ -125,9 +150,10 @@ class TaskPool final : public GUIDWrapper {
   private:
     //ToDo: replace all friend class declarations with attorneys -Ionut;
     friend struct Task;
-    friend void Parallel_For(TaskPool& pool, const ParallelForDescriptor& descriptor);
+    friend void Parallel_For(TaskPool& pool, const ParallelForDescriptor& descriptor,
+                             const DELEGATE<void, const Task*, U32, U32>& cbk);
 
-    void runTask(Task& task, bool hasCompletionCallback);
+    void runTask(Task& task, DELEGATE<void>&& onCompletionFunction = {});
 
     /// Join all of the threads and block until all running tasks have completed.
     void join();
@@ -141,22 +167,7 @@ class TaskPool final : public GUIDWrapper {
   private:
      const string _threadNamePrefix;
 
-     struct CallbackEntry
-     {
-         CallbackEntry() = default;
-         CallbackEntry(DELEGATE<void>&& cbk, U32 taskID) noexcept
-             : _cbk(MOV(cbk)), _taskID(taskID)
-         {
-         }
-
-         DELEGATE<void> _cbk;
-         U32 _taskID = U32_MAX;
-     };
-
-     SharedMutex _taskCallbacksLock;
-     fixed_vector<CallbackEntry, 1 << 9, true> _taskCallbacks;
-
-     moodycamel::ConcurrentQueue<U32> _threadedCallbackBuffer{};
+     moodycamel::ConcurrentQueue<DELEGATE<void>> _threadedCallbackBuffer{};
 
      QueueType _normalQueue;
      QueueType _highPriorityqueue;
@@ -164,10 +175,11 @@ class TaskPool final : public GUIDWrapper {
      Mutex _taskFinishedMutex;
      std::condition_variable _taskFinishedCV;
 
-     std::atomic_uint _runningTaskCount = 0u;
      std::atomic_size_t _activeThreads{ 0u };
+     std::atomic_uint _runningTaskCount{ 0u };
+     std::atomic_uint _waiterCount{ 0u };
 
-     std::atomic_bool _isRunning;
+     std::atomic_bool _isRunning{ false };
 };
 
 template<class Predicate>

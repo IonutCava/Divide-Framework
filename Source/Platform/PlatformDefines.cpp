@@ -1,10 +1,13 @@
-#include "Headers/PlatformDefines.h"
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/PlatformRuntime.h"
 
 #include "GUI/Headers/GUI.h"
 
 #include "Utility/Headers/Localization.h"
 #include "Platform/File/Headers/FileManagement.h"
+
+#include <cstdio>
+#include <cstdlib>
 
 namespace Divide
 {
@@ -30,7 +33,7 @@ namespace Divide
                     const string msgOut = Util::StringFormat( "ASSERT [{} : {}]: {} : {}", file, line, expressionStr, failMessage );
                     if constexpr ( Config::Assert::LOG_ASSERTS )
                     {
-                        Console::errorfn( msgOut.c_str() );
+                        Console::errorfn( "{}", msgOut.c_str() );
                     }
 
                     DIVIDE_ASSERT_MSG_BOX( msgOut.c_str() );
@@ -48,6 +51,27 @@ namespace Divide
             }
 
             return expression;
+        }
+
+        [[noreturn]] void UnexpectedCall( const std::string_view file, const int line, const std::string_view failMessage ) noexcept
+        {
+            std::fputs( "UNEXPECTED CALL [", stderr );
+            std::fwrite( file.data(), 1u, file.size(), stderr );
+            std::fprintf( stderr, ":%d]: ", line );
+            if ( !failMessage.empty() )
+            {
+                std::fwrite( failMessage.data(), 1u, failMessage.size(), stderr );
+            }
+            std::fputc( '\n', stderr );
+            std::fflush( stderr );
+
+            if constexpr ( Config::Build::IS_SHIPPING_BUILD || !Config::Assert::LOG_ASSERTS )
+            {
+                Console::errorfn( "ASSERT [{} : {}]: false : {}", file, line, failMessage );
+                Console::Flush();
+            }
+            Callback( false, "false", file, line, failMessage );
+            std::abort();
         }
     }; // namespace Assert
 

@@ -33,6 +33,7 @@
       },
       "cacheVariables": {
         "WINDOWS_OS_BUILD": true,
+        "CMAKE_MSVC_DEBUG_INFORMATION_FORMAT": "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>",
         "CMAKE_MAKE_PROGRAM": "ninja.exe",
         "VCPKG_INSTALL_OPTIONS": "--allow-unsupported"
       },
@@ -774,10 +775,23 @@
       }
     },
     {
+      "name": "test-sanitizer-common",
+      "description": "Test settings for sanitizer builds: run every test and print detailed sanitizer reports",
+      "hidden": true,
+      "inherits": "test-common",
+      "environment": {
+        "ASAN_OPTIONS": "allow_addr2line=1",
+        "UBSAN_OPTIONS": "print_stacktrace=1:report_error_type=1:allow_addr2line=1"
+      },
+      "execution": {
+        "stopOnFailure": false
+      }
+    },
+    {
       "name": "test-windows-msvc-debug-editor-asan-ubsan",
       "displayName": "Test-MSVC-Debug-Editor + ASAN + UBSAN",
-      "description": "Enable output and stop on failure",
-      "inherits": "test-common",
+      "description": "Enable output, run every test and print detailed sanitizer reports",
+      "inherits": "test-sanitizer-common",
       "configurePreset": "windows-msvc-editor-asan-ubsan",
       "configuration": "Debug"
     },
@@ -856,8 +870,8 @@
     {
       "name": "test-windows-clang-profile-editor-asan-ubsan",
       "displayName": "Test-Clang-Win64-Profile-Editor-Asan-Ubsan",
-      "description": "Enable output and stop on failure",
-      "inherits": "test-common",
+      "description": "Enable output, run every test and print detailed sanitizer reports",
+      "inherits": "test-sanitizer-common",
       "configurePreset": "windows-clang-editor-asan-ubsan",
       "configuration": "RelWithDebInfo"
     },
@@ -936,8 +950,8 @@
     {
       "name": "test-linux-gcc-debug-editor-asan-ubsan",
       "displayName": "Test-GCC-Linux-Debug-Editor-asan-ubsan",
-      "description": "Enable output and stop on failure",
-      "inherits": "test-common",
+      "description": "Enable output, run every test and print detailed sanitizer reports",
+      "inherits": "test-sanitizer-common",
       "configurePreset": "linux-gcc-editor-asan-ubsan",
       "configuration": "Debug"
     },
@@ -968,8 +982,8 @@
     {
       "name": "test-linux-clang-debug-editor-asan-ubsan",
       "displayName": "Test-Clang-Linux-Debug-Editor-asan-ubsan",
-      "description": "Enable output and stop on failure",
-      "inherits": "test-common",
+      "description": "Enable output, run every test and print detailed sanitizer reports",
+      "inherits": "test-sanitizer-common",
       "configurePreset": "linux-clang-editor-asan-ubsan",
       "configuration": "Debug"
     },

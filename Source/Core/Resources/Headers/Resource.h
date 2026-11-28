@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -45,8 +45,8 @@ namespace Divide
 /// Nothing can be done to the resource when it's in "RES_LOADING" state!
 /// Once loading is complete, preferably in another thread,
 /// the resource state will become "RES_THREAD_LOADED"
-/// In the main thread, postLoad() will be called setting the state to RES_LOADED 
-/// and the resource will be ready to be used (e.g. added to the SceneGraph)
+/// Asynchronous loads call postLoad() on the main thread; synchronous loads call
+/// it on the caller. A successful postLoad() sets the state to RES_LOADED.
 /// Calling "unload" is only available for "RES_LOADED" state resources.
 /// Calling this method will set the state to "RES_LOADING"
 /// Once unloading is complete, the resource will become "RES_CREATED".

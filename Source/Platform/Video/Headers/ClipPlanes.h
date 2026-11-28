@@ -51,14 +51,14 @@ namespace Divide {
         }
 
         void set(U32 index, const Plane<F32>& plane) noexcept {
-            assert(index < N);
+            DIVIDE_ASSERT(index < N);
 
             _planes[index] = plane;
             _planeState[index] = true;
         }
 
         void reset(U32 index) {
-            assert(index < N);
+            DIVIDE_ASSERT(index < N);
             _planeState[index] = false;
         }
 

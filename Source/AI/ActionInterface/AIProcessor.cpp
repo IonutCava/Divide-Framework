@@ -37,7 +37,7 @@ void AIProcessor::registerActionSet(const GOAPActionSet& actionSet) {
 }
 
 void AIProcessor::registerGoal(const GOAPGoal& goal) {
-    assert(!goal.vars_.empty());
+    DIVIDE_ASSERT(!goal.vars_.empty());
     _goals.push_back(goal);
 }
 

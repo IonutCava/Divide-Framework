@@ -6,88 +6,265 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 ## Entry points and ownership
 
-- `Source/Core/Kernel.cpp`: app-wide render-stage registration and dependencies.
-- `Source/Managers/Headers/RenderPassManager.h`: stage-pass ownership.
-- `Source/Rendering/RenderPass/RenderPassExecutor.cpp`: stage render queue and shared per-node GPU preparation.
-- `Source/Platform/Video/GFXDevice.cpp` and `Source/Platform/Video/Headers/GFXDevice.h`: shared rendering state, descriptor registration, pipelines, command handling, frame/window flush.
-- `Source/Platform/Video/Headers/RenderAPIWrapper.h`: backend execution interface.
-- `Source/Rendering/Renderer.cpp`: clustered-forward lighting preparation.
-- `Source/Rendering/PostFX/`: post-processing/pre-render operators, including `PreRenderBatch.cpp` and `PostFX.cpp`.
+- `Source/Core/Kernel.cpp` registers render stages and their dependencies.
+- `Source/Managers/Headers/RenderPassManager.h` owns stage passes.
+- `Source/Rendering/RenderPass/RenderPassExecutor.cpp` prepares render data and records draws.
+- `Source/Platform/Video/GFXDevice.cpp` owns shared GPU state and submits command buffers.
+- `Source/Rendering/Renderer.cpp` prepares clustered lighting.
+- `Source/Rendering/PostFX/` contains post-processing and pre-render operators.
+
+## Cross-system boundaries
+
+Rendering owns generic mechanisms, not scene or game policy. Features submit
+bounds, masks, capabilities, and invalidation requests through shared
+interfaces. Do not add feature-specific names or policies to backend APIs,
+lights, or render-pass infrastructure.
+
+Shadow invalidation follows renderable caster bounds and visibility changes.
+Feature systems translate their own changes into those generic requests.
+Preserve pending invalidations until the affected maps have been refreshed.
 
 ## Command flow
 
-Systems record backend-neutral rendering commands, then `GFXDevice` translates them through the active backend wrapper at flush time.
+Systems record backend-neutral commands. `GFXDevice::flushCommandBuffer()`
+queues them for a window; `flushWindow()` translates and submits them through
+the active backend. Recording and GPU execution are separate phases.
 
-- `GFXDevice::flushCommandBuffer()` appends buffers to the active window queue; it does not immediately execute GPU commands.
-- `GFXDevice::flushWindow()` executes queued buffers through `flushCommandBufferInternal()` before backend window flush.
-- `flushCommandBufferInternal()` walks commands, uploads descriptor state at submission boundaries, and dispatches backend operations.
+Window flushing and command translation run on the application main thread.
+Render workers prepare data and record into their stage-owned command buffers.
+See [Threading](threading.md) for task ownership and [GPU resources](gpu-resources.md)
+for resource lifetime.
 
-For bugs before submission, inspect shared command generation and ordering first. Window/frame boundaries matter for missing output or stale state.
+Vulkan may combine adjacent compatible indirect draws at submission. The draws
+must preserve buffer, pipeline, render-state, and per-draw data requirements.
+Batching must not reorder commands or change indirect records. OpenGL keeps its
+backend submission path.
+
+Hi-Z culling is optional. Reject padded workgroups before indexing commands,
+and keep out-of-range or unsupported workloads on the normal draw path rather
+than issuing invalid GPU work.
+
+## Performance diagnosis
+
+Compare the same scene, camera, GPU, resolution, settings, and cache state.
+Measure Debug and optimized builds separately. CPU profiler scopes include
+waits, validation, and driver work; they do not measure GPU execution.
+
+Use CPU profiling and GPU timestamps as separate measurements. Do not sum
+overlapping scopes or treat individual captured frames as independent runs.
+Keep validation and profiling settings consistent within a comparison, and
+account for warmup and capture overhead.
+
+The opt-in performance mode reports frame and GPU pass timing, plus each stage
+task's CPU recording time (`[PerfMetrics] cpuStageMS`), without changing
+ordinary editor logging. Stage tasks run in parallel, so their sum is CPU work
+rather than frame latency. Instrumentation has a cost, so use it to answer a
+specific question and compare repeated runs against a non-instrumented baseline.
+
+For scene startup, separate cold and warm resource loading from steady-state
+frame time. A resource load may include synchronous work and waits that do not
+appear in GPU timing.
+
+## Framework smoke diagnosis
+
+`Tools/FrameworkSmokeTest.ps1` runs a supervised local build, focused tests,
+and one renderer attempt. It keeps logs and captures outside the checkout.
+Smoke mode does not change ordinary editor behavior or persist diagnostic
+configuration changes.
+
+Vulkan validation failures stop the attempt and preserve the first failure.
+The runner owns and bounds the renderer process; it must not terminate
+unrelated applications. Captures and crash evidence remain local.
+
+After device loss or a suspected GPU hang, retain the evidence and verify that
+a fresh device on the same GPU can submit work and complete a fence before
+starting another renderer attempt. A present count or a completed capture does
+not prove that the rendered image is correct; inspect the captured output.
+
+Use the runner's preflight mode before relying on local debugger or process
+supervision. See [GPU resources](gpu-resources.md#vulkan-smoke-readback-and-recovery)
+for readback and recovery behavior.
 
 ## Stage dependencies
 
-`Kernel.cpp` registers the coarse render graph:
+`Kernel.cpp` registers the coarse stage graph. `RenderPassManager::setRenderPass`
+accepts GPU submission dependencies and CPU recording dependencies. Recording
+dependencies must be a subset of submission dependencies.
 
-- `SHADOW` precedes `REFLECTION` and `REFRACTION`.
-- `DISPLAY` and `NODE_PREVIEW` depend on both `REFLECTION` and `REFRACTION`.
+Stage tasks record into their own command buffers and never wait for other
+stages. After recording work joins, `RenderPassManager::render` submits buffers
+in topological GPU order, applies deferred light data, and uploads prepared
+buffers.
 
-Before changing ordering, audit render-target producers/consumers, depth and clustered-light availability, and PostFX assumptions. `RenderPassManager` owns passes; `RenderPassExecutor` performs per-stage preparation and draw execution.
+Add a CPU recording dependency only when a stage reads CPU state written by
+another stage. GPU producers and consumers still require the correct submission
+order and resource barriers. Audit render-target inputs, depth, lighting, and
+post-processing when changing the graph.
+
+Views that share mutable cameras, packages, buffers, or uniform data need
+separate snapshots or serialized ownership. Keep view data alive through
+recording, submission, and any deferred translation that retains pointers.
 
 ## Per-node GPU preparation
 
-`RenderPassExecutor` compacts scene data into buffers for transforms, materials, indirection, and indirect draw commands. Relevant data structures include `NodeTransformData`, `NodeMaterialData`, and `NodeIndirectionData`.
+`RenderPassExecutor` prepares transform, material, indirection, and indirect
+draw data in shared GPU buffers. Dirty-range updates allow partial uploads.
+Keep CPU records aligned with their shader-visible layouts and test those
+layouts when changing the records.
 
-Dirty ranges permit partial uploads. Preparation is partitioned with `g_nodesPerPrepareDrawPartition`; see [threading](threading.md) before changing parallel preparation or locking.
-Start here for CPU render scalability, draw-call buildup, or stale per-node data.
+Repeated views or passes must not overwrite data still referenced by recorded
+commands. Each consumer captures the selected frame/player slot; upload and
+retirement follow that same selection. Join preparation workers before
+uploading their writes.
+
+## View pass order and transparency
+
+`RenderPassExecutor::doCustomPass` draws a non-shadow view in this order:
+
+1. Depth pre-pass for the opaque bins. The display stage also writes normals
+   and velocity.
+2. Hi-Z culling, light culling, and display pre-render effects such as SSAO
+   and SSR.
+3. Alpha-tested pass for the `ALPHA_TESTED` bin, grouped by pipeline state and
+   sorted front to back within each group. It writes depth, and on the display
+   stage it writes velocity and resolves it again under MSAA. As the first
+   colour pass, it applies the main pass colour clears.
+4. Opaque main pass over the pre-pass bins. Its `EQUAL` depth test shades each
+   visible sample once and skips samples that alpha-tested geometry covers.
+5. Translucent pass: weighted, blended OIT, or sorted forward blending when the
+   view has no OIT target. Weighted OIT weights fragments by linear view depth
+   (McGuire and Bavoil 2013, eq. 8) so nearer layers dominate.
+
+`RenderQueue::PopulateQueueParams::ForPass` maps each `RenderBinContent` to its
+bins. Shadow passes draw every bin in one depth pass. The alpha-tested and
+translucent passes are skipped when their bins are empty. Both colour passes
+bind the same per-pass inputs through `bindColourPassResources`.
+
+Materials opt in with `Material::Properties::alphaTested`; it takes effect only
+when the material has transparency (`Material::isAlphaTested`). Use it for
+binary cutouts such as foliage. Weighted OIT cannot make opaque layers hide one
+another, so overlapping cutouts in the translucent pass blend regardless of
+depth. Vegetation marks its grass and tree materials as alpha tested.
+
+Alpha-tested materials:
+
+- Cut at `ALPHA_DISCARD_THRESHOLD`, the same cutoff that shadow passes and
+  coverage-preserving mipmaps use.
+- Render without back-face culling in the colour pass and flip back-face
+  normals, like blended transparency.
+- Must not force early fragment tests in their colour shader. Forced early tests
+  write depth before the alpha test can discard the fragment.
+- Use alpha-to-coverage on multisampled targets: the display stage with screen
+  MSAA, and CSM or spot shadow maps with shadow MSAA. `alphaTestCoverage()` in
+  `FragmentAtoms/alphaTest.frag` sharpens alpha around the cutoff and is a plain
+  alpha test elsewhere. `alphaTestFade()` fades coverage without moving the
+  cutoff. Shaders and pipelines must agree, so turning MSAA on or off for those
+  targets recompiles material shaders.
+
+Alpha-tested geometry is absent from the pre-pass depth and normals, so Hi-Z
+occlusion, SSAO, and SSR do not see it. Alpha-tested fragments skip SSR and
+SSAO, which would otherwise apply occlusion or reflections from the surfaces
+behind them.
 
 ## Clustered lighting
 
-`Renderer.cpp` allocates stage-scoped light indices, cluster AABBs, light grids, and global index counts. Compute pipelines generate AABBs, reset counters, and cull lights.
-Their resources are registered in `PER_PASS` slots by `GFXDevice::initDescriptorSets()`.
+`Renderer` builds light data and cluster inputs for each view. The compute
+stages construct cluster bounds, reset counters, and assign eligible lights.
+The shading code uses the same viewport, depth, and cluster conventions as the
+builder.
 
-For stage-specific lighting failures, check stage buffer allocation, bindings, dispatch dimensions, and shader-header cluster/thread-group constants. See [shaders and descriptors](shader-descriptors.md).
+Validate camera depth ranges and device workgroup limits before dispatch.
+Shaders that write images must reject invocations outside the target. Keep
+shader limits supplied by the owning C++ subsystem rather than duplicating
+feature capacities in shared shader code.
+
+### Shadow maps and spotlights
+
+Directional, point, and spot shadows use cached render targets. Cache keys and
+invalidation must account for light/view transforms, caster bounds, render
+state, and resource readiness. Do not publish a cache as valid while required
+casters or shaders are unavailable.
+
+The world-AO mask is a top-down coverage map used to prevent global sky-probe
+lighting from leaking beneath overhead geometry. SSAO handles general
+screen-space occlusion. World-AO eligibility uses the generic per-instance draw
+mask; keep category policy in the owning feature and invalidate old coverage
+when policy changes.
+
+Camera, frustum, and light data are captured per view. Do not share mutable
+utility cameras across concurrently recorded passes. Defer cache finalization
+until all recording work that can update it has joined.
+
+### Vegetation culling data
+
+The vegetation subsystem owns instance generation, visibility policy, and
+shader inputs. Render infrastructure sees generic buffers, bounds, and draw
+commands rather than tree- or grass-specific policy.
+
+Compute culling reads source instances and writes compacted visible instances
+and counts. Each draw uses the matching compacted range and count. An in-place
+compaction pass must finish reading a source range before overwriting it.
+Synchronize compute writes before draws consume them.
+
+Frustum, distance, and Hi-Z culling operate per view. A later view must not
+reuse another view's visibility results. Shadow, reflection, refraction, and
+display passes may use different policies, but those policies belong to the
+vegetation subsystem.
+
+Node culling runs first, on one box per grass chunk and one per tree species in
+each chunk. `Vegetation::updateChunkBounds()` sets these boxes through
+`BoundsComponent::setWorldBoundsOverride()` when a chunk is finalized. Each box
+holds the chunk's instance origins, padded by the reach the cull shader tests
+(`VegetationGrassReach()`, `VegetationTreeReach()`). The padding grows only when
+stronger wind needs more. Nodes outside a view or the vegetation range are not
+prepared, and a chunk dispatches its per-instance compute cull only when its
+grass or one of its tree nodes is visible. Range tests on vegetation nodes use
+horizontal distance, as the cull shader does. Grass package LoD picks the
+billboard-plane partition from the chunk's nearest point (6, 3, then 2 planes;
+levels past the last partition reuse it), and the cull shader fades instances
+out near the visibility range, so distant grass thins instead of cutting off.
+Tree nodes carry `VEGETATION_TREE` for vegetation policy: horizontal range,
+reflection filters, static-geometry bounds and the CSM scene-AABB fit. Shadow
+passes draw trees in every cascade they intersect, but their chunk-sized boxes
+stay out of the fit, which would otherwise widen cascades and change their size
+(rebuilding the static shadow cache) whenever a chunk enters or leaves them.
+
+### GPU instance-count patch
+
+Some backends reject zero-instance indirect draws before GPU execution. When
+GPU culling determines the visible count, preserve a valid CPU-side draw record
+and apply the count before submission. If optional patch storage is exhausted,
+fall back to the full count rather than corrupting or dropping the draw.
+
+### Custom-pass Hi-Z
+
+Custom passes build Hi-Z from their own depth target and camera. Keep Hi-Z
+history and scratch resources scoped to the views that produce them. Bounds
+that cross the near plane or viewport remain visible unless the full projected
+footprint can be tested conservatively.
 
 ## Render targets and feature insertion points
 
-Shared targets are created in `GFXDevice.cpp`: `SCREEN`, `SCREEN_PREV`, `NORMALS_RESOLVED`, `SSAO_RESULT`, `SSR_RESULT`, `BLOOM_RESULT`, `OIT`, and utilities such as Hi-Z/blur targets.
-Feature-local scratch targets often belong to `PreRenderBatch` or individual PostFX operators.
-The averaging luminance image retains sampled and storage creation capabilities.
-Each averaging pass transitions it from `SHADER_READ` to `SHADER_WRITE` and back;
-creation usage flags must not be confused with the current image layout.
-Passes use `BeginRenderPassCommand` with ordinary pipeline/resource binding commands.
+`GFXDevice` owns targets shared across rendering stages. `PreRenderBatch` and
+PostFX operators own feature-local scratch targets. Add a shared target only
+when multiple stages need the same persistent output.
 
-- Screen-space effects using existing inputs generally belong in PostFX/pre-render operators.
-- Stage-specific lighting or visibility preparation generally belongs in `Renderer` or render-pass code.
-- Persistent outputs consumed by multiple stages generally need a named shared target in `GFXDevice`.
+Keep target formats, sample counts, usage flags, and transitions consistent
+with their consumers. MSAA resolve and retained attachment contents are
+separate choices. Synchronize writes before later passes sample or copy the
+resource.
 
-Presentation and colour-space invariants are in [GPU resources](gpu-resources.md).
+Screen-space effects that use existing inputs generally belong in PostFX or
+pre-render operators. Stage-specific lighting and visibility preparation belong
+in renderer or render-pass code. Preserve the shared
+[coordinate and colour-space conventions](gpu-resources.md) across backends.
 
 ## Planned/incomplete feature integration
 
-These are readiness notes, not promises of runtime support; recheck the current implementation.
+Treat planned or partially implemented features as unsupported until the full
+path exists in current source. Shader-stage mapping or extension detection
+alone does not establish a usable runtime feature.
 
-### Mesh shaders and meshlets
-
-Scaffolding exists: `ShaderType::MESH` / `TASK`, glslang stage mapping, generated `GL_EXT_mesh_shader` headers, GL/Vulkan shader-stage tables, `PrimitiveTopology::MESHLET`, and separate dispatch validation.
-Vulkan detects/enables the extension when present, but its mesh/task feature-enabling block is commented out; there is no mature first-class end-to-end runtime path.
-
-Do not route meshlets through ordinary indexed/indirect draws: classic indirect submission rejects `MESHLET`. Audit topology branches, pipeline creation, dispatch encoding, descriptor expectations, mesh/task workgroup limits, and unsupported-device fallback.
-
-Start with `Source/Platform/Video/Headers/RenderAPIEnums.h`, `Source/Platform/Video/Shaders/ShaderProgram.cpp`, `Source/Platform/Video/Shaders/GLSLToSPIRV.cpp`, `Source/Platform/Video/CommandBuffer.cpp`, and `Source/Platform/Video/RenderBackend/Vulkan/vkDevice.cpp`.
-
-### Hardware ray tracing
-
-`Source/Platform/Video/RenderBackend/Vulkan/Headers/vkInitializers.h` has acceleration-structure/ray-tracing pipeline helper initializers, not a complete RT integration.
-Missing integration includes device extensions/features, ray shader-stage enums, acceleration-structure descriptor types, BLAS/TLAS lifetime/build/compaction support, scratch/update buffers, pipeline creation, barriers, and ray dispatch.
-The shared shader model currently covers raster, compute, mesh, and task stages; resources/uploads are buffer/image-centric.
-
-Start with `vkDevice.cpp`, `vkInitializers.h`, `RenderAPIEnums.h`, `ShaderProgram.cpp`, and `RenderAPIWrapper.h`. RT requires a cross-cutting rendering-model change, not just another Vulkan source file.
-
-### Clustered geometry and volumetrics
-
-The clustered system is lighting-centric. Geometry clustering can reuse stage-scoped compute/buffer patterns and indirect infrastructure in `RenderPassExecutor`, but must explicitly choose `PER_BATCH`/`PER_PASS` ownership and audit backend indirect draws.
-
-Fog is scene-state/config-driven, not a full volumetric pipeline. Choose deliberately between screen-space PostFX, clustered/froxel compute, and stage-integrated lighting. History/scattering/froxel outputs may require persistent named targets.
-Start with `GFXDevice.cpp`, `PreRenderBatch.cpp`, `PostFX.cpp`, `Renderer.cpp`, and `RenderPassExecutor.cpp`.
-
-For async compute, see [threading](threading.md); queue enums alone do not establish an async execution path.
+Mesh shaders, hardware ray tracing, and clustered geometry require complete
+capability checks, pipeline creation, dispatch/submission, resource lifetime,
+and unsupported-device behavior before clients can depend on them.

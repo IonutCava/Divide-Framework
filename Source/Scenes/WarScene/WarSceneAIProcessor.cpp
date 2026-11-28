@@ -264,7 +264,7 @@ void WarSceneAIProcessor::requestOrders() {
             case WarSceneOrder::WarOrder::SCORE_ENEMY_FLAG: {
                 if (_localWorkingMemory._hasEnemyFlag.value() == true &&
                     _globalWorkingMemory._flagsAtBase[ownTeamID].value() == true) {
-                    assert(_globalWorkingMemory._flagCarriers[ownTeamID].value()->getGUID() == _entity->getGUID());
+                    DIVIDE_ASSERT(_globalWorkingMemory._flagCarriers[ownTeamID].value()->getGUID() == _entity->getGUID());
                     priorityLevel = PriorityLevel::MAX_PRIORITY;
                 }
             } break;
@@ -308,9 +308,10 @@ void WarSceneAIProcessor::requestOrders() {
                     }
                 }
             } break;
-            case WarSceneOrder::WarOrder::COUNT: break;
-
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            case WarSceneOrder::WarOrder::COUNT:
+                break;
+            default:
+                DIVIDE_UNEXPECTED_CALL();
         }
         priority[order->getID()] = to_U8(priorityLevel);
     }
@@ -357,7 +358,7 @@ bool WarSceneAIProcessor::preAction(const ActionType type, const WarSceneAction*
     switch (type) {
         case ActionType::IDLE: {
             PRINT("Starting idle action");
-            assert(atHomeBase());
+            DIVIDE_ASSERT(atHomeBase());
             _entity->stop();
         } break;
         case ActionType::APPROACH_ENEMY_FLAG: {
@@ -366,7 +367,7 @@ bool WarSceneAIProcessor::preAction(const ActionType type, const WarSceneAction*
         } break;
         case ActionType::CAPTURE_ENEMY_FLAG: {
             PRINT("Starting capture flag action");
-            assert(nearEnemyFlag());
+            DIVIDE_ASSERT(nearEnemyFlag());
         } break;
         case ActionType::SCORE_FLAG: {
             PRINT("Starting score action");
@@ -374,7 +375,7 @@ bool WarSceneAIProcessor::preAction(const ActionType type, const WarSceneAction*
                 invalidateCurrentPlan();
                 return false;
             }
-            assert(/*atHome && */_globalWorkingMemory._flagsAtBase[ownTeamID].value() == true);
+            DIVIDE_ASSERT(/*atHome && */_globalWorkingMemory._flagsAtBase[ownTeamID].value() == true);
         } break;
         case ActionType::RETURN_TO_BASE: {
             PRINT("Starting return to base action");
@@ -410,10 +411,9 @@ bool WarSceneAIProcessor::preAction(const ActionType type, const WarSceneAction*
             PRINT("Starting recover flag action");
             DIVIDE_EXPECTED_CALL(_entity->updateDestination(_globalWorkingMemory._teamFlagPosition[enemyTeamID].value()));
         } break;
+        case ActionType::COUNT:
         default: 
-        case ActionType::COUNT: {
             DIVIDE_UNEXPECTED_CALL();
-        } break;
     }
 
     return true;
@@ -439,7 +439,7 @@ bool WarSceneAIProcessor::postAction(ActionType type,
         } break;
         case ActionType::SCORE_FLAG: {
             PRINT("Score flag action over");
-            assert(_localWorkingMemory._hasEnemyFlag.value());
+            DIVIDE_ASSERT(_localWorkingMemory._hasEnemyFlag.value());
             _localWorkingMemory._hasEnemyFlag.value(false);
 
             _globalWorkingMemory._flags[enemyTeamID].value()->setParent(
@@ -457,7 +457,7 @@ bool WarSceneAIProcessor::postAction(ActionType type,
         } break;
         case ActionType::CAPTURE_ENEMY_FLAG: {
             PRINT("Capture flag action over");
-            assert(!_localWorkingMemory._hasEnemyFlag.value());
+            DIVIDE_ASSERT(!_localWorkingMemory._hasEnemyFlag.value());
 
             // Attach flag to entity
             {
@@ -492,7 +492,7 @@ bool WarSceneAIProcessor::postAction(ActionType type,
         case ActionType::RETURN_TO_BASE: {
             PRINT("Return to base action over");
             _entity->stop();
-            assert(atHomeBase());
+            DIVIDE_ASSERT(atHomeBase());
         } break;
         case ActionType::ATTACK_ENEMY: {
             PRINT("Attack enemy action over");
@@ -505,10 +505,9 @@ bool WarSceneAIProcessor::postAction(ActionType type,
             }
             _messageCallback(1, _entity->name());
         } break;
+        case ActionType::COUNT:
         default: 
-        case ActionType::COUNT: {
             DIVIDE_UNEXPECTED_CALL();
-        } break;
     }
 
     GOAPAction::operationsIterator o;
@@ -590,10 +589,9 @@ bool WarSceneAIProcessor::checkCurrentActionComplete(const GOAPAction& planStep)
                 DIVIDE_EXPECTED_CALL( _entity->updateDestination(_globalWorkingMemory._teamFlagPosition[ownTeamID].value()));
             }
         } break;
+        case ActionType::COUNT:
         default:
-        case ActionType::COUNT: {
             DIVIDE_UNEXPECTED_CALL();
-        } break;
     }
 
     if (state) {
@@ -796,7 +794,7 @@ bool WarSceneAIProcessor::processData(const U64 deltaTimeUS) {
         _attackTimer = 0ULL;
     }
 
-    assert(!goalList().empty());
+    DIVIDE_ASSERT(!goalList().empty());
     if (!getActiveGoal()) {
         requestOrders();
     } else {

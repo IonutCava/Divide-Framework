@@ -45,12 +45,15 @@ enum class RigidBodyShape : U8;
 DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
 {
    public:
+    static constexpr U8 MAX_GEOMETRY_PARTITIONS = 4u;
 
     explicit Object3D( const ResourceDescriptorBase& descriptor, SceneNodeType type);
 
     void setMaterialTemplate( Handle<Material> material, const AttributeMap & geometryAttributes ) override;
 
     [[nodiscard]] virtual VertexBuffer* geometryBuffer();
+    /// Unlike geometryBuffer(), this never asserts: nodes that draw without a vertex buffer of their own (terrain) can chain to Object3D safely.
+    [[nodiscard]] virtual bool hasGeometryBuffer() const noexcept;
 
     VertexBuffer* geometryBuffer(GFXDevice& context, const VertexBuffer::Descriptor& descriptor) noexcept;
 
@@ -67,7 +70,7 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
     }
 
     [[nodiscard]] U16 getGeometryPartitionID(const U8 lodIndex) noexcept {
-        return _geometryPartitionIDs[std::min(lodIndex, to_U8(_geometryPartitionIDs.size()))];
+        return _geometryPartitionIDs[std::min(lodIndex, to_U8(MAX_GEOMETRY_PARTITIONS - 1u))];
     }
 
     void setGeometryPartitionID(const U8 lodIndex, const U16 partitionID) noexcept {
@@ -117,7 +120,7 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
     void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
    protected:
-    std::array<U16, 4> _geometryPartitionIDs;
+    std::array<U16, MAX_GEOMETRY_PARTITIONS> _geometryPartitionIDs;
     /// 3 indices, pointing to position values, that form a triangle in the mesh.
     /// used, for example, for cooking collision meshes
     /// We keep separate triangle lists per partition

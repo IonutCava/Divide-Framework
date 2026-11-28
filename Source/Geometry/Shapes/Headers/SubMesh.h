@@ -101,6 +101,7 @@ protected:
     void onAnimationChange(SceneGraphNode* sgn, U32 newIndex, bool applyToAllSiblings, bool playInReverse);
     void onAnimationSync(SceneGraphNode* sgn, U32 animIndex, bool playInReverse);
     VertexBuffer* geometryBuffer() override;
+    [[nodiscard]] bool hasGeometryBuffer() const noexcept override;
 
 private:
     /// Build status of bounding boxes for each animation

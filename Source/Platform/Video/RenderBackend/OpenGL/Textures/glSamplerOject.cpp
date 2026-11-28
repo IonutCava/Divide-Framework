@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/glSamplerObject.h"
 
@@ -10,15 +11,15 @@ namespace Divide {
 namespace {
     [[nodiscard]] inline gl46core::GLenum getMagFilterMode(const TextureFilter magFilter)
     {
-        assert(magFilter != TextureFilter::COUNT);
+        DIVIDE_ASSERT(magFilter != TextureFilter::COUNT);
 
         return magFilter == TextureFilter::LINEAR ? gl46core::GL_LINEAR : gl46core::GL_NEAREST;
     }
 
     [[nodiscard]] inline gl46core::GLenum getMinFilterMode(const TextureFilter minFilter, const TextureMipSampling mipSampling)
     {
-        assert(minFilter != TextureFilter::COUNT);
-        assert(mipSampling != TextureMipSampling::COUNT);
+        DIVIDE_ASSERT(minFilter != TextureFilter::COUNT);
+        DIVIDE_ASSERT(mipSampling != TextureMipSampling::COUNT);
 
         if (mipSampling == TextureMipSampling::NONE)
         {
@@ -104,10 +105,7 @@ gl46core::GLuint glSamplerObject::Construct(const SamplerDescriptor& descriptor)
 
     if constexpr ( Config::ENABLE_GPU_VALIDATION )
     {
-        gl46core::glObjectLabel( gl46core::GL_SAMPLER,
-                                 samplerID,
-                                 -1,
-                                 Util::StringFormat("SAMPLER_{}", GetHash(descriptor)).c_str() );
+        GLUtil::SetObjectLabel( gl46core::GL_SAMPLER, samplerID, Util::StringFormat( "SAMPLER_{}", GetHash( descriptor ) ).c_str() );
     }
 
     return samplerID;

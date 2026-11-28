@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/Configuration.h"
 
@@ -9,11 +9,12 @@ namespace Divide {
 bool Configuration::fromXML(const ResourcePath& xmlFilePath, const char* fileName )
 {
     Console::printfn(LOCALE_STR("XML_LOAD_CONFIG"), (xmlFilePath.string() + fileName).c_str());
-    if (LoadSave.read(xmlFilePath, fileName, "config."))
+    if (SerializerContext.read(xmlFilePath, fileName, "config."))
     {
         GET_PARAM(debug.renderer.enableRenderAPIDebugging);
         GET_PARAM(debug.renderer.enableRenderAPIBestPractices);
         GET_PARAM(debug.renderer.enableRenderAPIDebugGrouping);
+        GET_PARAM(debug.renderer.enableVMADebugLogging);
         GET_PARAM(debug.renderer.assertOnRenderAPIError);
         GET_PARAM(debug.renderer.useSPIRVForOpenGL);
         GET_PARAM(debug.cache.enabled);
@@ -38,6 +39,7 @@ bool Configuration::fromXML(const ResourcePath& xmlFilePath, const char* fileNam
         GET_PARAM(runtime.targetDisplay);
         GET_PARAM(runtime.targetRenderingAPI);
         GET_PARAM(runtime.maxWorkerThreads);
+        GET_PARAM(runtime.assetLoaderThreads);
         GET_PARAM(runtime.windowedMode);
         GET_PARAM(runtime.windowResizable);
         GET_PARAM(runtime.maximizeOnStart);
@@ -68,6 +70,9 @@ bool Configuration::fromXML(const ResourcePath& xmlFilePath, const char* fileNam
         GET_PARAM(rendering.maxAnisotropicFilteringLevel);
         GET_PARAM(rendering.reflectionProbeResolution);
         GET_PARAM(rendering.reflectionPlaneResolution);
+        GET_PARAM(rendering.reflection.includeGrass);
+        GET_PARAM(rendering.reflection.includeTrees);
+        GET_PARAM(rendering.reflection.includeDynamicObjects);
         GET_PARAM(rendering.numLightsPerCluster);
         GET_PARAM(rendering.enableFog);
         GET_PARAM(rendering.fogDensity);
@@ -149,10 +154,12 @@ bool Configuration::fromXML(const ResourcePath& xmlFilePath, const char* fileNam
         GET_PARAM(rendering.shadowMapping.csm.shadowMapResolution);
         GET_PARAM(rendering.shadowMapping.csm.MSAASamples);
         GET_PARAM(rendering.shadowMapping.csm.enableBlurring);
+        GET_PARAM(rendering.shadowMapping.csm.staticCaching);
         GET_PARAM(rendering.shadowMapping.csm.splitLambda);
         GET_PARAM(rendering.shadowMapping.csm.splitCount);
         GET_PARAM(rendering.shadowMapping.csm.maxAnisotropicFilteringLevel);
         GET_PARAM(rendering.shadowMapping.spot.enabled);
+        GET_PARAM(rendering.shadowMapping.spot.staticCaching);
         GET_PARAM(rendering.shadowMapping.spot.shadowMapResolution);
         GET_PARAM(rendering.shadowMapping.spot.MSAASamples);
         GET_PARAM(rendering.shadowMapping.spot.enableBlurring);
@@ -181,6 +188,7 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
     PUT_PARAM(debug.renderer.enableRenderAPIDebugging);
     PUT_PARAM(debug.renderer.enableRenderAPIBestPractices);
     PUT_PARAM(debug.renderer.enableRenderAPIDebugGrouping);
+    PUT_PARAM(debug.renderer.enableVMADebugLogging);
     PUT_PARAM(debug.renderer.assertOnRenderAPIError);
     PUT_PARAM(debug.renderer.useSPIRVForOpenGL);
     PUT_PARAM(debug.cache.enabled);
@@ -205,6 +213,7 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
     PUT_PARAM(runtime.targetDisplay);
     PUT_PARAM(runtime.targetRenderingAPI);
     PUT_PARAM(runtime.maxWorkerThreads);
+    PUT_PARAM(runtime.assetLoaderThreads);
     PUT_PARAM(runtime.windowedMode);
     PUT_PARAM(runtime.windowResizable);
     PUT_PARAM(runtime.maximizeOnStart);
@@ -234,6 +243,9 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
     PUT_PARAM(rendering.MSAASamples);
     PUT_PARAM(rendering.maxAnisotropicFilteringLevel);
     PUT_PARAM(rendering.reflectionPlaneResolution);
+    PUT_PARAM(rendering.reflection.includeGrass);
+    PUT_PARAM(rendering.reflection.includeTrees);
+    PUT_PARAM(rendering.reflection.includeDynamicObjects);
     PUT_PARAM(rendering.numLightsPerCluster);
     PUT_PARAM(rendering.enableFog);
     PUT_PARAM(rendering.fogDensity);
@@ -315,10 +327,12 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
     PUT_PARAM(rendering.shadowMapping.csm.shadowMapResolution);
     PUT_PARAM(rendering.shadowMapping.csm.MSAASamples);
     PUT_PARAM(rendering.shadowMapping.csm.enableBlurring);
+    PUT_PARAM(rendering.shadowMapping.csm.staticCaching);
     PUT_PARAM(rendering.shadowMapping.csm.splitLambda);
     PUT_PARAM(rendering.shadowMapping.csm.splitCount);
     PUT_PARAM(rendering.shadowMapping.csm.maxAnisotropicFilteringLevel);
     PUT_PARAM(rendering.shadowMapping.spot.enabled);
+    PUT_PARAM(rendering.shadowMapping.spot.staticCaching);
     PUT_PARAM(rendering.shadowMapping.spot.shadowMapResolution);
     PUT_PARAM(rendering.shadowMapping.spot.MSAASamples);
     PUT_PARAM(rendering.shadowMapping.spot.enableBlurring);
@@ -328,12 +342,12 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
     PUT_PARAM(defaultAssetLocation.textures);
     PUT_PARAM(defaultAssetLocation.shaders);
 
-    return LoadSave.write( xmlFilePath, fileName );
+    return SerializerContext.write( xmlFilePath, fileName );
 }
 
 void Configuration::save()
 {
-    if (changed() && toXML(LoadSave._filePath, LoadSave._fileName.c_str()))
+    if (changed() && toXML(SerializerContext._filePath, SerializerContext._fileName.c_str()))
     {
         changed(false);
     }

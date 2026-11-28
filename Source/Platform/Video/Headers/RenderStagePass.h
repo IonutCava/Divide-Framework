@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
+Copyright (c) 2018-2026 DIVIDE-Studio
 Copyright (c) 2009 Ionut Cava
 
 This file is part of DIVIDE Framework.
@@ -100,9 +100,14 @@ namespace Divide
         return BaseIndex(stagePass._stage, stagePass._passType);
     }
 
+    static constexpr U8 GetNodeReflectionCubeIndexOffset()
+    {
+        return Config::MAX_REFLECTIVE_PROBES_PER_PASS + U8_ONE /*SkyLight*/;
+    }
+
     static constexpr U8 GetNodeReflectionIndexOffset()
     {
-        return (Config::MAX_REFLECTIVE_PROBES_PER_PASS + U8_ONE/*SkyLight*/) * 6u;
+        return GetNodeReflectionCubeIndexOffset() * 6u;
     }
 
     static constexpr U8 GetNodeRefractionIndexOffset()
@@ -120,7 +125,7 @@ namespace Divide
                 return U8_ONE;
             case RenderStage::REFRACTION:
                 return GetNodeRefractionIndexOffset() +
-                       (Config::MAX_REFLECTIVE_CUBE_NODES_IN_VIEW * 6u) +
+                       (Config::MAX_REFRACTIVE_CUBE_NODES_IN_VIEW * 6u) +
                        Config::MAX_REFRACTIVE_PLANAR_NODES_IN_VIEW;
             case RenderStage::REFLECTION:
                 return GetNodeReflectionIndexOffset() +
@@ -135,7 +140,6 @@ namespace Divide
         }
 
         DIVIDE_UNEXPECTED_CALL();
-        return U8_ONE;
     }
 
 }; //namespace Divide

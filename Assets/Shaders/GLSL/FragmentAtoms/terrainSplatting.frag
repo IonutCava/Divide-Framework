@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #ifndef _TERRAIN_SPLATTING_FRAG_
 #define _TERRAIN_SPLATTING_FRAG_
 
@@ -5,9 +7,10 @@
 
 #define UNDERWATER_ROUGNESS 0.3f
 
-vec4 textureNoTileInternal(in sampler2DArray tex, in vec3 texUV) {
+vec4 textureNoTileInternal(in sampler2DArray tex, in vec3 texUV, in bool isNormalMap)
+{
     if (VAR._LoDLevel == 0u) {
-        return textureNoTile(tex, texUV);
+        return textureNoTile(tex, texUV, isNormalMap);
     }
     if (VAR._LoDLevel == 1u) {
         return textureNoTile(tex, texDiffuse1, texUV);
@@ -17,8 +20,10 @@ vec4 textureNoTileInternal(in sampler2DArray tex, in vec3 texUV) {
 
 #if defined(LOW_QUALITY) || !defined(REDUCE_TEXTURE_TILE_ARTIFACT)
 #define SampleTextureNoTile texture
+#define SampleNormalTextureNoTile texture
 #else //LOW_QUALITY || !REDUCE_TEXTURE_TILE_ARTIFACT
-#define SampleTextureNoTile textureNoTileInternal
+#define SampleTextureNoTile(TEX, UV) textureNoTileInternal(TEX, UV, false)
+#define SampleNormalTextureNoTile(TEX, UV) textureNoTileInternal(TEX, UV, true)
 #endif //LOW_QUALITY || !REDUCE_TEXTURE_TILE_ARTIFACT
 
 #define getScaledCoords(UV, AMNT) ScaledTextureCoords(UV, TEXTURE_TILE_SIZE)
@@ -46,34 +51,39 @@ vec3 GetTerrainGeometryNormalWV()
 mat3 GetTerrainTBNWV()
 {
     const vec3 N = GetTerrainGeometryNormalWV();
-    const mat3 viewMatrix = mat3(dvd_ViewMatrix);
-    const vec3 viewZAxis = normalize(viewMatrix * WORLD_Z_AXIS);
-    const vec3 viewYAxis = normalize(viewMatrix * WORLD_Y_AXIS);
-    const vec3 T1 = cross(N, viewZAxis);
-    const vec3 T2 = cross(N, viewYAxis);
-    const vec3 T = normalize(length(T1) > length(T2) ? T1 : T2);
-    const vec3 B = normalize(-cross(N, T));
-    return mat3(T, B, N);
+    const vec3 positionDx = dFdx(VAR._vertexWV.xyz);
+    const vec3 positionDy = dFdy(VAR._vertexWV.xyz);
+    const vec2 uvDx = dFdx(VAR._texCoord);
+    const vec2 uvDy = dFdy(VAR._texCoord);
+    const float uvOrientation = sign(uvDx.x * uvDy.y - uvDx.y * uvDy.x);
+    const vec3 tangentU = (positionDx * uvDy.y - positionDy * uvDx.y) * uvOrientation;
+    const vec3 tangentV = (positionDy * uvDx.x - positionDx * uvDy.x) * uvOrientation;
+    const vec3 T = normalize(tangentU);
+    const vec3 B = normalize(cross(N, T));
+    return mat3(T, B * sign(dot(B, tangentV)), N);
 }
 
 vec4 getBlendedAlbedo() {
     vec4 albedo = vec4(0.f);
+    float totalWeight = 0.f;
     for (int i = 0; i < MAX_TEXTURE_LAYERS; ++i) {
         const vec4 blendAmnt = GetBlend(vec3(VAR._texCoord, i));
         const vec2 uv = getScaledCoords(VAR._texCoord, blendAmnt);
         // Albedo & Roughness
         for (int j = 0; j < 4; ++j) {
             const uint offset = Mad(i, 4u, j);
-            albedo = mix(albedo, SampleTextureNoTile(texDiffuse0, vec3(uv * CURRENT_TILE_FACTORS[offset], offset)), blendAmnt[j]);
+            albedo += SampleTextureNoTile(texDiffuse0, vec3(uv * CURRENT_TILE_FACTORS[offset], offset)) * blendAmnt[j];
+            totalWeight += blendAmnt[j];
         }
     }
 
-    return albedo;
+    return totalWeight > 0.f ? albedo / totalWeight : albedo;
 }
 
 void BuildBlendedSurface(out vec4 albedo, out vec3 normal) {
     albedo = vec4(0.f);
     normal = vec3(0.f);
+    float totalWeight = 0.f;
     for (int i = 0; i < MAX_TEXTURE_LAYERS; ++i) {
         const vec4 blendAmnt = GetBlend(vec3(VAR._texCoord, i));
         const vec2 uv = getScaledCoords(VAR._texCoord, blendAmnt);
@@ -82,12 +92,21 @@ void BuildBlendedSurface(out vec4 albedo, out vec3 normal) {
             const uint offset = Mad(i, 4u, j);
             const vec3 crtUV = vec3(uv * CURRENT_TILE_FACTORS[offset], offset);
             const vec4 albedoAndRoughness = SampleTextureNoTile(texDiffuse0, crtUV);
-            albedo = mix(albedo, albedoAndRoughness, blendAmnt[j]);
-            normal = mix(normal, SampleTextureNoTile(texNormalMap, crtUV).rgb, blendAmnt[j]);
+            albedo += albedoAndRoughness * blendAmnt[j];
+            normal += SampleNormalTextureNoTile(texNormalMap, crtUV).rgb * blendAmnt[j];
+            totalWeight += blendAmnt[j];
         }
     }
 
-    normal = 2.f * normal - 1.f;
+    if (totalWeight > 0.f)
+    {
+        albedo /= totalWeight;
+        normal = 2.f * normal / totalWeight - 1.f;
+    }
+    else
+    {
+        normal = vec3(0.f, 0.f, 1.f);
+    }
 }
 
 

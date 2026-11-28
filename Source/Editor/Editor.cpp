@@ -7,6 +7,7 @@
 #include "Core/Headers/Application.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "ECS/Components/Headers/TransformComponent.h"
@@ -329,6 +330,8 @@ namespace Divide
             return false;
         }
 
+        _simulationPaused = RenderSmokeTest::InitialSimulationPaused( RenderSmokeTest::Enabled(), _simulationPaused,
+                                                                      RenderSmokeTest::PausedEditorRequested() );
         DIVIDE_EXPECTED_CALL( createDirectory( Paths::g_saveLocation / Paths::Editor::g_saveLocation ) == FileError::NONE );
 
         _mainWindow = &_context.app().windowManager().getWindow( 0u );
@@ -347,7 +350,7 @@ namespace Divide
         _nodePreviewCamera->speedFactor().zoom = 175.f;
 
         IMGUI_CHECKVERSION();
-        assert( _imguiContexts[to_base( ImGuiContextType::Editor )] == nullptr );
+        DIVIDE_ASSERT( _imguiContexts[to_base( ImGuiContextType::Editor )] == nullptr );
 
         ImGuiCustom::g_ImAllocatorUserData._context = &context();
 
@@ -463,6 +466,14 @@ namespace Divide
 
         ImGuiPlatformIO& platform_io = editorContext->PlatformIO;
         ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
+        if ( RenderSmokeTest::Enabled() )
+        {
+            if ( io.IniFilename != nullptr )
+            {
+                ImGui::LoadIniSettingsFromDisk( io.IniFilename );
+            }
+            io.IniFilename = nullptr;
+        }
         createFontTexture(io, mainMonitor.dpi / PlatformDefaultDPI());
         initBasicImGUIState( io, platform_io, true, _imguiStringBuffers[to_base(ImGuiContextType::Editor)] );
         editorContext->Viewports[0]->PlatformHandle = _mainWindow;
@@ -543,7 +554,7 @@ namespace Divide
                 }
                 else
                 {
-                    DIVIDE_UNEXPECTED_CALL_MSG( "Editor::Platform_CreateWindow failed!" );
+                    DIVIDE_ASSERT( false, "Editor::Platform_CreateWindow failed!" );
                     g_windowManager->destroyWindow( newWindow );
                 }
             }
@@ -590,7 +601,7 @@ namespace Divide
                 const int2 pos = data->_window->getPosition();
                 return ImVec2( (F32)pos.x, (F32)pos.y );
             }
-            DIVIDE_UNEXPECTED_CALL_MSG( "Editor::Platform_GetWindowPos failed!" );
+            DIVIDE_ASSERT( false, "Editor::Platform_GetWindowPos failed!" );
             return {};
         };
 
@@ -601,7 +612,7 @@ namespace Divide
                 const vec2<U16> dim = data->_window->getDimensions();
                 return ImVec2( (F32)dim.width, (F32)dim.height );
             }
-            DIVIDE_UNEXPECTED_CALL_MSG( "Editor::Platform_GetWindowSize failed!" );
+            DIVIDE_ASSERT( false, "Editor::Platform_GetWindowSize failed!" );
             return {};
         };
 
@@ -611,7 +622,7 @@ namespace Divide
             {
                 return data->_window->hasFocus();
             }
-            DIVIDE_UNEXPECTED_CALL_MSG( "Editor::Platform_GetWindowFocus failed!" );
+            DIVIDE_ASSERT( false, "Editor::Platform_GetWindowFocus failed!" );
             return false;
         };
 
@@ -754,6 +765,10 @@ namespace Divide
 
         ImGuiContext*& gizmoContext = _imguiContexts[to_base( ImGuiContextType::Gizmo )];
         gizmoContext = ImGui::CreateContext( io.Fonts );
+        if ( RenderSmokeTest::Enabled() )
+        {
+            gizmoContext->IO.IniFilename = nullptr;
+        }
         initBasicImGUIState( gizmoContext->IO, gizmoContext->PlatformIO, false, _imguiStringBuffers[to_base(ImGuiContextType::Gizmo)]);
         gizmoContext->Viewports[0]->PlatformHandle = _mainWindow;
 
@@ -799,7 +814,8 @@ namespace Divide
         descriptor.flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
         _dockedWindows[to_base( WindowType::NodePreview )] = std::make_unique<NodePreviewWindow>( *this, descriptor );
 
-        descriptor.name = "Scene View ##AnimatedTitlePlayState";
+        descriptor.name = SceneViewWindow::WINDOW_NAME;
+        descriptor.focusOnFirstDraw = true;
         _dockedWindows[to_base( WindowType::SceneView )] = std::make_unique<SceneViewWindow>( *this, descriptor );
 
         _editorSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
@@ -852,7 +868,7 @@ namespace Divide
     {
         processInput(false);
 
-        if ( saveToXML() )
+        if ( !RenderSmokeTest::Enabled() && saveToXML() )
         {
             _context.config().save();
         }
@@ -893,7 +909,11 @@ namespace Divide
             window.reset();
         }
 
-        DIVIDE_EXPECTED_CALL( _context.gfx().renderTargetPool().deallocateRT( _nodePreviewRTHandle ) );
+        // The preview target only exists after init(); a never-initialised editor must not touch the (possibly null) pool
+        if ( _nodePreviewRTHandle._rt != nullptr )
+        {
+            DIVIDE_EXPECTED_CALL( _context.gfx().renderTargetPool().deallocateRT( _nodePreviewRTHandle ) );
+        }
 
         Camera::DestroyCamera( _editorCamera );
         Camera::DestroyCamera( _nodePreviewCamera );
@@ -1086,6 +1106,12 @@ namespace Divide
 
         nodePreviewWindowVisible(false);
 
+        if ( _gizmoSelectionRefresh.pending() &&
+             _gizmoSelectionRefresh.consumeIfIdle( _gizmo->isUsing() ) )
+        {
+            Attorney::GizmoEditor::updateSelections( _gizmo.get() );
+        }
+
         Attorney::GizmoEditor::update( _gizmo.get(), deltaTimeUS );
 
         if ( running() )
@@ -1137,16 +1163,19 @@ namespace Divide
             static bool movedToNode = false;
             if ( !_isScenePaused || stepQueue() > 0 )
             {
-                Attorney::ProjectManagerEditor::editorPreviewNode( sMgr.get(), -1 );
+                // The preview only shows a node while the simulation is paused; otherwise it shows its empty state
+                _nodePreviewHasNode = false;
+                Attorney::ProjectManagerEditor::editorPreviewNode( sMgr.get(), 0 );
                 playerState.overrideCamera( nullptr );
                 nodePreviewCamera()->setTarget( nullptr );
                 movedToNode = false;
             }
             else
             {
+                playerState.overrideCamera( editorCamera() );
                 if ( nodePreviewWindowVisible() )
                 {
-                    playerState.overrideCamera( nodePreviewCamera() );
+                    _nodePreviewHasNode = _previewNode != nullptr;
                     Attorney::ProjectManagerEditor::editorPreviewNode( sMgr.get(), _previewNode == nullptr ? 0 : _previewNode->getGUID() );
                     if ( !movedToNode && _previewNode != nullptr )
                     {
@@ -1161,7 +1190,7 @@ namespace Divide
                 }
                 else
                 {
-                    playerState.overrideCamera( editorCamera() );
+                    _nodePreviewHasNode = false;
                     Attorney::ProjectManagerEditor::editorPreviewNode( sMgr.get(), -1 );
                     nodePreviewCamera()->setTarget( nullptr );
                     movedToNode = false;
@@ -1864,7 +1893,7 @@ namespace Divide
         if ( focusedWindow == nullptr )
         {
             focusedWindow = g_windowManager->mainWindow();
-            assert( focusedWindow != nullptr );
+            DIVIDE_ASSERT( focusedWindow != nullptr );
         }
 
         Rect<I32> viewportSize( -1 );
@@ -1894,7 +1923,7 @@ namespace Divide
         const SceneViewWindow* sceneView = static_cast<SceneViewWindow*>(_dockedWindows[to_base( WindowType::SceneView )].get());
         _windowFocusState._hoveredScenePreview = sceneView->hovered() && sceneView->sceneRect( true ).contains( mousePos.x, mousePos.y );
 
-        const NodePreviewWindow* nodeView = static_cast<SceneViewWindow*>(_dockedWindows[to_base( WindowType::NodePreview )].get());
+        const NodePreviewWindow* nodeView = static_cast<NodePreviewWindow*>(_dockedWindows[to_base( WindowType::NodePreview )].get());
         _windowFocusState._hoveredNodePreview = nodeView->hovered() && nodeView->sceneRect( true ).contains( mousePos.x, mousePos.y );
 
         _windowFocusState._globalMousePos = mousePos;
@@ -1979,7 +2008,7 @@ namespace Divide
                 if ( ctx->IO.WantSetMousePos )
                 {
                     // Only one override at a time per context
-                    assert( !_mouseCaptured);
+                    DIVIDE_ASSERT( !_mouseCaptured);
 
                     _mouseCaptured = true;
                     tempCoords = ctx->IO.MousePos;
@@ -2311,11 +2340,7 @@ namespace Divide
 
     void Editor::onNodeSpatialChange([[maybe_unused]] const SceneGraphNode& node)
     {
-        // Don't update the gizmo if it the source of the spatial change
-        if (!_gizmo->isUsing())
-        {
-            Attorney::GizmoEditor::updateSelections(_gizmo.get());
-        }
+        _gizmoSelectionRefresh.request();
     }
 
     void Editor::onChangeScene( Scene* newScene )
@@ -2360,7 +2385,7 @@ namespace Divide
 
             IMGUICallbackData* data = static_cast<IMGUICallbackData*>(imCmd->UserCallbackData);
 
-            assert( data->_cmdBuffer != nullptr );
+            DIVIDE_ASSERT( data->_cmdBuffer != nullptr );
             GFX::CommandBuffer& buffer = *(data->_cmdBuffer);
 
             bool isArrayTexture = false;
@@ -2392,7 +2417,7 @@ namespace Divide
                         {
                             const ImageView texView = tex->getView( TextureType::TEXTURE_2D_ARRAY,
                                                                                     { 0u, tex->mipCount() },
-                                                                                    { 0u, to_U16( tex->depth() * 6u) });
+                                                                                    { 0u, ALL_LAYERS });
 
                             Set( binding._data, texView, defaultSampler );
                         }
@@ -2425,7 +2450,7 @@ namespace Divide
 
         if ( opened )
         {
-            assert( tex != INVALID_HANDLE<Texture> );
+            DIVIDE_ASSERT( tex != INVALID_HANDLE<Texture> );
 
             static IMGUICallbackData defaultData{
                 ._flip = false
@@ -2438,7 +2463,7 @@ namespace Divide
             
             const U8 numChannels = NumChannels( texPtr->descriptor()._baseFormat );
 
-            assert( numChannels > 0 );
+            DIVIDE_ASSERT( numChannels > 0 );
 
             bool isArray = false;
             if ( g_modalTextureData._isDepthTexture )
@@ -2776,6 +2801,7 @@ namespace Divide
 
     void Editor::onRemoveComponent( const EditorComponent& comp ) const
     {
+        _undoManager->removeEntriesForOwner( comp.getGUID() );
         for ( auto& window : _dockedWindows )
         {
             window->onRemoveComponent( comp );
@@ -2904,6 +2930,7 @@ namespace Divide
         pt.put( "editor.nodeBGColour.<xmlattr>.r", nodePreviewBGColour().r );
         pt.put( "editor.nodeBGColour.<xmlattr>.g", nodePreviewBGColour().g );
         pt.put( "editor.nodeBGColour.<xmlattr>.b", nodePreviewBGColour().b );
+        pt.put( "editor.nodePreviewSky.<xmlattr>.enabled", nodePreviewRenderSky() );
 
         for ( size_t i = 0u; i < _recentSceneList.size(); ++i )
         {
@@ -2988,6 +3015,7 @@ namespace Divide
                 pt.get( "editor.nodeBGColour.<xmlattr>.r", nodePreviewBGColour().r ),
                 pt.get( "editor.nodeBGColour.<xmlattr>.g", nodePreviewBGColour().g ),
                 pt.get( "editor.nodeBGColour.<xmlattr>.b", nodePreviewBGColour().b ) );
+            _nodePreviewRenderSky = pt.get( "editor.nodePreviewSky.<xmlattr>.enabled", nodePreviewRenderSky() );
             return true;
         }
 
@@ -3060,4 +3088,15 @@ namespace Divide
         ImGui::SetCurrentContext(Util::detail::g_imguiContexts.top());
         Util::detail::g_imguiContexts.pop();
     }
+
+    namespace Attorney
+    {
+        void EditorGeneralWidget::setPreviewNode( Editor& editor, SceneGraphNode* previewNode ) noexcept
+        {
+            if ( previewNode == nullptr || IsNodePreviewSupported( previewNode->getNode().type() ) )
+            {
+                editor._previewNode = previewNode;
+            }
+        }
+    } // namespace Attorney
 } // namespace Divide

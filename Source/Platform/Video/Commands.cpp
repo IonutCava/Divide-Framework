@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/Commands.h"
 #include "Headers/Pipeline.h"
@@ -17,7 +17,7 @@ namespace GFX {
 
 static string ToString(const BindPipelineCommand& cmd, U16 indent)
 {
-    assert(cmd._pipeline != nullptr);
+    DIVIDE_ASSERT(cmd._pipeline != nullptr);
 
     const auto blendStateToString = [](const BlendingSettings& state) -> string {
         if (!state.enabled()) {
@@ -226,7 +226,7 @@ static string ToString(const BeginRenderPassCommand& cmd, U16 indent)
     {
         ret.append( "    " );
     }
-    ret.append(Util::StringFormat(" Name: [ {} ] Target: [ {} ] Mip Level: [ {} ]: \n", cmd._name.c_str(), to_base(cmd._target), cmd._descriptor._mipWriteLevel));
+    ret.append(Util::StringFormat(" Name: [ {} ] Target: [ {} ] Mip Level: [ {} ]: \n", cmd._name.c_str(), cmd._target, cmd._descriptor._mipWriteLevel));
 
     U8 k = 0u;
     for ( const bool draw : cmd._descriptor._drawMask )
@@ -298,11 +298,12 @@ static string ToString(const SetCameraCommand& cmd, [[maybe_unused]] U16 indent)
 
 static string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
 {
+    const DescriptorSet bindings = EffectiveBindings( cmd );
     U8 bufferCount = 0u;
     U8 imageCount = 0u;
-    for (U8 i = 0u; i < cmd._set._bindingCount; ++i)
+    for (U8 i = 0u; i < bindings._bindingCount; ++i)
     {
-        const DescriptorSetBinding& binding = cmd._set._bindings[i];
+        const DescriptorSetBinding& binding = bindings._bindings[i];
 
         if ( binding._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC ||
              binding._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC ||
@@ -321,9 +322,9 @@ static string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
 
     string ret = Util::StringFormat(" [ Buffers: {}, Images: {} ]\n", bufferCount, imageCount);
 
-    for ( U8 i = 0u; i < cmd._set._bindingCount; ++i )
+    for ( U8 i = 0u; i < bindings._bindingCount; ++i )
     {
-        const DescriptorSetBinding& binding = cmd._set._bindings[i];
+        const DescriptorSetBinding& binding = bindings._bindings[i];
 
         if ( binding._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC ||
              binding._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC ||
@@ -346,9 +347,9 @@ static string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
         }
     }
 
-    for ( U8 i = 0u; i < cmd._set._bindingCount; ++i )
+    for ( U8 i = 0u; i < bindings._bindingCount; ++i )
     {
-        const DescriptorSetBinding& binding = cmd._set._bindings[i];
+        const DescriptorSetBinding& binding = bindings._bindings[i];
 
         if ( binding._data._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER ||
              binding._data._type == DescriptorSetBindingType::IMAGE )

@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/glMemoryManager.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
@@ -135,7 +136,7 @@ bool Chunk::containsBlock(const Block &block) const
 ChunkAllocator::ChunkAllocator(const size_t size) noexcept
     : _size(size)
 {
-    assert(size > 0u && isPowerOfTwo(size));
+    DIVIDE_ASSERT(size > 0u && isPowerOfTwo(size));
 }
 
 std::unique_ptr<Chunk> ChunkAllocator::allocate(const size_t alignedSize,
@@ -291,7 +292,14 @@ void createBuffer( gl46core::GLuint& bufferIdOut,
 
     if constexpr (Config::ENABLE_GPU_VALIDATION)
     {
-        gl46core::glObjectLabel( gl46core::GL_BUFFER, bufferIdOut, -1, name.empty() ? Util::StringFormat("DVD_GENERIC_BUFFER_{}", bufferIdOut).c_str() : name.data() );
+        if ( name.empty() )
+        {
+            GLUtil::SetObjectLabel( gl46core::GL_BUFFER, bufferIdOut, Util::StringFormat( "DVD_GENERIC_BUFFER_{}", bufferIdOut ).c_str() );
+        }
+        else
+        {
+            GLUtil::SetObjectLabel( gl46core::GL_BUFFER, bufferIdOut, name );
+        }
     }
 
     GLMemory::g_bufferCount.fetch_add(1u);

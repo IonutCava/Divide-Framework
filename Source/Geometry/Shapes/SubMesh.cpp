@@ -42,6 +42,11 @@ VertexBuffer* SubMesh::geometryBuffer()
     return _parentMesh->geometryBuffer();
 }
 
+bool SubMesh::hasGeometryBuffer() const noexcept
+{
+    return _parentMesh != nullptr && _parentMesh->hasGeometryBuffer();
+}
+
 void ChangeAnimationForAllChildren(SceneGraphNode* parentNode, const U32 animationIndex, const bool playInReverse)
 {
     if (parentNode != nullptr)

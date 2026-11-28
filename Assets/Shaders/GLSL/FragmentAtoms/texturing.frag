@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #ifndef _TEXTURING_FRAG_
 #define _TEXTURING_FRAG_
 
@@ -69,7 +71,8 @@ vec4 textureNoTile(sampler2D samp, in vec2 uv) {
                b.y);
 }
 
-vec4 textureNoTile(sampler2DArray samp, in vec3 uvIn) {
+vec4 textureNoTile(sampler2DArray samp, in vec3 uvIn, in bool isNormalMap)
+{
     const vec2 uv = uvIn.xy;
 
     vec2 ddx = dFdx(uv);
@@ -99,13 +102,19 @@ vec4 textureNoTile(sampler2DArray samp, in vec3 uvIn) {
     // fetch and blend
     vec2 b = smoothstep(0.25f, 0.75f, fuv);
 
-    return mix(mix(textureGrad(samp, vec3(uva, uvIn.z), ddxa, ddya),
-                   textureGrad(samp, vec3(uvb, uvIn.z), ddxb, ddyb),
-                   b.x),
-               mix(textureGrad(samp, vec3(uvc, uvIn.z), ddxc, ddyc),
-                   textureGrad(samp, vec3(uvd, uvIn.z), ddxd, ddyd),
-                   b.x),
-               b.y);
+    vec4 sampleA = textureGrad(samp, vec3(uva, uvIn.z), ddxa, ddya);
+    vec4 sampleB = textureGrad(samp, vec3(uvb, uvIn.z), ddxb, ddyb);
+    vec4 sampleC = textureGrad(samp, vec3(uvc, uvIn.z), ddxc, ddyc);
+    vec4 sampleD = textureGrad(samp, vec3(uvd, uvIn.z), ddxd, ddyd);
+    if (isNormalMap)
+    {
+        sampleA.xy = (sampleA.xy - 0.5f) * ofa.zw + 0.5f;
+        sampleB.xy = (sampleB.xy - 0.5f) * ofb.zw + 0.5f;
+        sampleC.xy = (sampleC.xy - 0.5f) * ofc.zw + 0.5f;
+        sampleD.xy = (sampleD.xy - 0.5f) * ofd.zw + 0.5f;
+    }
+
+    return mix(mix(sampleA, sampleB, b.x), mix(sampleC, sampleD, b.x), b.y);
 }
 
 vec4 textureNoTile(sampler2D samp, sampler2DArray noiseSampler, in vec2 uv) {

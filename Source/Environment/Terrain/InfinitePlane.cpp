@@ -114,7 +114,7 @@ namespace Divide
 
     void InfinitePlane::postLoad( SceneGraphNode* sgn )
     {
-        assert( _plane != INVALID_HANDLE<Quad3D> );
+        DIVIDE_ASSERT( _plane != INVALID_HANDLE<Quad3D> );
 
         RenderingComponent* renderable = sgn->get<RenderingComponent>();
         if ( renderable )

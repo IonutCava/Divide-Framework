@@ -18,6 +18,8 @@
 
 namespace Divide {
 
+DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(EnvironmentProbeComponent);
+
 namespace TypeUtil {
     const char* EnvProveUpdateTypeToString(const EnvironmentProbeComponent::UpdateType type) noexcept {
         return EnvironmentProbeComponent::Names::updateType[to_base(type)];
@@ -214,7 +216,6 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
     params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
     params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
     params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLUE, true };
-    params._drawMask &= ~(1u << to_base( RenderPassParams::Flags::DRAW_DYNAMIC_NODES ));
     params._drawMask &= ~(1u << to_base( RenderPassParams::Flags::DRAW_TRANSLUCENT_NODES ));
 
     _context.gfx().generateCubeMap(params,

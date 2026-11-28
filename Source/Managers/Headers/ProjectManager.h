@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -40,6 +40,7 @@
 #include "Core/Headers/KernelComponent.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 #include "Rendering/RenderPass/Headers/RenderPassCuller.h"
+#include "Rendering/Lighting/Headers/LightUploadState.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
 
@@ -50,7 +51,13 @@ namespace Divide
     {
         public:
         static bool loadScene( Scene* activeScene );
-        static bool saveScene( Scene* activeScene, bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback );
+        // Reads live scene state, so call it on the main thread outside the scene update.
+        [[nodiscard]] static bool snapshotSceneXML( const Scene* activeScene, XML::SaveSnapshot& snapshotOut );
+        // Reads live scene state, so call it on the main thread outside the scene update. Leaves dataOut empty when
+        // the scene has saving disabled.
+        [[nodiscard]] static bool serializeSceneCache( Scene* activeScene, ByteBuffer& dataOut );
+        // File I/O only; safe on any thread.
+        [[nodiscard]] static bool writeSceneCache( std::string_view sceneName, ByteBuffer& data );
 
         static bool saveNodeToXML( Scene* activeScene, const SceneGraphNode* node );
         static bool loadNodeFromXML( Scene* activeScene, SceneGraphNode* node );
@@ -124,6 +131,11 @@ namespace Divide
         bool _createIfNotExist = false;
     };
 
+    struct ProjectStartupSceneConfig
+    {
+        string startupScene{ Config::DEFAULT_SCENE_NAME };
+    };
+
     struct SwitchProjectTarget
     {
         ProjectID _targetProject = {};
@@ -160,6 +172,7 @@ namespace Divide
         [[nodiscard]] bool switchScene( const SwitchSceneTarget& scene );
 
         [[nodiscard]] inline const SceneEntries& getSceneEntries() const noexcept { return _sceneEntries; }
+        [[nodiscard]] inline const ProjectStartupSceneConfig& startupSceneConfig() const noexcept { return _startupSceneConfig; }
 
         [[nodiscard]] inline ProjectManager& parent() noexcept { return _parentManager; }
 
@@ -182,6 +195,7 @@ namespace Divide
         ProjectManager& _parentManager;
 
         vector<SceneEntry> _sceneEntries;
+        ProjectStartupSceneConfig _startupSceneConfig;
     };
 
     FWD_DECLARE_MANAGED_CLASS( Project );
@@ -224,14 +238,14 @@ namespace Divide
         void onNodeDestroy( Scene* parentScene, SceneGraphNode* node );
         /// cull the SceneGraph against the current view frustum. 
         void cullSceneGraph( const NodeCullParams& cullParams, const U16 cullFlags, VisibleNodeList<>& nodesOut );
-        /// Searches the scenegraph for the specified nodeGUID and, if found, adds it to nodesOut
-        void findNode( const float3& cameraEye, const I64 nodeGUID, VisibleNodeList<>& nodesOut );
+        /// Searches the scenegraph for the specified nodeGUID and, if found, adds it (and its children) to nodesOut, followed by the sky if requested
+        void findNode( const float3& cameraEye, const I64 nodeGUID, bool includeSky, VisibleNodeList<>& nodesOut );
         /// init default culling values like max cull distance and other scene related states
         void initDefaultCullValues( RenderStage stage, NodeCullParams& cullParamsInOut ) noexcept;
         /// get the full list of reflective nodes
-        void getSortedReflectiveNodes( const Camera* camera, RenderStage stage, bool inView, VisibleNodeList<>& nodesOut ) const;
+        void getSortedReflectiveNodes( const Camera* camera, bool inView, VisibleNodeList<>& nodesOut ) const;
         /// get the full list of refractive nodes
-        void getSortedRefractiveNodes( const Camera* camera, RenderStage stage, bool inView, VisibleNodeList<>& nodesOut ) const;
+        void getSortedRefractiveNodes( const Camera* camera, bool inView, VisibleNodeList<>& nodesOut ) const;
 
         const VisibleNodeList<>& getRenderedNodeList() const noexcept;
 
@@ -314,7 +328,7 @@ namespace Divide
         void drawCustomUI( const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
         void postRender( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
         void debugDraw( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
-        void prepareLightData( RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut );
+        [[nodiscard]] LightDataBinding prepareLightData( RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut );
         [[nodiscard]] Camera* playerCamera( bool skipOverride = false ) const noexcept;
         [[nodiscard]] Camera* playerCamera( PlayerIndex idx, bool skipOverride = false ) const noexcept;
         void editorPreviewNode( const I64 editorPreviewNode ) noexcept;
@@ -339,6 +353,7 @@ namespace Divide
         std::array<Time::ProfileTimer*, to_base( RenderStage::COUNT )> _sceneGraphCullTimers;
 
         bool _playerQueueDirty = false;
+        bool _autoSaveQueued = false;
         eastl::queue<std::pair<Scene*, SceneGraphNode*>>  _playerAddQueue;
         eastl::queue<std::pair<Scene*, SceneGraphNode*>>  _playerRemoveQueue;
         AI::Navigation::DivideRecast_uptr _recast;
@@ -522,9 +537,9 @@ namespace Divide
                 mgr->cullSceneGraph( cullParams, cullFlags, nodesOut );
             }
 
-            static void findNode( Divide::ProjectManager* mgr, const float3& cameraEye, const I64 nodeGUID, VisibleNodeList<>& nodesOut )
+            static void findNode( Divide::ProjectManager* mgr, const float3& cameraEye, const I64 nodeGUID, const bool includeSky, VisibleNodeList<>& nodesOut )
             {
-                mgr->findNode( cameraEye, nodeGUID, nodesOut );
+                mgr->findNode( cameraEye, nodeGUID, includeSky, nodesOut );
             }
 
             static void initDefaultCullValues( Divide::ProjectManager* mgr, const RenderStage stage, NodeCullParams& cullParamsInOut ) noexcept
@@ -532,9 +547,9 @@ namespace Divide
                 mgr->initDefaultCullValues( stage, cullParamsInOut );
             }
 
-            static void prepareLightData( Divide::ProjectManager* mgr, const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
+            [[nodiscard]] static LightDataBinding prepareLightData( Divide::ProjectManager* mgr, const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
             {
-                mgr->prepareLightData( stage, cameraSnapshot, memCmdInOut );
+                return mgr->prepareLightData( stage, cameraSnapshot, memCmdInOut );
             }
 
             static void debugDraw( Divide::ProjectManager* mgr, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )

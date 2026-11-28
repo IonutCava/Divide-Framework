@@ -5,68 +5,41 @@
 
 #include "lightInput.cmn"
 
-//Function prototypes
-vec3 screen2View( in vec3 screen );
-vec3 lineIntersectionToZPlane( vec3 A, vec3 B, float zDistance );
+// Point on the line through A and B at view-space depth Z. Valid for perspective and orthographic projections.
+#define PointAtViewZ(A, B, Z) mix((A), (B), ((Z) - (A).z) / ((B).z - (A).z))
 
+// One invocation per cluster. Inputs (push data): inverseProjectionMatrix, viewport (x, y, width, height) and _zPlanes (near, far).
 layout( local_size_x = 1, local_size_y = 1, local_size_z = 1 ) in;
 void main()
 {
-    #define zNear _zPlanes.x
-    #define zFar _zPlanes.y
-
-    //Eye position is zero in view space
-    const vec3 eyePos = vec3( 0.0 );
-
-    //Per Tile variables
     const uint tileIndex = gl_WorkGroupID.x +
-                           gl_WorkGroupID.y * gl_NumWorkGroups.x +
-                           gl_WorkGroupID.z * (gl_NumWorkGroups.x * gl_NumWorkGroups.y);
+                           gl_WorkGroupID.y * CLUSTERS_X +
+                           gl_WorkGroupID.z * (CLUSTERS_X * CLUSTERS_Y);
 
-    //Calculating the min and max point in screen space
-    const vec3 maxPoint_sS = vec3(vec2( gl_WorkGroupID.x + 1, gl_WorkGroupID.y + 1 ) * dvd_ClusterSizes, 0.f); // Top Right
-    const vec3 minPoint_sS = vec3(vec2( gl_WorkGroupID.x + 0, gl_WorkGroupID.y + 0 ) * dvd_ClusterSizes, 0.f); // Bottom left
+    // Must match dvd_ClusterSizes and GetClusterIndex: tiles are ceil(viewport / grid) pixels, relative to the viewport origin.
+    const vec2 viewportSize = vec2( viewport.zw );
+    const vec2 clusterSize = ceil( viewportSize / vec2( CLUSTERS_X, CLUSTERS_Y ) );
+    const vec2 minUV = (vec2( gl_WorkGroupID.xy ) * clusterSize) / viewportSize;
+    const vec2 maxUV = (vec2( gl_WorkGroupID.xy + 1u ) * clusterSize) / viewportSize;
 
-    //Pass min and max to view space
-    const vec3 maxPoint_vS = screen2View(maxPoint_sS);
-    const vec3 minPoint_vS = screen2View(minPoint_sS);
+    // Tile corners on the near (depth 0) and far (depth 1) planes, in view space.
+    const vec3 minNear = ViewSpacePos( minUV, 0.f, inverseProjectionMatrix );
+    const vec3 minFar  = ViewSpacePos( minUV, 1.f, inverseProjectionMatrix );
+    const vec3 maxNear = ViewSpacePos( maxUV, 0.f, inverseProjectionMatrix );
+    const vec3 maxFar  = ViewSpacePos( maxUV, 1.f, inverseProjectionMatrix );
 
-    //Near and far values of the cluster in view space
-    const float tileNear = -zNear * pow( zFar / zNear, (gl_WorkGroupID.z + 0) / float( gl_NumWorkGroups.z ) );
-    const float tileFar  = -zNear * pow( zFar / zNear, (gl_WorkGroupID.z + 1) / float( gl_NumWorkGroups.z ) );
+    // Exponential depth slices, matching dvd_LightScale/dvd_LightBias in GetClusterZIndex. View space looks down -Z.
+    const float zNear = _zPlanes.x;
+    const float zFar = _zPlanes.y;
+    const float sliceNear = -zNear * pow( zFar / zNear, float( gl_WorkGroupID.z + 0u ) / CLUSTERS_Z );
+    const float sliceFar  = -zNear * pow( zFar / zNear, float( gl_WorkGroupID.z + 1u ) / CLUSTERS_Z );
 
-    //Finding the 4 intersection points made from the maxPoint to the cluster near/far plane
-    const vec3 minPointNear = lineIntersectionToZPlane( eyePos, minPoint_vS, tileNear );
-    const vec3 minPointFar  = lineIntersectionToZPlane( eyePos, minPoint_vS, tileFar );
-    const vec3 maxPointNear = lineIntersectionToZPlane( eyePos, maxPoint_vS, tileNear );
-    const vec3 maxPointFar  = lineIntersectionToZPlane( eyePos, maxPoint_vS, tileFar );
+    // X depends only on U and Y only on V, and both are linear along each edge, so these four points bound the cell.
+    const vec3 p0 = PointAtViewZ( minNear, minFar, sliceNear );
+    const vec3 p1 = PointAtViewZ( minNear, minFar, sliceFar );
+    const vec3 p2 = PointAtViewZ( maxNear, maxFar, sliceNear );
+    const vec3 p3 = PointAtViewZ( maxNear, maxFar, sliceFar );
 
-    const vec3 minPointAABB = min( min( minPointNear, minPointFar ), min( maxPointNear, maxPointFar ) );
-    const vec3 maxPointAABB = max( max( minPointNear, minPointFar ), max( maxPointNear, maxPointFar ) );
-
-    lightClusterAABBs[tileIndex].minPoint = vec4( minPointAABB, 0.f );
-    lightClusterAABBs[tileIndex].maxPoint = vec4( maxPointAABB, 0.f );
-}
-
-//Creates a line from the eye to the screenpoint, then finds its intersection
-//With a z oriented plane located at the given distance to the origin
-vec3 lineIntersectionToZPlane( in vec3 A, in vec3 B, in float zDistance )
-{
-    //Because this is a Z based normal this is fixed
-    const vec3 normal = WORLD_Z_AXIS;
-
-    const vec3 ab = B - A;
-
-    //Computing the intersection length for the line and the plane
-    const float t = (zDistance - dot( normal, A )) / dot( normal, ab );
-
-    //Computing the actual xyz position of the point along the line
-    return A + t * ab;
-}
-
-vec3 screen2View( in vec3 screen )
-{
-    //Convert to NDC
-    const vec2 texCoord = (screen.xy - viewport.xy) / viewport.zw;
-    return ViewSpacePos( texCoord, screen.z, inverseProjectionMatrix);
+    lightClusterAABBs[tileIndex].minPoint = vec4( min( min( p0, p1 ), min( p2, p3 ) ), 0.f );
+    lightClusterAABBs[tileIndex].maxPoint = vec4( max( max( p0, p1 ), max( p2, p3 ) ), 0.f );
 }

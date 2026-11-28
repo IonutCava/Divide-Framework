@@ -6,78 +6,90 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 ## Entry points
 
-- `Source/Platform/Video/Shaders/ShaderProgram.cpp`: shared source loading, generated header, shader pipeline.
-- `Source/Platform/Video/Shaders/GLSLToSPIRV.cpp`: glslang stage mapping and SPIR-V compilation.
-- `Source/Platform/Video/Shaders/ShaderDataUploader.cpp`: cache/reflection serialization and `BYTE_BUFFER_VERSION`.
-- `Source/Platform/Video/Headers/RenderAPIEnums.h`: shader/topology/descriptor enums.
-- `Source/Platform/Video/GFXDevice.cpp`: `initDescriptorSets()` registers canonical bindings.
-- `Assets/Shaders/GLSL/`: shader declarations and shared atoms.
-- `Source/Platform/Video/RenderBackend/OpenGL/Shaders/glShaderProgram.cpp`: GL consumption/binding.
-- `Source/Platform/Video/RenderBackend/Vulkan/Shaders/vkShaderProgram.cpp`: Vulkan shader modules and program layouts.
-- `Source/Platform/Video/RenderBackend/Vulkan/VKWrapper.cpp`: descriptor layouts, caches, and `VK_API::bindShaderResources`.
-- `Source/Platform/Video/RenderBackend/Vulkan/vkDescriptors.cpp` and `Source/Platform/Video/RenderBackend/Vulkan/Headers/vkDescriptors.h`: descriptor layout-cache identity.
-- `Source/Platform/Video/RenderBackend/Vulkan/Vulkan-Descriptor-Allocator/`: descriptor pool allocation.
+- `Source/Platform/Video/Shaders/ShaderProgram.cpp` loads shader source and manages compilation and caches.
+- `GLSLToSPIRV.cpp` compiles Vulkan shader stages.
+- `ShaderDataUploader.cpp` serializes reflection and shader data.
+- `GFXDevice.cpp` registers descriptor bindings.
+- `Assets/Shaders/GLSL/` contains shader declarations and shared shader code.
+- The OpenGL and Vulkan shader backends consume the shared program and descriptor data.
 
-## Shared shader flow
+## Shader flow and caches
 
-`ShaderProgram` loads/reparses GLSL, loads/builds GLSL cache, loads/builds SPIR-V, loads/builds reflection, and hands shared results to the backend.
-OpenGL still consumes GLSL; Vulkan consumes SPIR-V. Reflection is shared, not duplicated per backend.
-Hot reload deliberately invalidates caches and reparses source. Clustered-lighting constants are injected into the generated shader header.
-The newest shader-atom timestamp is read and updated under `g_cacheLock`,
-including file-watcher updates racing asset-loader cache reads.
+`ShaderProgram` loads GLSL, preprocesses it, creates SPIR-V where needed,
+builds reflection data, and passes the results to the backend. OpenGL consumes
+GLSL; Vulkan consumes SPIR-V. Reflection is shared by both.
 
-Changes must cover source parsing, generated declarations, cache invalidation, SPIR-V generation, reflection compatibility, and both backend consumers.
+Generated shader headers can contain configuration and feature limits. Send
+each generated line through `AppendToShaderHeader` so its stage and content
+contribute to the cache fingerprint. Bump the relevant cache version when
+preprocessing, reflection, or compiled-binary semantics change.
 
-## Descriptor ownership and invariants
+OpenGL's SPIR-V ingestion path is not supported by the current configuration;
+keep OpenGL on GLSL unless that path has been validated. Check
+`XML/config.xml` and the shader cache settings before changing backend inputs.
 
-| Usage | Vulkan set index | Main resources |
-|---|---|---|
-| `PER_FRAME` | 0 | Environment, shadows, probes, scene globals |
-| `PER_PASS` | 1 | Scene inputs and clustered-light buffers |
-| `PER_BATCH` | 2 | Indirect commands, camera, transforms, indirection, materials |
-| `PER_DRAW` | 3 | Material textures, optional images, per-draw buffers |
+Preprocessing must fail explicitly on missing shader sections, unresolved
+includes, invalid reflection, or incompatible cache data. Do not silently drop
+shader source or pass incomplete binary data to a backend.
 
-- Shaders use usage names, such as `DESCRIPTOR_SET_RESOURCE(PER_BATCH, 2)`, never raw set indices. Generated headers map bindings per API.
-- `DescriptorSetUsage` is ordered by update frequency; `PER_DRAW` must remain last. Vulkan uses the enum value directly; OpenGL maps `(usage, slot)` to flat bindings.
-- Changing enum order requires bumping `BYTE_BUFFER_VERSION`: cached reflection stores usage indices.
-- Every Vulkan pipeline layout uses real shared layouts for sets 0-2, even if unused by a program, and an identical `VK_SHADER_STAGE_ALL` 128-byte push-constant range. This preserves shared-set/push-constant compatibility across pipeline changes.
-- Partial push-constant commands merge only `dataFlags()`-selected slots into
-  the Vulkan replay cache; omitted slots retain their last explicit values.
-- Command coalescing accepts complementary or equal overlapping push slots,
-  rejecting conflicting overlapping values without mutating the earlier command.
-- Uniform-data coalescing treats shared storage as a no-op. Distinct sources
-  transfer their live bindings only after all overlapping types and sizes pass
-  validation; later values overwrite earlier ones, and successful transfers empty
-  the source. Rejected transfers leave both sides unchanged.
-- `DebugView` explicitly initializes `skipLinearisation` to zero so shared
-  `fbPreview` programs do not inherit the splash screen's encoded-output mode.
-- OpenGL retains the same flagged-slot cache and replays known slots on pipeline
-  binds, including when no new push command follows a shader change. Partial
-  uploads use the merged cache rather than shader-local stale uniform values.
-- `PER_DRAW` is per-program and uses push descriptors. Pipeline creation assembles a local layout array; never overwrite the global shared-layout array with a program-specific layout.
-- Descriptor layout-cache identity must include creation flags, so push-descriptor layouts cannot alias ordinary layouts with the same bindings.
-- Push-descriptor validation uses queried `VkPhysicalDevicePushDescriptorProperties::maxPushDescriptors`, not dynamic-buffer limits.
+Keep shader declarations, generated headers, reflection serialization, cache
+compatibility, and both backend consumers consistent. A source change that
+alters any of these contracts may require a cache-version update.
 
-The local-array, flag-aware cache, and push-descriptor limit notes were checked against commit `1508b95` during this reorganization; see `VK_API::createLayoutFromBindings`, pipeline layout creation, and the descriptor layout cache.
+## Descriptor ownership and layout
+
+The descriptor-set usage order reflects update frequency:
+
+| Usage | Vulkan set index | Typical contents |
+|---|---:|---|
+| `PER_FRAME` | 0 | Environment and scene-wide data |
+| `PER_PASS` | 1 | Pass inputs and lighting data |
+| `PER_BATCH` | 2 | Camera, transforms, materials, and indirect commands |
+| `PER_DRAW` | 3 | Material textures and per-draw data |
+
+Use descriptor usage names in shaders, not raw set indices. Vulkan uses the
+usage order directly; OpenGL flattens usage and slot into binding points.
+`PER_DRAW` remains last. Changing the enum order requires updating serialized
+reflection data.
+
+Descriptor layouts and pipeline layouts are shared contracts. Keep shader
+declarations, generated binding maps, reflection, and backend layout creation
+in sync. Push descriptors are per-program; do not overwrite shared layouts with
+program-specific layouts.
 
 ## Binding and cache lifetime
 
-`VK_API::bindShaderResources` caches resolved shared-set contents. New descriptor sets are allocated/written when resources change; otherwise only dynamic offsets change.
-Bound sets/offsets are tracked per bind point (graphics/compute) and command buffer. `PER_DRAW` is re-pushed when contents or pipeline layout change.
-`frameStarted` invalidates cached sets as descriptor pools flip.
+Material resource bindings are published as immutable revisions. Recorded
+commands retain the revision they use, while package and view overrides remain
+separate. Replacing a resource publishes a new revision; existing commands may
+continue using the old one until their work completes.
 
-Both OpenGL and Vulkan resolve null and omitted active combined image samplers through `ShaderProgram::resolveSampledImages`. Shared-set bindings remain persistent; missing per-draw slots cannot inherit stale textures.
-When an OpenGL shader bind fails, ordinary descriptor updates still run without
-sampler resolution; a null active shader must not turn the existing draw-skip
-path into an assertion or dereference.
-Non-MSAA fallbacks share 1x1 black texel values and nearest/clamp sampling, with compatible dimensionality (including arrays/cubes), numeric format, and depth comparison.
-Missing active MSAA bindings are hard GPU assertions, never fallback textures. Reflection cache v5 stores these sampler traits.
-These sampler notes were added by commit `7b09ed5`.
+Backend compiled-binding caches are non-owning. Their keys must identify the
+resource revision and descriptor slot. A cache miss may cost work; a false hit
+can bind stale resources. Clear these caches before tearing down the native
+device or context.
 
-`DescriptorSetBindingType::INDIRECT_BUFFER` is not a shader resource. `SetIndirectBuffer` at `PER_BATCH` slot 0 selects the indirect draw buffer (`GL_DRAW_INDIRECT_BUFFER` / `vkCmdDraw*Indirect`) and is skipped in GL binding tables and Vulkan layouts.
-The same command buffer is separately a writable SSBO at `PER_BATCH` slot 2 (`dvd_GPUCmds`) for compute Hi-Z culling. Synchronization follows `BufferUsageType::COMMAND_BUFFER` storage/indirect usage, not the descriptor binding type.
+Descriptor updates merge active slots until command-buffer flush. Omitted
+slots can retain an earlier binding, so callers must explicitly replace slots
+that are no longer valid. Fallback resolution may borrow an unchanged set or
+use reusable scratch storage; scratch data must not outlive the synchronous
+binding call.
 
-## Changing bindings safely
+Command coalescing must compare active bindings, not unused capacity. Reject
+conflicting overlapping updates without partially changing the earlier
+command. Keep resource ownership, binding state, and GPU completion as separate
+concerns.
 
-Audit `GFXDevice::initDescriptorSets()`, shader declarations, generated headers, reflection serialization, GL binding translation, and Vulkan descriptor/push-descriptor/descriptor-buffer paths together.
-Check pipeline compatibility, dynamic-offset ordering, cache invalidation, and frame/pool lifetimes. See [GPU resources](gpu-resources.md) and [threading](threading.md) for resource/synchronization changes.
+## Safe changes
+
+When changing descriptor or shader bindings, review the complete path:
+
+- `GFXDevice::initDescriptorSets()` and shader declarations.
+- Generated headers, reflection data, and cache versions.
+- OpenGL binding translation and Vulkan descriptor/push-descriptor layouts.
+- Pipeline compatibility, dynamic offsets, and cache invalidation.
+- Resource revisions, command-buffer ownership, and frame completion.
+
+Use `Source/UnitTests/Test-Engine/ShaderCompilerTests.cpp` for shader and
+reflection regressions. CPU-side checks do not replace backend execution or
+image-based validation.

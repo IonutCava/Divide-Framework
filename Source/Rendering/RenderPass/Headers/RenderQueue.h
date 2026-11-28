@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -52,21 +52,76 @@ class RenderQueue final : public KernelComponent {
 
     struct PopulateQueueParams {
         RenderStagePass _stagePass;
-        RenderBinType _binType = RenderBinType::COUNT;
-        ///_filterByBinType: if true, populate from bin, if false, populate from everything except bin
-        /// Combined with RenderBinType::COUNT, you get all 4 variants: all bins, no bins, just specified bin, all bins except for specified bin
-        bool _filterByBinType = false;
+        /// One bit per RenderBinType
+        U16 _binMask{ 0u };
+
+        [[nodiscard]] static constexpr U16 BinBit( const RenderBinType binType ) noexcept
+        {
+            return to_U16( 1u << to_base( binType ) );
+        }
+
+        static constexpr U16 ALL_BINS = to_U16( ( 1u << to_base( RenderBinType::COUNT ) ) - 1u );
+
+        [[nodiscard]] static constexpr PopulateQueueParams AllBins( const RenderStagePass stagePass ) noexcept
+        {
+            return { stagePass, ALL_BINS };
+        }
+
+        [[nodiscard]] static constexpr PopulateQueueParams ForPass( const RenderStagePass stagePass, const RenderBinContent content ) noexcept
+        {
+            if ( IsShadowPass( stagePass ) )
+            {
+                return AllBins( stagePass );
+            }
+
+            if ( content == RenderBinContent::ALPHA_TESTED )
+            {
+                return { stagePass, BinBit( RenderBinType::ALPHA_TESTED ) };
+            }
+            if ( content == RenderBinContent::TRANSLUCENT )
+            {
+                return { stagePass, BinBit( RenderBinType::TRANSLUCENT ) };
+            }
+
+            return { stagePass, to_U16( ALL_BINS & ~( BinBit( RenderBinType::ALPHA_TESTED ) | BinBit( RenderBinType::TRANSLUCENT ) ) ) };
+        }
+
+        [[nodiscard]] constexpr bool includes( const RenderBinType binType ) const noexcept
+        {
+            return binType != RenderBinType::COUNT && ( _binMask & BinBit( binType ) ) != 0u;
+        }
+
+        [[nodiscard]] static constexpr bool RequiresMaterialForPreparation( const RenderStagePass stagePass,
+                                                                            const RenderBinType binType,
+                                                                            const bool drawState ) noexcept
+        {
+            // Every visible node prepares its main pass draw. The alpha-tested pass reuses it.
+            if ( stagePass._passType == RenderPassType::MAIN_PASS )
+            {
+                return true;
+            }
+
+            const bool transparencyPass = stagePass._passType == RenderPassType::OIT_PASS ||
+                                          stagePass._passType == RenderPassType::TRANSPARENCY_PASS;
+            return drawState && ForPass( stagePass, transparencyPass ? RenderBinContent::TRANSLUCENT : RenderBinContent::OPAQUE ).includes( binType );
+        }
     };
 
   public:
     explicit RenderQueue(Kernel& parent, RenderStage stage);
 
+    [[nodiscard]] static RenderBinType getBinForNode(const SceneGraphNode* node, Handle<Material> matInstance);
     void populateRenderQueues(const PopulateQueueParams& params, RenderQueuePackages& queueInOut);
 
-    void postRender(const SceneRenderState& renderState, RenderStagePass stagePass, GFX::CommandBuffer& bufferInOut);
+    /// Only the bins drawn by the pass are visited: other bins may still hold nodes from an earlier pass.
+    void postRender(const SceneRenderState& renderState, const PopulateQueueParams& params, GFX::CommandBuffer& bufferInOut);
     void sort(RenderStagePass stagePass, RenderBinType targetBinType = RenderBinType::COUNT, RenderingOrder renderOrder = RenderingOrder::COUNT);
     void clear(RenderBinType targetBinType = RenderBinType::COUNT) noexcept;
-    void addNodeToQueue(const SceneGraphNode* sgn, RenderStagePass stagePass, F32 minDistToCameraSq, RenderBinType targetBinType = RenderBinType::COUNT);
+    void addNodeToQueue(const SceneGraphNode* sgn,
+                        RenderStagePass stagePass,
+                        F32 minDistToCameraSq,
+                        RenderBinType targetBinType = RenderBinType::COUNT,
+                        RenderBinType nodeBinType = RenderBinType::COUNT);
 
     [[nodiscard]] const RenderBin& getBin(const RenderBinType rbType) const noexcept { return _renderBins[to_base(rbType)]; }
     [[nodiscard]] RenderBinArray& getBins() noexcept { return _renderBins; }
@@ -78,8 +133,6 @@ class RenderQueue final : public KernelComponent {
     [[nodiscard]] RenderingOrder getSortOrder(RenderStagePass stagePass, RenderBinType rbType) const;
 
     [[nodiscard]] FORCE_INLINE RenderBin& getBin(const RenderBinType rbType) noexcept { return _renderBins[to_base(rbType)]; }
-    [[nodiscard]] RenderBinType getBinForNode(const SceneGraphNode* node, Handle<Material> matInstance);
-
   private:
     const RenderStage _stage;
     RenderBinArray _renderBins;

@@ -1,42 +1,94 @@
 # Asset pipeline
 
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
+
 See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 ## Entry points
 
-- `Source/Geometry/Importer/MeshImporter.cpp`: geometry/animation cache and import orchestration.
-- `Source/Geometry/Importer/DVDConverter.cpp`: Assimp normalization, optimization, LoD generation.
-- `Source/Geometry/Shapes/Mesh.cpp` and `SubMesh.cpp`: runtime ownership and partitions.
-- `Source/Platform/Video/Buffers/VertexBuffer/VertexBuffer.cpp`: shared geometry buffer compaction/upload.
-- `Source/Platform/Video/Textures/Texture.cpp`: shared texture loading and creation.
-- `Source/Utility/ImageTools.cpp`: image decode, inspection, DDS cache generation.
+- `Source/Geometry/Importer/MeshImporter.cpp` loads and caches geometry and animation.
+- `Source/Geometry/Importer/DVDConverter.cpp` converts imported scene data.
+- `Source/Geometry/Shapes/Mesh.cpp` and `SubMesh.cpp` own runtime geometry and partitions.
+- `Source/Platform/Video/Buffers/VertexBuffer/VertexBuffer.cpp` manages shared geometry buffers.
+- `Source/Platform/Video/Textures/Texture.cpp` loads and creates textures.
+- `Source/Utility/ImageTools.cpp` decodes images and manages texture caches.
 
 ## Geometry flow and ownership
 
-`MeshImporter` attempts `.DVDGeom` / `.DVDAnim` cache loads. On a miss or disabled cache, Assimp conversion through `DVDConverter` creates `Import::ImportData`, then runtime meshes/submeshes and a shared `VertexBuffer`.
+`MeshImporter` loads a compatible cache when available. Otherwise, Assimp data
+passes through `DVDConverter`, which normalizes the source scene, extracts
+optional animation and skinning data, optimizes geometry, and builds LoD data
+before writing the cache. Import settings that change geometry must also
+participate in cache identity.
 
-`DVDConverter` applies Assimp post-processing, normalizes `Import::SubMeshData`, extracts optional tangent/bone/skinning data, and runs meshoptimizer vertex remap, vertex-cache, overdraw, and vertex-fetch optimization.
-For sufficiently large meshes, `meshopt_simplify` generates lower-LoD index buffers.
+A mesh owns one shared `VertexBuffer`; submeshes refer to vertex/index
+partitions and material data rather than allocating duplicate geometry.
+Resource handles represent owned references. Transfer a reference when moving
+ownership, and acquire a separate reference when another object must retain it.
+Texture assignment consumes an owned reference and releases the previous one
+when a slot changes.
 
-One model owns one shared `VertexBuffer`. Submeshes store partitions, triangle ranges, and material data rather than separate vertex allocations; `SubMesh::geometryBuffer()` resolves the parent's buffer.
+`VertexBuffer::commitData()` compacts the CPU layout to the attributes in use.
+Full layout changes replace the GPU buffers; incremental changes update them.
+Keep attribute-presence metadata, material layouts, indices, and LoD partitions
+consistent before publishing a new layout. CPU copies may be discarded when
+runtime updates do not need them.
 
-`VertexBuffer` owns a GPU vertex buffer and index buffer. `commitData()` compacts the CPU layout to present attributes.
-Full layout changes call `setBuffer(...)`; incremental changes call `updateBuffer(...)`.
-Indices may use 16-bit packing when vertex count permits. CPU copies can be discarded when dynamic updates are unnecessary.
-
-Before changing geometry upload, check cache compatibility, attribute-presence tracking, compact layout, index width, LoD/partition correctness, and parent/submesh ownership.
+Before changing geometry import or upload, check cache compatibility,
+transforms, attribute layouts, index widths, partitions, and ownership.
 
 ## Texture flow
 
-`Texture::loadInternal()` treats comma-separated asset lists as layers or cubemap faces, accumulates bytes into `ImageTools::ImageData`, and inspects/caches transparency and translucency.
+`Texture::loadInternal()` decodes assets into `ImageData`, then prepares and
+uploads the requested layers, faces, formats, and mip levels. A comma-separated
+asset list uses one directory. Keep serialized material paths within that
+directory.
 
-- STB decodes standard formats; DevIL handles DDS compatibility.
-- NVTT can generate DDS cache files; conversion may run on the `HIGH_PRIORITY` task pool.
-- NVTT DDS cache creation is compiled out on macOS, although shared DDS loading still exists.
+Texture colour space is selected per material slot. Colour maps may use sRGB;
+normal and other data maps use linear values. Keep decoded CPU pixels in the
+same row orientation as the uploaded image so tools that inspect texture data
+sample the intended texels.
 
-Creation proceeds through decode/load, dimensions/layers/format/mip policy, `prepareTextureData(...)`, backend `loadDataInternal(...)`, then `submitTextureData(...)`.
-GL reserves immutable storage and uploads mip/layer data with DSA. Vulkan allocates a VMA image, fills staging buffers, copies, and transitions layouts.
+STB handles standard image formats and DevIL handles DDS. NVTT can generate DDS
+caches. Cache readers must reject incompatible data, and writers publish a
+completed file only after conversion succeeds. Keep cache keys tied to their
+inputs and encoding so stale data is not reused after a format change.
 
-For texture changes, audit shared format/mip decisions, layer/face ordering, transparency caches, backend overloads, and upload lifetimes.
-For arrays/cubemaps/mip generation/partial-update failures, start in backend `loadDataInternal(...)` overloads.
-See [GPU resources](gpu-resources.md) for memory and colour/origin conventions, and [threading](threading.md) for background cache generation.
+All layers in a file-backed texture must have compatible formats, dimensions,
+and mip chains. Read-only manual chains allocate only supplied levels.
+Compressed images cannot use automatic GPU mip generation, so do not expose
+uninitialized mip levels. Upload sizes are measured in bytes.
+
+Texture creation proceeds through decode/load, format and mip selection,
+`prepareTextureData()`, backend upload, and final submission. OpenGL uses
+immutable storage and direct uploads. Vulkan uses image allocations, staging
+buffers, copies, and explicit layout transitions. See [GPU resources](gpu-resources.md)
+for backend memory and lifetime rules, and [Threading](threading.md) for
+background cache work.
+
+## Terrain material data
+
+`TerrainDescriptor` supplies terrain texture layers, tile factors, and
+vegetation inputs. `Terrain::load()` turns this data into the material and
+shader inputs used by terrain chunks. Keep descriptor parsing, generated
+shader data, and cache identity in sync when changing these inputs.
+
+`terrainSplatting.frag` treats splat channels as material weights, not opacity
+overlays. Albedo, roughness, and encoded normals use weighted sums normalized
+by the total weight across all layers before normals are decoded. Normalizing
+the weights also handles quantization in the blend maps. An all-zero mask
+produces black albedo, zero roughness, and a neutral tangent-space normal.
+
+Terrain normal sampling corrects each mirrored anti-tiling sample's encoded
+X/Y components before blending. Albedo samples remain unchanged. The terrain
+tangent basis follows the position and UV derivatives in view space, preserving
+the UV handedness without switching reference axes on steep slopes.
+
+Terrain chunks initialize vegetation through indexed parallel work. Chunk tasks
+must own stable input data and write only their assigned chunk. The terrain
+resource owns the vegetation instances and releases them before releasing
+shared resources they reference.
+
+Terrain and vegetation currently use world-space instance data. Do not assume a
+terrain transform also transforms its generated vegetation. Check the owning
+subsystem before changing that contract.

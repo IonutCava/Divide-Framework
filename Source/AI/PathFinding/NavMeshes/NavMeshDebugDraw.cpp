@@ -48,7 +48,7 @@ void NavMeshDebugDraw::beginBatch() {
         _primitive->setPipelineDescriptor(pipeDesc);
     }
 
-    assert(_primitive != nullptr);
+    DIVIDE_ASSERT(_primitive != nullptr);
 
     if (_dirty) {
         _primitive->beginBatch(true, 1024, 1);
@@ -79,7 +79,6 @@ void NavMeshDebugDraw::begin(const duDebugDrawPrimitives prim, F32 size) {
         default:
         case DU_DRAW_QUADS:
             DIVIDE_UNEXPECTED_CALL();
-            break;
         case DU_DRAW_TRIS:
             _primType = PrimitiveTopology::TRIANGLES;
             break;

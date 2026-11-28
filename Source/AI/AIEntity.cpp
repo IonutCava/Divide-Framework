@@ -38,7 +38,8 @@ AIEntity::AIEntity( NPC* parent, const float3& currentPosition, std::string_view
 
 AIEntity::~AIEntity()
 {
-    if (_detourCrowd) {
+    if (_detourCrowd)
+    {
         _detourCrowd->removeAgent(getAgentID());
     }
 
@@ -100,7 +101,7 @@ void AIEntity::receiveMessage(AIEntity& sender,
 void AIEntity::processMessage(AIEntity& sender,
                               const AIMsg msg,
                               const std::any& msg_content) {
-    assert(_processor);
+    DIVIDE_ASSERT(_processor);
     SharedLock<SharedMutex> r_lock(_updateMutex);
     _processor->processMessage(sender, msg, msg_content);
 }
@@ -399,7 +400,8 @@ void AIEntity::setVelocity(const float3& velocity) {
     _stopped = false;
     _destination.reset();
 
-    if (!isAgentLoaded() || !_detourCrowd->requestVelocity(getAgentID(), velocity)) {
+    if (!isAgentLoaded() || !_detourCrowd->requestVelocity(getAgentID(), velocity))
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
 }

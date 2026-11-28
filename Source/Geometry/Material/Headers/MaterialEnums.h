@@ -97,7 +97,7 @@ namespace Divide {
         };
     };
 
-    static_assert(ArrayCount(Names::materialDebugFlag) == to_base(MaterialDebugFlag::COUNT) + 1, "MaterialDebugFlag name array out of sync!");
+    static_assert(std::size(Names::materialDebugFlag) == to_base(MaterialDebugFlag::COUNT) + 1, "MaterialDebugFlag name array out of sync!");
 
     enum class BumpMethod : U8 {
         NONE = 0,
@@ -112,7 +112,7 @@ namespace Divide {
         };
     };
 
-    static_assert(ArrayCount(Names::bumpMethod) == to_base(BumpMethod::COUNT) + 1, "BumpMethod name array out of sync!");
+    static_assert(std::size(Names::bumpMethod) == to_base(BumpMethod::COUNT) + 1, "BumpMethod name array out of sync!");
 
     /// How should each texture be added
     enum class TextureOperation : U8 {
@@ -133,7 +133,7 @@ namespace Divide {
         };
     };
 
-    static_assert(ArrayCount(Names::textureOperation) == to_base(TextureOperation::COUNT) + 1, "TextureOperation name array out of sync!");
+    static_assert(std::size(Names::textureOperation) == to_base(TextureOperation::COUNT) + 1, "TextureOperation name array out of sync!");
 
     enum class TranslucencySource : U8 {
         ALBEDO_COLOUR,
@@ -149,7 +149,7 @@ namespace Divide {
         };
     };
 
-    static_assert(ArrayCount(Names::translucencySource) == to_base(TranslucencySource::COUNT) + 1, "TranslucencySource name array out of sync!");
+    static_assert(std::size(Names::translucencySource) == to_base(TranslucencySource::COUNT) + 1, "TranslucencySource name array out of sync!");
 
     enum class ShadingMode : U8 {
         FLAT = 0,
@@ -166,7 +166,7 @@ namespace Divide {
         };
     };
 
-    static_assert(ArrayCount(Names::shadingMode) == to_base(ShadingMode::COUNT) + 1, "ShadingMode name array out of sync!");
+    static_assert(std::size(Names::shadingMode) == to_base(ShadingMode::COUNT) + 1, "ShadingMode name array out of sync!");
 
     enum class SkinningMode : U8 {
         DUAL_QUAT = 0,
@@ -180,7 +180,7 @@ namespace Divide {
         };
     };
 
-    static_assert(ArrayCount(Names::skinningMode) == to_base(SkinningMode::COUNT) + 1, "SkinningMode name array out of sync!");
+    static_assert(std::size(Names::skinningMode) == to_base(SkinningMode::COUNT) + 1, "SkinningMode name array out of sync!");
 
     enum class MaterialUpdateResult : U8 {
         OK = toBit(1),

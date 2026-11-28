@@ -1,6 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
 
-
-#include "Headers/Console.h"
 
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -10,7 +9,6 @@
 
 namespace Divide {
 
-SharedMutex Console::s_callbackLock;
 NO_DESTROY  vector<Console::ConsolePrintCallbackEntry> Console::s_guiConsoleCallbacks;
 std::ofstream Console::s_logStream;
 std::ofstream Console::s_errorStream;
@@ -26,7 +24,7 @@ constexpr U32 DEFAULT_FLAGS = to_base( Console::Flags::DECORATE_TIMESTAMP ) |
 //#endif //SHOW_CONSOLE_WINDOW
                               to_base( Console::Flags::ENABLE_ERROR_STREAM );
 
-U32 Console::s_flags = DEFAULT_FLAGS;
+std::atomic<U32> Console::s_flags = DEFAULT_FLAGS;
 std::atomic_bool Console::s_running = false;
 std::array<bool, to_base(Console::StreamType::COUNT)> Console::s_streamDirty;
 
@@ -34,17 +32,88 @@ std::array<bool, to_base(Console::StreamType::COUNT)> Console::s_streamDirty;
 //https://github.com/cameron314/concurrentqueue
 namespace
 {
-    NO_DESTROY std::array<Console::OutputEntry, 16> g_outputCache;
-
-    moodycamel::BlockingConcurrentQueue<Console::OutputEntry>& OutBuffer()
+    struct QueuedEntry
     {
-        NO_DESTROY static moodycamel::BlockingConcurrentQueue<Console::OutputEntry> s_OutputBuffer;
+        U64 _ticket{ 0u };
+        Console::OutputEntry _entry;
+    };
+
+    // g_outputMutex guards flushing, the file streams, the callback list and the plain flags below.
+    // They are only ever touched by the thread that holds it, which is also the only thread that can see g_dispatching set.
+    NO_DESTROY std::array<QueuedEntry, 16> g_outputCache;
+    NO_DESTROY vector<QueuedEntry> g_drainScratch;
+    NO_DESTROY Mutex g_outputMutex;
+    size_t g_nextCallbackId = 0u;
+    bool g_flushRequested = false;
+    bool g_stopping = false;
+    bool g_stopRequested = false;
+    std::atomic<U64> g_entryTicket{ 0u };
+    thread_local bool t_dispatching = false;
+    thread_local U32 g_enabledOverrides = 0u;
+    thread_local U32 g_disabledOverrides = 0u;
+
+    using OutputQueue = moodycamel::ConcurrentQueue<QueuedEntry>;
+
+    OutputQueue& OutBuffer()
+    {
+        NO_DESTROY static OutputQueue s_OutputBuffer;
         return s_OutputBuffer;
+    }
+
+    // Per-thread order is the queue's FIFO order; the ticket restores cross-thread order when a batch is flushed.
+    void EnqueueOutput(const Console::OutputEntry& entry)
+    {
+        OutputQueue& outputQueue = OutBuffer();
+        thread_local moodycamel::ProducerToken producer{ outputQueue };
+        const U64 ticket = g_entryTicket.fetch_add(1u, std::memory_order_relaxed);
+        if (!outputQueue.enqueue(producer, QueuedEntry{ ticket, entry }))
+        {
+            ::fprintf(stderr, "Console output queue allocation failed: %s", entry._text.c_str());
+            ::fflush(stderr);
+            std::abort();
+        }
+    }
+
+    // A thread that is already dispatching holds g_outputMutex, so re-entrant calls must not lock it again.
+    [[nodiscard]] UniqueLock<Mutex> LockOutput()
+    {
+        UniqueLock<Mutex> lock( g_outputMutex, std::defer_lock );
+        if (!t_dispatching)
+        {
+            lock.lock();
+        }
+        return lock;
     }
 }
 
-void Console::DecorateAndPrint(std::ostream& outStream, const std::string_view text, const bool newline, const EntryType type) {
-    if (s_flags & to_base(Flags::DECORATE_TIMESTAMP)) [[likely]]
+Console::ScopedFlags::ScopedFlags(const U32 enabledMask, const U32 disabledMask) noexcept
+    : _previousEnabled(g_enabledOverrides)
+    , _previousDisabled(g_disabledOverrides)
+{
+    DIVIDE_ASSERT((enabledMask & disabledMask) == 0u);
+    g_enabledOverrides = (g_enabledOverrides & ~disabledMask) | enabledMask;
+    g_disabledOverrides = (g_disabledOverrides & ~enabledMask) | disabledMask;
+}
+
+Console::ScopedFlags::~ScopedFlags() noexcept
+{
+    g_enabledOverrides = _previousEnabled;
+    g_disabledOverrides = _previousDisabled;
+}
+
+U32 Console::EffectiveFlags() noexcept
+{
+    return (s_flags.load(std::memory_order_relaxed) | g_enabledOverrides) & ~g_disabledOverrides;
+}
+
+bool Console::IsFlagSet(const Flags flag) noexcept
+{
+    return (EffectiveFlags() & to_base(flag)) != 0u;
+}
+
+void Console::DecorateAndPrint(std::ostream& outStream, const std::string_view text, const bool newline, const EntryType type, const U32 flags)
+{
+    if (flags & to_base(Flags::DECORATE_TIMESTAMP)) [[likely]]
     {
         outStream << "[ " << std::internal
                           << std::setw(9)
@@ -54,15 +123,15 @@ void Console::DecorateAndPrint(std::ostream& outStream, const std::string_view t
                           << Time::App::ElapsedSeconds()
                   << " ] ";
     }
-    if ( s_flags & to_base( Flags::DECORATE_FRAME ) ) [[likely]]
+    if ( flags & to_base( Flags::DECORATE_FRAME ) ) [[likely]]
     {
         outStream << "[ " << GFXDevice::FrameCount() << " ] ";
     }
-    if ( s_flags & to_base( Flags::DECORATE_THREAD_ID ) ) [[likely]]
+    if ( flags & to_base( Flags::DECORATE_THREAD_ID ) ) [[likely]]
     {
         outStream << "[ " << std::this_thread::get_id() << " ] ";
     }
-    if ( s_flags & to_base( Flags::DECORATE_SEVERITY ) ) [[likely]]
+    if ( flags & to_base( Flags::DECORATE_SEVERITY ) ) [[likely]]
     {
         outStream << "[ " << TypeUtil::ConsoleEntryTypeToString(type) << " ] ";
     }
@@ -77,65 +146,97 @@ void Console::DecorateAndPrint(std::ostream& outStream, const std::string_view t
 
 void Console::Output(std::ostream& outStream, const std::string_view text, const bool newline, const EntryType type)
 {
-    if (s_flags & to_base(Flags::ENABLE_OUTPUT) ) [[likely]]
+    const UniqueLock<Mutex> lock = LockOutput();
+    const U32 flags = EffectiveFlags();
+    if (flags & to_base(Flags::ENABLE_OUTPUT)) [[likely]]
     {
-        DecorateAndPrint(outStream, text, newline, type);
+        DecorateAndPrint(outStream, text, newline, type, flags);
     }
 }
 
 void Console::Output(const std::string_view text, const bool newline, const EntryType type)
 {
-    if ( s_flags & to_base( Flags::ENABLE_OUTPUT ) )
+    const U32 flags = EffectiveFlags();
+    if ( !(flags & to_base( Flags::ENABLE_OUTPUT )) )
     {
-        stringstream outStream;
-        DecorateAndPrint(outStream, text, newline, type);
+        return;
+    }
 
-        const OutputEntry entry
-        {
-            ._text = outStream.str().c_str(),
-            ._type = type
-        };
+    stringstream outStream;
+    DecorateAndPrint(outStream, text, newline, type, flags);
 
-        if ( IsFlagSet( Flags::PRINT_IMMEDIATE ) )
+    const OutputEntry entry
+    {
+        ._text = outStream.str().c_str(),
+        ._type = type
+    };
+
+    const bool immediate = (flags & to_base(Flags::PRINT_IMMEDIATE)) != 0u;
+    const bool flushOnPrint = (flags & to_base(Flags::FLUSH_ON_PRINT)) != 0u &&
+                              (type != EntryType::INFO || immediate);
+
+    if (immediate && !t_dispatching && s_running.load(std::memory_order_relaxed))
+    {
+        const UniqueLock<Mutex> lock( g_outputMutex );
+        if (s_running.load(std::memory_order_relaxed))
         {
-            PrintToFile(entry);
+            {
+                t_dispatching = true;
+                SCOPE_EXIT { t_dispatching = false; };
+                PrintToFile(entry);
+            }
+            if (flushOnPrint || g_flushRequested)
+            {
+                FlushLocked();
+            }
+            else if (g_stopRequested && !g_stopping)
+            {
+                g_stopRequested = false;
+                StopLocked();
+            }
+            return;
         }
-        else if (!OutBuffer().enqueue(entry))
-        {
-            PrintToFile(entry);
-            DIVIDE_UNEXPECTED_CALL();
-        }
-        if ( s_flags & to_base( Flags::FLUSH_ON_PRINT))
-        {
-            Flush();
-        }
+    }
+
+    EnqueueOutput(entry);
+    if (immediate || flushOnPrint)
+    {
+        Flush();
     }
 }
 
 void Console::PrintToFile(const OutputEntry& entry)
 {
-    if ( s_running ) [[likely]]
+    if ( s_running.load(std::memory_order_relaxed) ) [[likely]]
     {
-
-        if ( s_flags & to_base( Flags::PRINT_TO_STD_CONSOLE))
+        const U32 flags = EffectiveFlags();
+        if ( flags & to_base( Flags::PRINT_TO_STD_CONSOLE))
         {
-            assert(entry._text.length() < 4096);
             ::printf("%s", entry._text.c_str());
         }
-        const bool toErr = entry._type == EntryType::ERR && s_flags & to_base(Flags::ENABLE_ERROR_STREAM);
+        const bool toErr = entry._type == EntryType::ERR && (flags & to_base(Flags::ENABLE_ERROR_STREAM)) != 0u;
 
         std::ofstream& outStream = (toErr ? s_errorStream : s_logStream );
         outStream << entry._text.c_str();
 
-        SharedLock<SharedMutex> lock( s_callbackLock );
-        for (const auto& it : s_guiConsoleCallbacks)
+        const size_t callbackLimit = g_nextCallbackId;
+        size_t callbackIndex = 0u;
+        while (callbackIndex < s_guiConsoleCallbacks.size())
         {
-            if (!s_running)
+            const ConsolePrintCallbackEntry& callbackEntry = s_guiConsoleCallbacks[callbackIndex];
+            if (callbackEntry._id >= callbackLimit)
             {
                 break;
             }
 
-            it._cbk(entry);
+            const size_t callbackId = callbackEntry._id;
+            const ConsolePrintCallback callback = callbackEntry._cbk;
+            callback(entry);
+            callbackIndex = 0u;
+            while (callbackIndex < s_guiConsoleCallbacks.size() && s_guiConsoleCallbacks[callbackIndex]._id <= callbackId)
+            {
+                ++callbackIndex;
+            }
         }
 
         s_streamDirty[to_base(toErr ? StreamType::ERR_FILE : StreamType::STD_FILE)] = true;
@@ -150,9 +251,14 @@ void Console::FlushOutputStreams()
         {
             switch ( static_cast<StreamType>( i ) )
             {
-                case StreamType::STD_FILE:  std::cout.flush();       break;
-                case StreamType::ERR_FILE:  std::cerr.flush();       break;
-                default:                   DIVIDE_UNEXPECTED_CALL(); break;
+                case StreamType::STD_FILE:
+                    s_logStream.flush();
+                    break;
+                case StreamType::ERR_FILE:
+                    s_errorStream.flush();
+                    break;
+                default:
+                    DIVIDE_UNEXPECTED_CALL();
             }
         }
     }
@@ -162,28 +268,83 @@ void Console::FlushOutputStreams()
 
 void Console::Flush()
 {
-    if ( s_flags & to_base( Flags::ENABLE_OUTPUT ) && s_running) [[likely]]
+    if (t_dispatching)
     {
-
-        size_t count{};
-        do
+        if (s_running.load(std::memory_order_relaxed))
         {
-            count = OutBuffer().try_dequeue_bulk(std::begin(g_outputCache), g_outputCache.size());
+            g_flushRequested = true;
+        }
+        return;
+    }
 
-            for (size_t i = 0u; i < count; ++i)
+    const UniqueLock<Mutex> lock( g_outputMutex );
+    FlushLocked();
+}
+
+void Console::FlushLocked()
+{
+    if (!s_running.load(std::memory_order_relaxed))
+    {
+        return;
+    }
+    if (t_dispatching)
+    {
+        g_flushRequested = true;
+        return;
+    }
+
+    {
+        t_dispatching = true;
+        SCOPE_EXIT { t_dispatching = false; };
+        OutputQueue& queue = OutBuffer();
+        for (;;)
+        {
+            g_drainScratch.clear();
+            size_t count{};
+            while ((count = queue.try_dequeue_bulk(std::begin(g_outputCache), g_outputCache.size())) > 0u)
             {
-                PrintToFile(g_outputCache[i]);
+                for (size_t i = 0u; i < count; ++i)
+                {
+                    g_drainScratch.push_back(std::move(g_outputCache[i]));
+                }
             }
-        } while (count > 0u);
 
-        FlushOutputStreams();
+            if (g_drainScratch.empty())
+            {
+                break;
+            }
+
+            std::ranges::sort(g_drainScratch, {}, &QueuedEntry::_ticket);
+            for (const QueuedEntry& queued : g_drainScratch)
+            {
+                PrintToFile(queued._entry);
+            }
+        }
+    }
+    g_flushRequested = false;
+    FlushOutputStreams();
+    if (g_stopRequested && !g_stopping)
+    {
+        g_stopRequested = false;
+        StopLocked();
     }
 }
 
 void Console::Start(const ResourcePath& parentPath, const std::string_view logFilePath, const std::string_view errorFilePath, const bool printCopyright ) noexcept
 {
-    s_flags = DEFAULT_FLAGS;
-    s_running.store(true);
+    if (t_dispatching)
+    {
+        ::fputs("Console::Start cannot be called from an output callback.\n", stderr);
+        ::fflush(stderr);
+        std::abort();
+    }
+
+    const UniqueLock<Mutex> lock( g_outputMutex );
+    if (s_running.load(std::memory_order_relaxed))
+    {
+        FlushLocked();
+    }
+    s_flags.store(DEFAULT_FLAGS, std::memory_order_relaxed);
 
     s_logStream   = std::ofstream{ (parentPath / logFilePath).fileSystemPath(),  std::ofstream::out | std::ofstream::trunc };
     s_errorStream = std::ofstream{ (parentPath / errorFilePath).fileSystemPath(), std::ofstream::out | std::ofstream::trunc };
@@ -215,45 +376,71 @@ void Console::Start(const ResourcePath& parentPath, const std::string_view logFi
     }
 
     s_streamDirty.fill( true );
+    s_running.store(true, std::memory_order_relaxed);
+    FlushLocked();
 }
 
-void Console::Stop() 
+void Console::Stop()
 {
-    bool expected = true;
-    if ( s_running.compare_exchange_strong(expected, false) )
+    if (t_dispatching)
     {
-        Flush();
-        s_flags = DEFAULT_FLAGS;
-        s_logStream << "------------------------------------------\n\n\n\n";
-        FlushOutputStreams();
+        if (s_running.load(std::memory_order_relaxed))
+        {
+            g_stopRequested = true;
+        }
+        return;
     }
+
+    const UniqueLock<Mutex> lock( g_outputMutex );
+    StopLocked();
+}
+
+void Console::StopLocked()
+{
+    if (!s_running.load(std::memory_order_relaxed))
+    {
+        return;
+    }
+    if (t_dispatching)
+    {
+        g_stopRequested = true;
+        return;
+    }
+
+    g_stopping = true;
+    SCOPE_EXIT { g_stopping = false; };
+    FlushLocked();
+    s_running.store(false, std::memory_order_relaxed);
+    s_flags.store(DEFAULT_FLAGS, std::memory_order_relaxed);
+    s_logStream << "------------------------------------------\n\n\n\n";
+    s_streamDirty[to_base(StreamType::STD_FILE)] = true;
+    FlushOutputStreams();
+    g_stopRequested = false;
 }
 
 size_t Console::BindConsoleOutput( const ConsolePrintCallback& guiConsoleCallback )
 {
-    static size_t callbackId{ 0u };
-
-    LockGuard<SharedMutex> lock( s_callbackLock );
+    const UniqueLock<Mutex> lock = LockOutput();
     auto& entry = s_guiConsoleCallbacks.emplace_back();
     entry._cbk = guiConsoleCallback;
-    entry._id = callbackId++;
+    entry._id = g_nextCallbackId++;
 
     return entry._id;
 }
 
 bool Console::UnbindConsoleOutput( size_t& index )
 {
-    LockGuard<SharedMutex> lock( s_callbackLock );
+    const UniqueLock<Mutex> lock = LockOutput();
 
-    const size_t initialSize = s_guiConsoleCallbacks.size();
-    erase_if( s_guiConsoleCallbacks, [index]( const ConsolePrintCallbackEntry& entry )
+    const auto it = eastl::find_if( s_guiConsoleCallbacks.begin(), s_guiConsoleCallbacks.end(), [index]( const ConsolePrintCallbackEntry& entry )
     {
         return entry._id == index;
     } );
 
-    const bool erased = initialSize > s_guiConsoleCallbacks.size();
-    if ( erased )
+    if ( it != s_guiConsoleCallbacks.end() )
     {
+        ConsolePrintCallback removed = std::move(it->_cbk);
+        s_guiConsoleCallbacks.erase(it);
         index = SIZE_MAX;
         return true;
     }
@@ -262,4 +449,3 @@ bool Console::UnbindConsoleOutput( size_t& index )
 }
 
 } //namespace Divide
-

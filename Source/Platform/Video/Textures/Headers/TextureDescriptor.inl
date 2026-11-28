@@ -96,17 +96,20 @@ inline U8 NumChannels(const GFXImageFormat format) noexcept
     {
         case GFXImageFormat::RED:
         case GFXImageFormat::BC4s:
-        case GFXImageFormat::BC4u: return 1u;
+        case GFXImageFormat::BC4u:
+            return 1u;
 
         case GFXImageFormat::RG:
         case GFXImageFormat::BC5s:
-        case GFXImageFormat::BC5u: return 2u;
+        case GFXImageFormat::BC5u:
+            return 2u;
 
         case GFXImageFormat::BGR:
         case GFXImageFormat::RGB:
         case GFXImageFormat::BC1:
         case GFXImageFormat::BC6s:
-        case GFXImageFormat::BC6u: return 3u;
+        case GFXImageFormat::BC6u:
+        return 3u;
 
         case GFXImageFormat::BGRA:
         case GFXImageFormat::RGBA:
@@ -115,13 +118,15 @@ inline U8 NumChannels(const GFXImageFormat format) noexcept
         case GFXImageFormat::BC3:
         case GFXImageFormat::BC3n:
         case GFXImageFormat::BC3_RGBM:
-        case GFXImageFormat::BC7: return 4u;
+        case GFXImageFormat::BC7:
+            return 4u;
 
+        case GFXImageFormat::COUNT:
         default:
-        case GFXImageFormat::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+            break;
     }
 
-    return 0u;
+    DIVIDE_UNEXPECTED_CALL();
 }
 
 inline bool IsBGRTexture( GFXImageFormat format ) noexcept

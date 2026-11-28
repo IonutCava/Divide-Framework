@@ -81,7 +81,7 @@ void GUIConsole::createCEGUIWindow() {
 }
 
 void GUIConsole::RegisterHandlers() {
-    assert(_editBox != nullptr);
+    DIVIDE_ASSERT(_editBox != nullptr);
     // We need to monitor text/command submission from the editBox
     _editBox->subscribeEvent(
         CEGUI::Editbox::EventTextAccepted,
@@ -94,7 +94,7 @@ void GUIConsole::RegisterHandlers() {
 }
 
 bool GUIConsole::Handle_TextInput(const CEGUI::EventArgs& e) {
-    assert(_editBox != nullptr);
+    DIVIDE_ASSERT(_editBox != nullptr);
     const CEGUI::KeyEventArgs* keyEvent =
         static_cast<const CEGUI::KeyEventArgs*>(&e);
     // Just get the current text string from the editbox at each keypress.
@@ -119,7 +119,7 @@ bool GUIConsole::Handle_TextInput(const CEGUI::EventArgs& e) {
 }
 
 bool GUIConsole::Handle_TextSubmitted(const CEGUI::EventArgs& /*e*/) {
-    assert(_editBox != nullptr);
+    DIVIDE_ASSERT(_editBox != nullptr);
     // Since we have that string, lets send it to the TextParser which will
     // handle it from here
     if (!_cmdParser->processCommand(_inputBuffer.c_str())) {
@@ -147,7 +147,7 @@ void GUIConsole::setVisible(const bool visible) {
         if (!_inputBuffer.empty()) {
             return;
         }
-        assert(_editBox != nullptr);
+        DIVIDE_ASSERT(_editBox != nullptr);
         _consoleWindow->setVisible(visible);
 
         if (visible) {

@@ -65,7 +65,7 @@ namespace Divide {
     class ByteBuffer;
     class VertexBuffer;
     namespace Import {
-        constexpr U8 MAX_LOD_LEVELS = 3;
+        constexpr U8 MAX_LOD_LEVELS = 4;
 
         struct TextureEntry {
             bool serialize(ByteBuffer& dataOut) const;
@@ -109,34 +109,35 @@ namespace Divide {
             std::array<TextureEntry, to_base(TextureSlot::COUNT)> _textures;
         };
 
+        struct SubMeshVertex
+        {
+            float3 position = {0.f, 0.f, 0.f };
+            float3 normal = {0.f, 0.f, 0.f };
+            float4 tangent = { 0.f, 0.f, 0.f, 0.f };
+            float3 texcoord = { 0.f, 0.f, 0.f };
+            float4 weights = {0.f, 0.f, 0.f, 0.f};
+            vec4<U8> indices = {0u, 0u, 0u, 0u};
+            U8 weightCount = 0u;
+        };
+
         struct SubMeshData
         {
-            struct Vertex
-            {
-                float3 position = {0.f, 0.f, 0.f };
-                float3 normal = {0.f, 0.f, 0.f };
-                float4 tangent = { 0.f, 0.f, 0.f, 0.f };
-                float3 texcoord = { 0.f, 0.f, 0.f };
-                float4 weights = {0.f, 0.f, 0.f, 0.f};
-                vec4<U8> indices = {0u, 0u, 0u, 0u};
-                U8 weightCount = 0u;
-            };
+            using Vertex = SubMeshVertex;
 
             bool serialize(ByteBuffer& dataOut) const;
             bool deserialize(ByteBuffer& dataIn);
 
-            PROPERTY_RW(Str<64>, name);
-
             MaterialData _material;
-            AttributeFlags _useAttribute{};
-            vector<Vertex> _vertices;
             vector<uint3> _triangles[MAX_LOD_LEVELS];
             vector<U32> _indices[MAX_LOD_LEVELS];
-            std::array<U16, MAX_LOD_LEVELS> _partitionIDs{};
+            PROPERTY_RW(Str<64>, name);
+            vector<Vertex> _vertices;
 
             float3 _minPos{};
             float3 _maxPos{};
             U32 _index{0u};
+            std::array<U16, MAX_LOD_LEVELS> _partitionIDs{};
+            AttributeFlags _useAttribute{};
             U8 _lodCount{0u};
             U8 _boneCount{0u};
         };
@@ -152,21 +153,20 @@ namespace Divide {
             bool saveToFile(PlatformContext& context, const ResourcePath& path, std::string_view fileName);
             bool loadFromFile(PlatformContext& context, const ResourcePath& path, std::string_view fileName);
 
-            Bone_uptr _skeleton = nullptr;
-
-            // Was it loaded from file, or just created?
-            PROPERTY_RW(bool, loadedFromFile, false);
-            // Geometry
-            VertexBuffer_uptr _vertexBuffer = nullptr;
-
-            // Name and path
             PROPERTY_RW(Str<256>, modelName);
-            PROPERTY_RW(ResourcePath, modelPath);
-            PROPERTY_RW(bool, fromFile, false);
             Divide::MeshNodeData _nodeData;
+            PROPERTY_RW(ResourcePath, modelPath);
+            string _cacheName;
             vector<SubMeshData> _subMeshData;
             vector<std::unique_ptr<AnimEvaluator>> _animations;
+            Bone_uptr _skeleton = nullptr;
+            VertexBuffer_uptr _vertexBuffer = nullptr;
             size_t _animationCount{0u};
+            float3 _importRotationDegrees{0.f};
+            F32 _importScale{1.f};
+            // Was it loaded from file, or just created?
+            PROPERTY_RW(bool, loadedFromFile, false);
+            PROPERTY_RW(bool, fromFile, false);
             bool _useDualQuatAnimation{true};
         };
     };

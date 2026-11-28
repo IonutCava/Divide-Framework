@@ -1,3 +1,5 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "Headers/TerrainDescriptor.h"
 
 #include "Platform/File/Headers/FileManagement.h"
@@ -7,6 +9,11 @@ namespace Divide
     {
         constexpr U8 g_minTerrainSideLength = 8u;
     }
+
+string BuildTerrainTileFactorArrayHeader( const U8 layerCount )
+{
+    return Util::StringFormat( "const vec2 CURRENT_TILE_FACTORS[{}] = {{\n", layerCount * 4 );
+}
 
 void Init( TerrainDescriptor& descriptor, const std::string_view name)
 {
@@ -61,7 +68,11 @@ bool LoadFromXML( TerrainDescriptor& descriptor, const boost::property_tree::ptr
         descriptor._altitudeRange.set( descTree.get<F32>( "altitudeRange.<xmlattr>.min", 0.0f ),
                                        descTree.get<F32>( "altitudeRange.<xmlattr>.max", 255.0f ) );
 
-        AddVariable( descriptor, "grassMap", descTree.get<string>( "vegetation.grassMap" ) );
+        AddVariable( descriptor, "vegetationTextureLocation", descTree.get<string>( "vegetation.vegetationTextureLocation", "" ) );
+        if ( !ParseGrassMaps( descTree.get_child( "vegetation" ), descriptor._grassMaps, terrainDescriptorPath.string() ) )
+        {
+            return false;
+        }
         AddVariable( descriptor, "treeMap", descTree.get<string>( "vegetation.treeMap" ) );
 
         for ( I32 j = 1; j < 5; ++j )
@@ -70,6 +81,13 @@ bool LoadFromXML( TerrainDescriptor& descriptor, const boost::property_tree::ptr
             AddVariable( descriptor, Util::StringFormat( "treeMesh{}", j ), descTree.get<string>( Util::StringFormat( "vegetation.treeMesh{}", j ).c_str(), "" ) );
             AddVariableF( descriptor, Util::StringFormat( "grassScale{}", j ), descTree.get<F32>( Util::StringFormat( "vegetation.grassBillboard{}.<xmlattr>.scale", j ).c_str(), 1.0f ) );
             AddVariableF( descriptor, Util::StringFormat( "treeScale{}", j ), descTree.get<F32>( Util::StringFormat( "vegetation.treeMesh{}.<xmlattr>.scale", j ).c_str(), 1.0f ) );
+            const F32 density = descTree.get<F32>( Util::StringFormat( "vegetation.treeMesh{}.<xmlattr>.density", j ).c_str(), 1.0f );
+            if ( !std::isfinite( density ) || density < 0.f )
+            {
+                Console::errorfn( "Invalid tree density for treeMesh{} in terrain descriptor {}", j, terrainDescriptorPath.string().c_str() );
+                return false;
+            }
+            AddVariableF( descriptor, Util::StringFormat( "treeDensity{}", j ), density );
             AddVariableF( descriptor, Util::StringFormat( "treeRotationX{}", j ), descTree.get<F32>( Util::StringFormat( "vegetation.treeMesh{}.<xmlattr>.rotate_x", j ).c_str(), 0.0f ) );
             AddVariableF( descriptor, Util::StringFormat( "treeRotationY{}", j ), descTree.get<F32>( Util::StringFormat( "vegetation.treeMesh{}.<xmlattr>.rotate_y", j ).c_str(), 0.0f ) );
             AddVariableF( descriptor, Util::StringFormat( "treeRotationZ{}", j ), descTree.get<F32>( Util::StringFormat( "vegetation.treeMesh{}.<xmlattr>.rotate_z", j ).c_str(), 0.0f ) );
@@ -169,6 +187,45 @@ bool LoadFromXML( TerrainDescriptor& descriptor, const boost::property_tree::ptr
                 AddVariable( descriptor, layerColour + layerOffsetStr + "_mat", materialName );
             }
         }
+    }
+
+    return true;
+}
+
+bool ParseGrassMaps( const boost::property_tree::ptree& vegetationNode, TerrainDescriptor::GrassMaps& mapsOut, const std::string_view terrainDescriptorName )
+{
+    mapsOut.clear();
+
+    const auto grassMaps = vegetationNode.equal_range( "grassMap" );
+    for ( auto it = grassMaps.first; it != grassMaps.second; ++it )
+    {
+        if ( mapsOut.size() == MAX_GRASS_MAP_LAYERS )
+        {
+            Console::errorfn( "Terrain descriptor {} defines more than {} grassMap layers.", terrainDescriptorName, MAX_GRASS_MAP_LAYERS );
+            return false;
+        }
+
+        // The raw node data: a translator-based read throws on an empty element instead of letting us report it
+        string file = it->second.data().c_str();
+        const U32 channelMask = it->second.get<U32>( "<xmlattr>.channelMask", 15u );
+        if ( file.empty() )
+        {
+            Console::errorfn( "A grassMap layer in terrain descriptor {} has no image file.", terrainDescriptorName );
+            return false;
+        }
+        if ( channelMask > 15u )
+        {
+            Console::errorfn( "Grass channel masks must be RGBA bit masks (0-15) in terrain descriptor {}.", terrainDescriptorName );
+            return false;
+        }
+
+        mapsOut.push_back( GrassMapEntry{ MOV( file ), to_U8( channelMask ) } );
+    }
+
+    if ( mapsOut.empty() )
+    {
+        Console::errorfn( "Terrain descriptor {} needs at least one grassMap layer.", terrainDescriptorName );
+        return false;
     }
 
     return true;

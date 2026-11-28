@@ -66,8 +66,8 @@ public:
 
     PhysicsAsset* createRigidActor(SceneGraphNode* node, RigidBodyComponent& parentComp) override;
 
-    [[nodiscard]] PhysicsAPIWrapper& getImpl() { assert(_api != nullptr); return *_api; }
-    [[nodiscard]] const PhysicsAPIWrapper& getImpl() const { assert(_api != nullptr); return *_api; }
+    [[nodiscard]] PhysicsAPIWrapper& getImpl() { DIVIDE_ASSERT(_api != nullptr); return *_api; }
+    [[nodiscard]] const PhysicsAPIWrapper& getImpl() const { DIVIDE_ASSERT(_api != nullptr); return *_api; }
 
     bool intersect(const Ray& intersectionRay, float2 range, vector<SGNRayResult>& intersectionsOut) const override;
 

@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -60,6 +60,7 @@ public:
     size_t getDataOffset() const;
     size_t getDataSize() const;
     bufferPtr getDataPtr() const;
+    [[nodiscard]] bool hasPersistentMapping() const noexcept { return _memoryBlock._ptr != nullptr; }
     gl46core::GLuint getBufferHandle() const;
 
     BufferImplParams _params{};

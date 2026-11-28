@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -33,6 +33,7 @@
 #define DVD_VEGETATION_DESCRIPTOR_H_
 
 #include "Core/Resources/Headers/ResourceCache.h"
+#include "Environment/Terrain/Headers/TerrainDescriptor.h"
 
 namespace Divide
 {
@@ -40,22 +41,54 @@ namespace Divide
 class Terrain;
 class Vegetation;
 
+constexpr size_t MAX_VEGETATION_TREE_MESHES = 4u;
+
+struct GrassMapLayer
+{
+    std::shared_ptr<ImageTools::ImageData> _image;
+    U8 _channelMask = 15u;
+};
+
+struct GrassPlacementSample
+{
+    UColour4 _colour{ 0u, 0u, 0u, 0u };
+    U8 _channelMask = 15u;
+};
+
 template<>
 struct PropertyDescriptor<Vegetation>
 {
-    std::shared_ptr<ImageTools::ImageData> grassMap;
+    fixed_vector<GrassMapLayer, MAX_GRASS_MAP_LAYERS, false> grassMaps;
     std::shared_ptr<ImageTools::ImageData> treeMap;
     vector<Str<256>> treeMeshes;
     Str<256> name = "";
     string billboardTextureArray = "";
-    std::array<float3, 4> treeRotations;
+    std::array<float3, MAX_VEGETATION_TREE_MESHES> treeRotations;
     float4 grassScales = VECTOR4_UNIT;
     float4 treeScales = VECTOR4_UNIT;
+    float4 treeDensities = VECTOR4_UNIT;
     Terrain* parentTerrain = nullptr;
     U32 chunkSize = 0u;
 };
 
 using VegetationDescriptor = PropertyDescriptor<Vegetation>;
+
+/// Per channel, the strongest value across every sample whose mask selects that channel.
+[[nodiscard]] inline UColour4 GrassPlacementColour( const std::span<const GrassPlacementSample> samples ) noexcept
+{
+    UColour4 colour{ 0u, 0u, 0u, 0u };
+    for ( const GrassPlacementSample& sample : samples )
+    {
+        for ( U8 channel = 0u; channel < 4u; ++channel )
+        {
+            if ( (sample._channelMask & (1u << channel)) != 0u )
+            {
+                colour[channel] = std::max( colour[channel], sample._colour[channel] );
+            }
+        }
+    }
+    return colour;
+}
 
 template<>
 inline size_t GetHash( const VegetationDescriptor& descriptor ) noexcept;

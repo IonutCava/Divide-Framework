@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -116,7 +116,7 @@ void DebugPrimitiveHandler<Descriptor, N>::addLocked( const I64 ID, const Descri
 
 inline Renderer& GFXDevice::getRenderer() const
 {
-    assert(_renderer != nullptr);
+    DIVIDE_ASSERT(_renderer != nullptr);
     return *_renderer;
 }
 
@@ -238,15 +238,18 @@ inline void GFXDevice::GFXBuffers::reset( const bool camBuffer, const bool cullB
         if ( camBuffer )
         {
             _perFrameBuffers[i]._camDataBuffer.reset();
+            _perFrameBuffers[i]._camBufferWriteRanges.clear();
         }
 
         if ( cullBuffer )
         {
             _perFrameBuffers[i]._cullCounter.reset();
+            _perFrameBuffers[i]._cullCounterReadbacks.reset( 0u );
         }
     }
     crtBuffers()._camWritesThisFrame = 0u;
     crtBuffers()._renderWritesThisFrame = 0u;
+    crtBuffers()._camBufferWriteRanges.clear();
 }
 
 inline void GFXDevice::GFXBuffers::onEndFrame() noexcept
@@ -254,6 +257,7 @@ inline void GFXDevice::GFXBuffers::onEndFrame() noexcept
     _perFrameBufferIndex = (_perFrameBufferIndex + 1u) % PER_FRAME_BUFFER_COUNT;
     crtBuffers()._camWritesThisFrame = 0u;
     crtBuffers()._renderWritesThisFrame = 0u;
+    crtBuffers()._camBufferWriteRanges.clear();
 }
 };  // namespace Divide
 

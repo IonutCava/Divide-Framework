@@ -33,7 +33,7 @@
 #ifndef DVD_PROJECTMANAGER_H
 #define DVD_PROJECTMANAGER_H
 
-#include <cstdint>
+
 
 struct SDL_Texture;
 struct SDL_Surface;
@@ -80,7 +80,7 @@ constexpr const char* MODEL_NO_BUTTON_LABEL = "Cancel";
 constexpr const char* MODEL_YES_BUTTON_LABEL = "YES!";
 constexpr const char* MODEL_CLOSE_BUTTON_LABEL = "Close";
 constexpr const char* MODEL_SAVE_BUTTON_LABEL = "Save";
-constexpr const char* PROJECT_CONFIG_FILE_NAME = "config.xml";
+constexpr const char* PROJECT_CONFIG_FILE_NAME = Divide::Config::PROJECT_CONFIG_FILE_NAME;
 
 constexpr const char* CONFIG_LOGO_TAG = "logo";
 constexpr const char* CONFIG_IDE_CMD_TAG = "IDECommand";

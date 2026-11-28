@@ -1,7 +1,8 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/OutputWindow.h"
 #include "Editor/Headers/Editor.h"
+#include "Editor/Headers/OutputLogQueue.h"
 #include "Editor/Headers/Utils.h"
 
 #include <imgui_internal.h>
@@ -10,10 +11,12 @@
 namespace Divide
 {
     constexpr U16 g_maxLogEntries = 1024u;
+    static_assert(g_maxLogEntries == OutputLogQueue::CAPACITY);
     static U16 g_logEntries = 256;
 
-    static std::atomic_size_t g_writeIndex = 0;
+    static size_t g_writeIndex = 0u;
     static vector<Console::OutputEntry> g_log;
+    static OutputLogQueue g_pendingLog;
 
     namespace 
     {
@@ -31,14 +34,13 @@ namespace Divide
     {
         memset( _inputBuf, 0, sizeof _inputBuf );
 
-        g_writeIndex = 0;
-        _consoleCallbackIndex = Console::BindConsoleOutput( [this]( const Console::OutputEntry& entry )
+        g_writeIndex = 0u;
+        g_pendingLog.clear();
+        g_log.resize( g_maxLogEntries );
+        _consoleCallbackIndex = Console::BindConsoleOutput( []( const Console::OutputEntry& entry )
                                                             {
                                                                 PrintText( entry );
-                                                                _scrollToButtomReset = true;
                                                             } );
-
-        g_log.resize( g_maxLogEntries );
     }
 
     OutputWindow::~OutputWindow()
@@ -51,18 +53,27 @@ namespace Divide
 
     void OutputWindow::clearLog()
     {
+        g_pendingLog.clear();
         for ( auto& entry : g_log)
         {
             entry = {};
         }
 
-        g_writeIndex.store( 0 );
+        g_writeIndex = 0u;
         _scrollToBottom = true;
     }
 
     void OutputWindow::drawInternal()
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
+
+        if (g_pendingLog.drain([](const Console::OutputEntry& entry)
+        {
+            g_log[g_writeIndex++ % g_maxLogEntries] = entry;
+        }) > 0u)
+        {
+            _scrollToButtomReset = true;
+        }
 
         static bool infoFlag = true;
         static bool warningFlag = true;
@@ -134,7 +145,7 @@ namespace Divide
         };
 
         size_t readIndex = 0u;
-        size_t writeIndex = g_writeIndex.load();
+        size_t writeIndex = g_writeIndex;
         if ( writeIndex >= g_logEntries )
         {
             readIndex = writeIndex - g_logEntries;
@@ -175,7 +186,6 @@ namespace Divide
                     default:
                     case Console::EntryType::COUNT: 
                         DIVIDE_UNEXPECTED_CALL();
-                        continue;
 
                     case Console::EntryType::INFO:
                     case Console::EntryType::COMMAND:
@@ -286,7 +296,7 @@ namespace Divide
 
     void OutputWindow::PrintText( const Console::OutputEntry& entry )
     {
-        g_log[g_writeIndex.fetch_add( 1 ) % g_maxLogEntries] = entry;
+        g_pendingLog.push(entry);
     }
 
     void OutputWindow::executeCommand( const char* command_line )

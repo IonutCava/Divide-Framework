@@ -54,7 +54,7 @@ namespace Divide
 
                     if ( mask & bitState )
                     {
-                        validMask |= to_base(bitState );
+                        validMask |= bitState;
                     }
                 }
                 return validMask;

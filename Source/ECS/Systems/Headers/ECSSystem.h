@@ -53,12 +53,12 @@ namespace Divide {
     template<class T, class U>
     struct ECSSerializer final : ECSSerializerProxy {
         [[nodiscard]] bool saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) override {
-            assert(_parent != nullptr);
+            DIVIDE_ASSERT(_parent != nullptr);
 
             return _parent->saveCache(sgn, outputBuffer);
         }
         [[nodiscard]] bool loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) override {
-            assert(_parent != nullptr);
+            DIVIDE_ASSERT(_parent != nullptr);
 
             return _parent->loadCache(sgn, inputBuffer);
         }

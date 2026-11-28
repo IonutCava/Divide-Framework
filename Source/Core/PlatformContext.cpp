@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/PlatformContext.h"
 #include "Headers/Configuration.h"
@@ -42,12 +42,13 @@ PlatformContext::PlatformContext(Application& app)
 
 PlatformContext::~PlatformContext()
 {
-    assert(_gfx == nullptr);
+    ShutdownConditionalWait(*this);
+    DIVIDE_ASSERT(_gfx == nullptr);
 }
 
 void PlatformContext::init(Kernel& kernel)
 {
-    assert(_gfx == nullptr);
+    DIVIDE_ASSERT(_gfx == nullptr);
 
     _kernel = &kernel;
 
@@ -141,25 +142,25 @@ const DisplayWindow& PlatformContext::activeWindow() const noexcept
 
 Kernel& PlatformContext::kernel() noexcept
 {
-    assert( _kernel != nullptr );
+    DIVIDE_ASSERT( _kernel != nullptr );
     return *_kernel;
 }
 
 const Kernel& PlatformContext::kernel() const noexcept
 {
-    assert(_kernel != nullptr);
+    DIVIDE_ASSERT(_kernel != nullptr);
     return *_kernel;
 }
 
-void PlatformContext::onThreadCreated(const TaskPoolType poolType, const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) const
+void PlatformContext::onThreadCreated(const TaskPoolType poolType, const size_t threadIndex, const std::thread::id& threadID ) const
 {
     if ( poolType == TaskPoolType::ASSET_LOADER || poolType == TaskPoolType::RENDERER )
     {
-        _gfx->onThreadCreated(threadIndex, threadID, isMainRenderThread);
+        _gfx->onThreadCreated(threadIndex, threadID);
 
         if ( poolType == TaskPoolType::ASSET_LOADER )
         {
-            ShaderProgram::OnThreadCreated(*_gfx, threadIndex, threadID, isMainRenderThread);
+            ShaderProgram::OnThreadCreated(*_gfx, threadIndex, threadID);
         }
     }
 }

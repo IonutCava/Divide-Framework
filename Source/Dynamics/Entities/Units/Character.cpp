@@ -31,7 +31,7 @@ void Character::setParentNode(SceneGraphNode* node) {
 }
 
 void Character::update(const U64 deltaTimeUS) {
-    assert(_node != nullptr);
+    DIVIDE_ASSERT(_node != nullptr);
 
     if (_positionDirty) {
         _curPosition.lerp(_newPosition,

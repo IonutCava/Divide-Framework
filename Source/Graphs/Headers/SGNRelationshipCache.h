@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -65,6 +65,7 @@ public:
     [[nodiscard]] bool validateRelationship(I64 guid, RelationshipType type) const noexcept;
 
 protected:
+    void clearEntries() noexcept;
     void updateChildren(U16 level, Cache& cache) const;
     void updateParents(U16 level, Cache& cache) const;
     void updateSiblings(U16 level, Cache& cache) const;

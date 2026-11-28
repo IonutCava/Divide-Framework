@@ -1,8 +1,6 @@
-
-
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/Localization.h"
 
-#include "Core/Headers/ErrorCodes.h"
 
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/File/Headers/FileUpdateMonitor.h"
@@ -55,7 +53,7 @@ ErrorCode LanguageData::changeLanguage(const std::string_view newLanguage)
     CSimpleIni languageFile(true, false, true);
 
     detail::g_localeFile = newLanguage.data();
-    assert(!detail::g_localeFile.empty());
+    DIVIDE_ASSERT(!detail::g_localeFile.empty());
 
     const ResourcePath file = Paths::g_localisationPath / ( detail::g_localeFile + g_languageFileExtension );
 
@@ -110,7 +108,7 @@ const char* LanguageData::get(const U64 key, const bool appendSection, const cha
         return appendSection ? entry->second._sectionAndValue.c_str() : entry->second._value.c_str();
     }
 
-    DIVIDE_UNEXPECTED_CALL_MSG("Locale error: INVALID STRING KEY!");
+    DIVIDE_ASSERT(false, "Locale error: INVALID STRING KEY!");
 
     return defaultValue == nullptr ? "MISSING_ENTRY_NO_DEFAULT" : defaultValue;
 }
@@ -160,7 +158,7 @@ void Idle()
 // Although the language can be set at compile time, in-game options may support language changes
 ErrorCode ChangeLanguage(const char* newLanguage)
 {
-    assert(detail::g_data != nullptr);
+    DIVIDE_ASSERT(detail::g_data != nullptr);
 
     // Set the new language code (override old data)
     return detail::g_data->changeLanguage(newLanguage);
@@ -168,14 +166,14 @@ ErrorCode ChangeLanguage(const char* newLanguage)
 
 const char* Get(const U64 key, bool appendSection, const char* defaultValue )
 {
-    assert( detail::g_data != nullptr );
+    DIVIDE_ASSERT( detail::g_data != nullptr );
 
     return detail::g_data->get(key, appendSection, defaultValue);
 }
 
 void SetChangeLanguageCallback(const DELEGATE<void, std::string_view /*new language*/>& cbk)
 {
-    assert(detail::g_data != nullptr);
+    DIVIDE_ASSERT(detail::g_data != nullptr);
 
     detail::g_data->setChangeLanguageCallback(cbk);
 }

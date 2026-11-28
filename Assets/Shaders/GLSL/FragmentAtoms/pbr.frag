@@ -191,7 +191,7 @@ vec3 GetBRDF(in vec3 L,
     const float LdotH = clamp((dot(L, H)), M_EPSILON, 1.f);
 
     const vec3 diffuseFactor = material._diffuseColour * BurleyDiffuse(material._roughness, NdotV, NdotL, VdotH, LdotH);
-    const vec3 fresnelTerm = SchlickGaussianFresnel(material._specular.rgb, VdotH);
+    const vec3 fresnelTerm = SchlickGaussianFresnel(material._F0, VdotH);
     const float distTerm = GGXDistribution(Mat_A, NdotH);
     const float visTerm = NeumannVisibility(NdotV, NdotL);
 #else //SHADING_MODE_PBR_SG

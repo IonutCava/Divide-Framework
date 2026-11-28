@@ -1,3 +1,4 @@
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/DVDConverter.h"
 #include "Headers/MeshImporter.h"
 
@@ -67,6 +68,116 @@ namespace {
 
 namespace DVDConverter
 {
+bool NormalizeScene( const aiScene& scene, const float3& rotationDegrees, const F32 scale )
+{
+    if ( !std::isfinite( scale ) || scale <= 0.f )
+    {
+        Console::errorfn( "Mesh import normalization requires a finite positive scale." );
+        return false;
+    }
+    for ( U8 axis = 0u; axis < 3u; ++axis )
+    {
+        if ( !std::isfinite( rotationDegrees[axis] ) ||
+             std::abs( std::remainder( rotationDegrees[axis], 90.f ) ) > 0.0001f )
+        {
+            Console::errorfn( "Mesh import axis corrections must be finite multiples of 90 degrees." );
+            return false;
+        }
+    }
+
+    aiMatrix4x4 rx, ry, rz;
+    aiMatrix4x4::RotationX( Angle::to_RADIANS( Angle::DEGREES_F{rotationDegrees.x} ), rx );
+    aiMatrix4x4::RotationY( Angle::to_RADIANS( Angle::DEGREES_F{rotationDegrees.y} ), ry );
+    aiMatrix4x4::RotationZ( Angle::to_RADIANS( Angle::DEGREES_F{rotationDegrees.z} ), rz );
+    const aiMatrix3x3 rotation{ rz * ry * rx };
+    const aiQuaternion orientation{ rotation };
+    aiQuaternion inverseOrientation = orientation;
+    inverseOrientation.Conjugate();
+    aiMatrix4x4 basis{ rotation };
+    basis.a1 *= scale; basis.a2 *= scale; basis.a3 *= scale;
+    basis.b1 *= scale; basis.b2 *= scale; basis.b3 *= scale;
+    basis.c1 *= scale; basis.c2 *= scale; basis.c3 *= scale;
+    aiMatrix4x4 inverseBasis = basis;
+    inverseBasis.Inverse();
+
+    const auto normalizeNodes = [&]( const auto& self, aiNode* node ) -> void
+    {
+        if ( node == nullptr )
+        {
+            return;
+        }
+        node->mTransformation = basis * node->mTransformation * inverseBasis;
+        for ( U32 i = 0u; i < node->mNumChildren; ++i )
+        {
+            self( self, node->mChildren[i] );
+        }
+    };
+    normalizeNodes( normalizeNodes, scene.mRootNode );
+    const auto normalizeVertices = [&]( auto& mesh )
+    {
+        for ( U32 v = 0u; v < mesh.mNumVertices; ++v )
+        {
+            if ( mesh.mVertices != nullptr ) mesh.mVertices[v] = basis * mesh.mVertices[v];
+            if ( mesh.mNormals != nullptr ) mesh.mNormals[v] = rotation * mesh.mNormals[v];
+            if ( mesh.mTangents != nullptr ) mesh.mTangents[v] = rotation * mesh.mTangents[v];
+            if ( mesh.mBitangents != nullptr ) mesh.mBitangents[v] = rotation * mesh.mBitangents[v];
+        }
+    };
+    for ( U32 i = 0u; i < scene.mNumMeshes; ++i )
+    {
+        aiMesh& mesh = *scene.mMeshes[i];
+        normalizeVertices( mesh );
+        for ( U32 j = 0u; j < mesh.mNumAnimMeshes; ++j )
+        {
+            normalizeVertices( *mesh.mAnimMeshes[j] );
+        }
+        for ( U32 j = 0u; j < mesh.mNumBones; ++j )
+        {
+            auto& offset = mesh.mBones[j]->mOffsetMatrix;
+            offset = basis * offset * inverseBasis;
+        }
+        if ( mesh.mNumVertices > 0u )
+        {
+            mesh.mAABB.mMin = mesh.mAABB.mMax = mesh.mVertices[0u];
+            for ( U32 v = 1u; v < mesh.mNumVertices; ++v )
+            {
+                for ( U8 axis = 0u; axis < 3u; ++axis )
+                {
+                    mesh.mAABB.mMin[axis] = std::min( mesh.mAABB.mMin[axis], mesh.mVertices[v][axis] );
+                    mesh.mAABB.mMax[axis] = std::max( mesh.mAABB.mMax[axis], mesh.mVertices[v][axis] );
+                }
+            }
+        }
+    }
+    for ( U32 i = 0u; i < scene.mNumAnimations; ++i )
+    {
+        aiAnimation& animation = *scene.mAnimations[i];
+        for ( U32 j = 0u; j < animation.mNumChannels; ++j )
+        {
+            aiNodeAnim& channel = *animation.mChannels[j];
+            for ( U32 k = 0u; k < channel.mNumPositionKeys; ++k )
+            {
+                channel.mPositionKeys[k].mValue = basis * channel.mPositionKeys[k].mValue;
+            }
+            for ( U32 k = 0u; k < channel.mNumRotationKeys; ++k )
+            {
+                auto& value = channel.mRotationKeys[k].mValue;
+                value = orientation * value * inverseOrientation;
+                value.Normalize();
+            }
+            for ( U32 k = 0u; k < channel.mNumScalingKeys; ++k )
+            {
+                auto& value = channel.mScalingKeys[k].mValue;
+                // Axis permutations preserve diagonal scale, unlike arbitrary rotations.
+                value = { std::abs( rotation.a1 ) * value.x + std::abs( rotation.a2 ) * value.y + std::abs( rotation.a3 ) * value.z,
+                          std::abs( rotation.b1 ) * value.x + std::abs( rotation.b2 ) * value.y + std::abs( rotation.b3 ) * value.z,
+                          std::abs( rotation.c1 ) * value.x + std::abs( rotation.c2 ) * value.y + std::abs( rotation.c3 ) * value.z };
+            }
+        }
+    }
+    return true;
+}
+
 namespace detail
 {
     static hashMap<U32, TextureWrap> fillTextureWrapMap()
@@ -126,6 +237,26 @@ void OnShutdown()
     Assimp::DefaultLogger::kill();
 }
 
+detail::BoneBindingStatus detail::RegisterBoneBinding( Bone& bone, const mat4<F32>& offset,
+                                                        U16& nextBoneIndex ) noexcept
+{
+    if ( bone._boneID == Bone::INVALID_BONE_IDX )
+    {
+        if ( nextBoneIndex >= Config::MAX_BONE_COUNT_PER_NODE || nextBoneIndex >= Bone::INVALID_BONE_IDX )
+        {
+            return BoneBindingStatus::LIMIT_EXCEEDED;
+        }
+
+        bone._offsetMatrix = offset;
+        bone._boneID = to_U8( nextBoneIndex++ );
+        return BoneBindingStatus::REGISTERED;
+    }
+
+    constexpr F32 offsetTolerance = 0.0001f;
+    return bone._offsetMatrix.compare( offset, offsetTolerance ) ? BoneBindingStatus::REUSED
+                                                                 : BoneBindingStatus::CONFLICT;
+}
+
 U32 PopulateNodeData(aiNode* node, MeshNodeData& target, const aiMatrix4x4& axisCorrectionBasis)
 {
     if (node == nullptr)
@@ -134,24 +265,6 @@ U32 PopulateNodeData(aiNode* node, MeshNodeData& target, const aiMatrix4x4& axis
     }
 
     AnimUtils::TransformMatrix(axisCorrectionBasis * node->mTransformation, target._transform);
-
-    if (!COMPARE(target._transform.m[0][0], target._transform.m[1][1]) && 
-        !COMPARE(target._transform.m[1][1], target._transform.m[2][2]))
-    {
-        // We have either:
-        // - Non-uniform scale
-        // - Different transform axis (e.g. Z-up)
-        // Need to determine which is which.
-        aiVector3D pScaling, pPosition;
-        aiQuaternion pRotation;
-        (axisCorrectionBasis * node->mTransformation).Decompose(pScaling, pRotation, pPosition);
-        target._transform = mat4<F32>
-        {
-            float3(pPosition.x, pPosition.y, pPosition.y),
-            float3(pScaling.x, pScaling.y, pScaling.y),
-            quatf{ pRotation.x, pRotation.y, pRotation.z, pRotation.w }
-        };
-    }
 
     target._name = node->mName.C_Str();
     target._meshIndices.resize(node->mNumMeshes);
@@ -164,7 +277,7 @@ U32 PopulateNodeData(aiNode* node, MeshNodeData& target, const aiMatrix4x4& axis
     target._children.resize(node->mNumChildren);
     for (U32 i = 0u; i < node->mNumChildren; ++i)
     {
-        numChildren += PopulateNodeData(node->mChildren[i], target._children[i], axisCorrectionBasis);
+        numChildren += PopulateNodeData(node->mChildren[i], target._children[i], aiMatrix4x4{} );
     }
 
     return numChildren + node->mNumChildren;
@@ -214,6 +327,12 @@ bool Load(PlatformContext& context, Import::ImportData& target)
         return false;
     }
 
+    if ( !target._cacheName.empty() &&
+         !NormalizeScene( *aiScenePointer, target._importRotationDegrees, target._importScale ) )
+    {
+        return false;
+    }
+
     aiMatrix4x4 axisCorrectionBasis;
     if (aiScenePointer->mMetaData)
     {
@@ -250,9 +369,8 @@ bool Load(PlatformContext& context, Import::ImportData& target)
     {
         target._skeleton.reset( CreateBoneTree(aiScenePointer->mRootNode, nullptr) );
 
-        mat4<F32> out;
-        U8 boneID = 0u;
-        for ( U16 meshPointer = 0u; meshPointer < aiScenePointer->mNumMeshes; ++meshPointer )
+        U16 nextBoneIndex = 0u;
+        for ( U32 meshPointer = 0u; meshPointer < aiScenePointer->mNumMeshes; ++meshPointer )
         {
             const aiMesh* mesh = aiScenePointer->mMeshes[meshPointer];
             for ( U32 n = 0; n < mesh->mNumBones; ++n )
@@ -264,14 +382,23 @@ bool Load(PlatformContext& context, Import::ImportData& target)
                 {
                     Console::warnfn(LOCALE_STR("MISSING_BONE_IN_SKELETON"), bone->mName.C_Str());
                 }
-                else if ( found->_boneID == Bone::INVALID_BONE_IDX)
-                {
-                    AnimUtils::TransformMatrix( bone->mOffsetMatrix, found->_offsetMatrix);
-                    found->_boneID = boneID++;
-                }
                 else
                 {
-                    DIVIDE_UNEXPECTED_CALL_MSG("Duplicate bone transform found in imported mesh data!");
+                    mat4<F32> offset;
+                    AnimUtils::TransformMatrix( bone->mOffsetMatrix, offset );
+                    const detail::BoneBindingStatus status = detail::RegisterBoneBinding( *found, offset, nextBoneIndex );
+                    if ( status == detail::BoneBindingStatus::CONFLICT )
+                    {
+                        Console::errorfn( LOCALE_STR( "ERROR_IMPORTER_BONE_OFFSET_CONFLICT" ), modelPath,
+                                          bone->mName.C_Str(), mesh->mName.C_Str() );
+                        return false;
+                    }
+                    if ( status == detail::BoneBindingStatus::LIMIT_EXCEEDED )
+                    {
+                        Console::errorfn( LOCALE_STR( "ERROR_IMPORTER_BONE_LIMIT" ), modelPath,
+                                          Config::MAX_BONE_COUNT_PER_NODE );
+                        return false;
+                    }
                 }
             }
         }
@@ -532,114 +659,122 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
         subMeshData._useAttribute[to_base( AttribLocation::BONE_WEIGHT )] = true;
     }
 
-    constexpr F32 kThreshold = 1.02f;   // allow up to 2% worse ACMR to get more reordering opportunities for overdraw
-    constexpr D64 target_factor = 0.75; // index count reduction factor per LoD
-    constexpr F32 target_error = 1e-3f; // max allowed error between lod levels
+    OptimiseSubMeshGeometry( input_indices, vertices, subMeshData );
+}
 
-    { // Generate LoD 0 (max detail)
-        auto& target_indices = subMeshData._indices[0];
+void OptimiseSubMeshGeometry( vector<U32>& indices, vector<Import::SubMeshData::Vertex>& vertices, Import::SubMeshData& subMeshData )
+{
+    // Allow up to 2% worse ACMR to get more reordering opportunities for overdraw
+    constexpr F32 kOverdrawThreshold = 1.02f;
+    // Relative to the mesh extents
+    constexpr F32 kLoDTargetError = 1e-2f;
+    // A level must drop at least this fraction of the previous level's indices to be kept
+    constexpr F32 kMinLoDReduction = 0.05f;
+    constexpr std::array<F32, Import::MAX_LOD_LEVELS> kLoDIndexRatios{ 1.f, 0.75f, 0.5f, 0.25f };
+    constexpr size_t kVertexStride = sizeof( Import::SubMeshData::Vertex );
+    // meshoptimizer's suggested normal weight. UVs stay unweighted: their error is in texture space, so a fixed weight
+    // over-constrains tiled textures, and UV seams are already preserved as topology.
+    constexpr std::array<F32, 3> kNormalErrorWeights{ 0.5f, 0.5f, 0.5f };
 
-        //Remap VB & IB
-        vector<U32> remap(source->mNumVertices);
-        const size_t vertex_count = meshopt_generateVertexRemap( remap.data(),
-                                                                 input_indices.data(),
-                                                                 input_indices.size(),
-                                                                 vertices.data(),
-                                                                 source->mNumVertices,
-                                                                 sizeof( Import::SubMeshData::Vertex ) );
-        const size_t index_count = input_indices.size();
-        target_indices.resize( index_count );
-        meshopt_remapIndexBuffer(target_indices.data(),
-                                 input_indices.data(),
-                                 input_indices.size(),
-                                 remap.data() );
-
-        // Don't need these anymore. Each LoD level will be calculated from the previous level's data
-        input_indices.clear();
-
-        subMeshData._vertices.resize( vertex_count );
-        meshopt_remapVertexBuffer( subMeshData._vertices.data(),
-                                   vertices.data(),
-                                   source->mNumVertices,
-                                   sizeof( Import::SubMeshData::Vertex ),
-                                   remap.data() );
-        vertices.clear();
-        
-        // Optimise VB & IB
-        meshopt_optimizeVertexCache( target_indices.data(),
-                                     target_indices.data(),
-                                     index_count,
-                                     subMeshData._vertices.size() );
-
-        meshopt_optimizeOverdraw( target_indices.data(),
-                                  target_indices.data(),
-                                  index_count,
-                                  &subMeshData._vertices[0].position.x,
-                                  subMeshData._vertices.size(),
-                                  sizeof( Import::SubMeshData::Vertex ),
-                                  kThreshold );
-
-        // vertex fetch optimization should go last as it depends on the final index order
-        const size_t next_vertices = meshopt_optimizeVertexFetch( subMeshData._vertices.data(),
-                                                                  target_indices.data(),
-                                                                  index_count,
-                                                                  subMeshData._vertices.data(),
-                                                                  subMeshData._vertices.size(),
-                                                                  sizeof( Import::SubMeshData::Vertex ) );
-        subMeshData._vertices.resize( next_vertices );
-
-        subMeshData._lodCount = 1u;
+    subMeshData._lodCount = 0u;
+    for ( vector<U32>& lodIndices : subMeshData._indices )
+    {
+        lodIndices.clear();
     }
-    { // Generate LoDs [1 ... Import::MAX_LOD_LEVELS-1] data and place inside VB & IB with proper offsets
-        if (subMeshData._indices[0].size() >= g_minIndexCountForAutoLoD)
+
+    if ( indices.empty() || vertices.empty() )
+    {
+        subMeshData._vertices.clear();
+        return;
+    }
+
+    {
+        // Compare members rather than whole vertices: padding bytes are indeterminate and would stop equal vertices from welding.
+        const Import::SubMeshData::Vertex& first = vertices.front();
+        const meshopt_Stream vertexStreams[]
         {
-            F32 threshold = target_factor;
+            { &first.position.x,  3u * sizeof( F32 ), kVertexStride },
+            { &first.normal.x,    3u * sizeof( F32 ), kVertexStride },
+            { &first.tangent.x,   4u * sizeof( F32 ), kVertexStride },
+            { &first.texcoord.x,  3u * sizeof( F32 ), kVertexStride },
+            { &first.weights.x,   4u * sizeof( F32 ), kVertexStride },
+            { &first.indices.x,   4u * sizeof( U8 ),  kVertexStride },
+            { &first.weightCount, sizeof( U8 ),       kVertexStride }
+        };
 
-            for (U8 i = 1u; i < Import::MAX_LOD_LEVELS; ++i)
+        vector<U32> remap( vertices.size() );
+        const size_t uniqueVertexCount = meshopt_generateVertexRemapMulti( remap.data(), indices.data(), indices.size(), vertices.size(),
+                                                                           vertexStreams, std::size( vertexStreams ) );
+
+        subMeshData._indices[0].resize( indices.size() );
+        meshopt_remapIndexBuffer( subMeshData._indices[0].data(), indices.data(), indices.size(), remap.data() );
+        indices.clear();
+
+        subMeshData._vertices.resize( uniqueVertexCount );
+        meshopt_remapVertexBuffer( subMeshData._vertices.data(), vertices.data(), vertices.size(), kVertexStride, remap.data() );
+        vertices.clear();
+    }
+
+    const F32* positions = &subMeshData._vertices[0].position.x;
+    const F32* normals = &subMeshData._vertices[0].normal.x;
+    const size_t vertexCount = subMeshData._vertices.size();
+
+    const auto optimiseIndexOrder = [positions, vertexCount]( vector<U32>& lodIndices )
+    {
+        meshopt_optimizeVertexCache( lodIndices.data(), lodIndices.data(), lodIndices.size(), vertexCount );
+        meshopt_optimizeOverdraw( lodIndices.data(), lodIndices.data(), lodIndices.size(), positions, vertexCount, kVertexStride, kOverdrawThreshold );
+    };
+
+    const vector<U32>& lod0 = subMeshData._indices[0];
+    optimiseIndexOrder( subMeshData._indices[0] );
+    subMeshData._lodCount = 1u;
+
+    if ( lod0.size() >= g_minIndexCountForAutoLoD )
+    {
+        // Every level is simplified from LoD 0 so errors don't accumulate down the chain.
+        // Borders are locked because sibling submeshes share their open edges.
+        for ( U8 lod = 1u; lod < Import::MAX_LOD_LEVELS; ++lod )
+        {
+            const size_t previousCount = subMeshData._indices[lod - 1u].size();
+            const size_t targetCount = to_size( to_F32( lod0.size() ) * kLoDIndexRatios[lod] ) / 3u * 3u;
+
+            vector<U32>& lodIndices = subMeshData._indices[lod];
+            lodIndices.resize( lod0.size() );
+            const size_t simplifiedCount = meshopt_simplifyWithAttributes( lodIndices.data(), lod0.data(), lod0.size(), positions, vertexCount, kVertexStride,
+                                                                           normals, kVertexStride, kNormalErrorWeights.data(), kNormalErrorWeights.size(), nullptr,
+                                                                           targetCount, kLoDTargetError, meshopt_SimplifyLockBorder, nullptr );
+
+            if ( simplifiedCount == 0u || to_F32( simplifiedCount ) > to_F32( previousCount ) * (1.f - kMinLoDReduction) )
             {
-                auto& target_indices = subMeshData._indices[i];
-                auto& source_indices = subMeshData._indices[i - 1u];
-
-                const size_t target_index_count = size_t(source_indices.size() * threshold) / 9;
-
-                target_indices.resize( source_indices.size() );
-
-                const size_t next_indices = meshopt_simplify( target_indices.data(),
-                                                              source_indices.data(),
-                                                              source_indices.size(),
-                                                              &subMeshData._vertices[0].position.x,
-                                                              subMeshData._vertices.size(),
-                                                              sizeof( Import::SubMeshData::Vertex ),
-                                                              target_index_count,
-                                                              target_error );
-
-                if (next_indices == source_indices.size() )
-                {
-                    target_indices.clear();
-                    // We failed to simplify further, so no point in adding this as an LoD level
-                    break;
-                }
-                target_indices.resize( next_indices );
-
-                // reorder indices for overdraw, balancing overdraw and vertex cache efficiency
-                meshopt_optimizeVertexCache(target_indices.data(),
-                                            target_indices.data(),
-                                            target_indices.size(),
-                                            subMeshData._vertices.size());
-
-                meshopt_optimizeOverdraw( target_indices.data(),
-                                          target_indices.data(),
-                                          target_indices.size(),
-                                          &subMeshData._vertices[0].position.x,
-                                          subMeshData._vertices.size(),
-                                          sizeof( Import::SubMeshData::Vertex ),
-                                          kThreshold );
-                                          
-                ++subMeshData._lodCount;
-                threshold *= threshold;
+                lodIndices.clear();
+                break;
             }
+
+            lodIndices.resize( simplifiedCount );
+            optimiseIndexOrder( lodIndices );
+            ++subMeshData._lodCount;
         }
     }
+
+    // All levels share one vertex buffer. Ordering fetches coarsest level first keeps each lower LoD in a compact prefix.
+    vector<U32> combinedIndices;
+    for ( U8 lod = subMeshData._lodCount; lod > 0u; --lod )
+    {
+        const vector<U32>& lodIndices = subMeshData._indices[lod - 1u];
+        combinedIndices.insert( combinedIndices.end(), lodIndices.begin(), lodIndices.end() );
+    }
+
+    vector<U32> fetchRemap( vertexCount );
+    const size_t usedVertexCount = meshopt_optimizeVertexFetchRemap( fetchRemap.data(), combinedIndices.data(), combinedIndices.size(), vertexCount );
+    for ( U8 lod = 0u; lod < subMeshData._lodCount; ++lod )
+    {
+        vector<U32>& lodIndices = subMeshData._indices[lod];
+        meshopt_remapIndexBuffer( lodIndices.data(), lodIndices.data(), lodIndices.size(), fetchRemap.data() );
+    }
+
+    vector<Import::SubMeshData::Vertex> fetchOrderedVertices( usedVertexCount );
+    meshopt_remapVertexBuffer( fetchOrderedVertices.data(), subMeshData._vertices.data(), vertexCount, kVertexStride, fetchRemap.data() );
+    subMeshData._vertices = MOV( fetchOrderedVertices );
 }
 
 void LoadSubMeshMaterial(Import::MaterialData& material,

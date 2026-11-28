@@ -33,7 +33,6 @@
 #ifndef DVD_XML_PARSER_H_
 #define DVD_XML_PARSER_H_
 
-#include "Platform/Headers/PlatformDefines.h"
 
 namespace Divide
 {
@@ -51,7 +50,7 @@ namespace XML
 {
     namespace detail
     {
-        struct LoadSave
+        struct SerializerContext
         {
             mutable boost::property_tree::iptree XmlTree;
             std::string _rootNodePath;
@@ -69,15 +68,15 @@ namespace XML
 #define GET_PARAM(X) GET_TEMP_PARAM(X, X)
 
 #define GET_TEMP_PARAM(X, TEMP) \
-    TEMP = LoadSave.XmlTree.get(LoadSave._rootNodePath + TO_STRING(X), TEMP)
+    TEMP = SerializerContext.XmlTree.get(SerializerContext._rootNodePath + TO_STRING(X), TEMP)
 
 #define GET_PARAM_ATTRIB(X, Y) \
-    X.Y = LoadSave.XmlTree.get(CONCAT(CONCAT(LoadSave._rootNodePath + TO_STRING(X), ".<xmlattr>."), TO_STRING(Y)), (X.Y))
+    X.Y = SerializerContext.XmlTree.get(CONCAT(CONCAT(SerializerContext._rootNodePath + TO_STRING(X), ".<xmlattr>."), TO_STRING(Y)), (X.Y))
 
 #define PUT_TEMP_PARAM(X, TEMP) \
-    LoadSave.XmlTree.put(LoadSave._rootNodePath + TO_STRING(X), TEMP)
+    SerializerContext.XmlTree.put(SerializerContext._rootNodePath + TO_STRING(X), TEMP)
 #define PUT_PARAM_ATTRIB(X, Y) \
-    LoadSave.XmlTree.put(CONCAT(CONCAT(LoadSave._rootNodePath + TO_STRING(X), ".<xmlattr>."), TO_STRING(Y)), (X.Y))
+    SerializerContext.XmlTree.put(CONCAT(CONCAT(SerializerContext._rootNodePath + TO_STRING(X), ".<xmlattr>."), TO_STRING(Y)), (X.Y))
 #endif
 
 #define PUT_PARAM(X) PUT_TEMP_PARAM(X, X)
@@ -94,7 +93,7 @@ namespace XML
         virtual bool fromXML( const ResourcePath& xmlFilePath, const char* fileName ) = 0;
         virtual bool toXML( const ResourcePath& xmlFilePath, const char* fileName ) const = 0;
 
-        detail::LoadSave LoadSave;
+        detail::SerializerContext SerializerContext;
     };
 
     bool loadFromXML( IXMLSerializable& object, const ResourcePath& filePath, const char* fileName );
@@ -102,6 +101,37 @@ namespace XML
 
     void writeXML( const ResourcePath& path, const boost::property_tree::ptree& tree );
     void readXML( const ResourcePath& path, boost::property_tree::ptree& tree );
+
+    // An XML file built in memory, to be written later (possibly on another thread).
+    struct FileSnapshot
+    {
+        enum class Backup : U8
+        {
+            NONE,
+            // Copy _backupSource to "<_backupSource>.bak" first. A missing or empty source is fine; any other
+            // copy error skips the write.
+            IF_PRESENT,
+            // Write only after _backupSource was copied to "<_backupSource>.bak".
+            REQUIRED_TO_WRITE
+        };
+
+        boost::property_tree::ptree _tree;
+        ResourcePath _folder;
+        string _fileName;
+        string _backupSource;
+        string _progressMessage;
+        Backup _backup{ Backup::NONE };
+    };
+
+    struct SaveSnapshot
+    {
+        vector<ResourcePath> _directories;
+        vector<FileSnapshot> _files;
+    };
+
+    // File I/O only; safe on any thread. Creates the directories, then writes the files in order, reporting each
+    // non-empty progress message first. Returns false if a file was skipped because its backup failed.
+    [[nodiscard]] bool writeSnapshot( const SaveSnapshot& snapshot, const DELEGATE<void, std::string_view>& msgCallback );
     /// Child Functions
     void loadDefaultKeyBindings( const ResourcePath& file, const Scene* scene );
     void loadMusicPlaylist( const ResourcePath& scenePath, const Str<64>& fileName, Scene* scene, [[maybe_unused]] const Configuration& config );

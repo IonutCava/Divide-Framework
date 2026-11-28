@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/ProjectManager.h"
 #include "Headers/FrameListenerManager.h"
@@ -8,6 +9,7 @@
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Core/Resources/Headers/ResourceCache.h"
@@ -43,12 +45,43 @@
 #include "ECS/Components/Headers/SelectionComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
 #include "ECS/Components/Headers/UnitComponent.h"
-#include <filesystem>
 
 namespace Divide
 {
 
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
+
+    namespace
+    {
+        void AppendPreviewNode( SceneGraphNode* sgn, const float3& cameraEye, VisibleNodeList<>& nodesOut )
+        {
+            const BoundsComponent* bComp = sgn->get<BoundsComponent>();
+            VisibleNode temp{};
+            temp._node = sgn;
+            temp._distanceToCameraSq = bComp == nullptr
+                                           ? 0.f
+                                           : bComp->getBoundingBox().nearestPoint( cameraEye ).distanceSquared( cameraEye );
+            nodesOut.append( temp );
+        }
+
+        void AppendPreviewSubtree( SceneGraphNode* sgn, const float3& cameraEye, const size_t maxNodes, VisibleNodeList<>& nodesOut )
+        {
+            if ( nodesOut.size() >= maxNodes )
+            {
+                return;
+            }
+
+            AppendPreviewNode( sgn, cameraEye, nodesOut );
+
+            const auto& children = sgn->getChildren();
+            SharedLock<SharedMutex> r_lock( children._lock );
+            const U32 childCount = children._count;
+            for ( U32 i = 0u; i < childCount; ++i )
+            {
+                AppendPreviewSubtree( children._data[i], cameraEye, maxNodes, nodesOut );
+            }
+        }
+    }
 
     bool operator==( const SceneEntry& lhs, const SceneEntry& rhs ) noexcept
     {
@@ -114,6 +147,13 @@ namespace Divide
                     ._name = name.c_str()
                 });
             }
+        }
+
+        const ResourcePath projectPath = Paths::g_projectsLocation / projectID._name;
+        XML::detail::SerializerContext SerializerContext;
+        if (SerializerContext.read( projectPath, Config::PROJECT_CONFIG_FILE_NAME, "config." ) )
+        {
+            GET_TEMP_PARAM(startupScene, _startupSceneConfig.startupScene);
         }
     }
 
@@ -223,13 +263,13 @@ namespace Divide
              {
                  bool foundInCache = false;
                  Scene* loadedScene = _scenePool.getOrCreateScene( parent().platformContext(), *this, scene, foundInCache );
-                 assert( loadedScene != nullptr && foundInCache );
+                 DIVIDE_ASSERT( loadedScene != nullptr && foundInCache );
                  
                  if ( loadedScene->getState() == ResourceState::RES_LOADING )
                  {
                      Attorney::SceneProjectManager::postLoadMainThread( loadedScene );
                  }
-                 assert( loadedScene->getState() == ResourceState::RES_LOADED );
+                 DIVIDE_ASSERT( loadedScene->getState() == ResourceState::RES_LOADED );
                  setActiveScene( loadedScene );
                  
                  if ( unloadPrevious && sceneToUnload != nullptr )
@@ -265,7 +305,7 @@ namespace Divide
 
     bool Project::unloadScene( Scene* scene )
     {
-        assert( scene != nullptr );
+        DIVIDE_ASSERT( scene != nullptr );
         Attorney::ProjectManagerProject::waitForSaveTask( parent() );
 
         parent().platformContext().gui().onUnloadScene( scene );
@@ -275,7 +315,7 @@ namespace Divide
 
     void Project::setActiveScene( Scene* const scene )
     {
-        assert( scene != nullptr );
+        DIVIDE_ASSERT( scene != nullptr );
 
         Attorney::ProjectManagerProject::waitForSaveTask( parent() );
         Attorney::SceneProjectManager::onRemoveActive( _scenePool.defaultSceneActive() ? _scenePool.defaultScene()
@@ -434,9 +474,43 @@ namespace Divide
             return ErrorCode::MISSING_PROJECT_DATA;
         }
 
+        const SceneEntries& sceneEntries = _activeProject->getSceneEntries();
+        auto startupScene = sceneEntries.cbegin();
+
+        const auto findSceneByName = [&sceneEntries]( const char* sceneName )
+        {
+            return std::find_if( sceneEntries.cbegin(), sceneEntries.cend(), [sceneName]( const SceneEntry& entry )
+            {
+                return entry._name == sceneName;
+            });
+        };
+
+        if ( RenderSmokeTest::Enabled() && !RenderSmokeTest::Scene().empty() )
+        {
+            startupScene = findSceneByName( RenderSmokeTest::Scene().c_str() );
+            if ( startupScene == sceneEntries.cend() )
+            {
+                Console::errorfn( LOCALE_STR( "ERROR_SCENE_LOAD" ), RenderSmokeTest::Scene().c_str() );
+                return ErrorCode::MISSING_SCENE_DATA;
+            }
+        }
+        else
+        {
+            startupScene = findSceneByName( _activeProject->startupSceneConfig().startupScene.c_str() );
+            if ( startupScene == sceneEntries.cend() )
+            {
+                startupScene = findSceneByName( Config::DEFAULT_SCENE_NAME );
+            }
+
+            if ( startupScene == sceneEntries.cend() )
+            {
+                startupScene = sceneEntries.cbegin();
+            }
+        }
+
         SwitchSceneTarget sceneTarget
         {
-            ._targetScene = _activeProject->getSceneEntries().front(),
+            ._targetScene = *startupScene,
             ._unloadPreviousScene = true,
             ._loadInSeparateThread = false,
             ._deferToStartOfFrame = false,
@@ -445,7 +519,7 @@ namespace Divide
 
         if ( !_activeProject->switchScene( sceneTarget ) )
         {
-            Console::errorfn( LOCALE_STR( "ERROR_SCENE_LOAD" ), _activeProject->getSceneEntries().front()._name.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_SCENE_LOAD" ), startupScene->_name.c_str() );
             return ErrorCode::MISSING_SCENE_DATA;
         }
 
@@ -659,7 +733,7 @@ namespace Divide
 
         const auto IsNodeInRect = [&screenRect, &camera, &gfx]( SceneGraphNode* node )
         {
-            assert( node != nullptr );
+            DIVIDE_ASSERT( node != nullptr );
             const SceneNode& sNode = node->getNode();
             if ( Is3DObject( sNode.type() ))
             {
@@ -786,6 +860,15 @@ namespace Divide
                 return false;
             }
 
+            if ( _autoSaveQueued )
+            {
+                _autoSaveQueued = false;
+                if ( !saveActiveScene( true, true ) )
+                {
+                    NOP();
+                }
+            }
+
             return Attorney::SceneProjectManager::frameEnded( activeProject()->getActiveScene() );
         }
 
@@ -797,7 +880,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Scene* activeScene = activeProject()->getActiveScene();
-        assert( activeScene->getState() == ResourceState::RES_LOADED );
+        DIVIDE_ASSERT( activeScene->getState() == ResourceState::RES_LOADED );
         // Update internal timers
         _elapsedGameTime += deltaGameTimeUS;
         _elapsedGameTimeMS = Time::MicrosecondsToMilliseconds<U32>( _elapsedGameTime );
@@ -846,16 +929,22 @@ namespace Divide
         const auto& waterBodies = activeSceneState->waterBodies();
         for ( const auto& body : waterBodies )
         {
+            if ( index >= GLOBAL_WATER_BODIES_COUNT )
+            {
+                break;
+            }
             sceneData->waterDetails( index++, body );
+        }
+        for ( ; index < GLOBAL_WATER_BODIES_COUNT; ++index )
+        {
+            sceneData->waterDetails( index, WaterBodyData{} );
         }
         _saveTimer += deltaGameTimeUS;
 
-        if ( _saveTimer >= Time::SecondsToMicroseconds<U64>( Config::Build::IS_DEBUG_BUILD ? 5 : 10 ) )
+        if ( !RenderSmokeTest::Enabled() && _saveTimer >= Time::SecondsToMicroseconds<U64>( Config::Build::IS_DEBUG_BUILD ? 5 : 10 ) )
         {
-            if ( !saveActiveScene( true, true ) )
-            {
-                NOP();
-            }
+            // Serialized at frame end: the scene must not be read while the update loop is still changing it.
+            _autoSaveQueued = true;
             _saveTimer = 0ULL;
         }
         if ( dayNightData._skyInstance != nullptr )
@@ -927,7 +1016,6 @@ namespace Divide
 
         _currentPlayerPass = idx;
         Attorney::SceneProjectManager::currentPlayerPass( activeProject()->getActiveScene(), _currentPlayerPass );
-        playerCamera()->updateLookAt();
     }
 
     void ProjectManager::editorPreviewNode( const I64 editorPreviewNode ) noexcept
@@ -976,7 +1064,7 @@ namespace Divide
     }
 
     
-    void ProjectManager::getSortedReflectiveNodes( const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut ) const
+    void ProjectManager::getSortedReflectiveNodes( const Camera* camera, const bool inView, VisibleNodeList<>& nodesOut ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -994,10 +1082,11 @@ namespace Divide
         {
             NodeCullParams cullParams = {};
             cullParams._lodThresholds = activeProject()->getActiveScene()->state()->renderState().lodThresholds();
-            cullParams._stage = stage;
+            cullParams._stagePass._stage = RenderStage::DISPLAY;
             cullParams._cameraEyePos = camera->snapshot()._eye;
+            cullParams._rangeCameraEyePos = cullParams._cameraEyePos;
             cullParams._frustum = &camera->getFrustum();
-            cullParams._cullMaxDistance = camera->snapshot()._zPlanes.max;
+            cullParams._cullMaxDistance = activeProject()->getActiveScene()->state()->renderState().generalVisibility();
 
             RenderPassCuller::FrustumCull( parent().platformContext(), cullParams, to_base( CullOptions::DEFAULT_CULL_OPTIONS ), allNodes, nodesOut );
         }
@@ -1007,7 +1096,7 @@ namespace Divide
         }
     }
 
-    void ProjectManager::getSortedRefractiveNodes( const Camera* camera, const RenderStage stage, const bool inView, VisibleNodeList<>& nodesOut ) const
+    void ProjectManager::getSortedRefractiveNodes( const Camera* camera, const bool inView, VisibleNodeList<>& nodesOut ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -1024,10 +1113,11 @@ namespace Divide
         {
             NodeCullParams cullParams = {};
             cullParams._lodThresholds = activeProject()->getActiveScene()->state()->renderState().lodThresholds();
-            cullParams._stage = stage;
+            cullParams._stagePass._stage = RenderStage::DISPLAY;
             cullParams._cameraEyePos = camera->snapshot()._eye;
+            cullParams._rangeCameraEyePos = cullParams._cameraEyePos;
             cullParams._frustum = &camera->getFrustum();
-            cullParams._cullMaxDistance = camera->snapshot()._zPlanes.max;
+            cullParams._cullMaxDistance = activeProject()->getActiveScene()->state()->renderState().generalVisibility();
 
             RenderPassCuller::FrustumCull( parent().platformContext(), cullParams, to_base( CullOptions::DEFAULT_CULL_OPTIONS ), allNodes, nodesOut );
         }
@@ -1046,7 +1136,7 @@ namespace Divide
     {
         Scene* activeScene = activeProject()->getActiveScene();
 
-        cullParamsInOut._stage = stage;
+        cullParamsInOut._stagePass._stage = stage;
         cullParamsInOut._lodThresholds = activeScene->state()->renderState().lodThresholds( stage );
         if ( stage != RenderStage::SHADOW )
         {
@@ -1062,54 +1152,43 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        Time::ScopedTimer timer( *_sceneGraphCullTimers[to_U32( params._stage )] );
+        Time::ScopedTimer timer( *_sceneGraphCullTimers[to_U32( params._stagePass._stage )] );
 
         Scene* activeScene = activeProject()->getActiveScene();
         RenderPassCuller::FrustumCull( params, cullFlags, *activeScene->sceneGraph(), *activeScene->state(), _parent.platformContext(), nodesOut );
 
-        if ( params._stage == RenderStage::DISPLAY )
+        if ( params._stagePass._stage == RenderStage::DISPLAY )
         {
             _recentlyRenderedNodes = nodesOut;
         }
     }
 
-    void ProjectManager::findNode( const float3& cameraEye, const I64 nodeGUID, VisibleNodeList<>& nodesOut )
+    void ProjectManager::findNode( const float3& cameraEye, const I64 nodeGUID, const bool includeSky, VisibleNodeList<>& nodesOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         if ( nodeGUID != -1 )
         {
-            SceneGraphNode* sgn = activeProject()->getActiveScene()->sceneGraph()->findNode( nodeGUID );
+            SceneGraph* sceneGraph = activeProject()->getActiveScene()->sceneGraph().get();
+            SceneGraphNode* sgn = sceneGraph->findNode( nodeGUID );
             if ( sgn != nullptr )
             {
-                const auto appendNode = [&nodesOut, &cameraEye]( SceneGraphNode* sgn )
-                {
-                    const BoundsComponent* bComp = sgn->get<BoundsComponent>();
-                    VisibleNode temp{};
-                    temp._node = sgn;
-                    temp._distanceToCameraSq = bComp == nullptr ? 0.f : bComp->getBoundingSphere().getDistanceFromPoint( cameraEye );
-                    nodesOut.append( temp );
-                };
-                appendNode( sgn );
+                const size_t skySlots = includeSky ? 1u : 0u;
+                AppendPreviewSubtree( sgn, cameraEye, VisibleNodeList<>::capacity() - skySlots, nodesOut );
 
-                const BoundsComponent* bComp = sgn->get<BoundsComponent>();
-                VisibleNode temp{};
-                temp._node = sgn;
-                temp._distanceToCameraSq = bComp == nullptr ? 0.f : bComp->getBoundingSphere().getDistanceFromPoint( cameraEye );
-                nodesOut.append( temp );
-
-                const auto& children = sgn->getChildren();
-                SharedLock<SharedMutex> r_lock( children._lock );
-                const U32 childCount = children._count;
-                for ( U32 i = 0u; i < childCount; ++i )
+                if ( includeSky )
                 {
-                    appendNode( children._data[i] );
+                    const auto& skies = sceneGraph->getNodesByType( SceneNodeType::TYPE_SKY );
+                    if ( !skies.empty() )
+                    {
+                        AppendPreviewNode( skies.front(), cameraEye, nodesOut );
+                    }
                 }
             }
         }
     }
 
-    void ProjectManager::prepareLightData( const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
+    LightDataBinding ProjectManager::prepareLightData( const RenderStage stage, const CameraSnapshot& cameraSnapshot, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -1117,8 +1196,9 @@ namespace Divide
         {
             LightPool* pool = activeProject()->getActiveScene()->lightPool().get();
             pool->sortLightData( stage, cameraSnapshot );
-            pool->uploadLightData( stage, cameraSnapshot, memCmdInOut );
+            return pool->uploadLightData( stage, cameraSnapshot, memCmdInOut );
         }
+        return {};
     }
 
     void ProjectManager::onChangeFocus( const bool hasFocus )
@@ -1347,41 +1427,39 @@ namespace Divide
         return Attorney::SceneLoadSave::loadNodeFromXML( activeScene, node );
     }
 
-    bool LoadSave::saveScene( Scene* activeScene, const bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback )
+    bool LoadSave::serializeSceneCache( Scene* activeScene, ByteBuffer& dataOut )
     {
-        if ( !toCache )
-        {
-            return Attorney::SceneLoadSave::saveXML( activeScene, msgCallback, finishCallback );
-        }
-
-        bool ret = false;
+        dataOut.clear();
         if ( activeScene->state()->saveLoadDisabled() )
         {
-            ret = true;
+            return true;
         }
-        else
-        {
-            const Str<256>& sceneName = activeScene->resourceName();
-            const ResourcePath path = Paths::g_saveLocation / sceneName;
 
-            if ( copyFile( path, g_saveFile, path, g_bakSaveFile, true ) != FileError::NONE )
-            {
-                return false;
-            }
+        dataOut << BYTE_BUFFER_VERSION;
+        return Attorney::SceneLoadSave::save( activeScene, dataOut );
+    }
 
-            ByteBuffer save;
-            save << BYTE_BUFFER_VERSION;
-            if ( Attorney::SceneLoadSave::save( activeScene, save ) )
-            {
-                ret = save.dumpToFile( path, g_saveFile );
-                assert( ret );
-            }
-        }
-        if ( finishCallback )
+    bool LoadSave::writeSceneCache( const std::string_view sceneName, ByteBuffer& data )
+    {
+        if ( data.bufferEmpty() )
         {
-            finishCallback( ret );
+            return true;
         }
+
+        const ResourcePath path = Paths::g_saveLocation / sceneName;
+        if ( copyFile( path, g_saveFile, path, g_bakSaveFile, true ) != FileError::NONE )
+        {
+            return false;
+        }
+
+        const bool ret = data.dumpToFile( path, g_saveFile );
+        DIVIDE_ASSERT( ret );
         return ret;
+    }
+
+    bool LoadSave::snapshotSceneXML( const Scene* activeScene, XML::SaveSnapshot& snapshotOut )
+    {
+        return Attorney::SceneLoadSave::saveXML( activeScene, snapshotOut );
     }
 
     bool ProjectManager::saveActiveScene( bool toCache, const bool deferred, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback )
@@ -1405,16 +1483,43 @@ namespace Divide
                 {
                     return false;
                 }
-                DIVIDE_UNEXPECTED_CALL();
             }
+            // A manual save waits for any autosave that is still writing.
             pool.wait( *_saveTask );
         }
 
-        _saveTask = CreateTask( nullptr,
-                               [activeScene, msgCallback, finishCallback, toCache]( const Task& /*parentTask*/ )
+        // Serialize here, on the calling thread; the task only writes the files.
+        if ( toCache )
         {
-            LoadSave::saveScene( activeScene, toCache, msgCallback, finishCallback );
-        });
+            auto saveData = std::make_shared<ByteBuffer>();
+            const bool serialized = LoadSave::serializeSceneCache( activeScene, *saveData );
+            const string sceneName = activeScene->resourceName().c_str();
+            _saveTask = CreateTask( nullptr,
+                                   [saveData, serialized, sceneName, finishCallback]( const Task& /*parentTask*/ )
+            {
+                const bool ret = serialized && LoadSave::writeSceneCache( sceneName, *saveData );
+                if ( finishCallback )
+                {
+                    finishCallback( ret );
+                }
+            });
+        }
+        else
+        {
+            auto snapshot = std::make_shared<XML::SaveSnapshot>();
+            const bool snapshotted = LoadSave::snapshotSceneXML( activeScene, *snapshot );
+            const string sceneName = activeScene->resourceName().c_str();
+            _saveTask = CreateTask( nullptr,
+                                   [snapshot, snapshotted, sceneName, msgCallback, finishCallback]( const Task& /*parentTask*/ )
+            {
+                const bool ret = snapshotted && XML::writeSnapshot( *snapshot, msgCallback );
+                Console::printfn( LOCALE_STR( "XML_SAVE_SCENE_END" ), sceneName );
+                if ( finishCallback )
+                {
+                    finishCallback( ret );
+                }
+            });
+        }
         pool.enqueue( *_saveTask, deferred ? TaskPriority::DONT_CARE_NO_IDLE : TaskPriority::REALTIME );
 
         return true;

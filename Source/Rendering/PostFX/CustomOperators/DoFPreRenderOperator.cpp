@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/DoFPreRenderOperator.h"
 
@@ -32,13 +32,11 @@ DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     //blur the depth buffer?
     fragModule._defines.emplace_back("USE_DEPTH_BLUR");
     //use noise instead of pattern for sample dithering
-    fragModule._defines.emplace_back("USER_NOISE");
+    fragModule._defines.emplace_back("USE_NOISE");
     //use pentagon as bokeh shape?
     //fragModule._defines.emplace_back("USE_PENTAGON");
     fragModule._defines.emplace_back(Util::StringFormat("RING_COUNT {}", g_ringCount));
     fragModule._defines.emplace_back(Util::StringFormat("FIRST_RING_SAMPLES {}", g_samplesOnFirstRing));
-    fragModule._defines.emplace_back( Util::StringFormat( "FIRST_RING_SAMPLES {}", g_samplesOnFirstRing ) );
-
     fragModule._defines.emplace_back("size PushData0[0].xy");
     // autofocus point on screen (0.0,0.0 - left lower corner, 1.0,1.0 - upper right)
     fragModule._defines.emplace_back("focus PushData0[0].zw");

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -43,20 +43,22 @@
 #include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
 
 #include "vkDescriptors.h"
+#include "Platform/Video/Headers/ResolvedBindingCache.h"
 
 namespace Divide
 {
 
 class Pipeline;
-struct VKAPITestAccessor;
+namespace Attorney
+{
+    class VKAPITestAccess;
+}
+
 enum class ShaderResult : U8;
 
 class VK_API final : public RenderAPIWrapper
 {
-
-#if defined(ENABLE_UNIT_TESTING)
-    friend struct VKAPITestAccessor;
-#endif //ENABLE_UNIT_TESTING
+    friend class Attorney::VKAPITestAccess;
 
 public:
     static constexpr VkPipelineStageFlagBits2 ALL_SHADER_STAGES_NO_MESH = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
@@ -85,11 +87,11 @@ protected:
     [[nodiscard]] static VkCommandBuffer GetCurrentCommandBuffer() noexcept;
 
     void idle(bool fast) noexcept override;
+    [[nodiscard]] bool waitForGPUIdle() noexcept override;
+    [[nodiscard]] bool queueBufferReadback( BufferReadbackRequest&& request ) noexcept override;
 
     [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
-                  void onRenderThreadLoopStart() override;
-                  void onRenderThreadLoopEnd() override;
-                  void prepareFlushWindow( DisplayWindow& window ) override;
+    [[nodiscard]] bool prepareFlushWindow( DisplayWindow& window ) override;
                   void flushWindow( DisplayWindow& window ) override;
     [[nodiscard]] bool frameStarted() override;
     [[nodiscard]] bool frameEnded() override;
@@ -99,10 +101,13 @@ protected:
     void preFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer) override;
     void flushCommand( GFX::CommandBase* cmd ) noexcept override;
     void postFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer ) noexcept override;
+    [[nodiscard]] bool supportsIndirectDrawBatching( const GenericDrawCommand& draw ) const noexcept override;
+    void writePassTimestamp( U32 index ) override;
+    [[nodiscard]] U32 readPassTimestamps( std::span<F32> outMS, U64& frameNumberOut ) override;
     bool setViewportInternal(const Rect<I32>& newViewport) noexcept override;
     bool setScissorInternal(const Rect<I32>& newScissor) noexcept override;
 
-    void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) noexcept override;
+    void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID ) noexcept override;
     void initDescriptorSets() override;
 
     [[nodiscard]] RenderTarget_uptr newRenderTarget( const RenderTargetDescriptor& descriptor ) const override;
@@ -112,13 +117,14 @@ protected:
 private:
     void initStatePerWindow( VKPerWindowState& windowState );
     void destroyStatePerWindow( VKPerWindowState& windowState );
-    void recreateSwapChain( VKPerWindowState& windowState );
+    [[nodiscard]] bool recreateSwapChain( VKPerWindowState& windowState );
+    void pollBufferReadbacks( VkFence fence, I64 windowGUID = I64_LOWEST );
+    void discardBufferReadbacks( I64 windowGUID = I64_LOWEST );
 
     bool setViewportInternal( const Rect<I32>& newViewport, VkCommandBuffer cmdBuffer ) noexcept;
     bool setScissorInternal( const Rect<I32>& newScissor, VkCommandBuffer cmdBuffer ) noexcept;
     void destroyPipelineCache();
     void destroyPipeline( CompiledPipeline& pipeline, bool defer );
-    void flushPushConstantsLocks();
     VkDescriptorSetLayout createLayoutFromBindings( const DescriptorSetUsage usage, const ShaderProgram::BindingsPerSetArray& bindings, DynamicBindings& dynamicBindings );
 
     ShaderResult bindPipeline(const Pipeline& pipeline, VkCommandBuffer cmdBuffer);
@@ -146,7 +152,7 @@ public:
     static void PushDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
     static void PopDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer);
 
-    static void OnShaderReloaded( vkShaderProgram* program);
+    static void OnShaderReloaded( I64 programGUID );
 private:
     GFXDevice& _context;
     vkb::Instance _vkbInstance;
@@ -154,16 +160,27 @@ private:
     VmaAllocator _allocator{VK_NULL_HANDLE};
     VkPipelineCache _pipelineCache{ VK_NULL_HANDLE };
 
-    GFX::MemoryBarrierCommand _uniformsMemCommand{};
+    struct PendingBufferReadback
+    {
+        VkFence _fence{ VK_NULL_HANDLE };
+        BufferReadbackRequest _request;
+    };
+    vector<PendingBufferReadback> _pendingBufferReadbacks;
     DescriptorLayoutCache_uptr _descriptorLayoutCache{nullptr};
 
     hashMap<I64, VKPerWindowState> _perWindowState;
-    hashMap<size_t, CompiledPipeline> _compiledPipelines;
+    hashMap<VKPipelineCacheKey, CompiledPipeline, VKPipelineCacheKeyHash> _compiledPipelines;
+    vector<I64> _shaderReloadsToProcess;
 
     std::array<DynamicBindings, to_base( DescriptorSetUsage::COUNT )> _descriptorDynamicBindings;
     std::array<VkDescriptorSetLayout, to_base( DescriptorSetUsage::COUNT )> _descriptorSetLayouts;
+    struct StableImageBinding
+    {
+        VkDescriptorType _type{ VK_DESCRIPTOR_TYPE_MAX_ENUM };
+        VkDescriptorImageInfo _imageInfo{};
+    };
+    ResolvedBindingCache<StableImageBinding, 4096u> _stableImageBindingCache;
 
-    bool _uniformsNeedLock{ false };
     PushConstantsStruct _lastPushConstants{};
     bool _hasLastPushConstants{ false };
 
@@ -179,7 +196,8 @@ private:
     static VKImageBarrierQueue s_imageBarrierQueue;
     static VKSubmitSempahore s_submitSemaphores;
 
-    static eastl::stack<vkShaderProgram*> s_reloadedShaders;
+    static Mutex s_reloadedShadersLock;
+    static vector<I64> s_reloadedShaders;
 
 public:
     struct DepthFormatInformation

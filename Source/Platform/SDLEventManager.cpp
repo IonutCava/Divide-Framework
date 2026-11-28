@@ -12,7 +12,7 @@ namespace Divide {
     {
         LockGuard<SharedMutex> lock(s_eventListenerLock);
 
-        assert(!eastl::any_of(eastl::cbegin(s_eventListeners),
+        DIVIDE_ASSERT(!eastl::any_of(eastl::cbegin(s_eventListeners),
                               eastl::cend(s_eventListeners),
                               [&listener](SDLEventListener* l)
                               {
@@ -49,7 +49,7 @@ namespace Divide {
 
             for (SDLEventListener* listener : s_eventListeners)
             {
-                assert(listener != nullptr);
+                DIVIDE_ASSERT(listener != nullptr);
 
                 if (listener->onSDLEvent(evt))
                 {

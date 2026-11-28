@@ -1,9 +1,7 @@
 // Copyright (c) 2026 DIVIDE-Studio
 #include "unitTestCommon.h"
 
-#include "Platform/Headers/PlatformDefines.h"
 #include "Core/Time/Headers/ProfileTimer.h"
-#include "Core/Headers/ErrorCodes.h"
 #include "Utility/Headers/Localization.h"
 
 #if defined( ENGINE_TESTS )

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -34,7 +34,7 @@
 #define DVD_DIRECTIONAL_LIGHT_COMPONENT_H_
 
 #include "Rendering/Lighting/Headers/Light.h"
-#include "Rendering/RenderPass/Headers/RenderPassCuller.h"
+#include "Rendering/Lighting/Headers/ShadowCasterBounds.h"
 
 namespace Divide {
 
@@ -48,8 +48,7 @@ BEGIN_COMPONENT_EXT1(DirectionalLight, ComponentType::DIRECTIONAL_LIGHT, Light)
 
     void setDirection(const float3& direction);
 
-    // Quick hack to store previous frame's culling results
-    [[nodiscard]] vector<FeedBackContainer>& feedBackContainers() noexcept { return _feedbackContainers; }
+    [[nodiscard]] vector<ShadowCasterBounds>& cascadeBoundsFeedback() noexcept { return _cascadeBoundsFeedback; }
 
     PROPERTY_RW(U8, csmSplitCount, 3u);
     /// CSM extra back up distance for light position
@@ -67,8 +66,9 @@ protected:
      void OnData(const ECS::CustomEvent& data) override;
 
 protected:
-    //Used to adjust ortho-matrix's near/far planes per pass
-    vector<FeedBackContainer> _feedbackContainers;
+    friend class LightPool;
+    ShadowDirectionalSettingsState<Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT> _shadowDirectionalSettings;
+    vector<ShadowCasterBounds> _cascadeBoundsFeedback;
 END_COMPONENT(DirectionalLight);
 
 }  // namespace Divide

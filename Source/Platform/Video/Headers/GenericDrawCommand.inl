@@ -34,23 +34,28 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-    inline bool isEnabledOption(const GenericDrawCommand& cmd, const CmdRenderOptions option) noexcept {
+    inline bool isEnabledOption(const GenericDrawCommand& cmd, const CmdRenderOptions option) noexcept
+    {
         return cmd._renderOptions & to_base(option);
     }
 
-    inline void enableOption(GenericDrawCommand& cmd, const CmdRenderOptions option) noexcept {
+    inline void enableOption(GenericDrawCommand& cmd, const CmdRenderOptions option) noexcept
+    {
         cmd._renderOptions |= to_base(option);
     }
 
-    inline void disableOption(GenericDrawCommand& cmd, const CmdRenderOptions option) noexcept {
+    inline void disableOption(GenericDrawCommand& cmd, const CmdRenderOptions option) noexcept
+    {
         cmd._renderOptions &= ~to_base(option);
     }
 
-    inline void toggleOption(GenericDrawCommand& cmd, const CmdRenderOptions option) noexcept {
+    inline void toggleOption(GenericDrawCommand& cmd, const CmdRenderOptions option) noexcept
+    {
         setOption(cmd, option, !isEnabledOption(cmd, option));
     }
 
-    inline void setOption(GenericDrawCommand& cmd, const CmdRenderOptions option, const bool state) noexcept {
+    inline void setOption(GenericDrawCommand& cmd, const CmdRenderOptions option, const bool state) noexcept
+    {
         if (state) {
             enableOption(cmd, option);
         } else {
@@ -58,23 +63,29 @@ namespace Divide {
         }
     }
 
-    inline void enableOptions(GenericDrawCommand& cmd, const BaseType<CmdRenderOptions> optionsMask) noexcept {
-        cmd._renderOptions |= to_base(optionsMask);
+    inline void enableOptions(GenericDrawCommand& cmd, const BaseType<CmdRenderOptions> optionsMask) noexcept
+    {
+        cmd._renderOptions |= optionsMask;
     }
 
     inline void disableOptions(GenericDrawCommand& cmd, const BaseType<CmdRenderOptions> optionsMask) noexcept {
-        cmd._renderOptions &= ~to_base(optionsMask);
+        cmd._renderOptions &= ~optionsMask;
     }
 
-    inline void setOptions(GenericDrawCommand& cmd, const BaseType<CmdRenderOptions> optionsMask, const bool state) noexcept {
-        if (state) {
+    inline void setOptions(GenericDrawCommand& cmd, const BaseType<CmdRenderOptions> optionsMask, const bool state) noexcept
+    {
+        if (state)
+        {
             enableOptions(cmd, optionsMask);
-        } else {
+        }
+        else
+        {
             disableOptions(cmd, optionsMask);
         }
     }
 
-    inline void resetOptions(GenericDrawCommand& cmd) noexcept {
+    inline void resetOptions(GenericDrawCommand& cmd) noexcept
+    {
         cmd._renderOptions = to_base(CmdRenderOptions::RENDER_GEOMETRY);
     }
 }; //namespace Divide

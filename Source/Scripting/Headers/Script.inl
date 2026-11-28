@@ -59,7 +59,7 @@ void Script::registerFunction(const Func& function, const std::string& functionN
 
 template<typename T>
 T Script::eval() {
-    assert(!_scriptSource.empty());
+    DIVIDE_ASSERT(!_scriptSource.empty());
     try {
         return _script->eval<T>(_scriptSource);
     } catch (const chaiscript::exception::eval_error &e) {
@@ -71,7 +71,7 @@ T Script::eval() {
 
 template<>
 inline void Script::eval() {
-    assert(!_scriptSource.empty());
+    DIVIDE_ASSERT(!_scriptSource.empty());
     try {
         _script->eval(_scriptSource);
     } catch (const chaiscript::exception::eval_error &e) {

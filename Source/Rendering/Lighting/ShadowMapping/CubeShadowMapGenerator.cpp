@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/CubeShadowMapGenerator.h"
 
@@ -26,8 +26,9 @@ CubeShadowMapGenerator::CubeShadowMapGenerator(GFXDevice& context)
     g_shadowSettings = context.context().config().rendering.shadowMapping;
 }
 
-void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
+void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, [[maybe_unused]] const ShadowRefreshPlan& refreshPlan) {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+    STUBBED( "ToDo: Cache static omni-light shadow depth before dynamic caster composition." );
 
     const float3 lightPos = light.sgn()->get<TransformComponent>()->getWorldPosition();
 
@@ -38,6 +39,7 @@ void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera,
     RenderPassParams params = {};
     params._target = ShadowMap::getShadowMap(_type)._targetID;
     params._sourceNode = light.sgn();
+    params._pendingShaderOut = &pendingCastersOut;
     params._refreshLightData = false;
     params._stagePass = { RenderStage::SHADOW, RenderPassType::MAIN_PASS, lightIndex, static_cast<RenderStagePass::VariantType>(ShadowType::CUBEMAP) };
     params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
@@ -57,7 +59,7 @@ void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera,
     {
         light.setShadowLightPos(  i, lightPos);
         light.setShadowFloatValue(i, light.range() * 1.1f );
-        light.setShadowVPMatrix(  i, mat4<F32>::Multiply(viewProjMatrix[i], MAT4_BIAS_ZERO_ONE_Z ));
+        light.setShadowVPMatrix(  i, ShadowMap::BiasedViewProjection( viewProjMatrix[i] ));
     }
 
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);

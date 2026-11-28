@@ -18,7 +18,7 @@ void Planner::addToOpenList(Node&& n) {
 }
 
 Node& Planner::popAndClose() {
-    assert(!open_.empty());
+    DIVIDE_ASSERT(!open_.empty());
     closed_.push_back( MOV(open_.front()));
     open_.erase(std::begin(open_));
 

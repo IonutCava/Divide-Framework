@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/SceneGraph.h"
 
@@ -20,6 +20,7 @@
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
 #include "ECS/Components/Headers/RigidBodyComponent.h"
+#include "ECS/Components/Headers/RenderingComponent.h"
 
 #include <ECS/EntityManager.h>
 
@@ -31,6 +32,48 @@ namespace Divide
         constexpr U16 BYTE_BUFFER_VERSION = 1u;
         constexpr U32 g_cacheMarkerByteValue[2]{ 0xDEADBEEF, 0xBADDCAFE };
         constexpr U32 g_nodesPerPartition = 32u;
+        thread_local const SceneGraph* g_processingEventGraph = nullptr;
+
+        [[nodiscard]] bool IsShadowCaster( const SceneGraphNode& node, const bool previouslyCastShadows = false ) noexcept
+        {
+            const RenderingComponent* rendering = node.get<RenderingComponent>();
+            return rendering != nullptr &&
+                   Divide::IsShadowCaster(node.getNode().type(), previouslyCastShadows ||
+                       rendering->renderOptionEnabled(RenderingComponent::RenderOptions::CAST_SHADOWS));
+        }
+
+        // Everything that makes a node static geometry except its current usage context.
+        [[nodiscard]] bool IsStaticGeometryCandidate( const SceneGraphNode& node ) noexcept
+        {
+            const SceneNodeType type = node.getNode().type();
+            if ( node.hasFlag( SceneGraphNode::Flags::VEGETATION_TREE ) ||
+                 !(IsPrimitive( type ) || type == SceneNodeType::TYPE_SUBMESH ||
+                   type == SceneNodeType::TYPE_TERRAIN || type == SceneNodeType::TYPE_VEGETATION) )
+            {
+                return false;
+            }
+
+            for ( const SceneGraphNode* parent = node.parent(); parent != nullptr; parent = parent->parent() )
+            {
+                if ( parent->getNode().type() == SceneNodeType::TYPE_SKY )
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        [[nodiscard]] bool IsStaticGeometry( const SceneGraphNode& node ) noexcept
+        {
+            return node.usageContext() == NodeUsageContext::NODE_STATIC && IsStaticGeometryCandidate( node );
+        }
+
+        [[nodiscard]] bool ValidBounds( const BoundingBox& bounds ) noexcept
+        {
+            return std::isfinite( bounds._min.x ) && std::isfinite( bounds._min.y ) && std::isfinite( bounds._min.z ) &&
+                   std::isfinite( bounds._max.x ) && std::isfinite( bounds._max.y ) && std::isfinite( bounds._max.z ) &&
+                   bounds._min.x <= bounds._max.x && bounds._min.y <= bounds._max.y && bounds._min.z <= bounds._max.z;
+        }
     };
 
     BoundingSphere SceneGraph::GetBounds( const SceneGraphNode* sgn )
@@ -75,6 +118,9 @@ namespace Divide
     void SceneGraph::load()
     {
         DIVIDE_ASSERT( _root == nullptr );
+        _hasStaticGeometryBounds = false;
+        _computedStaticGeometryRevision = 0u;
+        _staticGeometryRevision.fetch_add( 1u, std::memory_order_relaxed );
 
         ResourceDescriptor<TransformNode> nodeDescriptor{"ROOT"};
         
@@ -92,23 +138,156 @@ namespace Divide
     {
         Console::d_printfn( LOCALE_STR( "DELETE_SCENEGRAPH" ) );
 
+        _unloading = true;
         destroySceneGraphNode( _root );
+        _unloading = false;
         DIVIDE_ASSERT( _root == nullptr );
 
+        _pendingDeletion.clear();
+        _hasStaticGeometryBounds = false;
     }
 
-    void SceneGraph::addToDeleteQueue( SceneGraphNode* node, const size_t childIdx )
+    void SceneGraph::invalidateStaticGeometryBounds() noexcept
     {
-        LockGuard<SharedMutex> w_lock( _pendingDeletionLock );
-        vector<size_t>& list = _pendingDeletion[node];
-        if ( eastl::find( cbegin( list ), cend( list ), childIdx ) == cend( list ) )
+        _staticGeometryRevision.fetch_add( 1u, std::memory_order_relaxed );
+    }
+
+    void SceneGraph::invalidateWorldAO( const SceneGraphNode& node ) noexcept
+    {
+        const RenderingComponent* rendering = node.get<RenderingComponent>();
+        if (rendering != nullptr && rendering->worldAOContributor())
         {
-            list.push_back( childIdx );
+            invalidateWorldAO();
         }
+    }
+
+    void SceneGraph::invalidateStaticGeometryBounds( const SceneGraphNode& node ) noexcept
+    {
+        if ( IsStaticGeometry( node ) )
+        {
+            invalidateStaticGeometryBounds();
+        }
+    }
+
+    void SceneGraph::invalidateStaticGeometryBounds( const SceneGraphNode& node, const bool previouslyStatic ) noexcept
+    {
+        if ( (previouslyStatic || node.usageContext() == NodeUsageContext::NODE_STATIC) && IsStaticGeometryCandidate( node ) )
+        {
+            invalidateStaticGeometryBounds();
+        }
+    }
+
+    void SceneGraph::invalidateShadowBounds( const SceneGraphNode& node, const BoundingSphere& previous,
+                                             const bool previousStatic, const bool previouslyCastShadows )
+    {
+        invalidateWorldAO(node);
+        const BoundsComponent* bounds = node.get<BoundsComponent>();
+        if ( bounds != nullptr && IsShadowCaster(node, previouslyCastShadows) )
+        {
+            LightPool* pool = Attorney::SceneGraph::getLightPool( &parentScene() );
+            pool->onVolumeChanged( previous, previousStatic, bounds->getBoundingSphere(),
+                                   node.usageContext() == NodeUsageContext::NODE_STATIC );
+        }
+    }
+
+    void SceneGraph::updateStaticGeometryBounds()
+    {
+        const U64 revision = _staticGeometryRevision.load( std::memory_order_relaxed );
+        if ( revision == _computedStaticGeometryRevision ) [[likely]]
+        {
+            return;
+        }
+
+        BoundingBox bounds{};
+        bool hasBounds = false;
+        constexpr SceneNodeType types[]
+        {
+            SceneNodeType::TYPE_SPHERE_3D,
+            SceneNodeType::TYPE_BOX_3D,
+            SceneNodeType::TYPE_QUAD_3D,
+            SceneNodeType::TYPE_SUBMESH,
+            SceneNodeType::TYPE_TERRAIN,
+            SceneNodeType::TYPE_VEGETATION
+        };
+        SharedLock<SharedMutex> r_lock( _nodesByTypeLock );
+        for ( const SceneNodeType type : types )
+        {
+            for ( const SceneGraphNode* node : _nodesByType[to_base( type )] )
+            {
+                if ( !IsStaticGeometry( *node ) || node->getNode().getState() != ResourceState::RES_LOADED )
+                {
+                    continue;
+                }
+
+                const SceneNode& source = node->getNode();
+                const BoundingBox localBounds = source.getBounds();
+                BoundingBox worldBounds = localBounds;
+                if ( !ValidBounds( worldBounds ) ) [[unlikely]]
+                {
+                    Console::errorfn( "Invalid static geometry bounds for scene node {}", node->name().c_str() );
+                    continue;
+                }
+                if ( !source.boundsInWorldSpace() )
+                {
+                    const TransformComponent* transform = node->get<TransformComponent>();
+                    if ( transform == nullptr ) [[unlikely]]
+                    {
+                        Console::errorfn( "Static scene node {} has no transform for its bounds", node->name().c_str() );
+                        continue;
+                    }
+                    worldBounds.transform( localBounds, transform->getWorldMatrix() );
+                }
+                if ( !ValidBounds( worldBounds ) ) [[unlikely]]
+                {
+                    Console::errorfn( "Invalid transformed static geometry bounds for scene node {}", node->name().c_str() );
+                    continue;
+                }
+
+                if ( hasBounds )
+                {
+                    bounds.add( worldBounds );
+                }
+                else
+                {
+                    bounds = worldBounds;
+                    hasBounds = true;
+                }
+            }
+        }
+
+        _staticGeometryBounds = bounds;
+        _hasStaticGeometryBounds = hasBounds;
+        _computedStaticGeometryRevision = revision;
+        if ( hasBounds )
+        {
+            Console::d_printfn( "Scene {} static geometry height range: [{}, {}]",
+                                parentScene().resourceName().c_str(), bounds._min.y, bounds._max.y );
+        }
+        else
+        {
+            Console::warnfn( "Scene {} has no loaded static geometry bounds; world AO will use the world origin",
+                             parentScene().resourceName().c_str() );
+        }
+    }
+
+    bool SceneGraph::staticGeometryBounds( BoundingBox& boundsOut ) const noexcept
+    {
+        if ( !_hasStaticGeometryBounds )
+        {
+            return false;
+        }
+        boundsOut = _staticGeometryBounds;
+        return true;
+    }
+
+    void SceneGraph::addToDeleteQueue( const I64 guid )
+    {
+        _pendingDeletion.push( guid );
     }
 
     void SceneGraph::onNodeUpdated( const SceneGraphNode& node )
     {
+        invalidateWorldAO(node);
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         //ToDo: Maybe add particles too? -Ionut
@@ -125,13 +304,17 @@ namespace Divide
 
     void SceneGraph::onNodeSpatialChange( const SceneGraphNode& node )
     {
+        invalidateWorldAO(node);
         BoundsComponent* bComp = node.get<BoundsComponent>();
         if ( bComp != nullptr )
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-            LightPool* pool = Attorney::SceneGraph::getLightPool( &parentScene() );
-            pool->onVolumeMoved( bComp->getBoundingSphere(), node.usageContext() == NodeUsageContext::NODE_STATIC );
+            if ( IsShadowCaster(node) )
+            {
+                LightPool* pool = Attorney::SceneGraph::getLightPool( &parentScene() );
+                pool->onVolumeMoved( bComp->getBoundingSphere(), node.usageContext() == NodeUsageContext::NODE_STATIC );
+            }
 
             if ( bComp->collisionsEnabled() )
             {
@@ -145,17 +328,16 @@ namespace Divide
     void SceneGraph::onNodeMoved( const SceneGraphNode& node )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+        invalidateStaticGeometryBounds( node );
         onNodeUpdated( node );
+        Attorney::SceneGraph::onNodeMoved( &parentScene(), node );
     }
 
     void SceneGraph::onNodeDestroy( SceneGraphNode* oldNode )
     {
+        invalidateWorldAO(*oldNode);
         const I64 guid = oldNode->getGUID();
-
-        if ( guid == _root->getGUID() )
-        {
-            return;
-        }
+        const bool isRoot = oldNode == _root;
 
         {
             LockGuard<SharedMutex> w_lock( _nodesByTypeLock );
@@ -164,14 +346,34 @@ namespace Divide
                       {
                           return node && node->getGUID() == guid;
                       } );
+            _nodesByGUID.erase( guid );
+        }
+        if ( !isRoot )
+        {
+            invalidateStaticGeometryBounds( *oldNode );
+            if ( !_unloading )
+            {
+                const BoundsComponent* bounds = oldNode->get<BoundsComponent>();
+                if ( bounds != nullptr && IsShadowCaster(*oldNode) )
+                {
+                    LightPool* pool = Attorney::SceneGraph::getLightPool( &parentScene() );
+                    pool->onVolumeMoved( bounds->getBoundingSphere(),
+                                         oldNode->usageContext() == NodeUsageContext::NODE_STATIC );
+                }
+            }
         }
         {
+            LockGuard<RecursiveMutex> lifetimeLock( _nodeEventLifetimeLock );
             LockGuard<Mutex> w_lock( _nodeEventLock );
             erase_if( _nodeEventQueue,
-                      [guid]( SceneGraphNode* node )-> bool
+                      [oldNode]( const SceneGraphNode* node )-> bool
                       {
-                          return node && node->getGUID() == guid;
+                          return node == oldNode;
                       } );
+        }
+        if ( isRoot )
+        {
+            return;
         }
         {
             LockGuard<Mutex> w_lock( _nodeParentChangeLock );
@@ -187,12 +389,23 @@ namespace Divide
         _nodeListChanged = true;
     }
 
-    void SceneGraph::onNodeAdd( SceneGraphNode* newNode )
+    void SceneGraph::onNodeAdd( SceneGraphNode* newNode, const bool reparented )
     {
+        invalidateWorldAO(*newNode);
+        if ( reparented )
+        {
+            invalidateWorldAO();
+            invalidateStaticGeometryBounds();
+        }
+        else
         {
             LockGuard<SharedMutex> w_lock( _nodesByTypeLock );
             _nodesByType[to_base( newNode->getNode().type() )].push_back( newNode );
+            _nodesByGUID.emplace( newNode->getGUID(), newNode );
+            invalidateStaticGeometryBounds( *newNode );
         }
+
+        Attorney::SceneGraph::onNodeAdd( &parentScene(), newNode, reparented );
         _nodeListChanged = true;
     }
 
@@ -263,18 +476,21 @@ namespace Divide
             _nodeParentChangeQueue.clear();
         }
         {
-            LockGuard<SharedMutex> lock( _pendingDeletionLock );
-            if ( !_pendingDeletion.empty() )
-            {
-                for ( auto entry : _pendingDeletion )
+            LockGuard<RecursiveMutex> lifetimeLock( _nodeEventLifetimeLock );
+            _pendingDeletion.drain(
+                [this]( const I64 guid ) -> SceneGraphNode*
                 {
-                    if ( entry.first != nullptr )
+                    SharedLock<SharedMutex> r_lock( _nodesByTypeLock );
+                    const auto it = _nodesByGUID.find( guid );
+                    return it != _nodesByGUID.end() ? it->second : nullptr;
+                },
+                []( SceneGraphNode& node )
+                {
+                    if ( SceneGraphNode* parent = node.parent() )
                     {
-                        Attorney::SceneGraphNodeSceneGraph::processDeleteQueue( entry.first, entry.second );
+                        Attorney::SceneGraphNodeSceneGraph::destroyChild( parent, node.getGUID() );
                     }
-                }
-                _pendingDeletion.clear();
-            }
+                } );
         }
         return true;
     }
@@ -321,25 +537,40 @@ namespace Divide
         }
         {
             PROFILE_SCOPE( "Process event queue", Profiler::Category::Scene );
-            LockGuard<Mutex> w_lock( _nodeEventLock );
+            LockGuard<RecursiveMutex> lifetimeLock( _nodeEventLifetimeLock );
+            {
+                LockGuard<Mutex> w_lock( _nodeEventLock );
+                _processingNodeEvents.swap( _nodeEventQueue );
+            }
+            _processingNodeEventsActive = true;
+            SCOPE_EXIT
+            {
+                _processingNodeEventsActive = false;
+            };
             Parallel_For
             ( 
                 threadPool,
                 ParallelForDescriptor
                 {
-                    ._iterCount = to_U32(_nodeEventQueue.size()),
+                    ._iterCount = to_U32(_processingNodeEvents.size()),
                     ._partitionSize = g_nodesPerPartition
                 }, 
                 [this]( const Task* /*parentTask*/, const U32 start, const U32 end )
                 {
+                    const SceneGraph* previousGraph = g_processingEventGraph;
+                    g_processingEventGraph = this;
+                    SCOPE_EXIT
+                    {
+                        g_processingEventGraph = previousGraph;
+                    };
                     for ( U32 i = start; i < end; ++i )
                     {
-                        Attorney::SceneGraphNodeSceneGraph::processEvents( _nodeEventQueue[i] );
+                        Attorney::SceneGraphNodeSceneGraph::processEvents( _processingNodeEvents[i] );
                     }
                 }
             );
 
-            _nodeEventQueue.clear();
+            _processingNodeEvents.clear();
         }
 
         {
@@ -442,6 +673,19 @@ namespace Divide
     {
         if ( node )
         {
+            if ( g_processingEventGraph == this )
+            {
+                Console::errorfn( "Scene graph nodes cannot be destroyed from an event callback; queue removal instead." );
+                return;
+            }
+
+            LockGuard<RecursiveMutex> lifetimeLock( _nodeEventLifetimeLock );
+            if ( _processingNodeEventsActive )
+            {
+                Console::errorfn( "Scene graph nodes cannot be destroyed during event dispatch; queue removal instead." );
+                return;
+            }
+
             if ( inPlace )
             {
                 GetEntityManager()->DestroyAndRemoveEntity( node->GetEntityID() );
@@ -637,29 +881,19 @@ namespace Divide
         }
     };
 
-    void SceneGraph::saveToXML( const ResourcePath& assetsFile, DELEGATE<void, std::string_view> msgCallback ) const
+    void SceneGraph::saveToXML( const ResourcePath& assetsFile, XML::SaveSnapshot& snapshotOut ) const
     {
         const ResourcePath sceneLocation = Scene::GetSceneFullPath(parentScene());
 
         {
-            boost::property_tree::ptree pt;
-            pt.put( "version", g_sceneGraphVersion );
-            pt.add_child( "entities.node", dumpSGNtoAssets( _root ) );
-
-            const FileError backupReturnCode = copyFile( sceneLocation, assetsFile.string(), sceneLocation, Util::StringFormat("{}.bak", assetsFile.string()), true );
-            if ( backupReturnCode != FileError::NONE &&
-                 backupReturnCode != FileError::FILE_NOT_FOUND &&
-                 backupReturnCode != FileError::FILE_EMPTY )
-            {
-                if constexpr( !Config::Build::IS_SHIPPING_BUILD )
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
-            }
-            else
-            {
-                XML::writeXML(sceneLocation / assetsFile, pt );
-            }
+            XML::FileSnapshot& file = snapshotOut._files.emplace_back();
+            file._folder = sceneLocation;
+            file._fileName = assetsFile.string();
+            file._backupSource = file._fileName;
+            file._backup = XML::FileSnapshot::Backup::IF_PRESENT;
+            file._progressMessage = "Saving scene graph data ...";
+            file._tree.put( "version", g_sceneGraphVersion );
+            file._tree.add_child( "entities.node", dumpSGNtoAssets( _root ) );
         }
 
         const SceneGraphNode::ChildContainer& children = _root->getChildren();
@@ -667,7 +901,7 @@ namespace Divide
         const U32 childCount = children._count;
         for ( U32 i = 0u; i < childCount; ++i )
         {
-            children._data[i]->saveToXML( sceneLocation, msgCallback );
+            children._data[i]->saveToXML( sceneLocation, snapshotOut );
         }
     }
 
@@ -736,14 +970,15 @@ namespace Divide
         // lambdas and capturing one.
         readNode( node_pt, rootNode, readNode );
         // This may not be needed;
-        assert( rootNode.typeHash == _ID( "TRANSFORM" ) );
+        DIVIDE_ASSERT( rootNode.typeHash == _ID( "TRANSFORM" ) );
         Attorney::SceneGraph::addSceneGraphToLoad( &parentScene(), MOV( rootNode ) );
     }
 
     bool SceneGraph::saveNodeToXML( const SceneGraphNode* node ) const
     {
-        node->saveToXML( Scene::GetSceneFullPath( parentScene() ) );
-        return true;
+        XML::SaveSnapshot snapshot{};
+        node->saveToXML( Scene::GetSceneFullPath( parentScene() ), snapshot );
+        return XML::writeSnapshot( snapshot, {} );
     }
 
     bool SceneGraph::loadNodeFromXML( [[maybe_unused]] const ResourcePath& assetsFile, SceneGraphNode* node ) const

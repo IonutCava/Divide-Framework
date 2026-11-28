@@ -1,0 +1,181 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
+#pragma once
+
+#include "Core/Math/BoundingVolumes/Headers/BoundingBox.h"
+#include "Core/Math/BoundingVolumes/Headers/OBB.h"
+
+#include <atomic>
+
+namespace Divide
+{
+    template<typename Node, typename GetParent, typename Mark>
+    void MarkAncestorBoundsChanged(Node* node, const GetParent& getParent, const Mark& mark)
+    {
+        while (node != nullptr)
+        {
+            mark(*node);
+            node = getParent(*node);
+        }
+    }
+
+    template<typename Sphere>
+    [[nodiscard]] bool BoundingSphereChanged(const Sphere& previous, const Sphere& current) noexcept
+    {
+        const auto& a = previous._sphere;
+        const auto& b = current._sphere;
+        return a.x != b.x || a.y != b.y || a.z != b.z || a.w != b.w;
+    }
+
+    [[nodiscard]] inline OBB CalculateBoundsOBB(const BoundingBox& worldBounds, const BoundingBox& referenceBounds,
+                                                 const bool containsWorldSpaceBounds, const mat4<F32>& worldMatrix)
+    {
+        OBB result{};
+        if (containsWorldSpaceBounds)
+        {
+            result.fromBoundingBox(worldBounds);
+        }
+        else
+        {
+            result.fromBoundingBox(referenceBounds, worldMatrix);
+        }
+        return result;
+    }
+
+    // Recomputes lazily, never eagerly: building an OBB asserts on sheared world matrices that most nodes never need an OBB for.
+    class BoundsOBBCache
+    {
+    public:
+        void invalidate() noexcept
+        {
+            _dirty.store(true, std::memory_order_release);
+        }
+
+        template<typename Compute>
+        [[nodiscard]] OBB get(const Compute& compute)
+        {
+            LockGuard<Mutex> lock(_lock);
+            if (_dirty.exchange(false, std::memory_order_acq_rel))
+            {
+                _obb = compute();
+            }
+            return _obb;
+        }
+
+    private:
+        Mutex _lock;
+        std::atomic_bool _dirty{true};
+        OBB _obb{};
+    };
+
+    class BoundsChangeCounter
+    {
+    public:
+        void markChanged() noexcept
+        {
+            _revision.fetch_add(1u, std::memory_order_release);
+        }
+
+        [[nodiscard]] U64 revision() const noexcept
+        {
+            return _revision.load(std::memory_order_acquire);
+        }
+
+    private:
+        std::atomic<U64> _revision{0u};
+    };
+
+    class BoundsChangeTracker
+    {
+    public:
+        [[nodiscard]] bool changed(const U64 revision) const noexcept
+        {
+            return _applied != revision;
+        }
+
+        void capture(const U64 revision) noexcept
+        {
+            _captured = revision;
+        }
+
+        [[nodiscard]] bool capturedChanged() const noexcept
+        {
+            return changed(_captured);
+        }
+
+        void complete() noexcept
+        {
+            _applied = _captured;
+        }
+
+    private:
+        U64 _applied = U64_MAX;
+        U64 _captured = U64_MAX;
+    };
+
+    class BoundsUpdateState
+    {
+    public:
+        void markDirty(const U32 mask) noexcept
+        {
+            _dirtyMask.fetch_or(mask);
+        }
+
+        [[nodiscard]] bool dirty() const noexcept
+        {
+            return _dirtyMask.load() != 0u;
+        }
+
+        [[nodiscard]] bool consumeDirty() noexcept
+        {
+            _recomputed = _dirtyMask.exchange(0u) != 0u;
+            return _recomputed;
+        }
+
+        [[nodiscard]] bool recomputed() const noexcept { return _recomputed; }
+
+        void update(BoundingBox& bounds, const BoundingBox& reference,
+                    const bool worldSpace, const mat4<F32>& worldMatrix) const noexcept
+        {
+            if (worldSpace)
+            {
+                bounds.set(reference);
+            }
+            else
+            {
+                bounds.transform(reference, worldMatrix);
+            }
+        }
+
+    private:
+        std::atomic_uint _dirtyMask{0u};
+        bool _recomputed = false;
+    };
+
+    /// A world-space box that replaces a node's own bounds, for geometry placed per instance rather than by the node's
+    /// transform. The owner sets it outside the bounds update; the bounds system applies it at its next update.
+    class WorldBoundsOverride
+    {
+    public:
+        void set(const BoundingBox& worldBounds) noexcept
+        {
+            _bounds.set(worldBounds);
+            ++_revision;
+        }
+
+        [[nodiscard]] bool pending() const noexcept { return _revision != _appliedRevision; }
+        [[nodiscard]] bool active() const noexcept { return _appliedRevision != 0u; }
+
+        /// Applies any pending box. Once one has been applied, it replaces the node's own bounds.
+        [[nodiscard]] const BoundingBox& apply(const BoundingBox& nodeBounds) noexcept
+        {
+            _appliedRevision = _revision;
+            return active() ? _bounds : nodeBounds;
+        }
+
+    private:
+        BoundingBox _bounds{};
+        U32 _revision = 0u;
+        U32 _appliedRevision = 0u;
+    };
+}

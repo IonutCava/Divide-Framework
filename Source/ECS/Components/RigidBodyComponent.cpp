@@ -7,6 +7,8 @@
 #include "Graphs/Headers/SceneGraphNode.h"
 
 namespace Divide {
+    DVD_INSTANTIATE_SGN_COMPONENT_NODE_OPS(RigidBodyComponent);
+
     RigidBodyComponent::RigidBodyComponent(SceneGraphNode* parentSGN, PlatformContext& context)
         : Parent(parentSGN, context),
           _physicsCollisionGroup(PhysicsGroup::GROUP_STATIC)
@@ -35,7 +37,7 @@ namespace Divide {
         //handle collision
         if (_collisionCbk) {
             if (filterCollision(collider)) {
-                assert(parentSGN()->getGUID() != collider.parentSGN()->getGUID());
+                DIVIDE_ASSERT(parentSGN()->getGUID() != collider.parentSGN()->getGUID());
                 _collisionCbk(collider);
             }
         }

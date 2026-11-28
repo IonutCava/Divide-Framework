@@ -7,17 +7,13 @@
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_sdlrenderer3.h"
 
-#include <regex>
-#include <stack>
 
 #include <exception>
 #include <optional>
-#include <cassert>
 #include <memory>
 #include <string.h>
 #include <thread>
 
-#include <filesystem>
 
 #include <SDL3_image/SDL_image.h>
 #include <SDL3/SDL_surface.h>
@@ -25,6 +21,8 @@
 #include <fmt/core.h>
 
 #include <boost/property_tree/xml_parser.hpp>
+
+#include "Utility/Headers/XMLParser.h"
 
 #include <ImGuiMisc/imguistyleserializer/imguistyleserializer.h>
 #include <imgui_stdlib.h>
@@ -196,44 +194,6 @@ static void SetTooltip( const char* text )
     }
 }
 
-[[nodiscard]] static std::optional<std::string> find_directory( const std::filesystem::path& search_path, const std::regex& regex )
-{
-    const std::filesystem::directory_iterator end;
-    try
-    {
-        for ( std::filesystem::directory_iterator iter{ search_path }; iter != end; iter++ )
-        {
-            if ( std::filesystem::is_directory( *iter ) )
-            {
-                if ( std::regex_match( iter->path().filename().string(), regex ) )
-                {
-                    return (iter->path().string());
-                }
-            }
-        }
-    }
-    catch ( std::exception& )
-    {
-        g_globalMessage = fmt::format( ERRORS[1], search_path.string() );
-    }
-
-    return std::nullopt;
-}
-
-static Image* getImage( const std::string& imagePath, const std::string& imageName, const ImageDB& imageDB )
-{
-    const std::filesystem::path targetPath = std::filesystem::path( imagePath ) / imageName;
-    assert( std::filesystem::is_regular_file( targetPath ) );
-    for ( const Image_ptr& image : imageDB )
-    {
-        if ( image->_path == targetPath )
-        {
-            return image.get();
-        }
-    }
-    return nullptr;
-}
-
 static std::weak_ptr<Image> loadImage( const std::string& imagePath, const std::string& imageName, SDL_Renderer* renderer,ImageDB& imageDB)
 {
     const std::filesystem::path targetPath = std::filesystem::path( imagePath ) / imageName;
@@ -302,13 +262,18 @@ static void populateProjects( ProjectDB& projects, SDL_Renderer* renderer, Image
 {
     projects.resize(0);
 
+    struct ProjectVisualConfig
+    {
+        std::string logo{};
+    } visualConfig;
+
     try
     {
-        boost::property_tree::iptree XmlTree;
-
         const std::filesystem::directory_iterator end;
         for ( std::filesystem::directory_iterator iter{ g_projectPath / PROJECTS_FOLDER_NAME }; iter != end; ++iter )
         {
+            visualConfig.logo = {};
+
             if ( !std::filesystem::is_directory( *iter ) ||
                  iter->path().filename().string().compare( Divide::Config::DELETED_FOLDER_NAME ) == 0 )
             {
@@ -323,16 +288,16 @@ static void populateProjects( ProjectDB& projects, SDL_Renderer* renderer, Image
 
             if ( std::filesystem::is_regular_file( iter->path() / PROJECT_CONFIG_FILE_NAME ) )
             {
-                XmlTree.clear();
-                boost::property_tree::read_xml( (iter->path() / PROJECT_CONFIG_FILE_NAME).string(), XmlTree, boost::property_tree::xml_parser::trim_whitespace);
-                if (!XmlTree.empty() )
+                Divide::XML::detail::SerializerContext SerializerContext;
+                SerializerContext._rootNodePath = "config.";
+
+                boost::property_tree::read_xml( (iter->path() / PROJECT_CONFIG_FILE_NAME).string(), SerializerContext.XmlTree, boost::property_tree::xml_parser::trim_whitespace);
+
+                GET_TEMP_PARAM(logo, visualConfig.logo);
+                if (!visualConfig.logo.empty())
                 {
-                    const std::string logoName = XmlTree.get<std::string>( CONFIG_LOGO_TAG, "" );
-                    if (!logoName.empty())
-                    {
-                        entry._logoName = logoName;
-                        entry._logoPath = iter->path().string();
-                    }
+                    entry._logoName = visualConfig.logo;
+                    entry._logoPath = iter->path().string();
                 }
             }
             entry._logo = loadImage( entry._logoPath, entry._logoName, renderer, imageDB );

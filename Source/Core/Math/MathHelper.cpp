@@ -213,7 +213,7 @@ bool DecomposeMatrix(const mat4<F32>& transform,
 
 bool IntersectCircles(const Circle& cA, const Circle& cB, float2* pointsOut) noexcept
 {
-    assert(pointsOut != nullptr);
+    DIVIDE_ASSERT(pointsOut != nullptr);
 
     const F32 x0 = cA.center[0];
     const F32 y0 = cA.center[1];
@@ -483,10 +483,10 @@ U32 PACK_UNORM4x8(const U8 x, const U8 y, const U8 z, const U8 w)
 
 U32 PACK_UNORM4x8(const F32_NORM x, const F32_NORM y, const F32_NORM z, const F32_NORM w)
 {
-    assert(IS_IN_RANGE_INCLUSIVE(x, 0.f, 1.f));
-    assert(IS_IN_RANGE_INCLUSIVE(y, 0.f, 1.f));
-    assert(IS_IN_RANGE_INCLUSIVE(z, 0.f, 1.f));
-    assert(IS_IN_RANGE_INCLUSIVE(w, 0.f, 1.f));
+    DIVIDE_ASSERT(IS_IN_RANGE_INCLUSIVE(x, 0.f, 1.f));
+    DIVIDE_ASSERT(IS_IN_RANGE_INCLUSIVE(y, 0.f, 1.f));
+    DIVIDE_ASSERT(IS_IN_RANGE_INCLUSIVE(z, 0.f, 1.f));
+    DIVIDE_ASSERT(IS_IN_RANGE_INCLUSIVE(w, 0.f, 1.f));
 
     return to_U32(glm::packUnorm4x8({ x, y, z, w }));
 }
@@ -504,10 +504,10 @@ void UNPACK_UNORM4x8(const U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z, F32_N
 {
     const glm::vec4 ret = glm::unpackUnorm4x8(src);
     x = ret.x; y = ret.y; z = ret.z; w = ret.w;
-    assert(IS_IN_RANGE_INCLUSIVE(x, 0.f, 1.f));
-    assert(IS_IN_RANGE_INCLUSIVE(y, 0.f, 1.f));
-    assert(IS_IN_RANGE_INCLUSIVE(z, 0.f, 1.f));
-    assert(IS_IN_RANGE_INCLUSIVE(w, 0.f, 1.f));
+    DIVIDE_ASSERT(IS_IN_RANGE_INCLUSIVE(x, 0.f, 1.f));
+    DIVIDE_ASSERT(IS_IN_RANGE_INCLUSIVE(y, 0.f, 1.f));
+    DIVIDE_ASSERT(IS_IN_RANGE_INCLUSIVE(z, 0.f, 1.f));
+    DIVIDE_ASSERT(IS_IN_RANGE_INCLUSIVE(w, 0.f, 1.f));
 }
 
 vec4<U8> UNPACK_UNORM4x8_U8(const U32 src)
@@ -536,9 +536,9 @@ void UNPACK_11_11_10(const U32 src, vec3<F32_NORM>& res)
 
 U32 PACK_11_11_10(const F32_NORM x, const F32_NORM y, const F32_NORM z)
 {
-    assert(x >= 0.f && x <= 1.0f);
-    assert(y >= 0.f && y <= 1.0f);
-    assert(z >= 0.f && z <= 1.0f);
+    DIVIDE_ASSERT(x >= 0.f && x <= 1.0f);
+    DIVIDE_ASSERT(y >= 0.f && y <= 1.0f);
+    DIVIDE_ASSERT(z >= 0.f && z <= 1.0f);
     
     return glm::packF2x11_1x10(glm::vec3(x, y, z));
 }

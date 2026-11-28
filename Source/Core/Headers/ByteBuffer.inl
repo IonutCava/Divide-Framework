@@ -75,7 +75,7 @@ void ByteBuffer::readSkipToMarker(const T( &pattern )[N])
 
         if (bufferSize() >= sizeof(T))
         {
-            assert(tempMarker == pattern[0]);
+            DIVIDE_ASSERT(tempMarker == pattern[0]);
             found = true;
             for (size_t i = 1u; i < N; ++i)
             {
@@ -590,7 +590,7 @@ template <typename T, size_t N>
 inline ByteBuffer &operator>>(ByteBuffer &b, std::array<T, N>& a) {
     U64 size;
     b >> size;
-    assert(size == static_cast<U64>(N));
+    DIVIDE_ASSERT(size == static_cast<U64>(N));
     b.read((Byte*)a.data(), N * sizeof(T));
 
     return b;
@@ -610,7 +610,7 @@ template <size_t N>
 inline ByteBuffer &operator>>(ByteBuffer &b, std::array<string, N>& a) {
     U64 size;
     b >> size;
-    assert(size == static_cast<U64>(N));
+    DIVIDE_ASSERT(size == static_cast<U64>(N));
     for (string& str : a) {
         b >> str;
     }
@@ -632,7 +632,7 @@ template <size_t N>
 inline ByteBuffer &operator>>(ByteBuffer &b, std::array<std::string, N>& a) {
     U64 size;
     b >> size;
-    assert(size == static_cast<U64>(N));
+    DIVIDE_ASSERT(size == static_cast<U64>(N));
     for (std::string& str : a) {
         b >> str;
     }

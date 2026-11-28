@@ -1,4 +1,5 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
+// Copyright (c) 2009-2026 Ionut Cava
 
 #include "Headers/vkBufferImpl.h"
 #include "Utility/Headers/Localization.h"
@@ -13,7 +14,7 @@ namespace Divide
         std::atomic_uint g_bufferCount{ 0u };
     }
 
-    VertexInputDescription getVertexDescription( const AttributeMap& vertexFormat )
+    VertexInputDescription getVertexDescription( const AttributeMap& vertexFormat, const AttributeFlags& shaderInputs )
     {
         VertexInputDescription description;
 
@@ -30,7 +31,7 @@ namespace Divide
         for ( U8 idx = 0u; idx < to_base( AttribLocation::COUNT ); ++idx )
         {
             const AttributeDescriptor& descriptor = vertexFormat._attributes[idx];
-            if ( descriptor._dataType == GFXDataFormat::COUNT )
+            if ( !shaderInputs[idx] || descriptor._dataType == GFXDataFormat::COUNT )
             {
                 continue;
             }
@@ -121,7 +122,7 @@ namespace Divide
             case BufferUsageType::UNBOUND_BUFFER:
             {
                 usageFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-                dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+                dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
                 dstStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
                 if (GFXDevice::GetDeviceInformation()._meshShading._supported)
                 {
@@ -135,23 +136,25 @@ namespace Divide
                 dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
                 dstStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
             } break;
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL();
         }
 
         // Let the VMA library know that this buffer should be readable by the GPU only
         VmaAllocationCreateInfo vmaallocInfo{};
         vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
         vmaallocInfo.flags = 0;
-        if ( _params._updateFrequency != BufferUpdateFrequency::ONCE )
+        if ( _params._hostVisible )
+        {
+            // CPU readback needs host-visible memory that is efficient to read (cached when available), so request
+            // random host access. Keeping it persistently mapped lets readBytes avoid mapping on every read.
+            vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        }
+        else if ( _params._updateFrequency != BufferUpdateFrequency::ONCE )
         {
             // If we write to this buffer often (e.g. GPU uniform blocks), we might as well persistently map it and use
             // a lock manager to protect writes (same as GL_API's lockManager system)
             // A staging buffer is just way too slow for multiple writes per frame.
             vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
-        }
-        else if ( _params._hostVisible )
-        {
-            vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
         }
         // Allocate the vertex buffer (as a vb buffer and transfer destination)
         VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo( usageFlags, _totalBufferSize );
@@ -172,16 +175,29 @@ namespace Divide
             vmaSetAllocationName( *VK_API::GetStateTracker()._allocatorInstance._allocator, _allocation, bufferName );
 
             Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)_buffer, VK_OBJECT_TYPE_BUFFER, bufferName );
-            _isMemoryMappable = memPropFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+            _isMemoryMappable = (memPropFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0u;
+            _isMemoryCoherent = (memPropFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0u;
 
             g_bufferCount.fetch_add(1u);
         }
 
+        // VMA AUTO allocations may only be mapped when host access was requested.
+        const bool hasHostAccess = (vmaallocInfo.flags & (VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                                                          VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT)) != 0u;
+        const bool useStaging = !_isMemoryMappable || !hasHostAccess;
+        const bool mapTemporarily = !useStaging && _allocInfo.pMappedData == nullptr;
         Byte* mappedRange = nullptr;
-        if (!_isMemoryMappable)
+        if ( useStaging )
         {
             _stagingBuffer = VKUtil::createStagingBuffer( _totalBufferSize, bufferName, false );
             mappedRange = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
+        }
+        else if ( mapTemporarily )
+        {
+            void* mappedData = nullptr;
+            LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+            VK_CHECK( vmaMapMemory( *VK_API::GetStateTracker()._allocatorInstance._allocator, _allocation, &mappedData ) );
+            mappedRange = static_cast<Byte*>( mappedData );
         }
         else
         {
@@ -202,7 +218,23 @@ namespace Divide
 
         }
 
-        if ( !_isMemoryMappable )
+        if ( useStaging || !_isMemoryCoherent || mapTemporarily )
+        {
+            LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+            if ( useStaging || !_isMemoryCoherent )
+            {
+                VK_CHECK( vmaFlushAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator,
+                                              useStaging ? _stagingBuffer->_allocation : _allocation,
+                                              0u,
+                                              _totalBufferSize ) );
+            }
+            if ( mapTemporarily )
+            {
+                vmaUnmapMemory( *VK_API::GetStateTracker()._allocatorInstance._allocator, _allocation );
+            }
+        }
+
+        if ( useStaging )
         {
             const auto scopeName = Util::StringFormat( "Immediate Buffer Upload [ {} ]", bufferName );
 
@@ -260,6 +292,20 @@ namespace Divide
             memcpy( &mappedRange[mappedOffset], data, range._length );
         }
 
+        if ( !_isMemoryMappable || !_isMemoryCoherent )
+        {
+            LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+            const VkResult flushResult = vmaFlushAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator,
+                                                             _isMemoryMappable ? _allocation : _stagingBuffer->_allocation,
+                                                             mappedOffset,
+                                                             range._length );
+            if ( flushResult != VK_SUCCESS )
+            {
+                VK_CHECK( flushResult );
+                return {};
+            }
+        }
+
         BufferLock ret = {
             ._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ,
             ._buffer = this
@@ -288,20 +334,37 @@ namespace Divide
 
     void vkBufferImpl::readBytes( const BufferRange<> range, std::pair<bufferPtr, size_t> outData )
     {
-        if (_isMemoryMappable )
+        // Host-visible buffers request VMA host access, so their memory is always mappable. Device-local memory
+        // cannot be mapped at all; reading it would need a GPU copy into a readback buffer instead.
+        if ( !DIVIDE_ASSERT( _params._hostVisible && _isMemoryMappable, "vkBufferImpl::readBytes: buffer memory is not host-visible!" ) )
         {
-            Byte* mappedRange = (Byte*)_allocInfo.pMappedData;
-            memcpy( outData.first, &mappedRange[range._startOffset], range._length );
+            memset( outData.first, 0, range._length );
+            return;
         }
-        else
+
+        LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+        const bool mapTemporarily = _allocInfo.pMappedData == nullptr;
+        Byte* mappedRange = (Byte*)_allocInfo.pMappedData;
+        if ( mapTemporarily )
         {
-            void* mappedData;
-            LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
-            vmaMapMemory( *VK_API::GetStateTracker()._allocatorInstance._allocator, _allocation, &mappedData );
+            void* mappedData = nullptr;
+            VK_CHECK( vmaMapMemory( *VK_API::GetStateTracker()._allocatorInstance._allocator, _allocation, &mappedData ) );
+            mappedRange = static_cast<Byte*>( mappedData );
+        }
 
-            Byte* mappedRange = (Byte*)mappedData;
-            memcpy( outData.first, &mappedRange[range._startOffset], range._length );
+        if ( !_isMemoryCoherent )
+        {
+            // Make GPU writes (already made available to the host domain by a HOST_READ barrier) visible to the CPU.
+            VK_CHECK( vmaInvalidateAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator,
+                                               _allocation,
+                                               range._startOffset,
+                                               range._length ) );
+        }
 
+        memcpy( outData.first, &mappedRange[range._startOffset], range._length );
+
+        if ( mapTemporarily )
+        {
             vmaUnmapMemory( *VK_API::GetStateTracker()._allocatorInstance._allocator, _allocation );
         }
     }
@@ -320,9 +383,10 @@ namespace Divide
             VMABuffer_uptr ret = std::make_unique<VMABuffer>( params );
 
             VmaAllocationCreateInfo vmaallocInfo = {};
-            // Let the VMA library know that this data should be writable by CPU only
             vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-            vmaallocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+            vmaallocInfo.flags = (isCopySource ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT
+                                              : VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT) |
+                                 VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
             // Allocate staging buffer
             const VkBufferCreateInfo bufferInfo = vk::bufferCreateInfo( isCopySource ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT, size );

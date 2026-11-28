@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -63,7 +63,7 @@ namespace Divide
             "f/1.4", "f/1.8", "f/2", "f/2.8", "f/3.5", "f/4", "f/5.6", "f/8", "f/11", "f/16", "f/22", "f/32", "NONE"
         };
     }
-    static_assert(ArrayCount( Names::fStops ) == to_base( FStops::COUNT ) + 1, "Camera::FStops name array out of sync!");
+    static_assert(std::size( Names::fStops ) == to_base( FStops::COUNT ) + 1, "Camera::FStops name array out of sync!");
 
     static constexpr F32 g_FStopValues[to_base( FStops::COUNT )]
     {
@@ -296,6 +296,7 @@ namespace Divide
         static bool DestroyCamera( Camera*& camera );
 
         static Camera* GetUtilityCamera( const UtilityCamera type );
+        static Camera* GetUtilityCamera(UtilityCamera type, RenderStage stage);
 
         static Camera* CreateCamera( const Str<256>& cameraName, Mode cameraMode );
         static Camera* FindCamera( const U64 nameHash );
@@ -323,7 +324,7 @@ namespace Divide
             "UNKNOWN"
         };
     }
-    static_assert(ArrayCount( Names::cameraMode ) == to_base( Camera::Mode::COUNT ) + 1, "Camera::Mode name array out of sync!");
+    static_assert(std::size( Names::cameraMode ) == to_base( Camera::Mode::COUNT ) + 1, "Camera::Mode name array out of sync!");
 
     namespace TypeUtil
     {

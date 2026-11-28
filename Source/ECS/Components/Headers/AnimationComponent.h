@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -44,7 +44,13 @@ class AnimEvaluator;
 class SceneGraphNode;
 
 FWD_DECLARE_MANAGED_CLASS(SceneAnimator);
+namespace Attorney
+{
+    class AnimationSystemTestAccess;
+}
+
 BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
+    friend class Attorney::AnimationSystemTestAccess;
    public:
     explicit AnimationComponent(SceneGraphNode* parentSGN, PlatformContext& context);
 
@@ -98,6 +104,7 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
 
    protected:
     AnimEvaluator::FrameIndex _frameIndex = {};
+    I32 _lastObservedFrameIndex = 0;
     /// Current animation timestamp for the current SGN
     D64 _currentTimeStamp = -1.0;
     /// Previous animation index
@@ -106,6 +113,7 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
     PROPERTY_R(D64, parentTimeStamp, 0.);
 
     bool _playAnimations = true;
+    bool _frameTicked = false;
 
     bool _animationStateChanged = false;
     bool _resyncAllSiblings = false;

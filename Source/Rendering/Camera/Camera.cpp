@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/Camera.h"
 
@@ -68,6 +68,7 @@ namespace Divide
         using CameraPool = eastl::list<CameraEntry>;
 
         std::array<Camera*, to_base( Camera::UtilityCamera::COUNT )> _utilityCameras;
+        std::array<std::array<Camera*, to_base( RenderStage::COUNT )>, 2u> s_stageUtilityCameras{};
         U32 s_changeCameraId = 0u;
         CameraListenerMap s_changeCameraListeners;
         CameraPool s_cameraPool;
@@ -132,6 +133,15 @@ namespace Divide
         return nullptr;
     }
 
+    Camera* Camera::GetUtilityCamera( const UtilityCamera type, const RenderStage stage )
+    {
+        if ( stage == RenderStage::COUNT || (type != UtilityCamera::CUBE && type != UtilityCamera::DUAL_PARABOLOID) )
+        {
+            DIVIDE_UNEXPECTED_CALL_MSG( "A stage utility camera requires a valid stage and a cube or paraboloid camera" );
+        }
+        return s_stageUtilityCameras[type == UtilityCamera::CUBE ? 0u : 1u][to_base( stage )];
+    }
+
     void Camera::InitPool()
     {
         _utilityCameras[to_base( UtilityCamera::DEFAULT )] = CreateCamera( "DefaultCamera", Mode::FREE_FLY );
@@ -139,12 +149,21 @@ namespace Divide
         _utilityCameras[to_base( UtilityCamera::_2D_FLIP_Y )] = CreateCamera( "2DRenderCameraFlipY", Mode::STATIC );
         _utilityCameras[to_base( UtilityCamera::CUBE )] = CreateCamera( "CubeCamera", Mode::STATIC );
         _utilityCameras[to_base( UtilityCamera::DUAL_PARABOLOID )] = CreateCamera( "DualParaboloidCamera", Mode::STATIC );
+        for ( size_t stage = 0u; stage < to_base( RenderStage::COUNT ); ++stage )
+        {
+            s_stageUtilityCameras[0][stage] = CreateCamera( Util::StringFormat( "CubeCamera_Stage_{}", stage ), Mode::STATIC );
+            s_stageUtilityCameras[1][stage] = CreateCamera( Util::StringFormat( "DualParaboloidCamera_Stage_{}", stage ), Mode::STATIC );
+        }
     }
 
     void Camera::DestroyPool()
     {
         Console::printfn( LOCALE_STR( "CAMERA_MANAGER_DELETE" ) );
         _utilityCameras.fill( nullptr );
+        for ( auto& cameras : s_stageUtilityCameras )
+        {
+            cameras.fill( nullptr );
+        }
         LockGuard<SharedMutex> w_lock( s_cameraPoolLock );
         s_cameraPool.clear();
     }
@@ -271,7 +290,7 @@ namespace Divide
         _data._zPlanes.set( 0.1f, 1000.0f );
         _data._orientation.identity();
 
-        _translationAccumulator.set( eye );
+        setEye( eye );
 
         if (mode == Mode::THIRD_PERSON || mode == Mode::ORBIT)
         {
@@ -368,7 +387,9 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
         _data._eye.set( ExtractCameraPos2( viewMatrix ) );
-        _data._orientation.fromMatrix(viewMatrix);
+        _data._orientation.fromMatrix( viewMatrix );
+        _data._orientation.normalize();
+        _data._orientation = _data._orientation.inverse();
 
         _rotationAccumulator.reset();
         _translationAccumulator.reset();
@@ -387,16 +408,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-        _translationAccumulator.set( eye );
-        _rotationAccumulator.set(Angle::to_DEGREES(quatf(LookAt(eye, target, up)).getEuler()));
-        _data._orientation.identity();
-        _data._eye.reset();
-        _viewMatrixDirty = true;
-        _frustumDirty = true;
-
-        updateViewMatrix();
-
-        return _data._viewMatrix;
+        return lookAt( LookAt( eye, target, up ) );
     }
 
     /// Tell the rendering API to set up our desired PoV

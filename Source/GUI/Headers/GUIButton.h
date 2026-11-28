@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -47,6 +47,11 @@ namespace Divide
 
 class AudioDescriptor;
 
+namespace Attorney
+{
+    class GUIButtonTestAccess;
+}
+
 class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON>
 {
     using ButtonCallback = DELEGATE<void, I64>;
@@ -54,6 +59,7 @@ class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON>
 
     friend class GUIInterface;
     friend class SceneGUIElements;
+    friend class Attorney::GUIButtonTestAccess;
 
     public:
     enum class Event : U8
@@ -77,6 +83,7 @@ class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON>
     void visible(bool visible) noexcept override;
 
     void setEventCallback(Event event, const ButtonCallback& callback);
+    // The button retains its own reference; the caller retains ownership of sound.
     void setEventSound(Event event, Handle<AudioDescriptor> sound);
     void setEventCallback(Event event, const ButtonCallback& callback, Handle<AudioDescriptor> sound);
 

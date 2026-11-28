@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -172,9 +172,23 @@ DEFINE_COMMAND_BEGIN(SetClipPlanesCommand, CommandType::SET_CLIP_PLANES);
 DEFINE_COMMAND_END(SetClipPlanesCommand);
 
 DEFINE_COMMAND_BEGIN(BindShaderResourcesCommand, CommandType::BIND_SHADER_RESOURCES);
-    DescriptorSet _set;
+    ResourceBindingHandle _resources{};
+    DescriptorSet _set{};
     DescriptorSetUsage _usage{ DescriptorSetUsage::COUNT };
 DEFINE_COMMAND_END(BindShaderResourcesCommand);
+
+[[nodiscard]] inline DescriptorSet EffectiveBindings( const BindShaderResourcesCommand& cmd )
+{
+    return ComposeResourceBindings( cmd._resources, cmd._set );
+}
+
+[[nodiscard]] inline bool SameBindings( const BindShaderResourcesCommand& lhs, const BindShaderResourcesCommand& rhs )
+{
+    return lhs._usage == rhs._usage &&
+           (lhs._resources == rhs._resources
+               ? EqualActiveBindings( lhs._set, rhs._set )
+               : EqualComposedBindings( lhs._resources, lhs._set, rhs._resources, rhs._set ));
+}
 
 DEFINE_COMMAND_BEGIN(BeginDebugScopeCommand, CommandType::BEGIN_DEBUG_SCOPE);
     Str<64> _scopeName;
@@ -202,12 +216,14 @@ DEFINE_COMMAND_BEGIN(ReadBufferDataCommand, CommandType::READ_BUFFER_DATA);
     std::pair<bufferPtr, size_t> _target { nullptr, 0u };
     U32           _offsetElementCount{ 0 };
     U32           _elementCount{ 0 };
+    U16           _queueIndex{ U16_MAX };
 DEFINE_COMMAND_END(ReadBufferDataCommand);
 
 DEFINE_COMMAND_BEGIN(ClearBufferDataCommand, CommandType::CLEAR_BUFFER_DATA);
     ShaderBuffer* _buffer{ nullptr };
     U32           _offsetElementCount{ 0 };
     U32           _elementCount{ 0 };
+    U16           _queueIndex{ U16_MAX };
 DEFINE_COMMAND_END(ClearBufferDataCommand);
 
 }; //namespace GFX

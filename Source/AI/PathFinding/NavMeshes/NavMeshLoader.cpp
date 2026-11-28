@@ -120,7 +120,7 @@ bool LoadMeshFile(NavModelData& outData, const ResourcePath& filePath, const cha
     while (src < srcEnd) {
         // Parse one row
         row[0] = '\0';
-        src = ParseRow(src, srcEnd, row, sizeof row / sizeof(char));
+        src = ParseRow(src, srcEnd, row, to_I32( std::size( row ) ));
         // Skip comments
         if (row[0] == '#')
             continue;
@@ -270,7 +270,7 @@ NavModelData MergeModels(NavModelData& a,
 }
 
 void AddVertex(NavModelData* modelData, const float3& vertex) {
-    assert(modelData != nullptr);
+    DIVIDE_ASSERT(modelData != nullptr);
 
     if (modelData->getVertCount() + 1 > modelData->_vertexCapacity)
     {
@@ -311,7 +311,7 @@ void AddTriangle(NavModelData* modelData,
 const float3 g_borderOffset(BORDER_PADDING);
 bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn)
 {
-    assert(sgn != nullptr);
+    DIVIDE_ASSERT(sgn != nullptr);
 
     const NavigationComponent* navComp = sgn->get<NavigationComponent>();
     if (navComp && 
@@ -375,9 +375,9 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn)
             {
                 obj = Get(sgn->getNode<WaterPlane>().getQuad());
             }
-            assert(obj != nullptr);
+            DIVIDE_ASSERT(obj != nullptr);
             geometry = obj->geometryBuffer();
-            assert(geometry != nullptr);
+            DIVIDE_ASSERT(geometry != nullptr);
 
             const auto& vertices = geometry->getVertices();
             if (vertices.empty())

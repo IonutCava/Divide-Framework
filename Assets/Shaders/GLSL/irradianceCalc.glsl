@@ -10,6 +10,10 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 12, rgba16f) uniform ACCESS_W imageCube
 layout(local_size_x = THREADS, local_size_y = THREADS, local_size_z = 1) in;
 void main()
 {
+    if (any(greaterThanEqual(gl_GlobalInvocationID.xy, uvec2(imgSizeX)))) {
+        return;
+    }
+
     for (uint i = 0; i < 6; ++i) 
     {
         ivec3 globalId = ivec3(gl_GlobalInvocationID.xy, i);
@@ -89,8 +93,13 @@ vec2 integrateBRDF(float roughness, float NoV)
 layout(local_size_x = THREADS, local_size_y = THREADS, local_size_z = 1) in;
 void main()
 {
+    const ivec2 targetSize = imageSize(s_target).xy;
+    if (any(greaterThanEqual(ivec2(gl_GlobalInvocationID.xy), targetSize))) {
+        return;
+    }
+
     // Normalized pixel coordinates (from 0 to 1)
-    vec2 uv = vec2(gl_GlobalInvocationID.xy + 1) / vec2(imageSize(s_target).xy);
+    vec2 uv = vec2(gl_GlobalInvocationID.xy + 1) / vec2(targetSize);
     float mu = uv.x;
     float a = uv.y;
 

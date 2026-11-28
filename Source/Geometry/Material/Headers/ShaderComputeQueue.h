@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -48,7 +48,7 @@ class ShaderComputeQueue {
 public:
     struct ShaderQueueElement
     {
-        Handle<ShaderProgram>* _shaderRef{nullptr};
+        ShaderProgramInfo* _shaderInfo{nullptr};
         ShaderProgramDescriptor _shaderDescriptor;
     };
 
@@ -63,12 +63,16 @@ public:
     void addToQueueFront(const ShaderQueueElement& element);
     // Push a process request at the end of the queue
     void addToQueueBack(const ShaderQueueElement& element);
+    void cancel( ShaderProgramInfo& shaderInfo );
+    void waitForPendingLoads() const;
     // Process the first entry in the queue immediately.
     // This is called in a loop in the 'update' call, but can be user called as well if the shader is needed immediately
     // Return true if the queue wasn't empty
     [[nodiscard]] bool stepQueue();
 
 private:
+    void processLocked( ShaderQueueElement& element );
+    void cancelLocked( ShaderProgramInfo& shaderInfo );
     [[nodiscard]] bool stepQueueLocked();
 
 private:

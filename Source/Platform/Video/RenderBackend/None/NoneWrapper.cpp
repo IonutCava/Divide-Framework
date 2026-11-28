@@ -1,5 +1,7 @@
 ﻿
 
+// Copyright (c) 2026 DIVIDE-Studio
+
 #include "Headers/NoneWrapper.h"
 
 #include "Core/Headers/Application.h"
@@ -19,22 +21,20 @@ namespace Divide
     {
     }
 
+    bool NONE_API::queueBufferReadback( [[maybe_unused]] BufferReadbackRequest&& request ) noexcept
+    {
+        return false;
+    }
+
     bool NONE_API::drawToWindow( [[maybe_unused]] DisplayWindow& window )
     {
         return true;
     }
 
-    void NONE_API::onRenderThreadLoopStart()
-    {
-    }
-
-    void NONE_API::onRenderThreadLoopEnd()
-    {
-    }
-
-    void NONE_API::prepareFlushWindow( [[maybe_unused]] DisplayWindow& window )
+    bool NONE_API::prepareFlushWindow( [[maybe_unused]] DisplayWindow& window )
     {
         SDL_RenderClear( _renderer );
+        return true;
     }
 
     void NONE_API::flushWindow( DisplayWindow& window )
@@ -156,7 +156,7 @@ namespace Divide
         return true;
     }
 
-    void NONE_API::onThreadCreated( [[maybe_unused]] const size_t threadIndex, [[maybe_unused]] const std::thread::id& threadID, [[maybe_unused]] const bool isMainRenderThread ) noexcept
+    void NONE_API::onThreadCreated( [[maybe_unused]] const size_t threadIndex, [[maybe_unused]] const std::thread::id& threadID ) noexcept
     {
     }
 

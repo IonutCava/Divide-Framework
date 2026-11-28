@@ -40,7 +40,7 @@ void WarScene::printMessage(const U8 eventId, const string& unitName) const {
     U32 elapsedTimeMinutes = Time::MicrosecondsToSeconds<U32>(_elapsedGameTime) / 60 % 60;
     U32 elapsedTimeSeconds = Time::MicrosecondsToSeconds<U32>(_elapsedGameTime) % 60;
 
-    Console::d_printfn(Util::StringFormat("[GAME TIME: {}:{}][{}]: {}", elapsedTimeMinutes, elapsedTimeSeconds, eventName.c_str(), unitName.c_str()).c_str());
+    Console::d_printfn("[GAME TIME: {}:{}][{}]: {}", elapsedTimeMinutes, elapsedTimeSeconds, eventName.c_str(), unitName.c_str());
 }
 
 void WarScene::checkGameCompletion() {
@@ -94,7 +94,7 @@ void WarScene::checkGameCompletion() {
 
     if (restartGame) {
         _elapsedGameTime = 0;
-        Console::d_printfn(Util::StringFormat("\n\nRESTARTING GAME!. Reason: {} \n\n", timeReason ? "TIME" : "SCORE").c_str());
+        Console::d_printfn("\n\nRESTARTING GAME!. Reason: {} \n\n", timeReason ? "TIME" : "SCORE");
         AI::WarSceneAIProcessor::resetScore(0);
         AI::WarSceneAIProcessor::resetScore(1);
         if (timeReason) {
@@ -131,7 +131,7 @@ void WarScene::registerPoint(const U16 teamID, const string& unitName) {
 
         U32 elapsedTimeMinutes = Time::MicrosecondsToSeconds<U32>(_elapsedGameTime) / 60 % 60;
         U32 elapsedTimeSeconds = Time::MicrosecondsToSeconds<U32>(_elapsedGameTime) % 60;
-        Console::d_printfn(Util::StringFormat("[GAME TIME: {}:{}][TEAM {} REGISTER POINT]: {}", elapsedTimeMinutes, elapsedTimeSeconds, teamID == 0 ? "A" : "B", unitName.c_str()).c_str());
+        Console::d_printfn("[GAME TIME: {}:{}][TEAM {} REGISTER POINT]: {}", elapsedTimeMinutes, elapsedTimeSeconds, teamID == 0 ? "A" : "B", unitName.c_str());
         checkGameCompletion();
     }
 }

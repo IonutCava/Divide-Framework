@@ -27,18 +27,16 @@ namespace Divide {
     {
         switch (cornerIndex)
         {
-            case 0: return _position - _halfExtents.x * _axis[0] - _halfExtents.y * _axis[1] - _halfExtents.z * _axis[2];
-            case 1: return _position - _halfExtents.x * _axis[0] - _halfExtents.y * _axis[1] + _halfExtents.z * _axis[2];
-            case 2: return _position - _halfExtents.x * _axis[0] + _halfExtents.y * _axis[1] - _halfExtents.z * _axis[2];
-            case 3: return _position - _halfExtents.x * _axis[0] + _halfExtents.y * _axis[1] + _halfExtents.z * _axis[2];
-            case 4: return _position + _halfExtents.x * _axis[0] - _halfExtents.y * _axis[1] - _halfExtents.z * _axis[2];
-            case 5: return _position + _halfExtents.x * _axis[0] - _halfExtents.y * _axis[1] + _halfExtents.z * _axis[2];
-            case 6: return _position + _halfExtents.x * _axis[0] + _halfExtents.y * _axis[1] - _halfExtents.z * _axis[2];
-            case 7: return _position + _halfExtents.x * _axis[0] + _halfExtents.y * _axis[1] + _halfExtents.z * _axis[2];
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            case 0:  return _position - _halfExtents.x * _axis[0] - _halfExtents.y * _axis[1] - _halfExtents.z * _axis[2];
+            case 1:  return _position - _halfExtents.x * _axis[0] - _halfExtents.y * _axis[1] + _halfExtents.z * _axis[2];
+            case 2:  return _position - _halfExtents.x * _axis[0] + _halfExtents.y * _axis[1] - _halfExtents.z * _axis[2];
+            case 3:  return _position - _halfExtents.x * _axis[0] + _halfExtents.y * _axis[1] + _halfExtents.z * _axis[2];
+            case 4:  return _position + _halfExtents.x * _axis[0] - _halfExtents.y * _axis[1] - _halfExtents.z * _axis[2];
+            case 5:  return _position + _halfExtents.x * _axis[0] - _halfExtents.y * _axis[1] + _halfExtents.z * _axis[2];
+            case 6:  return _position + _halfExtents.x * _axis[0] + _halfExtents.y * _axis[1] - _halfExtents.z * _axis[2];
+            case 7:  return _position + _halfExtents.x * _axis[0] + _halfExtents.y * _axis[1] + _halfExtents.z * _axis[2];
+            default: DIVIDE_UNEXPECTED_CALL();
         }
-
-        return VECTOR3_ZERO;
     }
 
     void OBB::fromBoundingBox(const BoundingBox& aabb) noexcept
@@ -157,8 +155,6 @@ namespace Divide {
     {
         switch (edgeIndex)
         {
-            default: DIVIDE_UNEXPECTED_CALL(); break;
-
             case 0:  return {cornerPoint(0), cornerPoint(1) };
             case 1:  return {cornerPoint(0), cornerPoint(2) };
             case 2:  return {cornerPoint(0), cornerPoint(4) };
@@ -171,9 +167,8 @@ namespace Divide {
             case 9:  return {cornerPoint(4), cornerPoint(6) };
             case 10: return {cornerPoint(5), cornerPoint(7) };
             case 11: return {cornerPoint(6), cornerPoint(7) };
+            default: DIVIDE_UNEXPECTED_CALL();
         }
-
-        return {};
     }
 
     OBB::OOBBEdgeList OBB::edgeList() const noexcept

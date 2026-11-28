@@ -103,7 +103,7 @@ bool TryMergeCommands(const CommandType type, T* prevCommand, T* crtCommand)
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     bool ret = false;
-    assert(prevCommand != nullptr && crtCommand != nullptr);
+    DIVIDE_ASSERT(prevCommand != nullptr && crtCommand != nullptr);
     switch (type)
     {
         case CommandType::DRAW_COMMANDS:

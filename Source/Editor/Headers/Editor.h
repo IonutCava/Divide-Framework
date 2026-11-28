@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -33,6 +33,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_EDITOR_H_
 #define DVD_EDITOR_H_
 
+#include "GizmoSelectionRefresh.h"
 #include "UndoManager.h"
 
 #include "Core/Headers/FrameListener.h"
@@ -311,6 +312,10 @@ namespace Divide
         PROPERTY_R( F32, infiniteGridAxisWidth, 2.f );
         PROPERTY_R( F32, infiniteGridScale, 1.f );
         PROPERTY_R_IW( FColour3, nodePreviewBGColour );
+        /// Draw the scene's sky behind the previewed node. When off, nodePreviewBGColour fills the background instead.
+        PROPERTY_R_IW( bool, nodePreviewRenderSky, true );
+        /// True while the preview window has a supported node to draw this frame.
+        PROPERTY_R_IW( bool, nodePreviewHasNode, false );
         PROPERTY_INTERNAL( bool, lockSolutionExplorer, false );
         PROPERTY_INTERNAL( bool, sceneGizmoEnabled, false );
 
@@ -363,6 +368,7 @@ namespace Divide
         EditorOptionsWindow_uptr _optionsWindow;
         UndoManager_uptr         _undoManager;
         Gizmo_uptr               _gizmo ;
+        GizmoSelectionRefresh    _gizmoSelectionRefresh;
 
         DisplayWindow* _mainWindow = nullptr;
         vector<std::pair<ImTextureData*, Handle<Texture>>> _fontTextures;
@@ -465,6 +471,11 @@ namespace Divide
             static FColour3& nodePreviewBGColour( Editor& editor ) noexcept
             {
                 return editor._nodePreviewBGColour;
+            }
+
+            static bool& nodePreviewRenderSky( Editor& editor ) noexcept
+            {
+                return editor._nodePreviewRenderSky;
             }
 
             friend class Divide::SceneViewWindow;
@@ -733,10 +744,8 @@ namespace Divide
                 return editor._externalTextEditorPath;
             }
 
-            static void setPreviewNode( Editor& editor, SceneGraphNode* previewNode ) noexcept
-            {
-                editor._previewNode = previewNode;
-            }
+            /// Unsupported node types are ignored so they never replace a previewable selection.
+            static void setPreviewNode( Editor& editor, SceneGraphNode* previewNode ) noexcept;
 
             friend class Divide::Gizmo;
             friend class Divide::MenuBar;
@@ -767,6 +776,11 @@ namespace Divide
 
         class EditorEditorComponent
         {
+
+            static void registerUnsavedSceneChanges( Editor& editor ) noexcept
+            {
+                editor.unsavedSceneChanges( true );
+            }
 
             static void onRemoveComponent( const Editor& editor, const EditorComponent& comp )
             {

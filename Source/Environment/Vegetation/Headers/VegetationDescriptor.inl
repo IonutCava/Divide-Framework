@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -40,9 +40,13 @@ inline size_t GetHash( const VegetationDescriptor& descriptor ) noexcept
 {
     size_t hash = 1337;
 
-    if ( descriptor.grassMap )
+    for ( const GrassMapLayer& layer : descriptor.grassMaps )
     {
-        Util::Hash_combine( hash, descriptor.grassMap->fullPath() );
+        if ( layer._image )
+        {
+            Util::Hash_combine( hash, layer._image->fullPath() );
+        }
+        Util::Hash_combine( hash, layer._channelMask );
     }
 
     if ( descriptor.treeMap )
@@ -67,6 +71,10 @@ inline size_t GetHash( const VegetationDescriptor& descriptor ) noexcept
                         descriptor.treeScales.y,
                         descriptor.treeScales.z,
                         descriptor.treeScales.w,
+                        descriptor.treeDensities.x,
+                        descriptor.treeDensities.y,
+                        descriptor.treeDensities.z,
+                        descriptor.treeDensities.w,
                         descriptor.grassScales.x,
                         descriptor.grassScales.y,
                         descriptor.grassScales.z,

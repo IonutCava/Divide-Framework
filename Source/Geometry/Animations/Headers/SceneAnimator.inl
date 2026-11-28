@@ -43,55 +43,55 @@ inline bool SceneAnimator::hasSkeleton() const noexcept
 
 inline void SceneAnimator::adjustAnimationSpeedBy(const U32 animationIndex, const D64 percent)
 {
-    assert(animationIndex < _animations.size());
+    DIVIDE_ASSERT(animationIndex < _animations.size());
     _animations[animationIndex]->ticksPerSecond(animationSpeed(animationIndex) * (percent / 100.0));
 }
 
 inline void SceneAnimator::adjustAnimationSpeedTo(const U32 animationIndex, const D64 ticksPerSecond)
 {
-    assert(animationIndex < _animations.size());
+    DIVIDE_ASSERT(animationIndex < _animations.size());
     _animations[animationIndex]->ticksPerSecond(ticksPerSecond);
 }
 
 inline D64 SceneAnimator::animationSpeed(const U32 animationIndex) const
 {
-    assert(animationIndex < _animations.size());
+    DIVIDE_ASSERT(animationIndex < _animations.size());
     return _animations[animationIndex]->ticksPerSecond();
 }
 
 inline AnimEvaluator::FrameIndex SceneAnimator::frameIndexForTimeStamp(const U32 animationIndex, const D64 dt, const bool forward) const
 {
-    assert(animationIndex < _animations.size());
+    DIVIDE_ASSERT(animationIndex < _animations.size());
     return _animations[animationIndex]->frameIndexAt(dt, forward);
 }
 
 inline const BoneMatrices& SceneAnimator::transformMatrices(const U32 animationIndex, const U32 index) const
 {
-    assert(animationIndex < _animations.size());
+    DIVIDE_ASSERT(animationIndex < _animations.size());
     return _animations[animationIndex]->transformMatrices(index);
 }
 
 inline const AnimEvaluator& SceneAnimator::animationByIndex(const U32 animationIndex) const
 {
-    assert(animationIndex < _animations.size());
+    DIVIDE_ASSERT(animationIndex < _animations.size());
 
     const AnimEvaluator* animation = _animations[animationIndex].get();
-    assert(animation != nullptr);
+    DIVIDE_ASSERT(animation != nullptr);
     return *animation;
 }
 
 inline AnimEvaluator& SceneAnimator::animationByIndex(const U32 animationIndex)
 {
-    assert(animationIndex < _animations.size());
+    DIVIDE_ASSERT(animationIndex < _animations.size());
 
     AnimEvaluator* animation = _animations[animationIndex].get();
-    assert(animation != nullptr);
+    DIVIDE_ASSERT(animation != nullptr);
     return *animation;
 }
 
 inline U32 SceneAnimator::frameCount(const U32 animationIndex) const
 {
-    assert(animationIndex < _animations.size());
+    DIVIDE_ASSERT(animationIndex < _animations.size());
     return _animations[animationIndex]->frameCount();
 }
 
@@ -102,7 +102,7 @@ inline const vector<std::unique_ptr<AnimEvaluator>>& SceneAnimator::animations()
 
 inline const string& SceneAnimator::animationName(const U32 animationIndex) const
 {
-    assert(animationIndex < _animations.size());
+    DIVIDE_ASSERT(animationIndex < _animations.size());
 
     return _animations[animationIndex]->name();
 }
@@ -134,7 +134,7 @@ inline const mat4<F32>& SceneAnimator::boneTransform(const U32 animationIndex, c
 {
     if (bIndex != Bone::INVALID_BONE_IDX)
     {
-        assert(animationIndex < _animations.size());
+        DIVIDE_ASSERT(animationIndex < _animations.size());
         return _animations[animationIndex]->transformMatrices(dt, forward)[bIndex];
     }
 

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
-   Copyright (c) 2009 Ionut Cava
+   Copyright (c) 2018-2026 DIVIDE-Studio
+   Copyright (c) 2009-2026 Ionut Cava
 
    This file is part of DIVIDE Framework.
 
@@ -34,6 +34,8 @@
 #define DVD_CSM_GENERATOR_H_
 
 #include "ShadowMap.h"
+#include "Rendering/Lighting/Headers/ShadowPassState.h"
+#include "Rendering/Lighting/Headers/ShadowCasterBounds.h"
 #include "Platform/Video/Headers/Commands.h"
 
 namespace Divide {
@@ -57,22 +59,39 @@ class CascadedShadowMapsGenerator final : public ShadowMapGenerator {
     explicit CascadedShadowMapsGenerator(GFXDevice& context);
     ~CascadedShadowMapsGenerator() override;
 
-    void render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) override;
-    void generateWorldAO( const Camera& playerCamera, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
+    void render(const Camera& playerCamera, Light& light, U16 lightIndex, bool& pendingCastersOut, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut, const ShadowRefreshPlan& refreshPlan) override;
+    [[nodiscard]] mat4<F32> generateWorldAO( const WorldAOCacheKey& key, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
    protected:
     using SplitDepths = std::array<F32, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT>;
 
     SplitDepths calculateSplitDepths( DirectionalLightComponent& light, const float2 nearFarPlanes) const noexcept;
 
-    void applyFrustumSplits(DirectionalLightComponent& light, const Camera& shadowCamera, U8 numSplits) const;
+    void applyFrustumSplits(DirectionalLightComponent& light, const Camera& shadowCamera, U8 numSplits, U32 layerMask) const;
 
     void updateMSAASampleCount(U8 sampleCount) override;
+    void finishRender() override;
 
   protected:
-    void blurTarget( U16 layerOffset, U16 layerCount, GFX::CommandBuffer& bufferInOut );
+    struct StaticCacheLayer
+    {
+        ShadowStaticCacheState _state{};
+        ShadowStaticCacheKey _pendingKey{};
+        ShadowCasterBounds _staticBounds{};
+        ShadowCasterBounds* _combinedBounds = nullptr;
+        bool* _pendingOut = nullptr;
+        bool _pendingCasters = false;
+        bool _rebuilt = false;
+    };
+    std::array<StaticCacheLayer, ShadowMap::WORLD_AO_LAYER_INDEX> _staticLayers{};
+
+    void blurTarget(U16 layerOffset, U16 layerCount, GFX::CommandBuffer& bufferInOut, U8 firstLayer = 0u);
 
   protected:
+    Camera* _worldAOCamera = nullptr;
+    WorldAOCacheState _worldAOCache{};
+    mat4<F32> _worldAOVP{};
+    bool _worldAOPendingCasters = false;
     Pipeline* _blurPipelineCSM = nullptr;
     Pipeline* _blurPipelineAO = nullptr;
     Handle<ShaderProgram> _blurDepthMapShader = INVALID_HANDLE<ShaderProgram>;

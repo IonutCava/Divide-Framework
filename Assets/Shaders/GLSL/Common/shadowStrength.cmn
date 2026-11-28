@@ -1,0 +1,10 @@
+// Copyright (c) 2026 DIVIDE-Studio
+
+#ifndef _SHADOW_STRENGTH_CMN_
+#define _SHADOW_STRENGTH_CMN_
+
+#define SHADOW_VISIBILITY_WITH_STRENGTH(VISIBILITY, STRENGTH) (1.f - (1.f - (VISIBILITY)) * (STRENGTH))
+#define SHADOW_REDUCE_LIGHT_BLEED(BOUND, BIAS) \
+    ((BIAS) == 1.f ? ((BOUND) >= 1.f ? 1.f : 0.f) : clamp(((BOUND) - (BIAS)) / (1.f - (BIAS)), 0.f, 1.f))
+
+#endif //_SHADOW_STRENGTH_CMN_

@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
-Copyright (c) 2009 Ionut Cava
+Copyright (c) 2018-2026 DIVIDE-Studio
+Copyright (c) 2009-2026 Ionut Cava
 
 This file is part of DIVIDE Framework.
 
@@ -85,7 +85,8 @@ protected:
 
 class RingBufferSeparateWrite : public RingBuffer {
 public:
-    // If separateReadWrite is true, this behaves exactly like a RingBuffer
+    // If separateReadWrite is false, this behaves exactly like a RingBuffer. Otherwise the write slot is
+    // one ahead of the read slot (writeAhead) or one behind it, i.e. the read slot is the oldest write.
     explicit RingBufferSeparateWrite(U16 queueLength, bool separateReadWrite, bool writeAhead = true) noexcept;
     virtual ~RingBufferSeparateWrite() = default;
 
@@ -100,7 +101,7 @@ public:
         }
         if (_separateReadWrite)
         {
-            return (ret + (_writeAhead ? 1 : (length - 1)) % length);
+            return to_U16( (ret + (_writeAhead ? 1u : (length - 1u))) % length );
         }
         
         return ret;
