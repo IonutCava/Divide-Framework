@@ -55,9 +55,7 @@ namespace Divide
                 case UniformUploadResult::INTERNAL_ERROR:
                     _fatal = true;
                     return false;
-                case UniformUploadResult::INVALID_BLOCK:
-                case UniformUploadResult::OK:
-                case UniformUploadResult::COUNT:
+                default:
                     break;
             }
             return false;

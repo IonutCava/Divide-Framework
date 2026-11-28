@@ -73,6 +73,7 @@ Known exceptions to this rule:
 - Preserve parent-child transforms and per-node overrides when loading imported hierarchies. Resource-specific loaders restore resource properties; `SceneGraphNode::loadFromXML()` restores graph components.
 - Asset tasks must not access a resource before it is ready. Independent assets may load in parallel; shared resources still require their existing synchronization.
 - `TransformSystem` resolves parent transforms before descendants and propagates changes to affected bounds. `BoundsSystem` publishes synchronized snapshots for concurrent readers.
+- Nodes whose geometry is placed per instance rather than by their transform can replace their scene-node bounds with `BoundsComponent::setWorldBoundsOverride()`. Set it from the node's scene update or the main thread; `BoundsSystem` applies it at the next ECS update, so culling sees it from the following frame.
 - Reparenting must preserve world transforms when the new parent has a valid transform. Use the deferred removal queue for node destruction; do not destroy nodes from event callbacks.
 - Shadow and visibility systems consume bounds changes, including the last published bounds when a node is removed. Finish updates before concurrent readers use the new bounds.
 - Check project selection and the relevant XML files before debugging a scene that does not load. Report missing or invalid resources instead of silently substituting another scene or asset.

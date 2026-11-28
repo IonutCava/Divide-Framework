@@ -3,6 +3,7 @@
 #include "UnitTests/unitTestCommon.h"
 
 #include "Core/Headers/Application.h"
+#include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
@@ -148,6 +149,11 @@ namespace Divide
         [[nodiscard]] static TranslucencySource SelectTransparency( const TransparencyInputs& inputs )
         {
             return Material::SelectTranslucencySource( inputs );
+        }
+
+        [[nodiscard]] static bool AlphaToCoverageTarget( const RenderStagePass pass, const Configuration& config )
+        {
+            return Material::AlphaToCoverageTarget( pass, config );
         }
 
         [[nodiscard]] static DescriptorSet& CachedMainDescriptor( Material& material )
@@ -580,6 +586,106 @@ namespace Divide
         CHECK( MaterialTestAccess::SelectTransparency( inputs ) == TranslucencySource::ALBEDO_COLOUR );
         inputs._enabled = false;
         CHECK( MaterialTestAccess::SelectTransparency( inputs ) == TranslucencySource::COUNT );
+    }
+
+    TEST_CASE( "Alpha-tested materials need transparency and write their own depth in the colour pass", "[materials][transparency][alpha_test]" )
+    {
+        Material material{ ResourceDescriptor<Material>{ "alpha-tested-state-test" } };
+        auto ret = material.update( 0u );
+        DIVIDE_UNUSED( ret );
+
+        material.properties().alphaTested( true );
+        CHECK( ( material.update( 0u ) & to_base( MaterialUpdateResult::NEW_SHADER ) ) != 0u );
+        CHECK_FALSE( material.hasTransparency() );
+        CHECK_FALSE( material.isAlphaTested() );
+
+        material.properties().baseColour( FColour4( 1.f, 1.f, 1.f, 0.5f ) );
+        ret = material.update( 0u );
+        DIVIDE_UNUSED( ret );
+        REQUIRE( material.hasTransparency() );
+        CHECK( material.isAlphaTested() );
+
+        const RenderStagePass colourPass{ RenderStage::DISPLAY, RenderPassType::MAIN_PASS };
+        const RenderStagePass shadowPass{ RenderStage::SHADOW, RenderPassType::MAIN_PASS, 0u, static_cast<RenderStagePass::VariantType>( ShadowType::CSM ) };
+
+        material.clearRenderStates();
+        {
+            const RenderStateBlock& colour = material.getOrCreateRenderStateBlock( colourPass );
+            CHECK( colour._depthWriteEnabled );
+            CHECK( colour._zFunc == ComparisonFunction::LEQUAL );
+            CHECK( colour._cullMode == CullMode::NONE );
+
+            const RenderStateBlock& shadow = material.getOrCreateRenderStateBlock( shadowPass );
+            CHECK( shadow._depthWriteEnabled );
+            CHECK( shadow._cullMode == CullMode::BACK );
+        }
+
+        material.properties().alphaTested( false );
+        CHECK( ( material.update( 0u ) & to_base( MaterialUpdateResult::NEW_SHADER ) ) != 0u );
+        CHECK_FALSE( material.isAlphaTested() );
+
+        material.clearRenderStates();
+        const RenderStateBlock& blended = material.getOrCreateRenderStateBlock( colourPass );
+        CHECK_FALSE( blended._depthWriteEnabled );
+        CHECK( blended._zFunc == ComparisonFunction::EQUAL );
+    }
+
+    TEST_CASE( "Alpha-tested material state survives XML round trips", "[materials][alpha_test]" )
+    {
+        Material material{ ResourceDescriptor<Material>{ "alpha-tested-xml-test" } };
+        material.properties().alphaTested( true );
+
+        boost::property_tree::ptree tree;
+        material.saveToXML( "Material", tree );
+        CHECK( tree.get<bool>( "Material.alphaTested", false ) );
+
+        Material loaded{ ResourceDescriptor<Material>{ "alpha-tested-xml-load-test" } };
+        loaded.loadFromXML( "Material", tree );
+        CHECK( loaded.properties().overrides().alphaTested() );
+
+        boost::property_tree::ptree legacy;
+        legacy.put( "Material.version", tree.get<size_t>( "Material.version" ) );
+        loaded.loadFromXML( "Material", legacy );
+        CHECK( loaded.properties().overrides().alphaTested() );
+    }
+
+    TEST_CASE( "Alpha-to-coverage is limited to multisampled targets of alpha-tested passes", "[materials][alpha_test]" )
+    {
+        Configuration config{};
+        config.rendering.MSAASamples = 4u;
+        config.rendering.shadowMapping.csm.MSAASamples = 2u;
+        config.rendering.shadowMapping.spot.MSAASamples = 0u;
+
+        const auto usesCoverage = [&config]( const RenderStagePass pass )
+        {
+            return MaterialTestAccess::AlphaToCoverageTarget( pass, config );
+        };
+        const auto shadowPass = []( const ShadowType type )
+        {
+            return RenderStagePass{ RenderStage::SHADOW, RenderPassType::MAIN_PASS, 0u, static_cast<RenderStagePass::VariantType>( type ) };
+        };
+
+        CHECK( usesCoverage( { RenderStage::DISPLAY, RenderPassType::MAIN_PASS } ) );
+        for ( const RenderPassType pass : { RenderPassType::PRE_PASS, RenderPassType::OIT_PASS, RenderPassType::TRANSPARENCY_PASS } )
+        {
+            CAPTURE( pass );
+            CHECK_FALSE( usesCoverage( { RenderStage::DISPLAY, pass } ) );
+        }
+        for ( const RenderStage stage : { RenderStage::REFLECTION, RenderStage::REFRACTION, RenderStage::NODE_PREVIEW } )
+        {
+            CAPTURE( stage );
+            CHECK_FALSE( usesCoverage( { stage, RenderPassType::MAIN_PASS } ) );
+        }
+        CHECK( usesCoverage( shadowPass( ShadowType::CSM ) ) );
+        CHECK_FALSE( usesCoverage( shadowPass( ShadowType::SINGLE ) ) );
+        CHECK_FALSE( usesCoverage( shadowPass( ShadowType::CUBEMAP ) ) );
+
+        config.rendering.MSAASamples = 0u;
+        config.rendering.shadowMapping.csm.MSAASamples = 0u;
+        config.rendering.shadowMapping.spot.MSAASamples = 2u;
+        CHECK_FALSE( usesCoverage( { RenderStage::DISPLAY, RenderPassType::MAIN_PASS } ) );
+        CHECK_FALSE( usesCoverage( shadowPass( ShadowType::CSM ) ) );
+        CHECK( usesCoverage( shadowPass( ShadowType::SINGLE ) ) );
     }
 
     TEST_CASE( "Material runtime alpha updates preserve pending shader changes", "[materials][transparency][render_smoke]" )

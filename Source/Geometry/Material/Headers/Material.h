@@ -60,6 +60,7 @@ namespace Attorney {
 class RenderBin;
 class RenderingComponent;
 
+struct Configuration;
 struct NodeMaterialData;
 struct RenderStateBlock;
 
@@ -207,6 +208,8 @@ class Material final : public CachedResource {
             PROPERTY_R_IW(bool, ignoreTexDiffuseAlpha, false);
             PROPERTY_R_IW(bool, transparencyEnabled, true);
             PROPERTY_R_IW(bool, useAlphaDiscard, true);
+            /// Render transparency as a depth-writing cutout instead of blending it (e.g. foliage)
+            PROPERTY_R_IW(bool, alphaTested, false);
         };
 
         PROPERTY_RW(Overrides, overrides);
@@ -229,6 +232,7 @@ class Material final : public CachedResource {
         void bumpMethod(BumpMethod newBumpMethod) noexcept;
         void toggleTransparency(bool state) noexcept;
         void useAlphaDiscard(bool state) noexcept;
+        void alphaTested(bool state) noexcept;
         void baseColour(const FColour4& colour) noexcept;
 
     protected:
@@ -317,6 +321,10 @@ class Material final : public CachedResource {
     [[nodiscard]] Handle<ShaderProgram> getProgramHandle(RenderStagePass renderStagePass) const;
     [[nodiscard]] Handle<ShaderProgram> computeAndGetProgramHandle(RenderStagePass renderStagePass);
     [[nodiscard]] bool hasTransparency() const noexcept;
+    /// Transparent and flagged as alpha tested: drawn as a depth-writing cutout after the opaque main pass
+    [[nodiscard]] bool isAlphaTested() const noexcept;
+    /// Alpha-tested materials use alpha-to-coverage when the stage pass renders into a multisampled target
+    [[nodiscard]] bool usesAlphaToCoverage(RenderStagePass renderStagePass) const noexcept;
     [[nodiscard]] bool isReflective() const noexcept;
     [[nodiscard]] bool isRefractive() const noexcept;
     [[nodiscard]] bool canDraw(RenderStagePass renderStagePass, bool& shaderJustFinishedLoading);
@@ -382,6 +390,8 @@ class Material final : public CachedResource {
     void appendTextureShaderDefines(ShaderProgramDescriptor& shaderDescriptor, bool isPrePass, bool isShadowPass) const;
     [[nodiscard]] static bool UsesStandardMaterialStages(const ShaderProgramDescriptor& shaderDescriptor) noexcept;
     [[nodiscard]] static bool HasCommonMaterialInputs(const ShaderProgramDescriptor& shaderDescriptor) noexcept;
+    /// True when the stage pass draws alpha-tested geometry into a multisampled target
+    [[nodiscard]] static bool AlphaToCoverageTarget(RenderStagePass renderStagePass, const Configuration& config) noexcept;
     static void AddMissingCommonMaterialBindings(DescriptorSet& descriptor, const ImageView& fallback, SamplerDescriptor sampler);
 
     [[nodiscard]] ShaderProgramInfo& shaderInfo(RenderStagePass renderStagePass);

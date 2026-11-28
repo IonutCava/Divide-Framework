@@ -8,6 +8,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/RenderSmokeTest.h"
 #include "Core/Resources/Headers/ResourceCache.h"
+#include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Editor/Headers/Editor.h"
 
@@ -175,13 +176,15 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
     }
 
     _stageSchedule.prepare();
+    const bool measureStageRecording = RenderSmokeTest::PerfModeRequested();
     for ( U8 i = 0u; i < to_base( RenderStage::COUNT ); ++i )
     {
         _renderPassData[i]._workTask = CreateTask( parentTask,
-                                        [&, i](const Task& stageTask) {
+                                        [&, i, measureStageRecording](const Task& stageTask) {
                                            PROFILE_SCOPE("RenderPass: BuildCommandBuffer", Profiler::Category::Scene );
                                            PROFILE_TAG("Pass IDX", i);
 
+                                           const D64 recordingStartUS = measureStageRecording ? Time::App::ElapsedMicroseconds() : 0.0;
                                            RenderPassData& passData = _renderPassData[i];
                                            {
                                                PROFILE_SCOPE( "RenderPass: Record stage commands", Profiler::Category::Scene );
@@ -211,6 +214,10 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
 
                                                // Submitted by the main thread in dependency order once every stage has finished recording.
                                                passData._cmdBuffer = cmdBufferHandle;
+                                           }
+                                           if ( measureStageRecording )
+                                           {
+                                               _stageRecordingUS[i] += to_U64( Time::App::ElapsedMicroseconds() - recordingStartUS );
                                            }
 
                                            _stageSchedule.complete( i, [this, &pool]( const U8 readyStage )
@@ -372,6 +379,7 @@ void RenderPassManager::render(const RenderParams& params)
             // GL only resolves GPU timer queries while stats are requested; VK timestamps are always on.
             _context.queryPerformanceStats( true );
             _context.queryGPUScopeTimings( RenderSmokeTest::GPUScopeTimingsRequested() );
+            ++_stageRecordingFrames;
             if ( GFXDevice::FrameCount() % PERF_METRICS_LOG_INTERVAL == 0u )
             {
                 logPerfMetrics();
@@ -446,22 +454,32 @@ U32 RenderPassManager::getLastTotalBinSize(const RenderStage renderStage) const 
     return getPassForStage(renderStage).getLastTotalBinSize();
 }
 
-void RenderPassManager::logPerfMetrics() const
+void RenderPassManager::logPerfMetrics()
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
     const PerformanceMetrics& metrics = _context.getPerformanceMetrics();
 
     string stageCounts;
+    string stageRecording;
+    const U32 recordedFrames = std::max( _stageRecordingFrames, 1u );
+    D64 totalRecordingMS = 0.0;
     for ( U8 i = 0u; i < to_base( RenderStage::COUNT ); ++i )
     {
         const RenderStage stage = static_cast<RenderStage>(i);
         stageCounts.append( Util::StringFormat( "{}={}/{} ", TypeUtil::RenderStageToString( stage ), _drawCallCount[i],
                                                 _renderPassData[i]._pass != nullptr ? getLastTotalBinSize( stage ) : 0u ) );
+        const D64 recordingMS = Time::MicrosecondsToMilliseconds<D64>( _stageRecordingUS[i] ) / to_D64( recordedFrames );
+        totalRecordingMS += recordingMS;
+        stageRecording.append( Util::StringFormat( "{}={:.2f} ", TypeUtil::RenderStageToString( stage ), recordingMS ) );
+        _stageRecordingUS[i] = 0u;
     }
+    _stageRecordingFrames = 0u;
 
     const uint4& cullCount = _context.lastCullCount();
     Console::printfn( "[PerfMetrics] frame={} gpuMS={:.2f} backendDraws={} hiZCulled={} hiZOverflow={} hiZSkipped={} stageDraws/binItems: {}",
                       GFXDevice::FrameCount(), metrics._gpuTimeInMS, _context.frameDrawCallsPrev(), cullCount.x, cullCount.y, cullCount.w, stageCounts );
+    // Per-frame means since the previous log. Stages record in parallel, so the sum is CPU work, not frame latency.
+    Console::printfn( "[PerfMetrics] cpuStageMS frames={} sumMS={:.2f} stages: {}", recordedFrames, totalRecordingMS, stageRecording );
 
     GPUPassTimingTable& passTimings = _context.gpuPassTimings();
     const auto& bindings = _context.resourceBindingMetrics().previous();

@@ -39,7 +39,7 @@
     - The parallel-recording work (Phase 1/2) is the first step towards this; adding a separate render thread later should be a scheduling change, not a data-model rewrite.
 
 ## Goals (agreed)
-- Reference workload: WarScene from the last saved camera: Sponza fully in view with HiZ culling active, several moving lights (light culling active), trees, grass, terrain, water, sky, PostFX, MSAA and shadows. Targets apply to this full workload, with no features disabled to reach them.
+- Reference workload: WarScene from the saved camera with Sponza fully in view and HiZ culling active (`Player_Cam_0` in `Projects/Games/Scenes/WarScene.xml`: eye 785, 65, 190; pitch 15; yaw 0), several moving lights (light culling active), trees, grass, terrain, water, sky, PostFX, MSAA and shadows. Saving the scene from another position moves this camera, so check it before comparing runs. Targets apply to this full workload, with no features disabled to reach them.
 - Moving lights are non-deterministic, so object colours can legitimately differ between captures/frames. Visual comparisons must tolerate this; correctness checks focus on geometry presence, culling, shadows and validation errors, not exact pixels.
 - Culling must stay correct: optimizations must not "win" by over-culling. Track visible-node counts per stage, HiZ-culled counts and light-cluster counts in the baseline, and compare them after every change.
 - Primary target: **Debug instrumented editor** (`windows-msvc-debug-editor-instrumentation`), WarScene.
@@ -729,6 +729,105 @@ Artifacts: `H:\RendererTransparency20261109` (`baseline-detail`,
 `shader-detail`, `diagnostic-unlit`, `packed-experiment`, `packed-repeat`,
 `packed-final`, `acceptance-vulkan`, `acceptance-opengl`). Each attempt records
 source patches, build/test output, renderer identity, logs and images.
+
+### Alpha-tested foliage checkpoint (2026-11-27)
+
+- [x] Draw vegetation grass and tree leaves through a new `ALPHA_TESTED` bin
+  instead of weighted OIT. The bin uses a depth-writing alpha test at
+  `ALPHA_DISCARD_THRESHOLD`, with alpha-to-coverage under screen MSAA and
+  CSM/spot shadow MSAA. This fixes distant canopies blending over near ones:
+  the old OIT weight hit its 300 clamp for any alpha above ~3.5% at every depth,
+  so OIT averaged the layers regardless of depth.
+- [x] Run the alpha-tested pass before the opaque main pass, so the opaque
+  `EQUAL` test skips samples that foliage covers. Skip W-OIT and forward
+  transparency when the translucent bin is empty. Weight W-OIT by linear view
+  depth (McGuire and Bavoil eq. 8).
+- [x] The Debug suite passes 429/429. Validation-on Vulkan and OpenGL acceptance
+  each completed 301 presents with normal shutdown. Images show near canopies
+  occluding far ones with anti-aliased edges. Existing STUBBED log entries
+  remain.
+
+Release Vulkan WarScene medians of seven warmed 64-frame blocks (frames
+192-576); each run completed 601 presents. The stage rows come from runs
+without scope timing; the other rows come from `-GpuScopeTimings` runs.
+
+| GPU ms | W-OIT baseline | Alpha-tested after opaque | Alpha-tested before opaque (final) |
+|---|---:|---:|---:|
+| DISPLAY stage | 10.17 | 9.82 | 9.08 |
+| All stages | 14.34 | 13.89 | 13.07 |
+| DISPLAY opaque main pass | 3.36 | 3.33 | 2.56 |
+| DISPLAY trees (OIT accumulation or alpha-tested) | 3.67 | 3.31 | 3.29 |
+| DISPLAY grass | 0.19 | 0.21 | 0.21 |
+
+Each column is one run per timing mode, recorded sequentially rather than as an
+alternating A/B. Front-to-back and state-grouped sorting of the alpha-tested
+bin differed by 0.02 ms on DISPLAY without scope timing. Front-to-back
+interleaving split the per-shader scopes and misattributed the grass cost, so
+the final build groups by state and sorts front to back within each group.
+
+Alpha-tested geometry is still absent from the pre-pass depth and normals, so
+Hi-Z, SSAO and SSR do not see it. Adding it to the pre-pass would repeat the
+geometry-bound tree work (about 3.3 ms of colour pass) and is not measured.
+
+Hi-Z culling was rechecked. The saved camera changed on 2026-11-09 to eye
+(146, 20, 22), where nothing in view is occluded, so `hiZCulled` reads 0 in
+the runs above. With the earlier Sponza camera (eye 785, 65, 190; pitch 15),
+the same build culls 1002 draws per block, matching earlier checkpoints.
+`hiZSkipped=2034` counts vegetation draws: 678 chunk items, each with three
+pass-type commands. Since 2026-11-10 these draws carry node identities and opt
+out through their node cull flag, so they count as skipped rather than as
+draws without identity. Vegetation chunks then used terrain-wide bounds, so the
+count was the same from every camera; the next checkpoint replaces them.
+
+### Vegetation chunk culling checkpoint (2026-11-28)
+
+- [x] Give each grass chunk node and each per-species tree node a world-space
+  box built from its instance origins and padded by the reach the cull shader
+  tests (`BoundsComponent::setWorldBoundsOverride()`,
+  `Vegetation::updateChunkBounds()`). Tree nodes no longer set
+  `VISIBILITY_LOCKED` and cull like other nodes; vegetation range tests use
+  horizontal distance, as the cull shader does. The boxes grow only when
+  stronger wind needs more padding. Grass package LoD picks the billboard
+  partition from chunk distance (6, 3, then 2 planes). LoD levels 3 and 4 had
+  no index range and drew all 6 planes, so they now reuse the last partition.
+  The cull shader still fades grass out near its visibility range.
+- [x] Perf mode logs each stage task's CPU time as `[PerfMetrics] cpuStageMS`
+  (per-frame means since the previous log; stages run in parallel).
+- [x] The Debug suite passes 431/431. Validation-on Vulkan and OpenGL
+  acceptance each completed 301 presents with normal shutdown and only the
+  existing STUBBED, GL context fallback and shutdown network entries in
+  `errors.log`.
+
+Release Vulkan WarScene from the reference camera; medians of seven 64-frame
+blocks (frames 192-576), `-GpuScopeTimings`, one sequential run each.
+
+| Metric | Terrain-wide bounds | Per-chunk bounds |
+|---|---:|---:|
+| CPU stage time, sum (ms) | 12.43 | 4.90 |
+| CPU DISPLAY / REFLECTION / REFRACTION / SHADOW (ms) | 3.41 / 3.75 / 4.05 / 1.22 | 1.48 / 1.34 / 1.68 / 0.37 |
+| Bin items DISPLAY / REFLECTION / REFRACTION | 1077 / 918 / 1075 | 482 / 329 / 480 |
+| Backend draws | 3508-4181 | 1119-1163 |
+| `hiZSkipped` (vegetation draw commands) | 2034 | 249 |
+| GPU scope sum (ms) | 13.18 | 12.66 |
+| Cull Vegetation, each colour stage (GPU ms) | 0.23 | 0.08 |
+
+`hiZCulled` stays 1002. The captures show the same trees and grass.
+
+The old lock also put every tree node, with a single-tree box at its chunk
+centre, into every CSM cascade. The cascade scene-AABB fit
+(`csmUseSceneAABBFit`, on for every cascade in WarScene) enlarges cascades
+after the first by three quarters of the amount the previous frame's caster
+boxes exceed the cascade radius along the light view's up axis, and carries
+the increase into the next cascade. The trees therefore stretched cascade 1
+from its 182 m slice radius to 915 m and cascade 2 from 1700 m to 2678 m. With
+per-chunk boxes, only the tree chunks inside a cascade feed its fit: cascade 1
+is now 540 m and cascade 2 2178 m, and mid-range shadows are sharper. The fit
+followed chunk-sized boxes, so a cascade's size stepped when the camera moved
+enough to change which tree chunks it covered, and each step rebuilt that
+cascade's static cache. `VEGETATION_TREE` nodes now stay out of the fit in
+every cascade while still drawing into each cascade they intersect, so cascade
+1 is back to 182 m and cascade 2 to 1700 m. Cascade 0 is not fitted: a build
+that fed tree chunk boxes into a cascade 0 fit grew it from 60.5 m to 497 m.
 
 ### Stabilization checkpoint
 
