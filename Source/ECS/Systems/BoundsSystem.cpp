@@ -82,6 +82,13 @@ namespace Divide
                     node->sceneGraph()->invalidateStaticGeometryBounds(*node);
                 }
             }
+            if (bComp->_worldBoundsOverride.pending())
+            {
+                bComp->flagBoundingBoxDirty(to_U32(TransformType::ALL), true);
+                MarkAncestorBoundsChanged(node->parent(),
+                    [](SceneGraphNode& parent) { return parent.parent(); },
+                    [](SceneGraphNode& parent) { Attorney::SceneNodeBoundsSystem::setBoundsChanged(parent.getNode()); });
+            }
         }
 
         _refChangedComponents.clear();
@@ -89,7 +96,7 @@ namespace Divide
         {
             const SceneNode& sceneNode = bComp->parentSGN()->getNode();
             bComp->_boundsChanges.capture(Attorney::SceneNodeBoundsSystem::boundsChangeRevision(sceneNode));
-            if (bComp->_boundsChanges.capturedChanged())
+            if (bComp->_boundsChanges.capturedChanged() || bComp->_worldBoundsOverride.pending())
             {
                 bComp->setRefBoundingBox(sceneNode.getBounds());
                 _refChangedComponents.push_back(bComp);

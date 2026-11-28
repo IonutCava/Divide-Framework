@@ -104,6 +104,43 @@ struct VegetationData
     return furthest.length();
 }
 
+/// Reach of a grass instance from its origin: the blades with their wind sway and view displacement (grass.glsl),
+/// and the sphere the cull shader tests half a blade above the origin.
+[[nodiscard]] inline F32 VegetationGrassReach( const float4& grassExtents, const F32 scale, const F32 windX, const F32 windZ ) noexcept
+{
+    const F32 absScale = std::abs( scale );
+    const F32 blade = grassExtents.w * absScale + 0.25f * std::max( 1.f, std::abs( absScale - 1.f ) );
+    const F32 sway = 0.075f * (3.f * std::abs( windX ) + 1.5f * std::abs( windZ ) + 0.128f);
+    return blade * (1.f + sway) + 0.5f * grassExtents.y * absScale + 0.5f;
+}
+
+/// Reach of a tree instance from its origin, as the cull shader tests it: the mesh plus TREE_WIND_PADDING.
+[[nodiscard]] inline F32 VegetationTreeReach( const F32 cullRadius, const F32 scale, const F32 windX, const F32 windZ ) noexcept
+{
+    return cullRadius * std::abs( scale ) * (1.f + 0.125f * std::sqrt( SQUARED( windX ) + SQUARED( windZ ) ));
+}
+
+/// Instance origins and the largest instance scale: enough to bound the instances for any per-instance reach.
+struct VegetationInstanceBounds
+{
+    BoundingBox _origins{ float3{ F32_MAX }, float3{ -F32_MAX } };
+    F32 _maxScale = 0.f;
+
+    void add( const VegetationData& instance ) noexcept
+    {
+        _origins.add( instance._positionAndScale.xyz );
+        _maxScale = std::max( _maxScale, std::abs( instance._positionAndScale.w ) );
+    }
+
+    [[nodiscard]] bool empty() const noexcept { return _maxScale <= 0.f; }
+
+    [[nodiscard]] BoundingBox padded( const F32 reach ) const noexcept
+    {
+        const float3 padding{ reach };
+        return BoundingBox{ _origins._min - padding, _origins._max + padding };
+    }
+};
+
 struct VegetationChunkDrawState
 {
     U32 _grassInstanceCount{ 0u };
@@ -122,10 +159,11 @@ struct VegetationChunkDrawState
 
 struct VegetationTreeRange
 {
+    VegetationInstanceBounds _bounds{};
+    SceneGraphNode* _parentNode = nullptr;
     U32 _offset = 0u;
     U32 _count = 0u;
     F32 _cullRadius = 0.f;
-    SceneGraphNode* _parentNode = nullptr;
 };
 
 struct VegetationWindState
@@ -156,8 +194,7 @@ struct VegetationWindState
         return true;
     }
 
-    return stagePass._pass == RenderStagePass::PassIndex::PASS_0 &&
-           stagePass._index != ShadowMap::WORLD_AO_LAYER_INDEX;
+    return ShadowMap::IsNearestCSMCascade( stagePass );
 }
 
 class VegetationInstance;
@@ -198,6 +235,8 @@ DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
    private:
     void uploadVegetationData(vector<Byte>& grassDataOut, vector<Byte> treeDataOut);
     void prepareDraw(SceneGraphNode* sgn, VegetationInstance& instance);
+    /// Sets the chunk's node bounds from its instances, padded for the strongest wind seen so far.
+    void updateChunkBounds(SceneGraphNode* sgn, VegetationInstance& instance, F32 windX, F32 windZ) const;
     [[nodiscard]] Handle<Material> treeMaterialFor(Handle<Material> source);
     [[nodiscard]] VegetationInstance* findInstance(U32 chunkID);
     void applyWindAnimation();
@@ -277,10 +316,13 @@ private:
 protected:
     friend class Vegetation;
 
-    VegetationChunkDrawState _drawState;
     std::array<VegetationTreeRange, MAX_VEGETATION_TREE_MESHES> _treeRanges{};
     vector<VegetationData> _grassCandidates;
     vector<VegetationData> _treeCandidates;
+    VegetationInstanceBounds _grassBounds{};
+    VegetationChunkDrawState _drawState;
+    /// Largest absolute wind components the chunk's node bounds are padded for. Negative until they are first set.
+    float2 _boundsWind{ -1.f, -1.f };
     bool _initialized = false;
 
 private:

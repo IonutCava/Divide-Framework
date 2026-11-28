@@ -2,11 +2,17 @@
 
 // Copyright (c) 2026 DIVIDE-Studio
 
+#if !defined(ALPHA_TEST_PASS)
+// Forced early tests would write depth before an alpha test could discard the fragment
 layout(early_fragment_tests) in;
+#endif //!ALPHA_TEST_PASS
 
 #include "output.frag"
 #include "BRDF.frag"
 #include "transparentCoverage.cmn"
+#if defined(ALPHA_TEST_PASS)
+#include "alphaTest.frag"
+#endif //ALPHA_TEST_PASS
 
 void main (void) {
     const vec4 positionDx = dFdx(VAR._vertexW);
@@ -17,7 +23,13 @@ void main (void) {
 
     vec4 albedo = getAlbedo(data, texCoord);
 
-#if defined(OIT_PASS) || defined(TRANSPARENCY_PASS)
+#if defined(ALPHA_TEST_PASS)
+    albedo.a = alphaTestCoverage(albedo.a);
+    if (albedo.a <= 0.f)
+    {
+        discard;
+    }
+#elif defined(OIT_PASS) || defined(TRANSPARENCY_PASS)
     if (!TRANSPARENT_HAS_COVERAGE(albedo.a))
     {
         discard;

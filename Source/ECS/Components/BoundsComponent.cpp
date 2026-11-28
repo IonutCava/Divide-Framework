@@ -117,11 +117,16 @@ void BoundsComponent::flagBoundingBoxDirty(const U32 transformMask, const bool r
     }
 }
 
+bool BoundsComponent::boundsInWorldSpace() const noexcept
+{
+    return _worldBoundsOverride.active() || _parentSGN->getNode().boundsInWorldSpace();
+}
+
 void BoundsComponent::setRefBoundingBox(const BoundingBox& nodeBounds) noexcept
 {
     // All the parents should already be dirty thanks to the bounds system
-    _refBoundingBox.set(nodeBounds);
-    _containsWorldSpaceBounds = _parentSGN->getNode().boundsInWorldSpace();
+    _refBoundingBox.set(_worldBoundsOverride.apply(nodeBounds));
+    _containsWorldSpaceBounds = boundsInWorldSpace();
     _boundsUpdate.markDirty(to_base(TransformType::ALL));
     _obbCache.invalidate();
 }
@@ -132,7 +137,7 @@ void BoundsComponent::updateBoundingBoxTransform()
 
     if (_boundsUpdate.consumeDirty())
     {
-        const bool worldSpace = _parentSGN->getNode().boundsInWorldSpace();
+        const bool worldSpace = boundsInWorldSpace();
         const mat4<F32>& worldMatrix = worldSpace ? MAT4_IDENTITY : _parentSGN->get<TransformComponent>()->getWorldMatrix();
         _boundsUpdate.update(_boundingBox, _refBoundingBox, worldSpace, worldMatrix);
         _rebuildChildBounds = true;
@@ -155,8 +160,7 @@ void BoundsComponent::appendChildRefBBs()
             BoundsComponent* const bComp = children._data[i]->get<BoundsComponent>();
             bComp->appendChildRefBBs();
             _containsWorldSpaceBounds |= bComp->_containsWorldSpaceBounds;
-            if (!_parentSGN->getNode().boundsInWorldSpace() &&
-                !children._data[i]->getNode().boundsInWorldSpace())
+            if (!boundsInWorldSpace() && !bComp->boundsInWorldSpace())
             {
                 _refBoundingBox.add(bComp->_refBoundingBox);
             }

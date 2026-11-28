@@ -2436,6 +2436,25 @@ namespace Divide
                             {
                                 matInstance->properties().ignoreTexDiffuseAlpha( baseMaterial.properties().overrides().ignoreTexDiffuseAlpha() );
                             } );
+            bool alphaTested = material->properties().overrides().alphaTested();
+            ImGui::Text( "[Alpha Tested]" ); ImGui::SameLine();
+            if ( ImGui::ToggleButton( "[Alpha Tested]", &alphaTested ) && !readOnly )
+            {
+                RegisterUndo<bool, false>( _parent, PushConstantType::BOOL, !alphaTested, alphaTested, "AlphaTested", [material]( const bool& oldVal )
+                                           {
+                                               material->properties().alphaTested( oldVal );
+                                           } );
+                material->properties().alphaTested( alphaTested );
+                ret = true;
+            }
+            if ( ImGui::IsItemHovered() )
+            {
+                ImGui::SetTooltip( "Draw transparent texels as a depth-writing cutout instead of blending them.\nUse it for foliage and other binary alpha masks." );
+            }
+            ApplyAllButton( id, fromTexture || readOnly, *material, []( const Material& baseMaterial, Material* matInstance )
+                            {
+                                matInstance->properties().alphaTested( baseMaterial.properties().overrides().alphaTested() );
+                            } );
 
             {
                 static UndoEntry<I32> reflectUndo = {};

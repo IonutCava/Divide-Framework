@@ -678,6 +678,7 @@ namespace Divide
                     }
                     pipelineDescriptor._primitiveTopology = material->topology();
                     pipelineDescriptor._vertexFormat = material->shaderAttributes();
+                    pipelineDescriptor._alphaToCoverage = material->usesAlphaToCoverage( renderStagePass );
                     pkg.descriptorSetCmd()._usage = DescriptorSetUsage::PER_DRAW;
                 }
                 else

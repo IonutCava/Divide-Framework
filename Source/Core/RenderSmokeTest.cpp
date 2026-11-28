@@ -16,6 +16,8 @@
 
 namespace Divide::RenderSmokeTest
 {
+    std::atomic<U32> RuntimeOptions::g_options{ 0u };
+
     std::FILE* OpenSharedOutput( const std::filesystem::path& path ) noexcept
     {
 #if defined(IS_WINDOWS_BUILD)
