@@ -523,7 +523,7 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Headers/ConditionalWait.h
                              Platform/Headers/DisplayWindow.h
                              Platform/Headers/DisplayWindow.inl
-                             Platform/Headers/EnumFlags.h
+                             Platform/Headers/EnumFlags.inl
                              Platform/Headers/PlatformDataTypes.h
                              Platform/Headers/PlatformDefines.h
                              Platform/Headers/PlatformDefinesOS.h

@@ -24,11 +24,19 @@ namespace
 
 DIVIDE_ENUM_FLAGS(TestFlags);
 
+namespace
+{
+    template<class E>
+    concept HasBitwiseOr = requires(E a) { a | a; };
+}
+
 TEST_CASE( "Opted-in enum flags support bitwise operators", "[enum_flags_tests]" )
 {
     STATIC_CHECK( EnableEnumFlags<TestFlags> );
     STATIC_CHECK( EnumFlag<TestFlags> );
     STATIC_CHECK( !EnableEnumFlags<UntouchedFlags> );
+    STATIC_CHECK( HasBitwiseOr<TestFlags> );
+    STATIC_CHECK( !HasBitwiseOr<UntouchedFlags> );
 
     STATIC_CHECK( to_base(TestFlags::A | TestFlags::B) == (to_base(TestFlags::A) | to_base(TestFlags::B)) );
     STATIC_CHECK( to_base(TestFlags::A & (TestFlags::A | TestFlags::B)) == to_base(TestFlags::A) );

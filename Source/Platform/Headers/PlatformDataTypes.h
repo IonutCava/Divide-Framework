@@ -222,7 +222,7 @@ namespace Divide
         return std::to_underlying(value);
     }
 
-#include "EnumFlags.h"
+#include "EnumFlags.inl"
 
     namespace detail
     {
